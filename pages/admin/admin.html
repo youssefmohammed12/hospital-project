@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="HealthBridge Admin Panel — manage appointments, doctors, and system operations." />
+  <title>Admin Panel — HealthBridge</title>
+  <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/admin.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/modules/medical-records.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/modules/prescription.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/modules/schedule.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/admin-dashboard.css?v=2" />
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="../../index.html" class="logo">
+        <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+        <span>HealthBridge</span>
+      </a>
+      <div class="nav-row">
+        <ul class="nav-links">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../doctors.html">Doctors</a></li>
+          <li><a href="../../services.html">Services</a></li>
+          <li><a href="../../about.html">About</a></li>
+          <li><a href="../../contact.html">Contact</a></li>
+        </ul>
+        <div class="nav-actions" id="auth-links">
+          <a href="../auth/login.html" class="btn btn-outline btn-sm">Login</a>
+          <a href="../auth/login.html#signup" class="btn btn-primary btn-sm">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-user">
+          <div class="sidebar-avatar-container">
+            <div class="sidebar-avatar" style="background: var(--primary-glow); border-color: var(--border)">AD</div>
+            <div class="status-dot" title="System Status: Online"></div>
+          </div>
+          <h3 id="admin-name">Admin Panel</h3>
+          <p id="admin-email">admin@healthbridge.com</p>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#overview" class="active"><i class="fas fa-chart-line" aria-hidden="true"></i> Overview</a>
+          <a href="#doctors"><i class="fas fa-user-doctor" aria-hidden="true"></i> Doctors</a>
+          <a href="#patients"><i class="fas fa-users" aria-hidden="true"></i> Patients</a>
+          <a href="#prescriptions"><i class="fas fa-prescription" aria-hidden="true"></i> Prescriptions</a>
+          <!-- Schedules moved to Doctor Profile → Schedule & Availability tab -->
+          <a href="#departments"><i class="fas fa-building" aria-hidden="true"></i> Departments</a>
+          <a href="#support-messages"><i class="fas fa-comments" aria-hidden="true"></i> Support Messages</a>
+          <a href="#system-settings"><i class="fas fa-sliders" aria-hidden="true"></i> System Settings</a>
+          <a href="#audit-log"><i class="fas fa-history" aria-hidden="true"></i> Audit Log</a>
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+        <nav class="sidebar-nav">
+          <a href="javascript:void(0)" onclick="openSettings()"><i class="fas fa-gear" aria-hidden="true"></i> Settings</a>
+          <a href="../../index.html"><i class="fas fa-globe" aria-hidden="true"></i> View Site</a>
+          <a href="#" class="logout-link" onclick="logoutUser()"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Logout</a>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+      <!-- Overview — Analytics Dashboard -->
+      <section id="overview" class="active">
+        <div class="flex-between flex-wrap gap-4" style="margin-bottom: var(--s6)">
+          <div>
+            <h2 style="border: none; margin: 0; padding: 0"><i class="fas fa-chart-line" aria-hidden="true"></i> Analytics Dashboard</h2>
+            <p style="margin-top: var(--s2)">Real-time hospital analytics and operational overview.</p>
+          </div>
+          <div style="display:flex;gap:var(--s2)">
+            <button class="btn btn-outline btn-sm" onclick="refreshAdminDashboard()"><i class="fas fa-rotate" aria-hidden="true"></i> Refresh</button>
+          </div>
+        </div>
+
+        <!-- Error State (hidden by default) -->
+        <div id="dashboard-error" class="dashboard-error" style="display:none">
+          <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+          <h4>Failed to Load Dashboard</h4>
+          <p>An unexpected error occurred while loading analytics.</p>
+          <button class="btn btn-outline btn-sm" onclick="refreshAdminDashboard()"><i class="fas fa-rotate" aria-hidden="true"></i> Retry</button>
+        </div>
+
+        <!-- ====== AT A GLANCE ====== -->
+        <div class="dashboard-greeting dashboard-content-container" id="dashboard-greeting">
+          <h2><i class="fas fa-sparkles" aria-hidden="true"></i> Loading...</h2>
+          <p>Loading dashboard summary...</p>
+        </div>
+        <div class="skeleton-container skeleton-kpi" style="margin-bottom: var(--s6); display:none">
+          <div class="skeleton skeleton-kpi-icon"></div>
+          <div class="skeleton-kpi-content">
+            <div class="skeleton skeleton-kpi-value"></div>
+            <div class="skeleton skeleton-kpi-label"></div>
+          </div>
+        </div>
+
+        <!-- ====== KPI CARDS ====== -->
+        <div class="kpi-grid dashboard-content-container" id="kpi-grid">
+          <div class="kpi-card kpi-primary" id="kpi-patients"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+          <div class="kpi-card kpi-success" id="kpi-doctors"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+          <div class="kpi-card kpi-info" id="kpi-departments"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+          <div class="kpi-card kpi-primary" id="kpi-today"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+          <div class="kpi-card kpi-warning" id="kpi-pending"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+          <div class="kpi-card kpi-success" id="kpi-confirmed"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+          <div class="kpi-card kpi-danger" id="kpi-active-doctors"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+          <div class="kpi-card kpi-warning" id="kpi-rating"><div class="kpi-icon-wrapper"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></div><div class="kpi-content"><div class="kpi-value">—</div><div class="kpi-label">Loading...</div></div></div>
+        </div>
+        <!-- KPI Skeleton -->
+        <div class="kpi-grid skeleton-container" style="display:none">
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+          <div class="skeleton-kpi"><div class="skeleton skeleton-kpi-icon"></div><div class="skeleton-kpi-content"><div class="skeleton skeleton-kpi-value"></div><div class="skeleton skeleton-kpi-label"></div></div></div>
+        </div>
+
+        <!-- ====== APPOINTMENT ANALYTICS ====== -->
+        <div class="chart-grid dashboard-content-container">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-chart-bar" aria-hidden="true"></i> Weekly Appointments</h3>
+              <div class="chart-card-actions">
+                <button class="chart-action-btn" onclick="exportChartPNG('weekly')" title="Export as PNG" aria-label="Export weekly chart as PNG"><i class="fas fa-download" aria-hidden="true"></i> PNG</button>
+                <button class="chart-action-btn" onclick="exportChartCSV('weekly')" title="Export as CSV" aria-label="Export weekly chart data as CSV"><i class="fas fa-table" aria-hidden="true"></i> CSV</button>
+              </div>
+            </div>
+            <div class="chart-body"><canvas id="chart-weekly" role="img" aria-label="Weekly appointments bar chart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-chart-line" aria-hidden="true"></i> Monthly Appointments</h3>
+              <div class="chart-card-actions">
+                <button class="chart-action-btn" onclick="exportChartPNG('monthly')" title="Export as PNG" aria-label="Export monthly chart as PNG"><i class="fas fa-download" aria-hidden="true"></i> PNG</button>
+                <button class="chart-action-btn" onclick="exportChartCSV('monthly')" title="Export as CSV" aria-label="Export monthly chart data as CSV"><i class="fas fa-table" aria-hidden="true"></i> CSV</button>
+              </div>
+            </div>
+            <div class="chart-body"><canvas id="chart-monthly" role="img" aria-label="Monthly appointments line chart"></canvas></div>
+          </div>
+        </div>
+        <!-- Chart skeletons -->
+        <div class="chart-grid skeleton-container" style="display:none">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+        </div>
+
+        <!-- Status Distribution + Completion Rate -->
+        <div class="chart-grid dashboard-content-container">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-chart-pie" aria-hidden="true"></i> Appointment Status</h3>
+              <div class="chart-card-actions">
+                <button class="chart-action-btn" onclick="exportChartPNG('status')" title="Export as PNG" aria-label="Export status chart as PNG"><i class="fas fa-download" aria-hidden="true"></i> PNG</button>
+                <button class="chart-action-btn" onclick="exportChartCSV('status')" title="Export as CSV" aria-label="Export status chart data as CSV"><i class="fas fa-table" aria-hidden="true"></i> CSV</button>
+              </div>
+            </div>
+            <div class="chart-body"><canvas id="chart-status" role="img" aria-label="Appointment status distribution doughnut chart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-circle-check" aria-hidden="true"></i> Completion Rate</h3>
+            </div>
+            <div class="chart-body" id="completion-rate-content">
+              <div class="dashboard-empty">
+                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                <p>Loading completion data...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-grid skeleton-container" style="display:none">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+        </div>
+
+        <!-- ====== PATIENT ANALYTICS ====== -->
+        <div class="chart-grid dashboard-content-container">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-venus-mars" aria-hidden="true"></i> Gender Distribution</h3>
+              <div class="chart-card-actions">
+                <button class="chart-action-btn" onclick="exportChartPNG('gender')" title="Export as PNG" aria-label="Export gender chart as PNG"><i class="fas fa-download" aria-hidden="true"></i> PNG</button>
+                <button class="chart-action-btn" onclick="exportChartCSV('gender')" title="Export as CSV" aria-label="Export gender chart data as CSV"><i class="fas fa-table" aria-hidden="true"></i> CSV</button>
+              </div>
+            </div>
+            <div class="chart-body"><canvas id="chart-gender" role="img" aria-label="Patient gender distribution pie chart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-chart-bar" aria-hidden="true"></i> Age Distribution</h3>
+              <div class="chart-card-actions">
+                <button class="chart-action-btn" onclick="exportChartPNG('age')" title="Export as PNG" aria-label="Export age chart as PNG"><i class="fas fa-download" aria-hidden="true"></i> PNG</button>
+                <button class="chart-action-btn" onclick="exportChartCSV('age')" title="Export as CSV" aria-label="Export age chart data as CSV"><i class="fas fa-table" aria-hidden="true"></i> CSV</button>
+              </div>
+            </div>
+            <div class="chart-body"><canvas id="chart-age" role="img" aria-label="Patient age distribution bar chart"></canvas></div>
+          </div>
+        </div>
+        <div class="chart-grid skeleton-container" style="display:none">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+        </div>
+
+        <!-- Most Active Patients -->
+        <div class="chart-card dashboard-content-container" style="margin-bottom: var(--s6)">
+          <div class="chart-card-header">
+            <h3 class="chart-card-title"><i class="fas fa-users" aria-hidden="true"></i> Most Active Patients</h3>
+          </div>
+          <div id="active-patients-content">
+            <div class="dashboard-empty">
+              <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+              <p>Loading patient data...</p>
+            </div>
+          </div>
+        </div>
+        <div class="skeleton-container" style="display:none; margin-bottom: var(--s6)">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body" style="height:120px"></div></div>
+        </div>
+
+        <!-- ====== DOCTOR ANALYTICS ====== -->
+        <div class="chart-grid dashboard-content-container">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-star" aria-hidden="true"></i> Highest Rated Doctors</h3>
+              <div class="chart-card-actions">
+                <button class="chart-action-btn" onclick="exportChartPNG('highestRated')" title="Export as PNG" aria-label="Export ratings chart as PNG"><i class="fas fa-download" aria-hidden="true"></i> PNG</button>
+                <button class="chart-action-btn" onclick="exportChartCSV('highestRated')" title="Export as CSV" aria-label="Export ratings chart data as CSV"><i class="fas fa-table" aria-hidden="true"></i> CSV</button>
+              </div>
+            </div>
+            <div class="chart-body"><canvas id="chart-highest-rated" role="img" aria-label="Highest rated doctors horizontal bar chart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-briefcase" aria-hidden="true"></i> Busiest Doctors</h3>
+            </div>
+            <div id="busiest-doctors-content">
+              <div class="dashboard-empty">
+                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                <p>Loading doctor data...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-grid skeleton-container" style="display:none">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+        </div>
+
+        <!-- Doctor Availability -->
+        <div class="chart-card dashboard-content-container" style="margin-bottom: var(--s6)">
+          <div class="chart-card-header">
+            <h3 class="chart-card-title"><i class="fas fa-heart-pulse" aria-hidden="true"></i> Doctor Availability</h3>
+          </div>
+          <div id="doctor-availability-content">
+            <div class="dashboard-empty">
+              <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+              <p>Loading availability data...</p>
+            </div>
+          </div>
+        </div>
+        <div class="skeleton-container" style="display:none; margin-bottom: var(--s6)">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body" style="height:80px"></div></div>
+        </div>
+
+        <!-- ====== DEPARTMENT ANALYTICS ====== -->
+        <div class="chart-card dashboard-content-container" style="margin-bottom: var(--s6)">
+          <div class="chart-card-header">
+            <h3 class="chart-card-title"><i class="fas fa-building" aria-hidden="true"></i> Department Overview</h3>
+            <div class="chart-card-actions">
+              <button class="chart-action-btn" onclick="exportChartPNG('departments')" title="Export as PNG" aria-label="Export departments chart as PNG"><i class="fas fa-download" aria-hidden="true"></i> PNG</button>
+              <button class="chart-action-btn" onclick="exportChartCSV('departments')" title="Export as CSV" aria-label="Export departments chart data as CSV"><i class="fas fa-table" aria-hidden="true"></i> CSV</button>
+            </div>
+          </div>
+          <div class="chart-body"><canvas id="chart-departments" role="img" aria-label="Department analytics stacked bar chart"></canvas></div>
+          <div id="dept-table-content" style="margin-top: var(--s4)">
+            <div class="dashboard-empty">
+              <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+              <p>Loading department data...</p>
+            </div>
+          </div>
+        </div>
+        <div class="skeleton-container" style="display:none; margin-bottom: var(--s6)">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body"></div></div>
+        </div>
+
+        <!-- ====== RECENT ACTIVITY + QUICK ACTIONS + SYSTEM STATUS ====== -->
+        <div class="chart-grid dashboard-content-container">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <h3 class="chart-card-title"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Recent Activity</h3>
+            </div>
+            <div id="activity-timeline-content">
+              <div class="dashboard-empty">
+                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                <p>Loading activity feed...</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="chart-card" style="margin-bottom: var(--s5)">
+              <div class="chart-card-header">
+                <h3 class="chart-card-title"><i class="fas fa-bolt" aria-hidden="true"></i> Quick Actions</h3>
+              </div>
+              <div id="quick-actions-content">
+                <div class="dashboard-empty">
+                  <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <p>Loading actions...</p>
+                </div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h3 class="chart-card-title"><i class="fas fa-circle-info" aria-hidden="true"></i> System Status</h3>
+              </div>
+              <div id="system-status-content">
+                <div class="dashboard-empty">
+                  <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <p>Loading system status...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-grid skeleton-container" style="display:none">
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton-timeline">
+            <div class="skeleton-timeline-item"><div class="skeleton skeleton-timeline-icon"></div><div class="skeleton-timeline-content"><div class="skeleton skeleton-timeline-title"></div><div class="skeleton skeleton-timeline-desc"></div><div class="skeleton skeleton-timeline-time"></div></div></div>
+            <div class="skeleton-timeline-item"><div class="skeleton skeleton-timeline-icon"></div><div class="skeleton-timeline-content"><div class="skeleton skeleton-timeline-title"></div><div class="skeleton skeleton-timeline-desc"></div><div class="skeleton skeleton-timeline-time"></div></div></div>
+            <div class="skeleton-timeline-item"><div class="skeleton skeleton-timeline-icon"></div><div class="skeleton-timeline-content"><div class="skeleton skeleton-timeline-title"></div><div class="skeleton skeleton-timeline-desc"></div><div class="skeleton skeleton-timeline-time"></div></div></div>
+          </div></div>
+          <div class="skeleton-chart"><div class="skeleton skeleton-chart-header"></div><div class="skeleton skeleton-chart-body" style="height:200px"></div></div>
+        </div>
+      </section>
+
+
+      <section id="doctors">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
+            <div>
+              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-user-doctor" aria-hidden="true"></i> Doctors</h3>
+              <p style="font-size: 0.85rem; margin: 0">Add and review doctor login accounts.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="toggleAddDoctorModal()">+ Add Doctor</button>
+          </div>
+
+          <!-- Controls -->
+          <div class="table-controls">
+            <div class="search-box">
+              <input type="text" id="doctor-search" placeholder="Search by name, email..." onkeyup="filterDoctors()" />
+            </div>
+            <div class="filter-group">
+              <label for="doctor-specialty-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Specialty:</label>
+              <select id="doctor-specialty-filter" onchange="filterDoctors()">
+                <option value="">All Specialties</option>
+                <option value="General Practice">General Practice</option>
+                <option value="Cardiology">Cardiology</option>
+                <option value="Dermatology">Dermatology</option>
+                <option value="Neurology">Neurology</option>
+                <option value="Pediatrics">Pediatrics</option>
+                <option value="Orthopedics">Orthopedics</option>
+                <option value="Dentistry">Dentistry</option>
+                <option value="Ophthalmology">Ophthalmology</option>
+                <option value="Gynecology">Gynecology</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Joined</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-doctors">
+                <tr><td colspan="6" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading doctors...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Patients -->
+      <section id="patients">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
+            <div>
+              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-users" aria-hidden="true"></i> Patients</h3>
+              <p style="font-size: 0.85rem; margin: 0">Add and manage patient accounts.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="toggleAddPatientModal()">+ Add Patient</button>
+          </div>
+
+          <!-- Controls -->
+          <div class="table-controls">
+            <div class="search-box">
+              <input type="text" id="patient-search" placeholder="Search by name, email, phone..." onkeyup="filterPatients()" />
+            </div>
+          </div>
+
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Joined</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-patients">
+                <tr><td colspan="6" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading patients...</td></tr>
+              </tbody>
+            </table>
+          </div>
+      </section>
+
+      <!-- Prescriptions -->
+      <section id="prescriptions">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
+            <div>
+              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-prescription" aria-hidden="true"></i> Prescriptions (Audit)</h3>
+              <p style="font-size: 0.85rem; margin: 0">View all prescriptions across the system for auditing purposes.</p>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="table-controls">
+            <div class="search-box">
+              <input type="text" id="admin-rx-search" placeholder="Search by patient or doctor name..." onkeyup="filterAdminPrescriptions()" />
+            </div>
+            <div class="filter-group">
+              <label for="admin-rx-status-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Status:</label>
+              <select id="admin-rx-status-filter" onchange="filterAdminPrescriptions()">
+                <option value="">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date Issued</th>
+                  <th>Doctor</th>
+                  <th>Patient</th>
+                  <th>Appointment Date</th>
+                  <th>Department</th>
+                  <th>Status</th>
+                  <th>Items</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-prescriptions-list">
+                <tr><td colspan="8" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading prescriptions...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- Departments -->
+      <section id="departments">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
+            <div>
+              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-building" aria-hidden="true"></i> Departments</h3>
+              <p style="font-size: 0.85rem; margin: 0">Manage hospital departments and doctor assignments.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="toggleAddDepartmentModal()">+ Add Department</button>
+          </div>
+
+          <!-- Controls -->
+          <div class="table-controls">
+            <div class="search-box">
+              <input type="text" id="department-search" placeholder="Search departments..." onkeyup="filterDepartments()" />
+            </div>
+            <div class="filter-group">
+              <label for="department-status-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Status:</label>
+              <select id="department-status-filter" onchange="filterDepartments()">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Doctors</th>
+                  <th>Appointments</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-departments">
+                <tr><td colspan="6" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading departments...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Support Messages -->
+      <section id="support-messages">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
+            <div>
+              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-comments" aria-hidden="true"></i> Support Messages &amp; Inquiries</h3>
+              <p style="font-size: 0.85rem; margin: 0">Review and reply to user support inquiries.</p>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="table-controls">
+            <div class="search-box">
+              <input type="text" id="support-search" placeholder="Search by name, email, subject, message..." onkeyup="filterSupportMessages()" />
+            </div>
+            <div class="filter-group">
+              <label for="support-status-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Status:</label>
+              <select id="support-status-filter" onchange="filterSupportMessages()">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending Reply</option>
+                <option value="replied">Replied</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Sender</th>
+                  <th>Subject &amp; Message</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-support-messages">
+                <tr><td colspan="5" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading messages...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <!-- System Settings -->
+      <section id="system-settings">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
+            <div>
+              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-sliders" aria-hidden="true"></i> System Settings</h3>
+              <p style="font-size: 0.85rem; margin: 0">Configure global hospital appointment hours and default duration.</p>
+            </div>
+          </div>
+          <div style="padding: var(--s6)">
+            <!-- Hospital Information -->
+            <div class="schedule-section" id="hospital-info-card" style="margin-bottom: var(--s6)">
+              <h4 class="schedule-section-title">
+                <i class="fas fa-hospital" aria-hidden="true"></i> Hospital Information
+              </h4>
+              <p class="schedule-section-desc">Basic hospital contact and location information.</p>
+              <div class="schedule-settings-grid">
+                <div class="form-group">
+                  <label for="hospital-name">Hospital Name</label>
+                  <input type="text" id="hospital-name" class="form-input" maxlength="200" />
+                </div>
+                <div class="form-group">
+                  <label for="hospital-phone">Phone Number</label>
+                  <input type="tel" id="hospital-phone" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label for="hospital-email">Email Address</label>
+                  <input type="email" id="hospital-email" class="form-input" />
+                </div>
+              </div>
+              <div class="form-group" style="margin-top: var(--s4)">
+                <label for="hospital-address">Address</label>
+                <textarea id="hospital-address" class="form-input" rows="2"></textarea>
+              </div>
+              <div class="form-group" style="margin-top: var(--s4)">
+                <label for="hospital-description">Description</label>
+                <textarea id="hospital-description" class="form-input" rows="2" placeholder="Brief description of the hospital..."></textarea>
+              </div>
+            </div>
+
+            <!-- Appointment Configuration -->
+            <div class="schedule-section" id="hospital-settings-card">
+              <h4 class="schedule-section-title">
+                <i class="fas fa-clock" aria-hidden="true"></i> Appointment Configuration
+              </h4>
+              <p class="schedule-section-desc">Set the hours during which patients can book appointments.</p>
+              <div class="schedule-settings-grid">
+                <div class="form-group">
+                  <label for="hospital-open-time">Appointment Opening Time</label>
+                  <select id="hospital-open-time" class="form-select"></select>
+                </div>
+                <div class="form-group">
+                  <label for="hospital-close-time">Appointment Closing Time</label>
+                  <select id="hospital-close-time" class="form-select"></select>
+                </div>
+                <div class="form-group">
+                  <label for="hospital-default-duration">Default Appointment Duration</label>
+                  <select id="hospital-default-duration" class="form-select">
+                    <option value="10">10 minutes</option>
+                    <option value="15">15 minutes</option>
+                    <option value="20">20 minutes</option>
+                    <option value="30" selected>30 minutes</option>
+                    <option value="45">45 minutes</option>
+                    <option value="60">60 minutes</option>
+                  </select>
+                </div>
+              </div>
+              <div class="schedule-actions" style="margin-top: var(--s5)">
+                <button id="hospital-settings-save-btn" class="btn btn-primary" onclick="saveHospitalSettings()">
+                  <i class="fas fa-floppy-disk" aria-hidden="true"></i> Save Settings
+                </button>
+                <button class="btn btn-outline" onclick="loadHospitalSettings()">
+                  <i class="fas fa-rotate" aria-hidden="true"></i> Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Audit Log -->
+      <section id="audit-log">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
+            <div>
+              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-history" aria-hidden="true"></i> Audit Log</h3>
+              <p style="font-size: 0.85rem; margin: 0">Track all administrative actions across the system.</p>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="refreshAuditLog()"><i class="fas fa-rotate" aria-hidden="true"></i> Refresh</button>
+          </div>
+
+          <!-- Filters -->
+          <div class="table-controls" id="audit-filters">
+            <div class="search-box">
+              <input type="text" id="audit-search" placeholder="Search actions, entities, admins..." onkeyup="filterAuditLog()" />
+            </div>
+            <div class="filter-group">
+              <label for="audit-action-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Action:</label>
+              <select id="audit-action-filter" onchange="filterAuditLog()">
+                <option value="">All Actions</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="audit-entity-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Entity:</label>
+              <select id="audit-entity-filter" onchange="filterAuditLog()">
+                <option value="">All Entities</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="audit-admin-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Admin:</label>
+              <select id="audit-admin-filter" onchange="filterAuditLog()">
+                <option value="">All Admins</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="audit-date-from" style="font-size: 0.8rem; color: var(--text-secondary)">From:</label>
+              <input type="date" id="audit-date-from" class="form-input" style="min-height: 32px; font-size: 0.82rem; padding: 4px 8px;" onchange="filterAuditLog()" />
+            </div>
+            <div class="filter-group">
+              <label for="audit-date-to" style="font-size: 0.8rem; color: var(--text-secondary)">To:</label>
+              <input type="date" id="audit-date-to" class="form-input" style="min-height: 32px; font-size: 0.82rem; padding: 4px 8px;" onchange="filterAuditLog()" />
+            </div>
+          </div>
+
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Admin</th>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>Entity ID</th>
+                  <th>Description</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-entries">
+                <tr><td colspan="7" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading audit log...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="flex-between flex-wrap gap-4" style="padding: var(--s4) var(--s8); border-top: 1px solid var(--border-light); background: var(--bg-surface);">
+            <div style="font-size: 0.82rem; color: var(--text-secondary);">
+              <span id="audit-pagination-info">Page 1 of 1</span>
+            </div>
+            <div style="display: flex; gap: var(--s2); align-items: center;">
+              <button class="btn btn-outline btn-sm" id="audit-prev-btn" onclick="goAuditPage(-1)"><i class="fas fa-chevron-left" aria-hidden="true"></i> Previous</button>
+              <span id="audit-page-current" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); min-width: 80px; text-align: center;">Page 1</span>
+              <button class="btn btn-outline btn-sm" id="audit-next-btn" onclick="goAuditPage(1)">Next <i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Add Doctor Modal -->
+  <div id="add-doctor-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 520px; width: min(520px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3>Add Doctor</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="toggleAddDoctorModal()">Close</button>
+      </div>
+      <form id="add-doctor-form" novalidate>
+        <div class="form-group">
+          <label for="doctor-name">Doctor Name</label>
+          <input type="text" id="doctor-name" placeholder="Dr. Ahmed Hassan" required minlength="2" />
+        </div>
+        <div class="form-group">
+          <label for="doctor-email">Email Address</label>
+          <input type="email" id="doctor-email" placeholder="doctor@healthbridge.com" required />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="doctor-password">Password</label>
+            <div class="pw-field">
+              <input type="password" id="doctor-password" placeholder="Min. 6 characters" required minlength="6" />
+              <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password" title="Show password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="doctor-department">Department</label>
+            <select id="doctor-department" required>
+              <option value="">Loading departments...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Add Doctor</button>
+          <button type="button" class="btn btn-outline" onclick="toggleAddDoctorModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Book Appointment Modal -->
+  <div id="book-appointment-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 580px; width: min(580px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3 id="book-modal-title"><i class="fas fa-calendar-days" aria-hidden="true"></i> Book Appointment</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="toggleBookAppointmentModal()">Close</button>
+      </div>
+      <form id="admin-book-form" novalidate>
+        <input type="hidden" id="admin-appt-context" value="" />
+        <input type="hidden" id="admin-appt-context-id" value="" />
+        <input type="hidden" id="admin-appt-patient-id" value="" />
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="admin-appt-department">Department</label>
+            <select id="admin-appt-department" name="department" required>
+              <option value="">Loading departments...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="admin-appt-doctor">Doctor</label>
+            <select id="admin-appt-doctor" name="doctor" required>
+              <option value="">Select a doctor</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="admin-appt-date">Date</label>
+            <input type="date" id="admin-appt-date" name="date" required />
+          </div>
+          <div class="form-group">
+            <label for="admin-appt-time">Time</label>
+            <select id="admin-appt-time" name="time" required>
+              <option value="">Select time</option>
+              <option value="09:00 AM">09:00 AM</option>
+              <option value="10:00 AM">10:00 AM</option>
+              <option value="11:00 AM">11:00 AM</option>
+              <option value="02:00 PM">02:00 PM</option>
+              <option value="03:00 PM">03:00 PM</option>
+              <option value="04:00 PM">04:00 PM</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="admin-appt-patient">Patient Name</label>
+          <input type="text" id="admin-appt-patient" name="patientName" placeholder="e.g. Ahmed Hassan" required minlength="2" maxlength="100" />
+        </div>
+        <div class="form-group">
+          <label for="admin-appt-notes">Notes (Optional)</label>
+          <textarea id="admin-appt-notes" name="notes" placeholder="Describe symptoms or add any notes…" maxlength="1000"></textarea>
+        </div>
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Confirm Booking</button>
+          <button type="button" class="btn btn-outline" onclick="toggleBookAppointmentModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Patient Modal -->
+  <div id="add-patient-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 520px; width: min(520px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3>Add Patient</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="toggleAddPatientModal()">Close</button>
+      </div>
+      <form id="add-patient-form" novalidate>
+        <div class="form-group">
+          <label for="patient-name">Patient Name</label>
+          <input type="text" id="patient-name" placeholder="Ahmed Hassan" required minlength="2" />
+        </div>
+        <div class="form-group">
+          <label for="patient-email">Email Address</label>
+          <input type="email" id="patient-email" placeholder="patient@healthbridge.com" required />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="patient-password">Password</label>
+            <div class="pw-field">
+              <input type="password" id="patient-password" placeholder="Min. 6 characters" required minlength="6" />
+              <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password" title="Show password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="patient-phone">Phone (Optional)</label>
+            <input type="tel" id="patient-phone" placeholder="+20123456789" />
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Add Patient</button>
+          <button type="button" class="btn btn-outline" onclick="toggleAddPatientModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Department Modal -->
+  <div id="add-department-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 520px; width: min(520px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3>Add Department</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="toggleAddDepartmentModal()">Close</button>
+      </div>
+      <form id="add-department-form" novalidate>
+        <div class="form-group">
+          <label for="department-name">Department Name *</label>
+          <input type="text" id="department-name" placeholder="e.g., Cardiology" required minlength="2" maxlength="100" />
+        </div>
+        <div class="form-group">
+          <label for="department-description">Description</label>
+          <textarea id="department-description" placeholder="Brief description of the department..." maxlength="500"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="department-status">Status</label>
+          <select id="department-status">
+            <option value="active" selected>Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Add Department</button>
+          <button type="button" class="btn btn-outline" onclick="toggleAddDepartmentModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Department Modal -->
+  <div id="edit-department-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 520px; width: min(520px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3>Edit Department</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="toggleEditDepartmentModal()">Close</button>
+      </div>
+      <form id="edit-department-form" novalidate>
+        <input type="hidden" id="edit-department-id" />
+        <div class="form-group">
+          <label for="edit-department-name">Department Name *</label>
+          <input type="text" id="edit-department-name" required minlength="2" maxlength="100" />
+        </div>
+        <div class="form-group">
+          <label for="edit-department-description">Description</label>
+          <textarea id="edit-department-description" maxlength="500"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-department-status">Status</label>
+          <select id="edit-department-status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <button type="button" class="btn btn-outline" onclick="toggleEditDepartmentModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Doctor Profile Modal (New Professional Tabbed Design) -->
+  <div id="doctor-profile-modal" class="modal-overlay">
+    <div class="doctor-profile-overlay" onclick="if(event.target===this) closeDoctorProfile()">
+      <div class="doctor-profile-modal">
+        <div class="doctor-profile-modal-header">
+          <h3><i class="fas fa-user-doctor" aria-hidden="true"></i> Doctor Profile</h3>
+          <button class="btn btn-outline btn-sm" type="button" onclick="closeDoctorProfile()" title="Close">Close <i class="fas fa-times" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="doctor-profile-modal-body" id="dp-body">
+          <!-- Profile Header Card -->
+          <div class="doctor-profile-header" id="dp-header-card">
+            <div class="doctor-profile-identity">
+              <div class="doctor-profile-avatar" id="dp-avatar">
+                <i class="fas fa-user-doctor" aria-hidden="true"></i>
+              </div>
+              <div class="doctor-profile-info">
+                <h2 id="dp-name-display">
+                  <span id="dp-full-name">Loading...</span>
+                  <span id="dp-status-badge" class="doctor-badge doctor-badge-active"><i class="fas fa-circle" aria-hidden="true"></i> Active</span>
+                  <span id="dp-availability-badge" class="doctor-badge doctor-badge-available"><i class="fas fa-check-circle" aria-hidden="true"></i> Available</span>
+                </h2>
+                <div class="doctor-profile-meta">
+                  <div class="doctor-profile-meta-item">
+                    <i class="fas fa-building" aria-hidden="true"></i>
+                    <span><strong>Department:</strong> <span id="dp-department-display">—</span></span>
+                  </div>
+                  <div class="doctor-profile-meta-item">
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <span><strong>Rating:</strong> <span id="dp-rating-display">—</span></span>
+                  </div>
+                  <div class="doctor-profile-meta-item">
+                    <i class="fas fa-briefcase" aria-hidden="true"></i>
+                    <span><strong>Experience:</strong> <span id="dp-exp-display">—</span></span>
+                  </div>
+                  <div class="doctor-profile-meta-item">
+                    <i class="fas fa-envelope" aria-hidden="true"></i>
+                    <span><strong>Email:</strong> <span id="dp-email-display">—</span></span>
+                  </div>
+                  <div class="doctor-profile-meta-item">
+                    <i class="fas fa-phone" aria-hidden="true"></i>
+                    <span><strong>Phone:</strong> <span id="dp-phone-display">—</span></span>
+                  </div>
+                  <div class="doctor-profile-meta-item">
+                    <i class="fas fa-calendar-plus" aria-hidden="true"></i>
+                    <span><strong>Member Since:</strong> <span id="dp-joined-display">—</span></span>
+                  </div>
+                </div>
+                <div class="doctor-profile-actions">
+                  <button class="btn btn-primary btn-sm" onclick="editCurrentDoctor()" title="Edit doctor details"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button>
+                  <button class="btn btn-outline btn-sm" onclick="reassignCurrentDoctorDepartment()" title="Assign to another department"><i class="fas fa-right-left" aria-hidden="true"></i> Reassign Dept</button>
+                  <button class="btn btn-outline btn-sm" id="dp-toggle-status-btn" onclick="toggleCurrentDoctorStatus()"><i class="fas fa-toggle-on" aria-hidden="true"></i> Toggle Status</button>
+                  <button class="btn btn-outline btn-sm" onclick="openBookingForDoctor()"><i class="fas fa-calendar-days" aria-hidden="true"></i> Book Appointment</button>
+                  <button class="btn btn-danger btn-sm" id="dp-delete-btn" onclick="deleteCurrentDoctor()"><i class="fas fa-trash" aria-hidden="true"></i> Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="doctor-profile-tabs" id="dp-tabs">
+            <button class="doctor-profile-tab active" data-tab="overview" onclick="switchDoctorTab('overview')"><i class="fas fa-info-circle" aria-hidden="true"></i> Overview</button>
+            <button class="doctor-profile-tab" data-tab="professional" onclick="switchDoctorTab('professional')"><i class="fas fa-briefcase" aria-hidden="true"></i> Professional</button>
+            <button class="doctor-profile-tab" data-tab="schedule" onclick="switchDoctorTab('schedule')"><i class="fas fa-clock" aria-hidden="true"></i> Schedule</button>
+            <button class="doctor-profile-tab" data-tab="appointments" onclick="switchDoctorTab('appointments')"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments</button>
+            <button class="doctor-profile-tab" data-tab="reviews" onclick="switchDoctorTab('reviews')"><i class="fas fa-star" aria-hidden="true"></i> Reviews</button>
+            <button class="doctor-profile-tab" data-tab="audit" onclick="switchDoctorTab('audit')"><i class="fas fa-history" aria-hidden="true"></i> Audit</button>
+          </div>
+
+          <!-- Tab Contents -->
+
+          <!-- OVERVIEW TAB -->
+          <div class="doctor-profile-tab-content active" id="dp-tab-overview">
+            <div class="doctor-stats-row">
+              <div class="doctor-stat-card">
+                <div class="doctor-stat-icon"><i class="fas fa-star" aria-hidden="true"></i></div>
+                <div class="doctor-stat-value" id="dp-overview-rating">—</div>
+                <div class="doctor-stat-label">Average Rating</div>
+              </div>
+              <div class="doctor-stat-card">
+                <div class="doctor-stat-icon"><i class="fas fa-user-check" aria-hidden="true"></i></div>
+                <div class="doctor-stat-value" id="dp-overview-completed">—</div>
+                <div class="doctor-stat-label">Completed Appts</div>
+              </div>
+              <div class="doctor-stat-card">
+                <div class="doctor-stat-icon"><i class="fas fa-calendar-check" aria-hidden="true"></i></div>
+                <div class="doctor-stat-value" id="dp-overview-total">—</div>
+                <div class="doctor-stat-label">Total Appointments</div>
+              </div>
+              <div class="doctor-stat-card">
+                <div class="doctor-stat-icon"><i class="fas fa-comment" aria-hidden="true"></i></div>
+                <div class="doctor-stat-value" id="dp-overview-reviews">—</div>
+                <div class="doctor-stat-label">Total Reviews</div>
+              </div>
+            </div>
+
+            <div class="doctor-profile-section">
+              <h4 class="doctor-profile-section-title"><i class="fas fa-address-card" aria-hidden="true"></i> Contact & Account Details</h4>
+              <div class="doctor-info-grid">
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Full Name</span>
+                  <span class="doctor-info-value" id="dp-info-name">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Email</span>
+                  <span class="doctor-info-value" id="dp-info-email">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Phone</span>
+                  <span class="doctor-info-value" id="dp-info-phone">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Department</span>
+                  <span class="doctor-info-value" id="dp-info-dept">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Account Status</span>
+                  <span class="doctor-info-value" id="dp-info-status">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Availability</span>
+                  <span class="doctor-info-value" id="dp-info-availability">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Member Since</span>
+                  <span class="doctor-info-value" id="dp-info-joined">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PROFESSIONAL TAB -->
+          <div class="doctor-profile-tab-content" id="dp-tab-professional">
+            <div class="doctor-profile-section">
+              <h4 class="doctor-profile-section-title"><i class="fas fa-briefcase" aria-hidden="true"></i> Professional Information</h4>
+              <div class="doctor-info-grid">
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Department</span>
+                  <span class="doctor-info-value" id="dp-prof-dept">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Specialty</span>
+                  <span class="doctor-info-value" id="dp-prof-specialty">—</span>
+                </div>
+                <div class="doctor-info-field">
+                  <span class="doctor-info-label">Years of Experience</span>
+                  <span class="doctor-info-value" id="dp-prof-exp">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCHEDULE TAB -->
+          <div class="doctor-profile-tab-content" id="dp-tab-schedule">
+            <div class="doctor-profile-section">
+              <h4 class="doctor-profile-section-title"><i class="fas fa-clock" aria-hidden="true"></i> Schedule & Availability</h4>
+              <div id="dp-schedule-content">
+                <div class="empty-state">
+                  <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                  <p>Loading schedule...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- APPOINTMENTS TAB -->
+          <div class="doctor-profile-tab-content" id="dp-tab-appointments">
+            <div class="flex-between flex-wrap gap-3" style="margin-bottom: var(--s4)">
+              <h4 class="doctor-profile-section-title" style="margin:0; border:none; padding:0"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments</h4>
+              <button class="btn btn-outline btn-sm" onclick="openBookingForDoctor()"><i class="fas fa-calendar-days" aria-hidden="true"></i> Book Appointment</button>
+            </div>
+            <div class="doctor-profile-section">
+              <div id="dp-appointments-content">
+                <div class="empty-state">
+                  <i class="fas fa-calendar" aria-hidden="true"></i>
+                  <p>No appointments found.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REVIEWS TAB -->
+          <div class="doctor-profile-tab-content" id="dp-tab-reviews">
+            <div class="doctor-profile-section">
+              <h4 class="doctor-profile-section-title"><i class="fas fa-star" aria-hidden="true"></i> Patient Reviews & Ratings</h4>
+              <div id="dp-reviews-content">
+                <div class="empty-state">
+                  <i class="fas fa-star" aria-hidden="true"></i>
+                  <p>No reviews yet.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AUDIT TAB -->
+          <div class="doctor-profile-tab-content" id="dp-tab-audit">
+            <div class="doctor-profile-section">
+              <h4 class="doctor-profile-section-title"><i class="fas fa-history" aria-hidden="true"></i> Administrative Activity</h4>
+              <div id="dp-audit-content">
+                <div class="empty-state">
+                  <i class="fas fa-history" aria-hidden="true"></i>
+                  <p>Loading audit log...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Doctor Modal (triggered from profile) -->
+  <div id="dp-edit-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 520px; width: min(520px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3><i class="fas fa-pen" aria-hidden="true"></i> Edit Doctor</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="closeDoctorEditModal()">Close</button>
+      </div>
+      <form id="dp-edit-form" novalidate>
+        <input type="hidden" id="dp-edit-id" />
+        <div class="form-group">
+          <label for="dp-edit-name">Full Name *</label>
+          <input type="text" id="dp-edit-name" required minlength="2" />
+        </div>
+        <div class="form-group">
+          <label for="dp-edit-email">Email Address *</label>
+          <input type="email" id="dp-edit-email" required />
+        </div>
+        <div class="form-group">
+          <label for="dp-edit-phone">Phone Number</label>
+          <input type="tel" id="dp-edit-phone" />
+        </div>
+        <div class="form-group">
+          <label for="dp-edit-department">Department *</label>
+          <select id="dp-edit-department" required>
+            <option value="">Loading departments...</option>
+          </select>
+        </div>
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <button type="button" class="btn btn-outline" onclick="closeDoctorEditModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reassign Department Modal -->
+  <div id="dp-reassign-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 480px; width: min(480px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3><i class="fas fa-right-left" aria-hidden="true"></i> Reassign Department</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="closeDoctorReassignModal()">Close</button>
+      </div>
+      <form id="dp-reassign-form" novalidate>
+        <input type="hidden" id="dp-reassign-id" />
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom: var(--s4)">
+          Reassign <strong id="dp-reassign-name">this doctor</strong> to a different department.
+          Historical appointments will remain unchanged.
+        </p>
+        <div class="form-group">
+          <label for="dp-reassign-department">New Department *</label>
+          <select id="dp-reassign-department" required>
+            <option value="">Loading departments...</option>
+          </select>
+        </div>
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Reassign</button>
+          <button type="button" class="btn btn-outline" onclick="closeDoctorReassignModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Reply Message Modal -->
+  <div id="reply-message-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 580px; width: min(580px, 100%)">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3><i class="fas fa-comments" aria-hidden="true"></i> Reply to Support Message</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="toggleReplyMessageModal()">Close</button>
+      </div>
+      <form id="reply-message-form" novalidate>
+        <input type="hidden" id="reply-msg-id" />
+        
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-light); padding: var(--s4); border-radius: var(--r-md); margin-bottom: var(--s5)">
+          <div style="display:flex; justify-content:space-between; margin-bottom: var(--s2); font-size: 0.8rem; color:var(--text-secondary)">
+            <span><strong>From:</strong> <span id="reply-msg-sender">Ahmed</span> (<span id="reply-msg-email">ahmed@test.com</span>)</span>
+            <span id="reply-msg-date">2026-07-05</span>
+          </div>
+          <p style="margin: 0; font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Subject: <span id="reply-msg-subject">Subject</span></p>
+          <p id="reply-msg-body" style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap">Message body goes here...</p>
+        </div>
+
+        <div class="form-group">
+          <label for="reply-text">Your Reply *</label>
+          <textarea id="reply-text" name="reply" placeholder="Type your reply to the user..." required minlength="1" maxlength="5000" style="min-height: 140px"></textarea>
+        </div>
+
+        <div class="grid-2" style="margin-top: var(--s4)">
+          <button type="submit" class="btn btn-primary">Send Reply</button>
+          <button type="button" class="btn btn-outline" onclick="toggleReplyMessageModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Audit Details Modal -->
+  <div id="audit-details-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px; width: min(600px, 100%); max-height: 80vh; overflow-y: auto;">
+      <div class="flex-between" style="margin-bottom: var(--s6)">
+        <h3><i class="fas fa-history" aria-hidden="true"></i> Audit Details</h3>
+        <button class="btn btn-outline btn-sm" type="button" onclick="toggleAuditDetailsModal()">Close</button>
+      </div>
+      <div id="audit-details-content">
+        <p style="color: var(--text-muted); text-align: center;">Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../assets/js/core/main.js?v=2"></script>
+  <script src="../../assets/js/modules/departments-loader.js?v=2"></script>
+  <script src="../../assets/js/pages/admin.js?v=2"></script>
+  <script src="../../assets/js/modules/admin-departments.js?v=2"></script>
+  <script src="../../assets/js/modules/admin-departments-loader.js?v=2"></script>
+  <script src="../../assets/js/modules/admin-hospital-settings.js?v=2"></script>
+  <script src="../../assets/js/modules/medical-records.js?v=2"></script>
+  <script src="../../assets/js/modules/prescriptions.js?v=2"></script>
+  <script src="../../assets/js/pages/settings.js?v=2"></script>
+  <script src="../../assets/js/modules/schedule.js?v=2"></script>
+  <script src="../../assets/js/modules/notifications.js?v=2"></script>
+  <script src="../../assets/js/pages/admin-dashboard.js?v=2"></script>
+</body>
+</html>
+
+
+

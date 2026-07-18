@@ -1,0 +1,273 @@
+/* ============================================================
+   HealthBridge — Medical Records Styles
+   Dark medical theme, consistent with main style.css
+   ============================================================ */
+
+/* ── Medical Record Layout ── */
+.medical-record-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+}
+
+.mr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  padding: var(--s6);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.mr-header-info h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.mr-header-info p {
+  margin: var(--s1) 0 0 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.mr-header-actions {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+/* ── Tabs inside Medical Record ── */
+.mr-tabs {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--s3);
+  margin-bottom: var(--s6);
+}
+
+.mr-tab {
+  padding: var(--s2) var(--s4);
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all var(--t);
+}
+
+.mr-tab:hover {
+  color: var(--text-primary);
+  background: var(--primary-glow);
+  border-color: var(--border);
+}
+
+.mr-tab.active {
+  color: var(--primary);
+  background: var(--primary-glow);
+  border-color: var(--primary);
+}
+
+.mr-tab-content {
+  display: none;
+}
+
+.mr-tab-content.active {
+  display: block;
+}
+
+/* ── Medical Info Cards ── */
+.mr-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s4);
+}
+
+.mr-info-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s5);
+  transition: all var(--t);
+}
+
+.mr-info-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.mr-info-card .label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--s1);
+}
+
+.mr-info-card .value {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.mr-info-card .value.empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ── Visit History ── */
+.visit-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+
+.visit-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition: all var(--t);
+}
+
+.visit-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.visit-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.visit-card-header .visit-doctor {
+  font-weight: 600;
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+
+.visit-card-header .visit-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.visit-card-body {
+  padding: var(--s5);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s4);
+}
+
+@media (max-width: 600px) {
+  .visit-card-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.visit-field {
+  margin-bottom: var(--s2);
+}
+
+.visit-field .field-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--s1);
+}
+
+.visit-field .field-value {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.visit-field .field-value.empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Edit Medical Record Form ── */
+.mr-edit-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s4);
+}
+
+@media (max-width: 600px) {
+  .mr-edit-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mr-edit-form .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.mr-edit-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* ── Add Visit Note Modal ── */
+.visit-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.visit-note-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* ── Empty State ── */
+.mr-empty {
+  text-align: center;
+  padding: var(--s10);
+  color: var(--text-muted);
+}
+
+.mr-empty i {
+  font-size: 2.5rem;
+  margin-bottom: var(--s4);
+  opacity: 0.5;
+}
+
+.mr-empty h4 {
+  margin: 0 0 var(--s2) 0;
+  color: var(--text-secondary);
+}
+
+.mr-empty p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .mr-info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .mr-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,200 @@
+/* ============================================================
+   HealthBridge — Dashboard Layout Styles
+   Sidebar + main content layout shared by all dashboard pages:
+   dashboard.html, doctor-dashboard.html, admin.html
+   ============================================================ */
+
+/* Dashboard root layout */
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  padding-top: var(--nav-h);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-secondary) 100%);
+  border-right: 1px solid var(--border-light);
+  padding: var(--s8) var(--s5);
+  position: sticky;
+  top: var(--nav-h);
+  height: calc(100vh - var(--nav-h));
+  overflow-y: auto;
+  /* Flex column for footer alignment */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Sidebar user info block */
+.sidebar-user {
+  text-align: center;
+  padding-bottom: var(--s6);
+  margin-bottom: var(--s8);
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Avatar circle with initials */
+.sidebar-avatar {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--primary-glow), rgba(6, 182, 212, 0.1));
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  margin: 0 auto var(--s3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+}
+
+.sidebar-user h3 {
+  font-size: 0.95rem;
+  margin-bottom: var(--s1);
+  font-weight: 600;
+}
+
+.sidebar-user p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Sidebar navigation links */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  transition: all var(--t);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Active indicator — left border */
+.sidebar-nav a::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%; width: 3px;
+  background: var(--primary);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--t);
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+  background: var(--primary-subtle);
+  color: var(--primary);
+}
+
+.sidebar-nav a.active::before {
+  transform: scaleY(1);
+}
+
+/* Sidebar footer (logout + view site) */
+.sidebar-footer {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--s5);
+  margin-top: var(--s8);
+}
+
+/* Logout link — danger hover */
+.sidebar-nav a.logout-link:hover {
+  background: rgba(252, 165, 165, 0.08);
+  color: var(--danger);
+}
+
+.sidebar-nav a.logout-link::before {
+  background: var(--danger);
+}
+
+/* Main content area */
+.main-content {
+  flex: 1;
+  padding: var(--s12) var(--s10);
+  overflow-y: auto;
+  min-width: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(34, 211, 238, 0.02) 100%);
+}
+
+.main-content h2 {
+  font-size: 1.75rem;
+  margin-bottom: var(--s6);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border-light);
+  font-weight: 700;
+}
+
+/* Page entrance animation for dashboard cards */
+.main-content section > .card,
+.main-content section > .flex-between {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   RESPONSIVE — DASHBOARD-SPECIFIC
+   Moved here from style.css for better organization
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .dashboard {
+    flex-direction: column !important;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    top: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--s4) !important;
+  }
+
+  .sidebar-nav {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: var(--s2);
+  }
+
+  .sidebar-nav a {
+    flex: 1;
+    justify-content: center;
+    min-width: 120px;
+  }
+
+  .main-content {
+    padding: var(--s4) !important;
+  }
+}
+
+/* ============================================================
+   LIGHT THEME OVERRIDES — DASHBOARD
+   ============================================================ */
+
+[data-theme="light"] .sidebar {
+  background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(228, 238, 249, 0.6) 100%);
+  border-right: 1px solid var(--border-light);
+}
+
+[data-theme="light"] .main-content {
+  background: linear-gradient(135deg, transparent 0%, rgba(8, 145, 178, 0.02) 100%);
+}

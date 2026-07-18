@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Contact HealthBridge — get in touch with our clinics, billing support, medical records desk, or our emergency hotline."
+    />
+    <title>Contact Us — HealthBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css?v=2" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="assets/css/pages/contact.css?v=2" />
+    <link rel="stylesheet" href="assets/css/pages/settings.css?v=2" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+      <div class="nav-container">
+        <a href="index.html" class="logo">
+          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+          <span>HealthBridge</span>
+        </a>
+        <div class="nav-row">
+          <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="doctors.html">Doctors</a></li>
+            <li><a href="services.html">Services</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html" class="active">Contact</a></li>
+          </ul>
+          <div class="nav-actions" id="auth-links">
+            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
+            <a href="pages/auth/login.html#signup" class="btn btn-primary btn-sm"
+              >Sign Up</a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Header -->
+    <section
+      class="hero hero-sm has-bg"
+      style="
+        background-image: url(https://images.unsplash.com/photo-1516549655169-df83a0774514?w=1600&amp;q=80);
+      "
+    >
+      <div class="hero-content fade-in">
+        <h1>Get in <span>Touch</span></h1>
+        <p>
+          Have questions, feedback, or need administrative assistance? Our team
+          is here to support you.
+        </p>
+      </div>
+    </section>
+
+    <!-- Contact & Location Sections -->
+    <section class="section contact-bg-pattern" style="padding-top: var(--s8)">
+      <!-- Emergency Warning Strip -->
+      <div class="emergency-notice fade-in">
+        <span class="emergency-notice-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span>
+        <div>
+          <h4>Medical Emergencies &amp; Urgent Care</h4>
+          <p>
+            Do not use this form to report health crises. If you are
+            experiencing a life-threatening emergency, please dial
+            <strong>911</strong> (or your local emergency code), call our 24/7
+            Hotline at <strong>+1 (234) 567-8999</strong>, or go immediately to
+            the nearest ER.
+          </p>
+        </div>
+      </div>
+
+      <!-- Contact Page Layout split -->
+      <div class="contact-layout">
+        <!-- Contact Form -->
+        <div class="contact-form-wrapper fade-in">
+          <h3 style="margin-bottom: var(--s5); font-size: 1.3rem">
+            Send a Secure Inquiry
+          </h3>
+          <p
+            style="
+              font-size: 0.85rem;
+              color: var(--text-secondary);
+              margin-bottom: var(--s5);
+            "
+          >
+            Complete the form below and the corresponding department will
+            respond within 24 business hours.
+          </p>
+
+          <div
+            id="form-success"
+            class="form-success"
+            role="alert"
+            aria-live="polite"
+          ></div>
+          <div
+            id="form-error"
+            class="form-error"
+            role="alert"
+            aria-live="assertive"
+          ></div>
+
+          <form id="contact-form" novalidate>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="contact-name">Full Name *</label>
+                <input
+                  type="text"
+                  id="contact-name"
+                  name="name"
+                  placeholder="Your full name"
+                  required
+                  minlength="2"
+                  maxlength="100"
+                />
+              </div>
+              <div class="form-group">
+                <label for="contact-email">Email Address *</label>
+                <input
+                  type="email"
+                  id="contact-email"
+                  name="email"
+                  placeholder="you@example.com"
+                  required
+                  maxlength="150"
+                />
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="contact-phone">Phone Number</label>
+                <input
+                  type="tel"
+                  id="contact-phone"
+                  name="phone"
+                  placeholder="e.g. +1234567890"
+                  maxlength="20"
+                />
+              </div>
+              <div class="form-group">
+                <label for="contact-dept">Department *</label>
+                <select id="contact-dept" name="department" required>
+                  <option value="General Inquiry">General Inquiries</option>
+                  <option value="Billing & Insurance">
+                    Billing &amp; Insurance
+                  </option>
+                  <option value="Medical Records">
+                    Medical Records Support
+                  </option>
+                  <option value="Doctor Partnership">
+                    Doctor Partnerships
+                  </option>
+                  <option value="Careers">Careers &amp; Recruiting</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="contact-subject">Subject</label>
+              <input
+                type="text"
+                id="contact-subject"
+                name="subject"
+                placeholder="What is this regarding?"
+                maxlength="200"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="contact-message">Message *</label>
+              <textarea
+                id="contact-message"
+                name="message"
+                placeholder="Please describe your question or issue in detail..."
+                required
+                minlength="10"
+                maxlength="5000"
+              ></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              Send Message
+            </button>
+
+            <p
+              style="
+                font-size: 0.72rem;
+                color: var(--text-muted);
+                margin-top: var(--s4);
+                text-align: center;
+              "
+            >
+              Inquiries are stored securely. By submitting, you agree to our
+              patient confidentiality terms.
+            </p>
+          </form>
+        </div>
+
+        <!-- Contact Directory Stack -->
+        <div class="contact-directory fade-in">
+          <!-- Address & Main Campus -->
+          <div class="directory-card">
+            <div class="directory-card-header">
+              <div class="directory-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
+              <h4>Main Campus</h4>
+            </div>
+            <div class="directory-body">
+              <p>El-Nabawy El-Mohandes Street<br />Faiyum, Egypt</p>
+              <p
+                style="
+                  margin-top: var(--s2);
+                  font-size: 0.78rem;
+                  color: var(--text-muted);
+                "
+              >
+                Parking is free for patients in the subterranean lot (under 2
+                hours).
+              </p>
+            </div>
+          </div>
+
+          <!-- Direct Line Directory -->
+          <div class="directory-card">
+            <div class="directory-card-header">
+              <div class="directory-icon"><i class="fas fa-phone" aria-hidden="true"></i></div>
+              <h4>Telephone Directory</h4>
+            </div>
+            <div class="directory-body">
+              <div class="directory-phone-list">
+                <div class="directory-phone-item">
+                  <span>Emergency Hotline (24/7)</span>
+                  <a href="tel:+12345678999">+1 (234) 567-8999</a>
+                </div>
+                <div class="directory-phone-item">
+                  <span>Appointments Desk</span>
+                  <a href="tel:+1234567890">+1 (234) 567-890</a>
+                </div>
+                <div class="directory-phone-item">
+                  <span>Diagnostics &amp; Labs</span>
+                  <a href="tel:+1234567890">+1 (234) 567-8901</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Administrative Emails -->
+          <div class="directory-card">
+            <div class="directory-card-header">
+              <div class="directory-icon"><i class="fas fa-envelope" aria-hidden="true"></i></div>
+              <h4>Administrative Channels</h4>
+            </div>
+            <div class="directory-body">
+              <p>
+                <strong>General Support:</strong>
+                <a
+                  href="mailto:support@healthbridge.com"
+                  style="color: var(--primary)"
+                  >support@healthbridge.com</a
+                >
+              </p>
+              <p>
+                <strong>Billing Desk:</strong>
+                <a
+                  href="mailto:billing@healthbridge.com"
+                  style="color: var(--primary)"
+                  >billing@healthbridge.com</a
+                >
+              </p>
+            </div>
+          </div>
+
+          <!-- Social Connections -->
+          <div class="directory-card">
+            <div class="directory-card-header">
+              <div class="directory-icon"><i class="fas fa-globe" aria-hidden="true"></i></div>
+              <h4>Stay Connected</h4>
+            </div>
+            <div class="directory-body">
+              <p>Follow our feeds for healthcare updates, tips, and news.</p>
+              <div class="social-links">
+                <a href="#" aria-label="Facebook" title="Facebook"><i class="fab fa-facebook-f" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Twitter" title="Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Instagram" title="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+                <a href="#" aria-label="LinkedIn" title="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Helpful Guides & Transit information -->
+      <div class="guides-grid fade-in-stagger">
+        <!-- Guide 1 -->
+        <div class="guide-card">
+          <span class="guide-icon"><i class="fas fa-car" aria-hidden="true"></i></span>
+          <div>
+            <h4>Subterranean Parking</h4>
+            <p>
+              Valet and self-parking are free for visitors and patients who are
+              scheduled for consultations. Simply validate your ticket at the
+              front reception counter.
+            </p>
+          </div>
+        </div>
+
+        <!-- Guide 2 -->
+        <div class="guide-card">
+          <span class="guide-icon"><i class="fas fa-bus" aria-hidden="true"></i></span>
+          <div>
+            <h4>Public Transit Stops</h4>
+            <p>
+              Faiyum Central bus line 14 stops directly in front of the main
+              clinic gates. Shuttles run every 15 minutes between the campus and
+              the train terminal.
+            </p>
+          </div>
+        </div>
+
+        <!-- Guide 3 -->
+        <div class="guide-card">
+          <span class="guide-icon"><i class="fas fa-pen-to-square" aria-hidden="true"></i></span>
+          <div>
+            <h4>Pre-Consult Checklist</h4>
+            <p>
+              Please remember to bring your insurance policy card, government
+              ID, list of current prescription medicines, and previous lab
+              transcripts to ease check-in.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Map Section -->
+    <section style="padding: 0 var(--s8) var(--s16)">
+      <div style="max-width: 1100px; margin: 0 auto">
+        <div
+          id="contact-map"
+          class="map-container"
+          aria-label="Interactive Map of HealthBridge Location"
+        ></div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <!-- Brand -->
+        <div class="footer-brand">
+          <a href="index.html" class="footer-logo">
+            <span style="font-size: 1.3rem"><i class="fas fa-hospital" aria-hidden="true"></i></span>
+            <span>HealthBridge</span>
+          </a>
+          <p>
+            Modern healthcare at your fingertips. Book appointments, track your
+            health, and connect with certified medical professionals — anytime,
+            anywhere.
+          </p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="footer-nav-cols">
+          <div class="footer-nav-col">
+            <div class="footer-nav-label">Company</div>
+            <ul class="footer-nav-list">
+              <li><a href="index.html">Home</a></li>
+              <li><a href="about.html">About Us</a></li>
+              <li><a href="contact.html">Contact Us</a></li>
+            </ul>
+          </div>
+          <div class="footer-nav-col">
+            <div class="footer-nav-label">Services</div>
+            <ul class="footer-nav-list">
+              <li><a href="doctors.html">Find a Doctor</a></li>
+              <li><a href="services.html">Our Services</a></li>
+              <li><a href="pages/auth/login.html#signup">Get Started</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="footer-contact">
+          <div class="footer-contact-label">Get in Touch</div>
+          <div class="footer-contact-items">
+            <a href="tel:+12345678900">
+              <span>+1 (234) 567-890</span>
+              <span class="contact-icon"><i class="fas fa-phone" aria-hidden="true"></i></span>
+            </a>
+            <a href="mailto:support@healthbridge.com">
+              <span>support@healthbridge.com</span>
+              <span class="contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+            </a>
+            <span>
+              <span>El-Nabawy El-Mohandes St, Faiyum, Egypt</span>
+              <span class="contact-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="footer-bottom">
+        <p>
+          &copy; 2026 HealthBridge. All rights reserved. Built for better
+          healthcare.
+        </p>
+        <div class="footer-socials">
+          <a href="#" aria-label="Twitter" title="Twitter">𝕏</a>
+          <a href="#" aria-label="Facebook" title="Facebook">f</a>
+          <a href="#" aria-label="Instagram" title="Instagram">◎</a>
+          <a href="#" aria-label="LinkedIn" title="LinkedIn">in</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/js/core/main.js?v=2"></script>
+    <!-- Leaflet JS -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=2"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="assets/js/pages/contact.js?v=2"></script>
+  </body>
+</html>
+
+
+

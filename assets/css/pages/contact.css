@@ -1,0 +1,412 @@
+/* ============================================================
+   HealthBridge — Contact Page Styles
+   Redesigned layouts, emergency warnings, phone directory,
+   location info, and Leaflet map wrapper.
+   Used by: contact.html
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   EMERGENCY CRITICAL WARNING STRIP
+   ------------------------------------------------------------ */
+.contact-bg-pattern {
+  position: relative;
+  overflow: hidden;
+  background-image: radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.04) 0%, transparent 40%),
+                    radial-gradient(circle at 90% 85%, rgba(34, 211, 238, 0.03) 0%, transparent 45%);
+}
+
+.contact-bg-pattern::before {
+  content: "\f0f8";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  position: absolute;
+  bottom: -40px;
+  right: -20px;
+  font-size: 22rem;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+}
+
+[data-theme="light"] .contact-bg-pattern::before {
+  opacity: 0.03;
+}
+
+.emergency-notice {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: var(--r-md);
+  color: #fca5a5;
+  padding: var(--s4) var(--s5);
+  max-width: 1100px;
+  margin: 0 auto var(--s6);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  position: relative;
+  z-index: 1;
+}
+
+.emergency-notice-icon {
+  font-size: 1.8rem;
+  animation: alertPulse 1.5s infinite;
+  flex-shrink: 0;
+}
+
+.emergency-notice h4 {
+  font-size: 0.95rem;
+  color: #fca5a5;
+  margin-bottom: 2px;
+}
+
+.emergency-notice p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.emergency-notice p strong {
+  color: #ef4444;
+}
+
+@keyframes alertPulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+/* ------------------------------------------------------------
+   CONTACT LAYOUT
+   ------------------------------------------------------------ */
+.contact-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: var(--s8);
+  max-width: 1100px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+/* Form Wrapper details */
+.contact-form-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s8);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--t);
+}
+
+.contact-form-wrapper:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+/* ------------------------------------------------------------
+   HOSPITAL DIRECTORY & CLINIC INFO
+   ------------------------------------------------------------ */
+.contact-directory {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+
+.directory-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  transition: all var(--t);
+}
+
+.directory-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(34, 211, 238, 0.05);
+}
+
+.directory-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+
+.directory-icon {
+  width: 42px;
+  height: 42px;
+  background: var(--primary-glow);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  transition: transform var(--t);
+}
+
+.directory-card:hover .directory-icon {
+  transform: scale(1.06) rotate(3deg);
+}
+
+.directory-card-header h4 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.directory-body {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.directory-body strong {
+  color: var(--text-primary);
+}
+
+.directory-phone-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.directory-phone-item {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 4px;
+}
+
+.directory-phone-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.directory-phone-item span {
+  font-size: 0.85rem;
+}
+
+.directory-phone-item a {
+  color: var(--primary);
+  font-weight: 600;
+  transition: color var(--t);
+}
+
+.directory-phone-item a:hover {
+  color: var(--text-primary);
+}
+
+/* Social links row */
+.social-links {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s2);
+}
+
+.social-links a {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: all var(--t);
+}
+
+.social-links a:hover {
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+/* ------------------------------------------------------------
+   MAP CONTAINER
+   ------------------------------------------------------------ */
+.map-container {
+  height: 400px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+/* Leaflet dark theme override blocker:
+   Ensures the tile layers remain bright, white, and fully readable,
+   preventing filters/inversions from applying to the map container. */
+.leaflet-container {
+  filter: none !important;
+  background: #f4f3f0 !important; /* Standard Leaflet light map background */
+}
+
+/* Custom leaflet popup wrapper */
+#contact-map .leaflet-popup-content-wrapper {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: var(--text-primary) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-card) !important;
+  border-left: 1px solid var(--border) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.map-popup-content h5 {
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+}
+
+.map-popup-content p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Custom map marker pin */
+.custom-map-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.map-marker-pin {
+  width: 40px;
+  height: 40px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--primary);
+  position: absolute;
+  transform: rotate(-45deg);
+  left: 50%; top: 50%;
+  margin: -20px 0 0 -20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px var(--primary);
+  border: 2px solid var(--bg-base);
+  animation: pulseMarker 2s infinite alternate;
+}
+
+.map-marker-pin::after {
+  content: "\f0f8";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  transform: rotate(45deg);
+  display: block;
+  font-size: 1.25rem;
+}
+
+@keyframes pulseMarker {
+  0%   { box-shadow: 0 0 6px rgba(34, 211, 238, 0.6); }
+  100% { box-shadow: 0 0 20px rgba(34, 211, 238, 1); }
+}
+
+/* ------------------------------------------------------------
+   FORM SUBMISSION MESSAGES
+   ------------------------------------------------------------ */
+.form-success {
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  color: var(--success);
+  font-size: 0.88rem;
+  margin-bottom: var(--s5);
+  display: none;
+}
+
+.form-success.visible { display: block; }
+
+.form-error {
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin-bottom: var(--s5);
+  display: none;
+}
+
+.form-error.visible { display: block; }
+
+/* Submit loading state spinner */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  width: 18px; height: 18px;
+  border: 2px solid transparent;
+  border-top-color: var(--bg-base);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  left: calc(50% - 9px);
+  top: calc(50% - 9px);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ------------------------------------------------------------
+   CLINIC GUIDES / METRICS
+   ------------------------------------------------------------ */
+.guides-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--s6);
+  margin-top: var(--s12);
+}
+
+.guide-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  display: flex;
+  gap: var(--s4);
+  align-items: flex-start;
+}
+
+.guide-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.guide-card h4 {
+  font-size: 0.95rem;
+  margin-bottom: var(--s1);
+  color: var(--text-primary);
+}
+
+.guide-card p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+@media (max-width: 992px) {
+  .contact-layout {
+    grid-template-columns: 1fr;
+    gap: var(--s8);
+  }
+}
+
+@media (max-width: 640px) {
+  .map-container { height: 300px; }
+}

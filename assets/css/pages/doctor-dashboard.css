@@ -1,0 +1,426 @@
+/**
+ * HealthBridge — Doctor Dashboard Premium Styles
+ * Redesigns the doctor overview section with a modern, premium aesthetic.
+ * Complements admin.css / dashboard.css without overriding schedule or workspace styles.
+ */
+
+/* ══════════════════════════════════════════════════════════════
+   DOCTOR OVERVIEW — HERO HEADER
+   ══════════════════════════════════════════════════════════════ */
+
+.doctor-overview-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s6);
+  padding: var(--s8) var(--s8);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.08) 0%,
+    rgba(56, 189, 248, 0.04) 50%,
+    transparent 100%
+  );
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  border-radius: var(--r-xl, 1.25rem);
+  margin-bottom: var(--s8);
+  overflow: hidden;
+}
+
+.doctor-overview-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 70% 50%,
+    rgba(34, 211, 238, 0.06) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.doctor-overview-hero::after {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.06), transparent 70%);
+  pointer-events: none;
+}
+
+.doctor-hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.doctor-hero-greeting {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: var(--s2);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.doctor-hero-greeting i {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.doctor-hero-name {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 var(--s2) 0;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.doctor-hero-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 380px;
+  line-height: 1.6;
+}
+
+.doctor-hero-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s3);
+  flex-shrink: 0;
+}
+
+.doctor-hero-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.doctor-hero-badge .status-dot-inline {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success, #22c55e);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+@media (max-width: 700px) {
+  .doctor-overview-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--s6);
+  }
+  .doctor-hero-actions {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DOCTOR STATS — PREMIUM STAT CARDS
+   ══════════════════════════════════════════════════════════════ */
+
+.doctor-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s5);
+  margin-bottom: var(--s8);
+}
+
+@media (max-width: 1100px) {
+  .doctor-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .doctor-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.doctor-stat-card {
+  position: relative;
+  background: var(--bg-surface, #131e30);
+  border: 1px solid var(--border-light, rgba(255,255,255,0.06));
+  border-radius: var(--r-lg, 1rem);
+  padding: var(--s6);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+
+.doctor-stat-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(34, 211, 238, 0.25);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.doctor-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--card-accent, linear-gradient(90deg, var(--primary), var(--primary-dark, #0ea5e9)));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.doctor-stat-card:hover::before {
+  opacity: 1;
+}
+
+.doctor-stat-card.clickable {
+  cursor: pointer;
+}
+
+.doctor-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md, 0.75rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  margin-bottom: var(--s4);
+  background: var(--icon-bg, rgba(34, 211, 238, 0.1));
+  color: var(--icon-color, var(--primary));
+  border: 1px solid var(--icon-border, rgba(34, 211, 238, 0.15));
+  transition: all 0.2s ease;
+}
+
+.doctor-stat-card:hover .doctor-stat-icon {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+.doctor-stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: var(--s1);
+  letter-spacing: -0.03em;
+  transition: color 0.2s ease;
+}
+
+.doctor-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.doctor-stat-change {
+  margin-top: var(--s3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DOCTOR INFO ROW — AVAILABILITY + ACCOUNT
+   ══════════════════════════════════════════════════════════════ */
+
+.doctor-info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s5);
+}
+
+@media (max-width: 768px) {
+  .doctor-info-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.doctor-info-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.doctor-info-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.doctor-info-card-title i {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.doctor-info-card p.desc {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.doctor-avail-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+}
+
+.doctor-avail-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.doctor-account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-size: 0.88rem;
+}
+
+.doctor-account-row:last-child {
+  border-bottom: none;
+}
+
+.doctor-account-row .key {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.doctor-account-row .val {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
+.doctor-account-row .val.online {
+  color: var(--success, #22c55e);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION HEADER — UNIFIED STYLE FOR ALL SECTIONS
+   ══════════════════════════════════════════════════════════════ */
+
+.doctor-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  padding: var(--s6) var(--s8);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.04) 0%,
+    transparent 100%
+  );
+}
+
+.doctor-section-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.doctor-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0;
+}
+
+.doctor-section-title i {
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+.doctor-section-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SCHEDULE TAB — WRAPPER UPGRADE
+   ══════════════════════════════════════════════════════════════ */
+
+.schedule-outer-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.schedule-outer-body {
+  padding: var(--s5) var(--s6);
+}
+
+/* Give the schedule section more horizontal room by reducing main-content side padding */
+#schedule {
+  margin: 0 calc(-1 * var(--s6));
+}
+
+@media (max-width: 600px) {
+  .schedule-outer-body {
+    padding: var(--s4);
+  }
+  #schedule {
+    margin: 0;
+  }
+}

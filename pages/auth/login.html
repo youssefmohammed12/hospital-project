@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Log in to your HealthBridge account to book appointments with top doctors and manage your healthcare."
+    />
+    <title>Login — HealthBridge</title>
+    <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="../../assets/css/pages/auth.css?v=3" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Simple Navbar for Auth Pages -->
+    <nav class="navbar" id="navbar">
+      <div class="nav-container">
+        <a href="../../index.html" class="logo">
+          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+          <span>HealthBridge</span>
+        </a>
+        <div class="nav-actions" style="gap: var(--s2)">
+          <a href="../../index.html" class="btn btn-outline btn-sm">← Back to Home</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="auth-page">
+      <!-- Two-panel auth container -->
+      <div class="auth-container">
+        <!-- Left: Branding Panel -->
+        <div class="auth-brand">
+          <div class="auth-brand-content">
+            <div class="auth-brand-logo">
+              <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+              <span>HealthBridge</span>
+            </div>
+
+            <h2>Welcome Back</h2>
+            <p>Sign in to your HealthBridge account to manage appointments, access medical records, and connect with your healthcare team.</p>
+
+            <div class="auth-features">
+              <div class="auth-feature-item">
+                <i class="fas fa-calendar-check" aria-hidden="true"></i>
+                <span>Book appointments with top specialists</span>
+              </div>
+              <div class="auth-feature-item">
+                <i class="fas fa-file-medical" aria-hidden="true"></i>
+                <span>Access your medical records securely</span>
+              </div>
+              <div class="auth-feature-item">
+                <i class="fas fa-bell" aria-hidden="true"></i>
+                <span>Get reminders & health notifications</span>
+              </div>
+              <div class="auth-feature-item">
+                <i class="fas fa-shield-halved" aria-hidden="true"></i>
+                <span>Secure & HIPAA-compliant platform</span>
+              </div>
+            </div>
+
+            <p style="margin-top: var(--s8); font-size: 0.78rem; color: var(--text-muted);">
+              Don't have an account?
+              <a href="register.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">
+                Create one here
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: Login Form Panel -->
+        <div class="auth-form-panel">
+          <!-- ─── Standard Auth Card (for standalone card mode when container not used) ─── -->
+          <div id="main-auth">
+            <!-- Demo Accounts -->
+            <div class="demo-section">
+              <p class="demo-label"><i class="fas fa-bolt" aria-hidden="true"></i> Quick Demo Login</p>
+              <div class="demo-buttons">
+                <button type="button" onclick="fillDemo('admin@healthbridge.com', 'password')" class="demo-btn demo-admin">
+                  <i class="fas fa-shield-halved" aria-hidden="true"></i> Admin
+                </button>
+                <button type="button" onclick="fillDemo('patient@healthbridge.com', 'password')" class="demo-btn demo-patient">
+                  <i class="fas fa-user" aria-hidden="true"></i> Patient
+                </button>
+                <button type="button" onclick="fillDemo('ahmed.hassan@healthbridge.com', 'password')" class="demo-btn demo-doctor">
+                  <i class="fas fa-user-doctor" aria-hidden="true"></i> Doctor
+                </button>
+              </div>
+            </div>
+
+            <div class="auth-divider">
+              <span>or login with your account</span>
+            </div>
+
+            <div class="auth-form-header">
+              <h3>Sign In</h3>
+              <p>Enter your credentials to access your account</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" novalidate>
+              <div class="form-group">
+                <label for="login-email">Email Address</label>
+                <input
+                  type="email"
+                  id="login-email"
+                  name="email"
+                  placeholder="you@example.com"
+                  required
+                  autocomplete="email"
+                  aria-required="true"
+                />
+                <span class="field-error" id="login-email-error"></span>
+              </div>
+
+              <div class="form-group">
+                <label for="login-password">Password</label>
+                <div class="pw-field">
+                  <input
+                    type="password"
+                    id="login-password"
+                    name="password"
+                    placeholder="Enter your password"
+                    required
+                    minlength="6"
+                    autocomplete="current-password"
+                    aria-required="true"
+                  />
+                  <button
+                    type="button"
+                    class="pw-toggle"
+                    onclick="togglePasswordVisibility(this)"
+                    aria-label="Show password"
+                    title="Show password"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                </div>
+                <span class="field-error" id="login-password-error"></span>
+              </div>
+
+              <div class="flex-between">
+                <label class="remember-label">
+                  <input type="checkbox" id="remember-me" />
+                  Remember me
+                </label>
+                <button type="button" id="open-forgot" class="auth-link-btn">
+                  Forgot Password?
+                </button>
+              </div>
+
+              <button type="submit" class="btn-login" id="login-submit">
+                <span class="spinner"></span>
+                <span class="btn-text">Sign In</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- ─── FORGOT PASSWORD PANEL ─── -->
+          <div id="panel-forgot" class="auth-alt-panel" style="display: none">
+            <button type="button" id="back-to-login" class="auth-back-btn">
+              ← Back to Login
+            </button>
+            <h3 class="auth-alt-title">Reset Your Password</h3>
+            <p class="auth-alt-sub">
+              Enter the email linked to your account. We'll generate a secure
+              reset link for you.
+            </p>
+
+            <form id="forgot-form" novalidate>
+              <div class="form-group">
+                <label for="forgot-email">Email Address</label>
+                <input
+                  type="email"
+                  id="forgot-email"
+                  name="email"
+                  placeholder="you@example.com"
+                  required
+                  autocomplete="email"
+                />
+              </div>
+              <button type="submit" class="btn-login" id="forgot-submit">
+                <span class="spinner"></span>
+                <span class="btn-text">Generate Reset Link</span>
+              </button>
+            </form>
+
+            <div
+              id="forgot-result"
+              class="auth-reset-result"
+              style="display: none"
+            >
+              <div class="reset-success-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div>
+              <p id="forgot-result-msg"></p>
+              <a
+                id="forgot-reset-link"
+                href="#"
+                class="btn btn-outline btn-block"
+                style="margin-top: var(--s4); text-align: center"
+                >Open Reset Page</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../../assets/js/core/main.js?v=2"></script>
+    <script src="../../assets/js/core/auth.js?v=3"></script>
+  </body>
+</html>

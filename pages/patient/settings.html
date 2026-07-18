@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="HealthBridge Settings — manage your account, preferences, and more."
+    />
+    <title>Settings — HealthBridge</title>
+    <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
+    <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=2" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+      <div class="nav-container">
+        <a href="../../index.html" class="logo">
+          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+          <span>HealthBridge</span>
+        </a>
+        <div class="nav-row">
+          <ul class="nav-links">
+            <li><a href="../../index.html">Home</a></li>
+            <li><a href="doctors.html">Doctors</a></li>
+            <li><a href="services.html">Services</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+          <div class="nav-actions" id="auth-links">
+            <a href="../auth/login.html" class="btn btn-outline btn-sm">Login</a>
+            <a href="login.html#signup" class="btn btn-primary btn-sm"
+              >Sign Up</a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="dashboard">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div>
+          <div class="sidebar-user">
+            <div class="sidebar-avatar-container">
+              <div class="sidebar-avatar" id="settings-avatar"><i class="fas fa-user" aria-hidden="true"></i></div>
+              <div class="status-dot" title="System Status: Online"></div>
+            </div>
+            <h3 id="sidebar-name">Account</h3>
+            <p id="sidebar-email">user@healthbridge.com</p>
+          </div>
+          <nav class="sidebar-nav" id="settings-sidebar-nav">
+            <a href="#account" class="active"><i class="fas fa-user" aria-hidden="true"></i> Account</a>
+            <a href="#password"><i class="fas fa-lock" aria-hidden="true"></i> Password</a>
+            <a href="#appearance"><i class="fas fa-palette" aria-hidden="true"></i> Appearance</a>
+            <a href="#notifications"><i class="fas fa-bell" aria-hidden="true"></i> Notifications</a>
+            <a href="#doctor" id="doctor-settings-link" style="display: none"
+              ><i class="fas fa-stethoscope" aria-hidden="true"></i> Practice</a
+            >
+            <a href="#admin" id="admin-settings-link" style="display: none"
+              ><i class="fas fa-user-tie" aria-hidden="true"></i> Admin</a
+            >
+          </nav>
+        </div>
+        <div class="sidebar-footer">
+          <nav class="sidebar-nav">
+            <a href="#" id="back-to-dashboard-link"><i class="fas fa-chart-line" aria-hidden="true"></i> Back to Dashboard</a>
+            <a href="../../index.html"><i class="fas fa-globe" aria-hidden="true"></i> View Site</a>
+            <a href="#" class="logout-link" onclick="logoutUser()"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Logout</a>
+          </nav>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="main-content">
+        <!-- ACCOUNT SECTION -->
+        <section id="account" class="active">
+          <div
+            class="flex-between flex-wrap gap-4"
+            style="margin-bottom: var(--s8)"
+          >
+            <div>
+              <h2 style="border: none; margin: 0; padding: 0">
+                <i class="fas fa-user" aria-hidden="true"></i> Account Settings
+              </h2>
+              <p style="margin-top: var(--s2)">
+                Manage your personal information and account.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <span class="settings-card-icon"><i class="fas fa-clipboard-list" aria-hidden="true"></i></span>
+              <div>
+                <h3>Profile Information</h3>
+                <p>Update your name, email, and contact details.</p>
+              </div>
+            </div>
+            <form id="settings-profile-form">
+              <div class="settings-form-row">
+                <div class="form-group">
+                  <label for="settings-name">Full Name</label>
+                  <input
+                    type="text"
+                    id="settings-name"
+                    name="name"
+                    placeholder="Your full name"
+                    required
+                    minlength="2"
+                    maxlength="100"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="settings-email">Email Address</label>
+                  <input
+                    type="email"
+                    id="settings-email"
+                    name="email"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="settings-form-row">
+                <div class="form-group">
+                  <label for="settings-phone">Phone Number</label>
+                  <input
+                    type="text"
+                    id="settings-phone"
+                    name="phone"
+                    placeholder="+20 123 456 7890"
+                    maxlength="20"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Account Type</label>
+                  <input
+                    type="text"
+                    id="settings-role"
+                    disabled
+                    style="opacity: 0.7; cursor: not-allowed"
+                  />
+                </div>
+              </div>
+              <div class="settings-form-row">
+                <div class="form-group">
+                  <label>Member Since</label>
+                  <input
+                    type="text"
+                    id="settings-created"
+                    disabled
+                    style="opacity: 0.7; cursor: not-allowed"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Account Status</label>
+                  <input
+                    type="text"
+                    id="settings-status"
+                    disabled
+                    style="opacity: 0.7; cursor: not-allowed"
+                  />
+                </div>
+              </div>
+              <div class="settings-form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="settings-card settings-card-danger">
+            <div class="settings-card-header">
+              <span class="settings-card-icon" style="color: var(--danger)"
+                ><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span
+              >
+              <div>
+                <h3>Danger Zone</h3>
+                <p>Permanently delete your account and all associated data.</p>
+              </div>
+            </div>
+            <p
+              style="
+                font-size: 0.85rem;
+                color: var(--text-muted);
+                margin-bottom: var(--s4);
+              "
+            >
+              This action cannot be undone. All your appointments, ratings, and
+              messages will be permanently removed.
+            </p>
+            <button class="btn btn-danger" onclick="openDeleteModal()">
+              Delete My Account
+            </button>
+          </div>
+        </section>
+
+        <!-- PASSWORD SECTION -->
+        <section id="password">
+          <div
+            class="flex-between flex-wrap gap-4"
+            style="margin-bottom: var(--s8)"
+          >
+            <div>
+              <h2 style="border: none; margin: 0; padding: 0">
+                <i class="fas fa-lock" aria-hidden="true"></i> Change Password
+              </h2>
+              <p style="margin-top: var(--s2)">Update your login password.</p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <span class="settings-card-icon"><i class="fas fa-key" aria-hidden="true"></i></span>
+              <div>
+                <h3>Password</h3>
+                <p>Choose a strong password you haven't used before.</p>
+              </div>
+            </div>
+            <form id="settings-password-form">
+              <div class="form-group">
+                <label for="settings-current-pw">Current Password</label>
+                <div class="pw-field">
+                  <input
+                    type="password"
+                    id="settings-current-pw"
+                    placeholder="Enter current password"
+                    required
+                    minlength="6"
+                  />
+                  <button
+                    type="button"
+                    class="pw-toggle"
+                    onclick="togglePasswordVisibility(this)"
+                    aria-label="Show password"
+                    title="Show password"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="settings-form-row">
+                <div class="form-group">
+                  <label for="settings-new-pw">New Password</label>
+                  <div class="pw-field">
+                    <input
+                      type="password"
+                      id="settings-new-pw"
+                      placeholder="Min. 6 characters"
+                      required
+                      minlength="6"
+                    />
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      onclick="togglePasswordVisibility(this)"
+                      aria-label="Show password"
+                      title="Show password"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                        />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="pw-strength-wrap" style="margin-top: var(--s1)">
+                    <div class="pw-strength-bar">
+                      <div class="pw-strength-fill" id="pw-strength-fill"></div>
+                    </div>
+                    <span
+                      class="pw-strength-label"
+                      id="pw-strength-label"
+                    ></span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="settings-confirm-pw">Confirm New Password</label>
+                  <div class="pw-field">
+                    <input
+                      type="password"
+                      id="settings-confirm-pw"
+                      placeholder="Re-enter new password"
+                      required
+                      minlength="6"
+                    />
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      onclick="togglePasswordVisibility(this)"
+                      aria-label="Show password"
+                      title="Show password"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                        />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Update Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- APPEARANCE SECTION -->
+        <section id="appearance">
+          <div
+            class="flex-between flex-wrap gap-4"
+            style="margin-bottom: var(--s8)"
+          >
+            <div>
+              <h2 style="border: none; margin: 0; padding: 0"><i class="fas fa-palette" aria-hidden="true"></i> Appearance</h2>
+              <p style="margin-top: var(--s2)">
+                Customize how HealthBridge looks for you.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <span class="settings-card-icon"><i class="fas fa-circle-half-stroke" aria-hidden="true"></i></span>
+              <div>
+                <h3>Theme</h3>
+                <p>Choose your preferred color scheme.</p>
+              </div>
+            </div>
+            <div class="theme-options" id="theme-options">
+              <label class="theme-option" data-theme="light">
+                <input type="radio" name="theme" value="light" />
+                <span class="theme-option-icon"><i class="fas fa-sun" aria-hidden="true"></i></span>
+                <span class="theme-option-label">Light</span>
+              </label>
+              <label class="theme-option" data-theme="dark">
+                <input type="radio" name="theme" value="dark" />
+                <span class="theme-option-icon"><i class="fas fa-moon" aria-hidden="true"></i></span>
+                <span class="theme-option-label">Dark</span>
+              </label>
+              <label class="theme-option" data-theme="system">
+                <input type="radio" name="theme" value="system" />
+                <span class="theme-option-icon"><i class="fas fa-desktop" aria-hidden="true"></i></span>
+                <span class="theme-option-label">System</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- NOTIFICATIONS SECTION -->
+        <section id="notifications">
+          <div
+            class="flex-between flex-wrap gap-4"
+            style="margin-bottom: var(--s8)"
+          >
+            <div>
+              <h2 style="border: none; margin: 0; padding: 0">
+                <i class="fas fa-bell" aria-hidden="true"></i> Notification Preferences
+              </h2>
+              <p style="margin-top: var(--s2)">
+                Control which notifications you receive.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <span class="settings-card-icon"><i class="fas fa-bell" aria-hidden="true"></i></span>
+              <div>
+                <h3>Notifications</h3>
+                <p>Toggle notification types on or off.</p>
+              </div>
+            </div>
+            <form id="settings-notif-form">
+              <div class="settings-toggle-row">
+                <div class="settings-toggle-info">
+                  <span class="settings-toggle-icon"><i class="fas fa-calendar-days" aria-hidden="true"></i></span>
+                  <div>
+                    <span class="settings-toggle-label"
+                      >Appointment Reminders</span
+                    >
+                    <span class="settings-toggle-desc"
+                      >Get notified about upcoming appointments</span
+                    >
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="notif_appointment" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-toggle-row">
+                <div class="settings-toggle-info">
+                  <span class="settings-toggle-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
+                  <div>
+                    <span class="settings-toggle-label"
+                      >Rating Notifications</span
+                    >
+                    <span class="settings-toggle-desc"
+                      >Get notified when you receive a new rating</span
+                    >
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="notif_ratings" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-toggle-row">
+                <div class="settings-toggle-info">
+                  <span class="settings-toggle-icon"><i class="fas fa-comments" aria-hidden="true"></i></span>
+                  <div>
+                    <span class="settings-toggle-label">New Messages</span>
+                    <span class="settings-toggle-desc"
+                      >Get notified when you receive a support reply</span
+                    >
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="notif_messages" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-toggle-row">
+                <div class="settings-toggle-info">
+                  <span class="settings-toggle-icon"><i class="fas fa-bullhorn" aria-hidden="true"></i></span>
+                  <div>
+                    <span class="settings-toggle-label"
+                      >System Announcements</span
+                    >
+                    <span class="settings-toggle-desc"
+                      >Important updates about HealthBridge</span
+                    >
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="notif_announcements" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-toggle-row">
+                <div class="settings-toggle-info">
+                  <span class="settings-toggle-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+                  <div>
+                    <span class="settings-toggle-label"
+                      >Email Notifications</span
+                    >
+                    <span class="settings-toggle-desc"
+                      >Receive notifications via email</span
+                    >
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="notif_email" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Save Notification Settings
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- DOCTOR SECTION -->
+        <section id="doctor">
+          <div
+            class="flex-between flex-wrap gap-4"
+            style="margin-bottom: var(--s8)"
+          >
+            <div>
+              <h2 style="border: none; margin: 0; padding: 0">
+                <i class="fas fa-stethoscope" aria-hidden="true"></i> Practice Settings
+              </h2>
+              <p style="margin-top: var(--s2)">
+                Manage your availability and consultation preferences.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <span class="settings-card-icon"><i class="fas fa-stethoscope" aria-hidden="true"></i></span>
+              <div>
+                <h3>Practice Preferences</h3>
+                <p>Configure your practice details.</p>
+              </div>
+            </div>
+            <form id="settings-doctor-form">
+              <div class="settings-toggle-row">
+                <div class="settings-toggle-info">
+                  <span class="settings-toggle-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></span>
+                  <div>
+                    <span class="settings-toggle-label"
+                      >Accepting New Patients</span
+                    >
+                    <span class="settings-toggle-desc"
+                      >Allow new patients to book appointments with you</span
+                    >
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="accept_new_patients" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-toggle-row">
+                <div class="settings-toggle-info">
+                  <span class="settings-toggle-icon"><i class="fas fa-eye" aria-hidden="true"></i></span>
+                  <div>
+                    <span class="settings-toggle-label">Profile Visible</span>
+                    <span class="settings-toggle-desc"
+                      >Show your profile on the public doctors page</span
+                    >
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="profile_visible" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="settings-form-row">
+                <div class="form-group">
+                  <label for="settings-consult-duration"
+                    >Consultation Duration (minutes)</label
+                  >
+                  <input
+                    type="number"
+                    id="settings-consult-duration"
+                    name="consultation_duration"
+                    min="15"
+                    max="120"
+                    step="5"
+                    value="30"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="settings-work-start">Working Hours Start</label>
+                  <input
+                    type="time"
+                    id="settings-work-start"
+                    name="working_hours_start"
+                    value="09:00"
+                  />
+                </div>
+              </div>
+              <div class="settings-form-row">
+                <div class="form-group">
+                  <label for="settings-work-end">Working Hours End</label>
+                  <input
+                    type="time"
+                    id="settings-work-end"
+                    name="working_hours_end"
+                    value="17:00"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>&nbsp;</label>
+                  <p
+                    style="
+                      font-size: 0.8rem;
+                      color: var(--text-muted);
+                      padding-top: var(--s2);
+                    "
+                  >
+                    Set your typical working hours for patient scheduling.
+                  </p>
+                </div>
+              </div>
+              <div class="settings-form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Save Practice Settings
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- ADMIN SECTION -->
+        <section id="admin">
+          <div
+            class="flex-between flex-wrap gap-4"
+            style="margin-bottom: var(--s8)"
+          >
+            <div>
+              <h2 style="border: none; margin: 0; padding: 0">
+                <i class="fas fa-user-tie" aria-hidden="true"></i> Admin Preferences
+              </h2>
+              <p style="margin-top: var(--s2)">
+                Customize your admin panel experience.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <span class="settings-card-icon"><i class="fas fa-gear" aria-hidden="true"></i></span>
+              <div>
+                <h3>Dashboard Preferences</h3>
+                <p>Configure your admin dashboard defaults.</p>
+              </div>
+            </div>
+            <form id="settings-admin-form">
+              <div class="form-group">
+                <label for="settings-admin-tab">Default Dashboard Tab</label>
+                <select id="settings-admin-tab" name="admin_default_tab">
+                  <option value="overview">Overview</option>
+                  <option value="doctors">Doctors</option>
+                  <option value="patients">Patients</option>
+                  <option value="appointments">Appointments</option>
+                  <option value="support-messages">Support Messages</option>
+                </select>
+              </div>
+              <div class="settings-form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Save Admin Preferences
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Delete Account Confirmation Modal -->
+    <div class="modal-overlay" id="delete-modal">
+      <div class="modal" style="max-width: 440px">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--s6);
+          "
+        >
+          <h3 style="margin: 0; color: var(--danger)"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Delete Account</h3>
+          <button class="close-btn" onclick="closeDeleteModal()">
+            &times;
+          </button>
+        </div>
+        <p
+          style="
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--s6);
+            line-height: 1.6;
+          "
+        >
+          This will permanently delete your account and all associated data
+          including appointments, ratings, and messages.
+          <strong>This cannot be undone.</strong>
+        </p>
+        <form id="delete-account-form">
+          <div class="form-group">
+            <label for="delete-confirm-pw"
+              >Enter your password to confirm</label
+            >
+            <div class="pw-field">
+              <input
+                type="password"
+                id="delete-confirm-pw"
+                placeholder="Your password"
+                required
+              />
+              <button
+                type="button"
+                class="pw-toggle"
+                onclick="togglePasswordVisibility(this)"
+                aria-label="Show password"
+                title="Show password"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-danger btn-block">
+            Permanently Delete My Account
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script src="../../assets/js/core/main.js?v=2"></script>
+    <script src="../../assets/js/pages/settings.js?v=2"></script>
+  </body>
+</html>
+
+

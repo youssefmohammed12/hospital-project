@@ -1,0 +1,631 @@
+/* ============================================================
+   HealthBridge — Prescription Professional Styles
+   Professional medical document presentation with print support.
+   Supports Light and Dark themes.
+   ============================================================ */
+
+/* ── Prescription ID Format ──────────────────────────────── */
+.rx-id {
+  font-family: "Courier New", monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--r-md);
+  display: inline-block;
+}
+
+/* ── Professional Prescription Document ─────────────────── */
+.rx-document {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.rx-document-inner {
+  padding: var(--s8);
+}
+
+/* ── Hospital Header ─────────────────────────────────────── */
+.rx-hospital-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding-bottom: var(--s5);
+  margin-bottom: var(--s5);
+  border-bottom: 2px solid var(--primary);
+}
+
+.rx-hospital-logo {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: var(--r-md);
+  color: #fff;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.rx-hospital-info h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rx-hospital-info p {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Prescription Meta Row ───────────────────────────────── */
+.rx-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.rx-meta-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.rx-meta-right {
+  text-align: right;
+}
+
+/* ── Info Grid (Patient, Doctor, Appointment) ────────────── */
+.rx-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s4);
+  margin-bottom: var(--s6);
+}
+
+.rx-info-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+}
+
+.rx-info-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  margin-bottom: var(--s2);
+  padding-bottom: var(--s1);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.rx-info-section-title i {
+  margin-right: var(--s1);
+}
+
+.rx-info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--s1) 0;
+  font-size: 0.85rem;
+  gap: var(--s2);
+}
+
+.rx-info-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.rx-info-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ── Professional Medication Cards ────────────────────────── */
+.rx-meds-section {
+  margin-bottom: var(--s6);
+}
+
+.rx-meds-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--s4);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.rx-meds-title i {
+  color: var(--primary);
+  margin-right: var(--s2);
+}
+
+.rx-professional-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  margin-bottom: var(--s4);
+  overflow: hidden;
+}
+
+.rx-professional-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--s3) var(--s5);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.rx-professional-card-header .rx-med-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rx-professional-card-header .rx-med-number {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.rx-professional-card-body {
+  padding: var(--s4) var(--s5);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--s3);
+}
+
+.rx-professional-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rx-professional-field-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.rx-professional-field-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rx-professional-card-footer {
+  grid-column: 1 / -1;
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--border-light);
+  margin-top: var(--s1);
+}
+
+/* ── Notes Section ───────────────────────────────────────── */
+.rx-notes-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s4) var(--s5);
+  margin-bottom: var(--s6);
+}
+
+.rx-notes-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--s2);
+}
+
+.rx-notes-section-content {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--s2);
+  background: var(--bg-card);
+  border-radius: var(--r-sm);
+}
+
+/* ── Doctor Signature ────────────────────────────────────── */
+.rx-signature {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--s5);
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 2px solid var(--border-light);
+}
+
+.rx-signature-left {
+  flex: 1;
+  min-width: 200px;
+}
+
+.rx-signature-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  margin-bottom: var(--s2);
+}
+
+.rx-signature-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rx-signature-details {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-top: var(--s1);
+}
+
+.rx-signature-line {
+  width: 200px;
+  border-top: 1px solid var(--text-muted);
+  margin-top: var(--s4);
+  padding-top: var(--s1);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.rx-signature-right {
+  text-align: right;
+}
+
+/* ── Print Button Container ──────────────────────────────── */
+.rx-print-btn-container {
+  display: flex;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+  flex-wrap: wrap;
+}
+
+/* ── Empty State ─────────────────────────────────────────── */
+.rx-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s10) var(--s5);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.rx-empty-state i {
+  font-size: 3rem;
+  margin-bottom: var(--s4);
+  opacity: 0.5;
+  color: var(--text-muted);
+}
+
+.rx-empty-state h3 {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--s2);
+}
+
+.rx-empty-state p {
+  font-size: 0.88rem;
+  max-width: 320px;
+}
+
+/* ── Cancellation Reason Display ─────────────────────────── */
+.rx-cancellation-banner {
+  margin-bottom: var(--s5);
+  padding: var(--s3) var(--s5);
+  background: rgba(252, 165, 165, 0.1);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+  border-radius: var(--r-md);
+}
+
+.rx-cancellation-banner strong {
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+.rx-cancellation-banner p {
+  margin: var(--s1) 0 0;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+}
+
+/* ============================================================
+   PRINT STYLES
+   When printing-prescription is on <body>, hide dashboard UI
+   but keep the modal and prescription document visible.
+   ============================================================ */
+@media print {
+  @page {
+    margin: 15mm 12mm;
+    size: A4 portrait;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt;
+    line-height: 1.4;
+    overflow: visible !important;
+  }
+
+  /* Hide dashboard chrome — .dashboard is a sibling of the modal (appended to body) */
+  /* and must be hidden to prevent its min-height:100vh from creating a blank page */
+  body.printing-prescription .dashboard,
+  body.printing-prescription .navbar,
+  body.printing-prescription .sidebar,
+  body.printing-prescription .sidebar-nav,
+  body.printing-prescription .sidebar-footer,
+  body.printing-prescription .sidebar-user,
+  body.printing-prescription .sidebar-avatar-container,
+  body.printing-prescription .main-content > section,
+  body.printing-prescription #toast-container,
+  body.printing-prescription .table-controls,
+  body.printing-prescription .search-box,
+  body.printing-prescription .filter-group,
+  body.printing-prescription .stats-grid,
+  body.printing-prescription .grid-2,
+  body.printing-prescription .profile-card,
+  body.printing-prescription .card,
+  body.printing-prescription .quick-actions-panel,
+  body.printing-prescription .action-card,
+  body.printing-prescription .stat-card,
+  body.printing-prescription .nav-container,
+  body.printing-prescription .nav-row,
+  body.printing-prescription .nav-links,
+  body.printing-prescription .nav-actions,
+  body.printing-prescription .nav-toggle,
+  body.printing-prescription .theme-toggle,
+  body.printing-prescription .back-to-top-btn,
+  body.printing-prescription .notification-dropdown,
+  body.printing-prescription .notif-badge,
+  body.printing-prescription #notif-bell-btn,
+  body.printing-prescription .nav-icon-btn,
+  body.printing-prescription .nav-user-name,
+  body.printing-prescription .nav-dashboard-link,
+  body.printing-prescription .flex-between > button,
+  body.printing-prescription .flex-between > .btn,
+  body.printing-prescription .rx-print-btn-container {
+    display: none !important;
+  }
+
+  /* Keep modal overlay, modal, and prescription visible */
+  body.printing-prescription .modal-overlay,
+  body.printing-prescription .modal-overlay.open,
+  body.printing-prescription .modal-overlay .modal,
+  body.printing-prescription #rx-view-content,
+  body.printing-prescription .rx-document,
+  body.printing-prescription .rx-document * {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  body.printing-prescription .modal-overlay {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    background: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    align-items: initial !important;
+    justify-content: initial !important;
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  body.printing-prescription .modal {
+    display: block !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+    transform: none !important;
+    flex: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  body.printing-prescription #rx-view-content {
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  body.printing-prescription .rx-document {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body.printing-prescription .rx-document-inner {
+    padding: 0 !important;
+  }
+
+  body.printing-prescription .rx-hospital-header {
+    border-bottom: 2px solid #000 !important;
+  }
+
+  body.printing-prescription .rx-hospital-logo {
+    background: #000 !important;
+    color: #fff !important;
+  }
+
+  body.printing-prescription .rx-hospital-info h2,
+  body.printing-prescription .rx-hospital-info p {
+    color: #000 !important;
+  }
+
+  body.printing-prescription .rx-info-section {
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+  }
+
+  body.printing-prescription .rx-info-section-title {
+    color: #000 !important;
+  }
+
+  body.printing-prescription .rx-info-label {
+    color: #555 !important;
+  }
+  body.printing-prescription .rx-info-value {
+    color: #000 !important;
+  }
+
+  body.printing-prescription .rx-professional-card {
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+    page-break-inside: avoid;
+  }
+
+  body.printing-prescription .rx-professional-card-header {
+    background: #f5f5f5 !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  body.printing-prescription .rx-professional-card-header .rx-med-name {
+    color: #000 !important;
+  }
+
+  body.printing-prescription .rx-professional-field-label {
+    color: #555 !important;
+  }
+  body.printing-prescription .rx-professional-field-value {
+    color: #000 !important;
+  }
+
+  body.printing-prescription .rx-notes-section {
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+  }
+
+  body.printing-prescription .rx-signature {
+    border-top: 2px solid #000 !important;
+  }
+
+  body.printing-prescription .rx-signature-name {
+    color: #000 !important;
+  }
+  body.printing-prescription .rx-signature-details {
+    color: #555 !important;
+  }
+
+  body.printing-prescription .rx-id {
+    color: #000 !important;
+    border: 1px solid #999 !important;
+    background: #f5f5f5 !important;
+  }
+
+  body.printing-prescription .status {
+    border: 1px solid #999 !important;
+    background: #f5f5f5 !important;
+    color: #000 !important;
+  }
+
+  body.printing-prescription .status-active {
+    border-color: #2563eb !important;
+    color: #2563eb !important;
+  }
+  body.printing-prescription .status-completed {
+    border-color: #16a34a !important;
+    color: #16a34a !important;
+  }
+  body.printing-prescription .status-cancelled {
+    border-color: #dc2626 !important;
+    color: #dc2626 !important;
+  }
+
+  body.printing-prescription a {
+    text-decoration: none !important;
+    color: #000 !important;
+  }
+
+  body.printing-prescription img {
+    max-width: 100% !important;
+  }
+}
+
+/* ── Responsive Adjustments ──────────────────────────────── */
+@media (max-width: 768px) {
+  .rx-document-inner {
+    padding: var(--s4);
+  }
+
+  .rx-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rx-meta-row {
+    flex-direction: column;
+  }
+
+  .rx-meta-right {
+    text-align: left;
+  }
+
+  .rx-professional-card-body {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rx-hospital-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .rx-signature {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rx-signature-right {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .rx-professional-card-body {
+    grid-template-columns: 1fr;
+  }
+}

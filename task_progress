@@ -1,0 +1,37 @@
+# Audit Generalization + Schedule Redesign — Implementation Progress
+
+## Phase 1: Database Migration
+- [ ] Inspect admin_audit FK constraint
+- [ ] Create migration SQL (rename admin_id→actor_id, add actor_role, add description)
+- [ ] Update canonical database.sql
+- [ ] Run migration
+
+## Phase 2: AuditService (new universal service)
+- [ ] Create php/services/AuditService.php
+- [ ] Refactor AdminAuditService to extend AuditService (backward compatible)
+
+## Phase 3: Add Audit Logging to Endpoints
+- [ ] update_doctor_schedule.php (admin + doctor roles)
+- [ ] toggle_doctor_status.php
+- [ ] toggle_patient_status.php
+- [ ] approve_appointment.php, decline_appointment.php, book_appointment.php
+- [ ] doctor_update_appointment.php
+- [ ] assign_doctor_department.php, update_doctor.php
+- [ ] add_doctor.php, delete_doctor.php
+- [ ] Update get_audit_log.php for actor_role support
+
+## Phase 4: Schedule UI Redesign
+- [ ] Redesign schedule.js layout (pill-badge days, inline time selects, responsive grid)
+- [ ] Update schedule.css
+- [ ] Keep shared ScheduleManager for both doctor and admin
+
+## Phase 5: Human-Readable Schedule History
+- [ ] Create renderScheduleDiff() in admin-doctor-profile.js
+- [ ] Add diff styles in admin-doctor-profile.css
+
+## Phase 6: Test
+- [ ] Admin schedule editing
+- [ ] Doctor schedule editing
+- [ ] Audit entries show correct actor/role
+- [ ] Only real changes logged (no false diffs)
+- [ ] No raw JSON shown

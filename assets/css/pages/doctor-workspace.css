@@ -1,0 +1,1301 @@
+/* ═══════════════════════════════════════════════════════════
+   HealthBridge — Doctor Clinical Workspace (Phase 5.3)
+   Professional Epic/Cerner-style EMR layout.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Workspace Container ── */
+
+.ws-container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--s4) var(--s6);
+}
+
+/* ── Sticky Patient Header ── */
+
+.ws-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s6);
+  margin-bottom: var(--s4);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: var(--s5);
+  flex-wrap: wrap;
+}
+
+.ws-sticky-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ws-sticky-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ws-sticky-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.ws-sticky-id {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.ws-sticky-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s4);
+  margin-top: var(--s1);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  align-items: center;
+}
+
+.ws-sticky-meta i {
+  color: var(--primary);
+  font-size: 0.7rem;
+  width: 12px;
+  text-align: center;
+}
+
+.ws-sticky-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ws-sticky-badge.danger {
+  background: rgba(252, 165, 165, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+}
+
+.ws-sticky-badge.warning {
+  background: rgba(250, 204, 21, 0.12);
+  color: #b8860b;
+  border: 1px solid rgba(250, 204, 21, 0.2);
+}
+
+.ws-sticky-status {
+  font-size: 0.72rem;
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  font-weight: 500;
+}
+
+.ws-sticky-actions {
+  display: flex;
+  gap: var(--s2);
+  flex-shrink: 0;
+}
+
+/* ── Horizontal Tabs ── */
+
+.ws-tabs {
+  display: flex;
+  gap: var(--s1);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s2);
+  margin-bottom: var(--s5);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: sticky;
+  top: 80px;
+  z-index: 40;
+}
+
+.ws-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4);
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.ws-tab:hover {
+  background: rgba(34, 211, 238, 0.06);
+  color: var(--text-primary);
+}
+
+.ws-tab.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(34, 211, 238, 0.3);
+}
+
+.ws-tab i {
+  font-size: 0.8rem;
+}
+
+/* ── Tab Content ── */
+
+.ws-tab-content {
+  display: none;
+}
+
+.ws-tab-content.active {
+  display: block;
+  animation: wsFadeIn 0.25s ease;
+}
+
+@keyframes wsFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Cards ── */
+
+.ws-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s6);
+  margin-bottom: var(--s4);
+  box-shadow: var(--shadow-sm);
+}
+
+.ws-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--s4);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ws-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+}
+
+.ws-card-title i {
+  color: var(--primary);
+}
+
+/* ── Info Grid ── */
+
+.ws-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--s2) var(--s4);
+}
+
+.ws-info-item {
+  padding: var(--s1) 0;
+}
+
+.ws-info-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.ws-info-value {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.ws-info-value.empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ── Clinical Alerts ── */
+
+.ws-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  margin-bottom: var(--s3);
+  border: 1px solid;
+  font-size: 0.82rem;
+}
+
+.ws-alert-danger {
+  background: rgba(252, 165, 165, 0.08);
+  border-color: rgba(252, 165, 165, 0.2);
+  color: var(--danger);
+}
+
+.ws-alert-warning {
+  background: rgba(250, 204, 21, 0.08);
+  border-color: rgba(250, 204, 21, 0.2);
+  color: #b8860b;
+}
+
+.ws-alert-info {
+  background: rgba(34, 211, 238, 0.06);
+  border-color: rgba(34, 211, 238, 0.15);
+  color: var(--primary);
+}
+
+.ws-alert i {
+  font-size: 0.95rem;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.ws-alert-content h4 {
+  margin: 0 0 2px 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ws-alert-content p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ── Current Visit Form ── */
+
+.ws-visit-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s4);
+}
+
+.ws-visit-form .full-w {
+  grid-column: 1 / -1;
+}
+
+.ws-visit-form label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: var(--s1);
+}
+
+.ws-visit-form textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.ws-visit-form input[type="text"] {
+  width: 100%;
+}
+
+.ws-visit-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s2);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── Medical History Grid ── */
+
+.ws-mh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--s3);
+}
+
+.ws-mh-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+}
+
+.ws-mh-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin-bottom: var(--s2);
+}
+
+.ws-mh-header i {
+  color: var(--primary);
+  font-size: 0.82rem;
+}
+
+.ws-mh-body {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--s2);
+}
+
+.ws-mh-actions {
+  display: flex;
+  gap: var(--s2);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--border-light);
+}
+
+.ws-mh-actions .btn {
+  font-size: 0.72rem;
+  padding: var(--s1) var(--s3);
+}
+
+.ws-mh-badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  border-radius: var(--r-full);
+}
+
+.ws-mh-audit {
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--bg-subtle);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  font-size: 0.78rem;
+}
+
+.ws-mh-audit-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.3px;
+}
+
+.ws-mh-audit-value {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.ws-mh-audit-value i {
+  color: var(--primary);
+  font-size: 0.7rem;
+}
+
+/* ── Prescriptions Grid ── */
+
+.ws-rx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--s3);
+}
+
+.ws-rx-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  transition: box-shadow 0.2s;
+}
+
+.ws-rx-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.ws-rx-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--s2);
+}
+
+.ws-rx-doctor {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.ws-rx-id {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.ws-rx-meta {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s2);
+}
+
+.ws-rx-meta span {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.ws-rx-items {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--s2);
+}
+
+.ws-rx-item {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--s1) 0;
+  font-size: 0.8rem;
+}
+
+.ws-rx-item-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ws-rx-item-detail {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 2 — STICKY CLINICAL PROGRESS BAR
+   ═══════════════════════════════════════════════════════════ */
+
+.ws-progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: var(--s3) var(--s6);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: var(--s4);
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  box-shadow: var(--shadow-sm);
+}
+
+.ws-progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  position: relative;
+  opacity: 0.4;
+  transition: all 0.3s ease;
+}
+
+.ws-progress-step.active {
+  opacity: 1;
+}
+
+.ws-progress-step.completed {
+  opacity: 1;
+}
+
+.ws-progress-step.completed .ws-progress-icon {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.ws-progress-step.active .ws-progress-icon {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.2);
+  animation: wsPulse 2s infinite;
+}
+
+@keyframes wsPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 211, 238, 0.1); }
+}
+
+.ws-progress-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  transition: all 0.3s ease;
+}
+
+.ws-progress-label {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ws-progress-connector {
+  width: 40px;
+  height: 2px;
+  background: var(--border-light);
+  margin: 0 var(--s1);
+  position: relative;
+  top: -10px;
+  transition: background 0.3s ease;
+}
+
+.ws-progress-connector.completed {
+  background: var(--success);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 7 — CLINICAL SUMMARY CARD
+   ═══════════════════════════════════════════════════════════ */
+
+.ws-summary-card {
+  position: sticky;
+  top: 0;
+  z-index: 55;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: var(--s3);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.ws-summary-inner {
+  padding: var(--s3) var(--s5);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex-wrap: wrap;
+}
+
+.ws-summary-skeleton {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: var(--s2) 0;
+}
+
+.ws-summary-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ws-summary-item i {
+  color: var(--primary);
+  font-size: 0.7rem;
+  width: 14px;
+  text-align: center;
+}
+
+.ws-summary-item .ws-summary-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  margin-right: 2px;
+}
+
+.ws-summary-item .ws-summary-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ws-summary-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-light);
+  flex-shrink: 0;
+}
+
+.ws-summary-status {
+  margin-left: auto;
+}
+
+.ws-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0 var(--s5) var(--s3) var(--s5);
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border-light);
+  margin-top: 0;
+}
+
+.ws-summary-actions .btn {
+  font-size: 0.78rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 3 — AUTOSAVE INDICATOR
+   ═══════════════════════════════════════════════════════════ */
+
+.ws-autosave-indicator {
+  position: fixed;
+  bottom: var(--s5);
+  right: var(--s5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.ws-autosave-indicator.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ws-autosave-indicator i {
+  color: var(--success);
+  font-size: 0.75rem;
+}
+
+.ws-autosave-indicator.saving i {
+  color: var(--primary);
+  animation: wsSpin 1s linear infinite;
+}
+
+@keyframes wsSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ws-autosave-indicator.error i {
+  color: var(--danger);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 5 — CLINICAL VALIDATION
+   ═══════════════════════════════════════════════════════════ */
+
+.ws-field-error {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 2px rgba(252, 165, 165, 0.25) !important;
+}
+
+.ws-field-error-label {
+  color: var(--danger) !important;
+}
+
+.ws-field-error-message {
+  font-size: 0.72rem;
+  color: var(--danger);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 8 — FINISH VISIT REVIEW MODAL
+   ═══════════════════════════════════════════════════════════ */
+
+.ws-review-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+
+.ws-review-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  background: var(--bg-subtle);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.ws-review-item i {
+  font-size: 0.9rem;
+}
+
+.ws-review-item.checked i {
+  color: var(--success);
+}
+
+.ws-review-item.unchecked i {
+  color: var(--danger);
+}
+
+.ws-review-item.unchecked {
+  border: 1px solid rgba(252, 165, 165, 0.2);
+}
+
+.ws-review-errors {
+  padding: var(--s3);
+  background: rgba(252, 165, 165, 0.08);
+  border: 1px solid rgba(252, 165, 165, 0.2);
+  border-radius: var(--r-md);
+  color: var(--danger);
+  font-size: 0.82rem;
+  margin-top: var(--s3);
+}
+
+.ws-review-errors ul {
+  margin: var(--s1) 0 0 0;
+  padding-left: var(--s4);
+}
+
+.ws-review-errors li {
+  margin-bottom: 2px;
+}
+
+.ws-review-status {
+  padding: var(--s3);
+  background: var(--bg-subtle);
+  border-radius: var(--r-md);
+  margin-bottom: var(--s2);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 6 — SMART PRESCRIPTION WORKFLOW
+   ═══════════════════════════════════════════════════════════ */
+
+.ws-rx-empty-state {
+  text-align: center;
+  padding: var(--s6) var(--s4);
+  background: var(--bg-surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-lg);
+}
+
+.ws-rx-empty-state i {
+  font-size: 2rem;
+  color: var(--text-muted);
+  opacity: 0.3;
+  margin-bottom: var(--s3);
+}
+
+.ws-rx-empty-state h4 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--s1) 0;
+}
+
+.ws-rx-empty-state p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0 0 var(--s4) 0;
+}
+
+.ws-rx-summary-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s5);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin-bottom: var(--s4);
+}
+
+.ws-rx-summary-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(34, 211, 238, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.ws-rx-summary-info {
+  flex: 1;
+  min-width: 150px;
+}
+
+.ws-rx-summary-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.ws-rx-summary-meta {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ws-rx-summary-actions {
+  display: flex;
+  gap: var(--s2);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 10 — BETTER TIMELINE
+   ═══════════════════════════════════════════════════════════ */
+
+.ws-timeline {
+  position: relative;
+  padding-left: var(--s8);
+}
+
+.ws-timeline::before {
+  content: '';
+  position: absolute;
+  left: 19px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--primary), var(--success), var(--warning), var(--border-light));
+}
+
+.ws-tl-item {
+  position: relative;
+  margin-bottom: var(--s5);
+  padding-left: var(--s4);
+  transition: transform 0.2s ease;
+}
+
+.ws-tl-item:hover {
+  transform: translateX(3px);
+}
+
+.ws-tl-dot {
+  position: absolute;
+  left: calc(-1 * var(--s8) + 12px);
+  top: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid var(--bg-surface);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px var(--border-light);
+}
+
+.ws-tl-dot i {
+  font-size: 0.45rem;
+  color: #fff;
+}
+
+.ws-tl-dot.appointment {
+  background: var(--primary);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.3);
+}
+
+.ws-tl-dot.visit-note {
+  background: var(--success);
+  box-shadow: 0 0 0 2px rgba(134, 239, 172, 0.3);
+}
+
+.ws-tl-dot.prescription {
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+}
+
+.ws-tl-dot.completed {
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+}
+
+.ws-tl-dot.cancelled {
+  background: var(--danger);
+  box-shadow: 0 0 0 2px rgba(252, 165, 165, 0.3);
+}
+
+.ws-tl-dot.medical-history {
+  background: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+}
+
+.ws-tl-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s1);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.ws-tl-date i {
+  font-size: 0.6rem;
+  color: var(--primary);
+}
+
+.ws-tl-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  transition: box-shadow 0.2s;
+}
+
+.ws-tl-content:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.ws-tl-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.ws-tl-title i {
+  font-size: 0.75rem;
+  color: var(--primary);
+}
+
+.ws-tl-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.ws-tl-meta {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s1);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.ws-tl-meta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ws-tl-quick-view {
+  margin-top: var(--s2);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--border-light);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: none;
+}
+
+.ws-tl-quick-view.visible {
+  display: block;
+  animation: wsFadeIn 0.2s ease;
+}
+
+.ws-tl-toggle {
+  font-size: 0.72rem;
+  color: var(--primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.ws-tl-toggle:hover {
+  text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 11 — PRODUCTIVITY IMPROVEMENTS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Loading skeleton for tabs */
+.ws-loading-skeleton {
+  padding: var(--s6);
+}
+
+.ws-loading-skeleton .ws-skel-block {
+  height: 20px;
+  margin-bottom: var(--s3);
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--bg-surface) 50%, var(--border-light) 75%);
+  background-size: 200% 100%;
+  animation: wsShimmer 1.5s infinite;
+}
+
+.ws-loading-skeleton .ws-skel-block:nth-child(2) { width: 80%; }
+.ws-loading-skeleton .ws-skel-block:nth-child(3) { width: 60%; }
+.ws-loading-skeleton .ws-skel-block:nth-child(4) { width: 70%; }
+
+/* Toast improvements */
+.ws-toast-success {
+  border-left: 3px solid var(--success) !important;
+}
+
+.ws-toast-error {
+  border-left: 3px solid var(--danger) !important;
+}
+
+.ws-toast-info {
+  border-left: 3px solid var(--primary) !important;
+}
+
+/* Disabled state for finish button while saving */
+.ws-finish-btn:disabled,
+.ws-finish-btn.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Keyboard shortcut hint */
+.ws-kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-left: var(--s2);
+}
+
+.ws-kbd-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  font-size: 0.6rem;
+  font-family: inherit;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  min-width: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PART 12 — ACCESSIBILITY
+   ═══════════════════════════════════════════════════════════ */
+
+/* Focus-visible styles */
+.ws-tab:focus-visible,
+.ws-progress-step:focus-visible,
+.ws-tl-toggle:focus-visible,
+.ws-summary-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+.ws-tab:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Screen reader only */
+.ws-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ws-progress-step,
+  .ws-progress-icon,
+  .ws-tab-content.active,
+  .ws-autosave-indicator,
+  .ws-tl-item,
+  .ws-tl-content {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── Empty States ── */
+
+.ws-empty {
+  text-align: center;
+  padding: var(--s8) var(--s4);
+  color: var(--text-muted);
+}
+
+.ws-empty i {
+  font-size: 2rem;
+  margin-bottom: var(--s3);
+  opacity: 0.4;
+}
+
+.ws-empty h4 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--s1) 0;
+}
+
+.ws-empty p {
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+/* ── Skeleton Loading ── */
+
+.ws-skel {
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--bg-surface) 50%, var(--border-light) 75%);
+  background-size: 200% 100%;
+  animation: wsShimmer 1.5s infinite;
+  border-radius: var(--r-sm);
+}
+
+@keyframes wsShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.ws-skel-text { height: 14px; margin-bottom: var(--s2); width: 100%; }
+.ws-skel-text.short { width: 60%; }
+.ws-skel-text.tiny { width: 30%; height: 10px; }
+.ws-skel-avatar { width: 48px; height: 48px; border-radius: var(--r-md); }
+
+/* ── Back Button ── */
+
+.ws-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-bottom: var(--s3);
+  padding: var(--s1) var(--s3);
+  border-radius: var(--r-md);
+  transition: all 0.2s;
+}
+
+.ws-back:hover {
+  color: var(--primary);
+  background: rgba(34, 211, 238, 0.06);
+}
+
+/* ── Finish Visit Button ── */
+
+.ws-finish-section {
+  margin-top: var(--s6);
+  padding: var(--s5) var(--s6);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), rgba(134, 239, 172, 0.05));
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+
+.ws-finish-section h3 {
+  font-size: 1.05rem;
+  margin: 0 0 var(--s1) 0;
+  color: var(--text-primary);
+}
+
+.ws-finish-section p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--s4) 0;
+}
+
+.ws-finish-btn {
+  padding: var(--s3) var(--s8);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 768px) {
+  .ws-container { padding: var(--s3); }
+  .ws-sticky-header { padding: var(--s3); gap: var(--s3); }
+  .ws-sticky-actions { width: 100%; justify-content: flex-start; }
+  .ws-tabs { gap: 0; padding: var(--s1); top: 70px; }
+  .ws-tab { padding: var(--s2) var(--s3); font-size: 0.75rem; }
+  .ws-tab .tab-label { display: none; }
+  .ws-visit-form { grid-template-columns: 1fr; }
+  .ws-info-grid { grid-template-columns: 1fr 1fr; }
+  .ws-progress-bar { padding: var(--s2) var(--s3); gap: 0; }
+  .ws-progress-connector { width: 20px; }
+  .ws-progress-icon { width: 28px; height: 28px; font-size: 0.7rem; }
+  .ws-progress-label { font-size: 0.6rem; }
+  .ws-summary-inner { gap: var(--s2); padding: var(--s2) var(--s3); }
+  .ws-summary-divider { display: none; }
+  .ws-summary-item { font-size: 0.7rem; }
+  .ws-autosave-indicator { bottom: var(--s3); right: var(--s3); font-size: 0.7rem; padding: var(--s1) var(--s3); }
+  .ws-rx-summary-card { flex-direction: column; align-items: flex-start; }
+  .ws-rx-summary-actions { width: 100%; justify-content: flex-start; }
+}

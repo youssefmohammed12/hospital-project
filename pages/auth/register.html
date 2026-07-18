@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Create your HealthBridge patient account in minutes. Book appointments, access medical records, and manage your healthcare."
+    />
+    <title>Create Account — HealthBridge</title>
+    <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="../../assets/css/pages/auth.css?v=3" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Simple Navbar for Auth Pages -->
+    <nav class="navbar" id="navbar">
+      <div class="nav-container">
+        <a href="../../index.html" class="logo">
+          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+          <span>HealthBridge</span>
+        </a>
+        <div class="nav-actions" style="gap: var(--s2)">
+          <a href="../../index.html" class="btn btn-outline btn-sm">← Back to Home</a>
+          <a href="login.html" class="btn btn-primary btn-sm">Sign In</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="auth-page">
+      <div class="auth-container">
+        <!-- Left: Branding Panel -->
+        <div class="auth-brand">
+          <div class="auth-brand-content">
+            <div class="auth-brand-logo">
+              <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+              <span>HealthBridge</span>
+            </div>
+
+            <h2>Join HealthBridge</h2>
+            <p>Create your patient account and take control of your healthcare journey. Free, secure, and easy to use.</p>
+
+            <div class="auth-features">
+              <div class="auth-feature-item">
+                <i class="fas fa-calendar-check" aria-hidden="true"></i>
+                <span>Book appointments in seconds</span>
+              </div>
+              <div class="auth-feature-item">
+                <i class="fas fa-file-medical" aria-hidden="true"></i>
+                <span>Your medical records, always accessible</span>
+              </div>
+              <div class="auth-feature-item">
+                <i class="fas fa-lock" aria-hidden="true"></i>
+                <span>Secure & confidential</span>
+              </div>
+              <div class="auth-feature-item">
+                <i class="fas fa-clock" aria-hidden="true"></i>
+                <span>Takes only 2 minutes to register</span>
+              </div>
+            </div>
+
+            <p style="margin-top: var(--s8); font-size: 0.78rem; color: var(--text-muted);">
+              Already have an account?
+              <a href="login.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">
+                Sign in here
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: Registration Wizard -->
+        <div class="auth-form-panel">
+          <div class="auth-form-header">
+            <h3>Create Your Account</h3>
+            <p>Complete both steps to finish registration</p>
+          </div>
+
+          <!-- Progress Indicator -->
+          <div class="wizard-progress" id="wizard-progress">
+            <div class="wizard-step-indicator">
+              <div class="wizard-step-circle active" id="step-indicator-1">1</div>
+              <span class="wizard-step-label active" id="step-label-1">Account</span>
+              <div class="wizard-connector" id="connector-1"></div>
+              <div class="wizard-step-circle" id="step-indicator-2">2</div>
+              <span class="wizard-step-label" id="step-label-2">Patient Info</span>
+            </div>
+          </div>
+
+          <!-- ================================================================ -->
+          <!-- STEP 1: Account Information                                      -->
+          <!-- ================================================================ -->
+          <div class="wizard-step active" id="wizard-step-1">
+            <p class="wizard-step-title">Account Information</p>
+            <p class="wizard-step-subtitle">Tell us about yourself to create your account</p>
+
+            <form id="step1-form" novalidate>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="reg-first-name">First Name</label>
+                  <input
+                    type="text"
+                    id="reg-first-name"
+                    name="first_name"
+                    placeholder="Ahmed"
+                    required
+                    minlength="2"
+                    maxlength="50"
+                    autocomplete="given-name"
+                    aria-required="true"
+                  />
+                  <span class="field-error" id="first-name-error"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-last-name">Last Name</label>
+                  <input
+                    type="text"
+                    id="reg-last-name"
+                    name="last_name"
+                    placeholder="Hassan"
+                    required
+                    minlength="2"
+                    maxlength="50"
+                    autocomplete="family-name"
+                    aria-required="true"
+                  />
+                  <span class="field-error" id="last-name-error"></span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-email">Email Address</label>
+                <input
+                  type="email"
+                  id="reg-email"
+                  name="email"
+                  placeholder="you@example.com"
+                  required
+                  autocomplete="email"
+                  aria-required="true"
+                />
+                <span class="field-error" id="email-error"></span>
+                <span class="field-success" id="email-success"></span>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-phone">Phone Number</label>
+                <input
+                  type="tel"
+                  id="reg-phone"
+                  name="phone"
+                  placeholder="01012345678"
+                  required
+                  autocomplete="tel"
+                  aria-required="true"
+                />
+                <span class="field-error" id="phone-error"></span>
+                <span class="field-success" id="phone-success"></span>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="reg-password">Password</label>
+                  <div class="pw-field">
+                    <input
+                      type="password"
+                      id="reg-password"
+                      name="password"
+                      placeholder="Create a strong password"
+                      required
+                      minlength="8"
+                      autocomplete="new-password"
+                      aria-required="true"
+                    />
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      onclick="togglePasswordVisibility(this)"
+                      aria-label="Show password"
+                      title="Show password"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <!-- Password Strength Meter -->
+                  <div class="pw-strength-wrap">
+                    <div class="pw-strength-bar">
+                      <div class="pw-strength-fill" id="pw-strength-fill"></div>
+                    </div>
+                    <span class="pw-strength-label" id="pw-strength-label"></span>
+                  </div>
+
+                  <!-- Live Password Checklist -->
+                  <div class="pw-checklist" id="pw-checklist">
+                    <div class="pw-check-item" data-check="min_length">
+                      <span class="check-icon">✓</span>
+                      <span>At least 8 characters</span>
+                    </div>
+                    <div class="pw-check-item" data-check="has_uppercase">
+                      <span class="check-icon">✓</span>
+                      <span>Uppercase letter</span>
+                    </div>
+                    <div class="pw-check-item" data-check="has_lowercase">
+                      <span class="check-icon">✓</span>
+                      <span>Lowercase letter</span>
+                    </div>
+                    <div class="pw-check-item" data-check="has_number">
+                      <span class="check-icon">✓</span>
+                      <span>Number</span>
+                    </div>
+                    <div class="pw-check-item" data-check="has_special">
+                      <span class="check-icon">✓</span>
+                      <span>Special character</span>
+                    </div>
+                  </div>
+
+                  <span class="field-error" id="password-error"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-confirm-password">Confirm Password</label>
+                  <div class="pw-field">
+                    <input
+                      type="password"
+                      id="reg-confirm-password"
+                      name="confirm_password"
+                      placeholder="Re-enter your password"
+                      required
+                      autocomplete="new-password"
+                      aria-required="true"
+                    />
+                    <button
+                      type="button"
+                      class="pw-toggle"
+                      onclick="togglePasswordVisibility(this)"
+                      aria-label="Show password"
+                      title="Show password"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                  </div>
+                  <span class="field-error" id="confirm-password-error"></span>
+                </div>
+              </div>
+
+              <!-- Step 1 Navigation -->
+              <div class="wizard-nav">
+                <div class="wizard-nav-left">
+                  <a href="login.html" class="btn-wizard-prev">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Login
+                  </a>
+                </div>
+                <div class="wizard-nav-right">
+                  <button type="button" class="btn-wizard-next" id="step1-next">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Next Step <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- ================================================================ -->
+          <!-- STEP 2: Patient Information                                      -->
+          <!-- ================================================================ -->
+          <div class="wizard-step" id="wizard-step-2">
+            <p class="wizard-step-title">Patient Information</p>
+            <p class="wizard-step-subtitle">Fill in your medical profile details</p>
+
+            <form id="step2-form" novalidate>
+              <!-- Personal Info -->
+              <div class="form-row-3">
+                <div class="form-group">
+                  <label for="reg-dob">Date of Birth</label>
+                  <input
+                    type="date"
+                    id="reg-dob"
+                    name="date_of_birth"
+                    required
+                    aria-required="true"
+                  />
+                  <span class="field-error" id="dob-error"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-gender">Gender</label>
+                  <select id="reg-gender" name="gender" required aria-required="true">
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                  <span class="field-error" id="gender-error"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-blood-type">Blood Type <span class="optional-hint">(optional)</span></label>
+                  <select id="reg-blood-type" name="blood_type">
+                    <option value="">Select blood type</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-national-id">Egyptian National ID (14 digits)</label>
+                <input
+                  type="text"
+                  id="reg-national-id"
+                  name="national_id"
+                  placeholder="3020915XXXXXXXX"
+                  required
+                  minlength="14"
+                  maxlength="14"
+                  inputmode="numeric"
+                  pattern="\d{14}"
+                  aria-required="true"
+                />
+                <span class="field-error" id="national-id-error"></span>
+                <span class="field-success" id="national-id-success"></span>
+              </div>
+
+              <!-- Location -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="reg-governorate">Governorate</label>
+                  <select id="reg-governorate" name="governorate" required aria-required="true">
+                    <option value="">Select governorate</option>
+                  </select>
+                  <span class="field-error" id="governorate-error"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-city">City</label>
+                  <select id="reg-city" name="city" required aria-required="true" disabled>
+                    <option value="">Select city</option>
+                  </select>
+                  <span class="field-error" id="city-error"></span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-address">Full Address</label>
+                <textarea
+                  id="reg-address"
+                  name="address"
+                  placeholder="Street name, building, apartment number, landmark..."
+                  required
+                  aria-required="true"
+                ></textarea>
+                <span class="field-error" id="address-error"></span>
+              </div>
+
+              <!-- Emergency Contact -->
+              <p class="wizard-step-title" style="font-size: 0.95rem; margin-top: var(--s6);">Emergency Contact</p>
+              <p class="wizard-step-subtitle" style="font-size: 0.78rem;">Who should we contact in case of an emergency?</p>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="reg-emergency-name">Full Name</label>
+                  <input
+                    type="text"
+                    id="reg-emergency-name"
+                    name="emergency_contact_name"
+                    placeholder="Emergency contact name"
+                    required
+                    aria-required="true"
+                  />
+                  <span class="field-error" id="emergency-name-error"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-emergency-phone">Phone Number</label>
+                  <input
+                    type="tel"
+                    id="reg-emergency-phone"
+                    name="emergency_contact_phone"
+                    placeholder="01012345678"
+                    required
+                    aria-required="true"
+                  />
+                  <span class="field-error" id="emergency-phone-error"></span>
+                  <span class="field-success" id="emergency-phone-success"></span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reg-emergency-rel">Relationship</label>
+                <select id="reg-emergency-rel" name="emergency_contact_rel" required aria-required="true">
+                  <option value="">Select relationship</option>
+                  <option value="Father">Father</option>
+                  <option value="Mother">Mother</option>
+                  <option value="Brother">Brother</option>
+                  <option value="Sister">Sister</option>
+                  <option value="Husband">Husband</option>
+                  <option value="Wife">Wife</option>
+                  <option value="Friend">Friend</option>
+                  <option value="Other">Other</option>
+                </select>
+                <span class="field-error" id="emergency-rel-error"></span>
+              </div>
+
+              <!-- Optional Medical Info -->
+              <p class="wizard-step-title" style="font-size: 0.95rem; margin-top: var(--s6);">
+                Medical Information <span class="optional-hint">(optional)</span>
+              </p>
+              <p class="wizard-step-subtitle" style="font-size: 0.78rem;">Help us serve you better</p>
+
+              <div class="medical-textarea-row">
+                <div class="form-group">
+                  <label for="reg-allergies">Allergies</label>
+                  <textarea
+                    id="reg-allergies"
+                    name="allergies"
+                    class="medical-textarea"
+                    placeholder="e.g., Penicillin, Peanuts"
+                  ></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-chronic">Chronic Diseases</label>
+                  <textarea
+                    id="reg-chronic"
+                    name="chronic_diseases"
+                    class="medical-textarea"
+                    placeholder="e.g., Diabetes, Hypertension"
+                  ></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-medications">Current Medications</label>
+                  <textarea
+                    id="reg-medications"
+                    name="current_medications"
+                    class="medical-textarea"
+                    placeholder="e.g., Metformin 500mg"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="form-row insurance-row">
+                <div class="form-group">
+                  <label for="reg-insurance-provider">Insurance Provider <span class="optional-hint">(optional)</span></label>
+                  <input
+                    type="text"
+                    id="reg-insurance-provider"
+                    name="insurance_provider"
+                    placeholder="e.g., AXA, GIG, Allianz"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-insurance-number">Insurance Number <span class="optional-hint">(optional)</span></label>
+                  <input
+                    type="text"
+                    id="reg-insurance-number"
+                    name="insurance_number"
+                    placeholder="Your insurance policy number"
+                  />
+                </div>
+              </div>
+
+              <!-- Step 2 Navigation -->
+              <div class="wizard-nav">
+                <div class="wizard-nav-left">
+                  <button type="button" class="btn-wizard-prev" id="step2-prev">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Previous
+                  </button>
+                </div>
+                <div class="wizard-nav-right">
+                  <button type="button" class="btn-wizard-submit" id="step2-submit">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Create Account <i class="fas fa-check" aria-hidden="true"></i></span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- ================================================================ -->
+          <!-- SUCCESS SCREEN                                                   -->
+          <!-- ================================================================ -->
+          <div class="reg-success" id="reg-success">
+            <div class="reg-success-icon">
+              <i class="fas fa-check" aria-hidden="true"></i>
+            </div>
+            <h2>Account Created Successfully!</h2>
+            <p>Welcome to HealthBridge. Your patient account is now active.</p>
+
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--s2);">Your Patient Number:</p>
+            <div class="patient-number-box" id="patient-number-display">HB-2026-000000</div>
+
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: var(--s4);">
+              Please save your patient number. You'll need it for appointments and medical records.
+            </p>
+
+            <div class="redirect-message">
+              <span>Redirecting to login</span>
+              <div class="countdown-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../../assets/js/core/main.js?v=2"></script>
+    <script src="../../assets/js/core/auth.js?v=3"></script>
+  </body>
+</html>

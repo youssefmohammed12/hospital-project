@@ -1,0 +1,267 @@
+/* ============================================================
+   HealthBridge — About Page Styles
+   Story visual cards, mission/vision cards, core values grid,
+   and impact stats.
+   Used by: about.html
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   STORY SECTION — REDESIGNED FLOATING VISUAL
+   ------------------------------------------------------------ */
+.story-section .grid-2 {
+  align-items: center;
+  gap: var(--s12);
+}
+
+.story-visual {
+  position: relative;
+  width: 100%;
+  height: 350px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Background floating glow blob */
+.visual-blob {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+  filter: blur(25px);
+  animation: blobFloat 8s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* Redesigned central building card */
+.story-visual .main-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s6) var(--s8);
+  width: 240px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  z-index: 2;
+  transition: transform var(--t), border-color var(--t);
+}
+
+.story-visual .main-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.story-visual .main-card .icon {
+  font-size: 4rem;
+  margin-bottom: var(--s3);
+  display: block;
+}
+
+.story-visual .main-card h4 {
+  font-size: 1.1rem;
+  margin-bottom: var(--s1);
+  color: var(--text-primary);
+}
+
+.story-visual .main-card p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Floating interactive badges */
+.story-visual .floating-badge {
+  position: absolute;
+  background: rgba(12, 20, 39, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  z-index: 3;
+  transition: all var(--t);
+}
+
+.story-visual .floating-badge:hover {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.story-visual .badge-1 {
+  top: 15%;
+  left: 5%;
+  animation: floatUp1 5s ease-in-out infinite;
+}
+
+.story-visual .badge-2 {
+  bottom: 20%;
+  right: 5%;
+  animation: floatUp2 5s ease-in-out infinite;
+}
+
+.story-visual .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.story-visual .icon-small {
+  font-size: 1.1rem;
+}
+
+/* Floating Animations */
+@keyframes floatUp1 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes floatUp2 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(10px); }
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.12) translate(15px, -15px); }
+}
+
+/* ------------------------------------------------------------
+   MISSION & VISION CARDS
+   ------------------------------------------------------------ */
+.mission-card {
+  border-top: 3px solid var(--primary);
+}
+
+.mission-card.vision {
+  border-top-color: var(--success);
+}
+
+/* ------------------------------------------------------------
+   NEW: CORE VALUES
+   ------------------------------------------------------------ */
+.values-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s6);
+  margin-top: var(--s8);
+}
+
+.value-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6) var(--s5);
+  text-align: center;
+  transition: all var(--t);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.value-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(34, 211, 238, 0.06);
+}
+
+.value-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--primary-glow);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: var(--s4);
+  transition: transform var(--t);
+}
+
+.value-card:hover .value-icon {
+  transform: scale(1.08);
+}
+
+.value-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: var(--s2);
+  color: var(--text-primary);
+}
+
+.value-card p {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------
+   NEW: IMPACT METRICS
+   ------------------------------------------------------------ */
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s6);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.impact-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s6) var(--s4);
+  transition: all var(--t);
+  text-align: center;
+}
+
+.impact-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.impact-num {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: var(--s1);
+  letter-spacing: -0.5px;
+}
+
+.impact-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .story-visual {
+    height: 300px;
+    margin-top: var(--s8);
+  }
+  .story-visual .badge-1 {
+    left: 2%;
+  }
+  .story-visual .badge-2 {
+    right: 2%;
+  }
+}
+
+/* Light mode overrides for About page specific elements */
+[data-theme="light"] .story-visual .floating-badge {
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text-primary);
+  border-color: rgba(8, 145, 178, 0.25);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.story-visual .floating-badge {
+  color: #ffffff;
+}

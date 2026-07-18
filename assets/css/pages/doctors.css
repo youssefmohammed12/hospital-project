@@ -1,0 +1,873 @@
+/* ============================================================
+   HealthBridge — Doctors Page Redesign
+   Filter chips, premium cards with entrance animations, stat
+   bar, availability badges, trust section, and CTA panel.
+   Used by: doctors.html
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   SPECIALTY FILTER CHIPS
+   ------------------------------------------------------------ */
+.specialty-chips {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s6) 0 var(--s4);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-full);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-subtle);
+  transform: translateY(-1px);
+}
+
+.chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--bg-base);
+  font-weight: 600;
+}
+
+.chip-icon {
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------
+   SEARCH + FILTER BAR (redesigned)
+   ------------------------------------------------------------ */
+.search-filter-bar {
+  display: flex;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s5);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--s6);
+}
+
+.search-filter-bar input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.search-filter-bar input[type="text"]::placeholder {
+  color: var(--text-muted);
+}
+
+.search-filter-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-light);
+}
+
+.search-filter-bar select {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  padding-right: var(--s5);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237fb3d3' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+}
+
+.search-filter-bar select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.search-icon {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Results count badge */
+.results-count {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: var(--s5);
+}
+
+.results-count strong {
+  color: var(--primary);
+}
+
+/* ------------------------------------------------------------
+   DOCTOR GRID (redesigned premium cards)
+   ------------------------------------------------------------ */
+.doctor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--s6);
+}
+
+/* Card entrance animation */
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.doctor-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  display: flex;
+  flex-direction: column;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  animation: cardEntrance 0.4s ease-out both;
+}
+
+/* Glowing top-border accent */
+.doctor-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.doctor-card:hover::before {
+  opacity: 1;
+}
+
+.doctor-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(34, 211, 238, 0.1);
+}
+
+/* Card Header */
+.doctor-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s4);
+  margin-bottom: var(--s4);
+}
+
+/* Doctor emoji avatar */
+.doctor-avatar {
+  width: 70px;
+  height: 70px;
+  background: var(--primary-glow);
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  flex-shrink: 0;
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.doctor-card:hover .doctor-avatar {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.doctor-card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.doctor-card-meta h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Specialty badge */
+.specialty-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--primary-subtle);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  letter-spacing: 0.3px;
+  margin-bottom: var(--s2);
+}
+
+/* Star rating */
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.stars {
+  color: var(--warning);
+  font-size: 0.78rem;
+}
+.rating-num {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Card body stats */
+.doctor-stats {
+  display: flex;
+  gap: var(--s4);
+  margin-bottom: var(--s4);
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.doctor-stat {
+  flex: 1;
+  text-align: center;
+}
+
+.doctor-stat-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.doctor-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: block;
+}
+
+/* Availability indicator */
+.avail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--s4);
+}
+
+.avail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.avail-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.avail-badge.available .avail-dot {
+  background: var(--success);
+  box-shadow: 0 0 5px var(--success);
+  animation: availPulse 2s ease-in-out infinite;
+}
+
+.avail-badge.available {
+  color: var(--success);
+}
+.avail-badge.unavailable {
+  color: var(--text-muted);
+}
+.avail-badge.unavailable .avail-dot {
+  background: var(--text-muted);
+}
+
+@keyframes availPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.next-slot {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Book button — full-width at the bottom */
+.doctor-card .book-btn {
+  margin-top: auto;
+  width: 100%;
+  justify-content: center;
+}
+
+/* ------------------------------------------------------------
+   PAGE TRUST METRICS BAR
+   ------------------------------------------------------------ */
+.trust-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s5);
+  max-width: 1200px;
+  margin: 0 auto var(--s10);
+  padding: 0 var(--s8);
+}
+
+.trust-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s5) var(--s4);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  transition: all var(--t);
+}
+
+.trust-item:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.trust-icon {
+  width: 46px;
+  height: 46px;
+  background: var(--primary-glow);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.trust-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.trust-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------
+   HOW IT WORKS SECTION
+   ------------------------------------------------------------ */
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s6);
+  position: relative;
+  margin-top: var(--s8);
+}
+
+.step-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  text-align: center;
+  transition: all var(--t);
+  position: relative;
+}
+
+.step-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-3px);
+}
+
+.step-number {
+  width: 44px;
+  height: 44px;
+  background: var(--primary);
+  color: var(--bg-base);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 auto var(--s4);
+}
+
+.step-card h4 {
+  font-size: 0.95rem;
+  margin-bottom: var(--s2);
+}
+
+.step-card p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------
+   BOOKING CTA STRIP
+   ------------------------------------------------------------ */
+.booking-cta-strip {
+  background:
+    radial-gradient(circle at 50% 0%, var(--primary-glow) 0%, transparent 60%),
+    var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s10) var(--s8);
+  text-align: center;
+  margin: var(--s10) 0 0;
+}
+
+.booking-cta-strip h2 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  margin-bottom: var(--s3);
+}
+
+.booking-cta-strip p {
+  margin-bottom: var(--s6);
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ------------------------------------------------------------
+   EMPTY STATE
+   ------------------------------------------------------------ */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s16) var(--s8);
+  text-align: center;
+}
+
+.empty-state .icon {
+  font-size: 3.5rem;
+  margin-bottom: var(--s4);
+}
+.empty-state h3 {
+  font-size: 1.2rem;
+  margin-bottom: var(--s2);
+}
+.empty-state p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* Doctor info banner (for booking page) */
+.doctor-info-banner {
+  background: var(--primary-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s4) var(--s6);
+  margin-bottom: var(--s6);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.doctor-info-banner .emoji {
+  font-size: 2rem;
+}
+
+@media (max-width: 768px) {
+  .search-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s3);
+  }
+  .search-filter-divider {
+    display: none;
+  }
+  .specialty-chips {
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .trust-bar {
+    padding: 0 var(--s4);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PHASE 3 — AVAILABILITY BADGES & WORKING DAYS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Working days row on doctor cards */
+.working-days-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 0 var(--s5) var(--s2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.working-days-row i {
+  font-size: 0.7rem;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Availability badges — pill design with icons */
+.avail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.avail-badge i {
+  font-size: 0.75rem;
+}
+
+.avail-badge:hover {
+  transform: translateY(-1px);
+}
+
+/* Available Today — Green */
+.avail-badge.badge-available {
+  background: rgba(134, 239, 172, 0.12);
+  border: 1px solid rgba(134, 239, 172, 0.3);
+  color: var(--success);
+}
+
+.avail-badge.badge-available i {
+  animation: availPulse 2s ease-in-out infinite;
+}
+
+/* Available Tomorrow — Blue */
+.avail-badge.badge-tomorrow {
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: #60a5fa;
+}
+
+/* Next Available (later) — Amber */
+.avail-badge.badge-later {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+}
+
+/* Currently Full — Gray */
+.avail-badge.badge-full {
+  background: rgba(156, 163, 175, 0.1);
+  border: 1px solid rgba(156, 163, 175, 0.25);
+  color: var(--text-muted);
+}
+
+/* Not Accepting Appointments — Red */
+.avail-badge.badge-unavailable {
+  background: rgba(252, 165, 165, 0.1);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+  color: var(--danger);
+}
+
+/* Next slot text on card */
+.next-slot {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PHASE 3 — DOCTOR DETAIL MODAL
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Modal ───────────────────────────────────────────────── */
+
+.doctor-detail-modal {
+  padding: 0 !important;
+  overflow: hidden !important;
+  max-width: 880px !important;
+  width: min(880px, 92vw) !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+
+/* ── Sticky Header ───────────────────────────────────────── */
+
+.doctor-detail-modal .dd-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s4);
+  padding: var(--s5) var(--s6);
+  background: linear-gradient(135deg, var(--primary-subtle), transparent);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.doctor-detail-modal .dd-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.doctor-detail-modal .dd-header-info {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.doctor-detail-modal .dd-header-info h2 {
+  margin: 0 0 2px;
+  font-size: 1.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doctor-detail-modal .dd-close {
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.25rem 0.6rem;
+}
+
+/* ── Scrollable Content ──────────────────────────────────── */
+
+.doctor-detail-modal .dd-scroll-content {
+  overflow-x: hidden;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.doctor-detail-modal .dd-scroll-content > * {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* ── Badge Row ───────────────────────────────────────────── */
+
+.doctor-detail-modal .dd-badge-row {
+  padding: var(--s4) var(--s6) var(--s3);
+}
+
+/* ── Next Available Card ─────────────────────────────────── */
+
+.doctor-detail-modal .dd-next-card {
+  margin: 0 var(--s6) var(--s4);
+  padding: var(--s3) var(--s5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.doctor-detail-modal .dd-next-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.doctor-detail-modal .dd-next-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.doctor-detail-modal .dd-next-row i {
+  width: 16px;
+  text-align: center;
+  color: var(--primary);
+  font-size: 0.85rem;
+}
+
+/* ── Info Cards Grid ─────────────────────────────────────── */
+
+.doctor-detail-modal .dd-info-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s3);
+  padding: 0 var(--s6) var(--s4);
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.doctor-detail-modal .dd-info-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.doctor-detail-modal .dd-info-card-full {
+  margin: 0 var(--s6) var(--s3);
+  grid-column: 1 / -1;
+}
+
+.doctor-detail-modal .dd-info-card-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.doctor-detail-modal .dd-info-card-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+
+.doctor-detail-modal .dd-footer {
+  flex-shrink: 0;
+  padding: var(--s4) var(--s6);
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.doctor-detail-modal .dd-book-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Unavailable message (when doctor can't accept appointments) */
+.doctor-detail-modal .dd-unavailable-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+}
+
+.doctor-detail-modal .dd-unavailable-msg i {
+  font-size: 1rem;
+  color: var(--danger);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.doctor-detail-modal .dd-unavailable-msg p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Fullscreen on Mobile ────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .doctor-detail-modal {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  .doctor-detail-modal .dd-header {
+    padding: var(--s4) var(--s5);
+  }
+
+  .doctor-detail-modal .dd-badge-row,
+  .doctor-detail-modal .dd-next-card,
+  .doctor-detail-modal .dd-info-cards-grid,
+  .doctor-detail-modal .dd-info-card-full,
+  .doctor-detail-modal .dd-footer {
+    padding-left: var(--s5);
+    padding-right: var(--s5);
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .doctor-detail-modal .dd-info-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}

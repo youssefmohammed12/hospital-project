@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="HealthBridge Doctor Panel — manage your appointments, schedule, and patient information." />
+  <title>Doctor Panel — HealthBridge</title>
+  <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/admin.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/modules/schedule.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/doctor-dashboard.css?v=2" />
+</head>
+<body>
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="../../index.html" class="logo">
+        <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+        <span>HealthBridge</span>
+      </a>
+      <div class="nav-row">
+        <ul class="nav-links">
+          <li><a href="../../index.html">Home</a></li>
+          <li><a href="../../doctors.html">Doctors</a></li>
+          <li><a href="../../services.html">Services</a></li>
+          <li><a href="../../about.html">About</a></li>
+          <li><a href="../../contact.html">Contact</a></li>
+        </ul>
+        <div class="nav-actions" id="auth-links">
+          <a href="../auth/login.html" class="btn btn-outline btn-sm">Login</a>
+          <a href="../auth/login.html#signup" class="btn btn-primary btn-sm">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard">
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-user">
+          <div class="sidebar-avatar-container">
+            <div class="sidebar-avatar" style="background: var(--primary-glow); border-color: var(--border)">DR</div>
+            <div class="status-dot" title="System Status: Online"></div>
+          </div>
+          <h3 id="doctor-sidebar-name">Doctor Panel</h3>
+          <p id="doctor-sidebar-email">doctor@healthbridge.com</p>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#overview" class="active"><i class="fas fa-chart-line" aria-hidden="true"></i> Dashboard</a>
+          <a href="#appointments"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments</a>
+          <a href="#schedule"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Schedule</a>
+          <a href="#reviews"><i class="fas fa-star" aria-hidden="true"></i> Reviews</a>
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+        <nav class="sidebar-nav">
+          <a href="javascript:void(0)" onclick="openSettings()"><i class="fas fa-gear" aria-hidden="true"></i> Settings</a>
+          <a href="../../index.html"><i class="fas fa-globe" aria-hidden="true"></i> View Site</a>
+          <a href="#" class="logout-link" onclick="logoutUser()"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Logout</a>
+        </nav>
+      </div>
+    </aside>
+
+    <main class="main-content">
+
+      <!-- ══════════════════════════════════════════════════════
+           OVERVIEW TAB
+           ══════════════════════════════════════════════════════ -->
+      <section id="overview" class="active">
+
+        <!-- Hero Header -->
+        <div class="doctor-overview-hero">
+          <div class="doctor-hero-content">
+            <p class="doctor-hero-greeting">
+              <i class="fas fa-stethoscope" aria-hidden="true"></i>
+              Medical Professional Portal
+            </p>
+            <h1 id="doctor-welcome-name" class="doctor-hero-name">Welcome, Doctor</h1>
+            <p class="doctor-hero-subtitle">
+              Manage your schedule, review upcoming appointments, and monitor patient visits from your personal dashboard.
+            </p>
+          </div>
+          <div class="doctor-hero-actions">
+            <div class="doctor-hero-badge">
+              <span class="status-dot-inline"></span>
+              <span>System Online</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="refreshDoctorPage()" id="doctor-refresh-btn">
+              <i class="fas fa-rotate" aria-hidden="true"></i> Refresh
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="doctor-stats-grid">
+          <!-- Total Appointments -->
+          <div class="doctor-stat-card clickable" data-tab="appointments"
+               style="--card-accent: linear-gradient(90deg, var(--primary), #0ea5e9); --icon-bg: rgba(34,211,238,0.1); --icon-color: var(--primary); --icon-border: rgba(34,211,238,0.15);">
+            <div class="doctor-stat-icon">
+              <i class="fas fa-calendar-days" aria-hidden="true"></i>
+            </div>
+            <div class="doctor-stat-value" id="total-appts">0</div>
+            <div class="doctor-stat-label">Total Appointments</div>
+          </div>
+
+          <!-- Pending -->
+          <div class="doctor-stat-card clickable" data-tab="appointments"
+               style="--card-accent: linear-gradient(90deg, #f59e0b, #fbbf24); --icon-bg: rgba(245,158,11,0.1); --icon-color: #f59e0b; --icon-border: rgba(245,158,11,0.15);">
+            <div class="doctor-stat-icon">
+              <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+            </div>
+            <div class="doctor-stat-value" id="pending-appts">0</div>
+            <div class="doctor-stat-label">Pending Requests</div>
+          </div>
+
+          <!-- Confirmed -->
+          <div class="doctor-stat-card clickable" data-tab="appointments"
+               style="--card-accent: linear-gradient(90deg, #22c55e, #16a34a); --icon-bg: rgba(34,197,94,0.1); --icon-color: #22c55e; --icon-border: rgba(34,197,94,0.15);">
+            <div class="doctor-stat-icon">
+              <i class="fas fa-circle-check" aria-hidden="true"></i>
+            </div>
+            <div class="doctor-stat-value" id="confirmed-appts">0</div>
+            <div class="doctor-stat-label">Confirmed Bookings</div>
+          </div>
+
+          <!-- Availability -->
+          <div class="doctor-stat-card"
+               style="--card-accent: linear-gradient(90deg, #a78bfa, #7c3aed); --icon-bg: rgba(167,139,250,0.1); --icon-color: #a78bfa; --icon-border: rgba(167,139,250,0.15);">
+            <div class="doctor-stat-icon" id="avail-status-icon">
+              <i class="fas fa-circle" aria-hidden="true"></i>
+            </div>
+            <div class="doctor-stat-value" id="avail-status-text" style="font-size: 1.3rem; line-height: 1.4;">Available</div>
+            <div class="doctor-stat-label">Booking Status</div>
+          </div>
+        </div>
+
+        <!-- Info Row -->
+        <div class="doctor-info-row">
+
+          <!-- Availability Toggle Card -->
+          <div class="doctor-info-card">
+            <h3 class="doctor-info-card-title">
+              <i class="fas fa-lock" aria-hidden="true"></i>
+              Availability Status
+            </h3>
+            <p class="desc">
+              When marked as unavailable, patients will not be able to book new appointments with you.
+            </p>
+            <div class="doctor-avail-toggle-row">
+              <span class="doctor-avail-label" id="avail-switch-label">I am available for bookings</span>
+              <label class="switch">
+                <input type="checkbox" id="avail-toggle-switch" onchange="handleAvailabilityToggle()" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Account Info Card -->
+          <div class="doctor-info-card">
+            <h3 class="doctor-info-card-title">
+              <i class="fas fa-user-doctor" aria-hidden="true"></i>
+              Account Info
+            </h3>
+            <div>
+              <div class="doctor-account-row">
+                <span class="key">Role</span>
+                <span class="val">Medical Specialist</span>
+              </div>
+              <div class="doctor-account-row">
+                <span class="key">Email</span>
+                <span class="val" id="doctor-profile-email">—</span>
+              </div>
+              <div class="doctor-account-row">
+                <span class="key">System</span>
+                <span class="val online">
+                  <i class="fas fa-circle" style="font-size: 0.5rem;" aria-hidden="true"></i>
+                  Synced &amp; Online
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           APPOINTMENTS TAB
+           ══════════════════════════════════════════════════════ -->
+      <section id="appointments">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="doctor-section-header">
+            <div class="doctor-section-header-left">
+              <h2 class="doctor-section-title">
+                <i class="fas fa-calendar-days" aria-hidden="true"></i>
+                My Appointments
+              </h2>
+              <p class="doctor-section-subtitle">Accept or reject patient booking requests and manage your visit workflow.</p>
+            </div>
+          </div>
+          <div class="table-controls">
+            <div class="search-box">
+              <input type="text" id="doctor-appt-search" placeholder="Search by patient, notes..." onkeyup="filterDoctorAppointments()" />
+            </div>
+            <div class="filter-group">
+              <label for="doctor-status-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Status:</label>
+              <select id="doctor-status-filter" onchange="filterDoctorAppointments()">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <div id="appointments-container">
+              <p style="color: var(--text-secondary); text-align: center; padding: var(--s8)">Loading appointments...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           SCHEDULE TAB
+           ══════════════════════════════════════════════════════ -->
+      <section id="schedule">
+        <div class="schedule-outer-card">
+          <div class="doctor-section-header">
+            <div class="doctor-section-header-left">
+              <h2 class="doctor-section-title">
+                <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                My Working Schedule
+              </h2>
+              <p class="doctor-section-subtitle">Configure your working days, hours, breaks, and appointment settings.</p>
+            </div>
+          </div>
+          <div class="schedule-outer-body">
+            <!-- Hospital Operating Hours Notice (loaded dynamically) -->
+            <div class="schedule-hospital-notice" id="schedule-hospital-notice">
+              <i class="fas fa-hospital" aria-hidden="true"></i>
+              <span class="notice-label">Hospital Operating Hours:</span>
+              <span class="notice-hours" id="schedule-hospital-hours">Loading...</span>
+              <span class="notice-hint">Your schedule and breaks must remain within these hours.</span>
+            </div>
+            <div id="doctor-schedule-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           REVIEWS TAB
+           ══════════════════════════════════════════════════════ -->
+      <section id="reviews">
+        <div class="card" style="padding: 0; overflow: hidden">
+          <div class="doctor-section-header">
+            <div class="doctor-section-header-left">
+              <h2 class="doctor-section-title">
+                <i class="fas fa-star" aria-hidden="true"></i>
+                Patient Reviews
+              </h2>
+              <p class="doctor-section-subtitle">Anonymous feedback submitted by patients after completed visits.</p>
+            </div>
+          </div>
+          <div class="table-wrap" style="border: none; border-radius: 0">
+            <table>
+              <thead><tr><th>Rating</th><th>Comment</th><th>Review Date</th><th>Appointment Details</th></tr></thead>
+              <tbody id="doctor-reviews">
+                <tr><td colspan="4" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading reviews...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="../../assets/js/core/main.js?v=2"></script>
+  <script src="../../assets/js/pages/doctor-dashboard.js?v=2"></script>
+  <script src="../../assets/js/pages/settings.js?v=2"></script>
+  <script src="../../assets/js/modules/schedule.js?v=2"></script>
+  <script src="../../assets/js/modules/notifications.js?v=2"></script>
+</body>
+</html>
+
+

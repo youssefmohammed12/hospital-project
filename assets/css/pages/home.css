@@ -1,0 +1,366 @@
+/* ============================================================
+   HealthBridge — Home Page Redesign Styles
+   Urgent care banner, quick action cards, department grid,
+   operational hours table, and insurance partners logo board.
+   Used by: index.html
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   HERO EMERGENCY BADGE
+   ------------------------------------------------------------ */
+.hero-emergency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: var(--s6);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.05);
+}
+
+.hero-emergency-badge .pulse-dot {
+  width: 7px;
+  height: 7px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  animation: alertPulse 1.5s infinite;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.hero-emergency-badge a {
+  color: #ef4444;
+  text-decoration: underline;
+  margin-left: 2px;
+  transition: color var(--t);
+}
+
+.hero-emergency-badge a:hover {
+  color: #fca5a5;
+}
+
+@keyframes alertPulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+/* ------------------------------------------------------------
+   HERO QUICK ACTIONS
+   ------------------------------------------------------------ */
+.hero-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--s5);
+  max-width: 1100px;
+  margin: -4rem auto 0;
+  padding: 0 var(--s8);
+  position: relative;
+  z-index: 5;
+}
+
+.action-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  box-shadow: var(--shadow-md);
+  transition: all var(--t);
+  text-align: left;
+}
+
+.action-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(34, 211, 238, 0.08);
+}
+
+.action-card.urgent:hover {
+  border-color: #ef4444;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.08);
+}
+
+.action-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-glow);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.action-card.urgent .action-icon {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.action-card h3 {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.action-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  flex-grow: 1;
+}
+
+.action-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  transition: gap var(--t);
+  margin-top: var(--s2);
+}
+
+.action-card.urgent .action-link {
+  color: #fca5a5;
+}
+
+.action-card:hover .action-link {
+  gap: var(--s2);
+}
+
+/* ------------------------------------------------------------
+   CLINICAL DEPARTMENTS EXPLORER
+   ------------------------------------------------------------ */
+.departments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--s5);
+  margin-top: var(--s8);
+}
+
+.dept-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s4);
+  text-align: center;
+  transition: all var(--t);
+  cursor: pointer;
+}
+
+.dept-card:hover {
+  border-color: var(--primary);
+  background: var(--bg-card);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(34, 211, 238, 0.05);
+}
+
+.dept-icon {
+  font-size: 2.2rem;
+  margin-bottom: var(--s3);
+  display: block;
+  transition: transform var(--t);
+}
+
+.dept-card:hover .dept-icon {
+  transform: scale(1.1);
+}
+
+.dept-card h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+}
+
+.dept-card span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------
+   OPERATIONAL HOURS & CLINIC INFO
+   ------------------------------------------------------------ */
+.hours-info-section {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: var(--s10);
+  align-items: center;
+}
+
+.hours-table-wrapper {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  box-shadow: var(--shadow-sm);
+}
+
+.hours-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.hours-table th {
+  padding-bottom: var(--s3);
+  border-bottom: 2px solid var(--border-light);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.hours-table td {
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.hours-table tr:last-child td {
+  border-bottom: none;
+}
+
+.hours-table td strong {
+  color: var(--primary);
+}
+
+.hours-table td .status-badge {
+  background: rgba(134, 239, 172, 0.12);
+  color: var(--success);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.info-details-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+
+.info-item {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+}
+
+.info-item-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.info-item h4 {
+  font-size: 0.95rem;
+  margin-bottom: var(--s1);
+  color: var(--text-primary);
+}
+
+.info-item p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------
+   HOSPITAL WORKING HOURS — Dynamic compact summary
+   Placed inside the Clinic Operating Hours card below the heading.
+   Loaded from php/get_hospital_settings.php
+   ------------------------------------------------------------ */
+.hospital-hours-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+  padding: var(--s2) var(--s4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  font-size: 0.85rem;
+}
+
+.hospital-hours-summary .summary-icon {
+  color: var(--primary);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.hospital-hours-summary .summary-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.hospital-hours-summary .summary-value {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+@media (max-width: 600px) {
+  .hospital-hours-summary {
+    flex-wrap: wrap;
+    gap: var(--s1);
+    padding: var(--s2) var(--s3);
+  }
+}
+
+/* ------------------------------------------------------------
+   INSURANCE PARTNERS
+   ------------------------------------------------------------ */
+.insurance-partners {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s10);
+  flex-wrap: wrap;
+  margin-top: var(--s8);
+}
+
+.partner-logo {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s6);
+  background: var(--bg-surface);
+  transition: all var(--t);
+  cursor: default;
+  user-select: none;
+  letter-spacing: 0.5px;
+}
+
+.partner-logo:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 4px 16px var(--primary-glow);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 992px) {
+  .hours-info-section {
+    grid-template-columns: 1fr;
+    gap: var(--s8);
+  }
+}
+
+@media (max-width: 768px) {
+  .urgent-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--s2);
+    margin-left: var(--s4);
+    margin-right: var(--s4);
+  }
+  .hero-quick-actions {
+    margin-top: var(--s8);
+  }
+}

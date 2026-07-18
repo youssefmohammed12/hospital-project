@@ -1,0 +1,328 @@
+/* ============================================================
+   HealthBridge — Services Page Styles
+   Category filters, service cards, CTA banner, and interactive FAQ
+   Used by: services.html
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   CATEGORY FILTER TABS (Pills)
+   ------------------------------------------------------------ */
+.services-filters {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-bottom: var(--s10);
+  margin-top: var(--s4);
+}
+
+.filter-pill {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  padding: var(--s3) var(--s6);
+  border-radius: var(--r-full);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t);
+}
+
+.filter-pill:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+  background: var(--primary-subtle);
+  transform: translateY(-1px);
+}
+
+.filter-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--bg-base);
+  font-weight: 600;
+  box-shadow: var(--shadow-glow);
+}
+
+/* ------------------------------------------------------------
+   SERVICES CARD GRID
+   ------------------------------------------------------------ */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--s6);
+  margin-bottom: var(--s16);
+}
+
+.service-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s6);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: all var(--t);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Color indicators based on category */
+.service-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--primary);
+  opacity: 0.8;
+  transition: opacity var(--t);
+}
+
+.service-card[data-category="specialist"]::after {
+  background: var(--warning);
+}
+
+.service-card[data-category="diagnostics"]::after {
+  background: var(--success);
+}
+
+.service-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(34, 211, 238, 0.08);
+}
+
+.service-card[data-category="specialist"]:hover {
+  border-color: var(--warning);
+  box-shadow: 0 12px 30px rgba(250, 204, 21, 0.08);
+}
+
+.service-card[data-category="diagnostics"]:hover {
+  border-color: var(--success);
+  box-shadow: 0 12px 30px rgba(134, 239, 172, 0.08);
+}
+
+/* Service Icon and Header */
+.service-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--primary-glow);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: var(--s4);
+  transition: transform var(--t);
+}
+
+.service-card:hover .service-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.service-card h3 {
+  font-size: 1.15rem;
+  margin-bottom: var(--s3);
+}
+
+.service-card p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  flex-grow: 1;
+  margin-bottom: var(--s5);
+}
+
+/* Card Action Footer */
+.service-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--s4);
+  margin-top: auto;
+}
+
+.service-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--primary-glow);
+  color: var(--primary);
+}
+
+.service-card[data-category="specialist"] .service-badge {
+  background: rgba(250, 204, 21, 0.1);
+  color: var(--warning);
+}
+
+.service-card[data-category="diagnostics"] .service-badge {
+  background: rgba(134, 239, 172, 0.1);
+  color: var(--success);
+}
+
+.service-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  transition: gap var(--t);
+}
+
+.service-card[data-category="specialist"] .service-link {
+  color: var(--warning);
+}
+
+.service-card[data-category="diagnostics"] .service-link {
+  color: var(--success);
+}
+
+.service-card:hover .service-link {
+  gap: var(--s2);
+}
+
+/* Filtering animation */
+.service-card.hide {
+  display: none;
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.service-card.show {
+  animation: fadeInCard 0.4s ease forwards;
+}
+
+@keyframes fadeInCard {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ------------------------------------------------------------
+   CTA BANNER
+   ------------------------------------------------------------ */
+.services-cta {
+  background: radial-gradient(circle at 100% 0%, var(--primary-glow) 0%, transparent 60%), var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s10) var(--s8);
+  text-align: center;
+  margin-bottom: var(--s16);
+  position: relative;
+  overflow: hidden;
+}
+
+.services-cta h2 {
+  font-size: 1.8rem;
+  margin-bottom: var(--s3);
+}
+
+.services-cta p {
+  max-width: 600px;
+  margin: 0 auto var(--s6);
+}
+
+/* ------------------------------------------------------------
+   FAQ SECTION
+   ------------------------------------------------------------ */
+.faq-section {
+  max-width: 800px;
+  margin: 0 auto var(--s12);
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  margin-top: var(--s8);
+}
+
+.faq-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: all var(--t);
+}
+
+.faq-card:hover {
+  border-color: var(--border);
+}
+
+.faq-question {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: var(--s5) var(--s6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s4);
+  cursor: pointer;
+  transition: color var(--t);
+}
+
+.faq-question:hover {
+  color: var(--primary);
+}
+
+.faq-toggle-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  transition: transform var(--t), color var(--t);
+}
+
+.faq-card:hover .faq-toggle-icon {
+  color: var(--primary);
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 var(--s6);
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+}
+
+/* Open State */
+.faq-card.open {
+  border-color: var(--border);
+  background: var(--bg-card);
+}
+
+.faq-card.open .faq-question {
+  color: var(--primary);
+}
+
+.faq-card.open .faq-toggle-icon {
+  transform: rotate(45deg);
+  color: var(--primary);
+}
+
+.faq-card.open .faq-answer {
+  max-height: 200px; /* Safe upper bound */
+  opacity: 1;
+  padding-bottom: var(--s5);
+}

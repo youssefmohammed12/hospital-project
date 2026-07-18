@@ -1,0 +1,84 @@
+/* ============================================================
+   HealthBridge — Modal Fixes & Enhancements
+   Improves scroll behavior, outside-click close, Escape key close.
+   ============================================================ */
+
+/* ── Overlay improvements ── */
+.modal-overlay {
+  overflow-y: auto; /* Allow scrolling on overlay when modal is tall */
+}
+
+/* ── Modal scroll container ── */
+.modal {
+  max-height: 85vh; /* Never exceed viewport */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Outer modal doesn't scroll — inner body does */
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--s6);
+  flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto; /* Scroll only the body */
+  padding-right: var(--s2); /* Space for scrollbar */
+  min-height: 0;
+}
+
+.modal-footer {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s4);
+  flex-shrink: 0; /* Prevent footer from shrinking */
+  padding-top: var(--s4);
+}
+
+/* When modal has a fixed header/body/footer structure */
+.modal-flex {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
+/* ── Visit Note Modal specific ── */
+#vn-modal .modal,
+#mr-edit-modal .modal,
+#rating-modal-overlay .modal {
+  max-height: 85vh;
+  overflow: hidden;
+}
+
+#vn-modal .modal > *:not(form),
+#mr-edit-modal .modal > *:not(form) {
+  flex-shrink: 0;
+}
+
+#vn-form,
+#mr-edit-form {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: var(--s2);
+  min-height: 0;
+}
+
+#vn-form .form-group:last-child,
+#mr-edit-form .form-group:last-child {
+  margin-bottom: var(--s4);
+}
+
+/* ── Fix for existing modals that already have fixed padding ── */
+/* These modals have their own header/footer structure */
+#rating-modal-overlay .modal {
+  padding: var(--s8);
+}
+
+/* ── Prevent body scroll when any modal is open ── */
+body.modal-open {
+  overflow: hidden;
+}

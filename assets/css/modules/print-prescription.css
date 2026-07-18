@@ -1,0 +1,408 @@
+/* ============================================================
+   HealthBridge — Standalone Prescription Print Stylesheet
+   Used only by php/print_prescription.php.
+   No dashboard dependencies. Optimized for A4, PDF, B&W printing.
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Sora", "Segoe UI", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #000;
+  background: #fff;
+  padding: 20px 30px;
+  max-width: 210mm;
+  margin: 0 auto;
+}
+
+/* ── Hospital Header ─────────────────────────────────────── */
+.print-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 3px solid #0ea5e9;
+}
+
+.print-logo {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.print-logo-text h1 {
+  font-size: 18pt;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+}
+
+.print-logo-text p {
+  font-size: 8pt;
+  color: #555;
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+
+/* ── Meta Row ────────────────────────────────────────────── */
+.print-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #ccc;
+}
+
+.print-rx-id {
+  font-family: "Courier New", monospace;
+  font-size: 12pt;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #0ea5e9;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.print-date {
+  font-size: 9pt;
+  color: #555;
+  margin-top: 4px;
+}
+
+.print-status {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 99px;
+  font-size: 9pt;
+  font-weight: 600;
+  border: 1.5px solid;
+}
+
+.print-status-active {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.print-status-completed {
+  border-color: #16a34a;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+.print-status-cancelled {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+/* ── Info Grid ───────────────────────────────────────────── */
+.print-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.print-info-box {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.print-info-box h3 {
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #0ea5e9;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.print-info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 9pt;
+}
+
+.print-info-label {
+  color: #666;
+  flex-shrink: 0;
+}
+
+.print-info-value {
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ── Medications Section ─────────────────────────────────── */
+.print-meds-section {
+  margin-bottom: 20px;
+}
+
+.print-meds-title {
+  font-size: 11pt;
+  font-weight: 700;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #ccc;
+}
+
+.print-meds-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.print-meds-table th {
+  background: #f3f4f6;
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #555;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  text-align: left;
+}
+
+.print-meds-table td {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  font-size: 9pt;
+  vertical-align: top;
+}
+
+.print-meds-table .med-name {
+  font-weight: 700;
+  font-size: 9.5pt;
+}
+
+/* ── Notes Section ───────────────────────────────────────── */
+.print-notes {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+}
+
+.print-notes h3 {
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #0ea5e9;
+  margin-bottom: 6px;
+}
+
+.print-notes p {
+  font-size: 9pt;
+  color: #333;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* ── Signature Section ───────────────────────────────────── */
+.print-signature {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 2px solid #ccc;
+}
+
+.print-signature-left h3 {
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #0ea5e9;
+  margin-bottom: 4px;
+}
+
+.print-signature-name {
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.print-signature-details {
+  font-size: 9pt;
+  color: #555;
+  margin-top: 2px;
+}
+
+.print-signature-line {
+  width: 200px;
+  border-top: 1px solid #999;
+  margin-top: 16px;
+  padding-top: 4px;
+  font-size: 8pt;
+  color: #666;
+  text-align: center;
+}
+
+.print-signature-right {
+  text-align: right;
+  font-size: 8pt;
+  color: #666;
+}
+
+/* ── Return Button ───────────────────────────────────────── */
+.print-return {
+  text-align: center;
+  margin-top: 30px;
+  padding: 16px;
+}
+
+.print-return a {
+  display: inline-block;
+  padding: 10px 24px;
+  background: #0ea5e9;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 10pt;
+  font-weight: 600;
+}
+
+.print-return a:hover {
+  background: #0284c7;
+}
+
+.print-return p {
+  margin-top: 8px;
+  font-size: 8pt;
+  color: #666;
+}
+
+/* ── Cancellation Reason ─────────────────────────────────── */
+.print-cancel-reason {
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.print-cancel-reason strong {
+  color: #dc2626;
+  font-size: 8pt;
+}
+
+.print-cancel-reason p {
+  margin-top: 4px;
+  color: #333;
+  font-size: 9pt;
+  white-space: pre-wrap;
+}
+
+/* ── Updated Date ────────────────────────────────────────── */
+.print-updated {
+  font-size: 8pt;
+  color: #666;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+/* ============================================================
+   PRINT @media (for browser print)
+   ============================================================ */
+@media print {
+  @page {
+    margin: 15mm 12mm;
+    size: A4 portrait;
+  }
+
+  body {
+    padding: 0;
+    font-size: 10pt;
+  }
+
+  .print-return {
+    display: none !important;
+  }
+
+  .print-logo {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-meds-table th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-status-active,
+  .print-status-completed,
+  .print-status-cancelled {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-cancel-reason {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: #000 !important;
+  }
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+
+  .print-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .print-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .print-meta {
+    flex-direction: column;
+  }
+
+  .print-meds-table th,
+  .print-meds-table td {
+    font-size: 8pt;
+    padding: 4px 6px;
+  }
+
+  .print-signature {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

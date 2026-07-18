@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Explore HealthBridge services — general practice, specialized therapies, imaging, pathology, and online appointment booking."
+    />
+    <title>Our Services — HealthBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css?v=2" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="assets/css/pages/services.css?v=2" />
+    <link rel="stylesheet" href="assets/css/pages/settings.css?v=2" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+      <div class="nav-container">
+        <a href="index.html" class="logo">
+          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+          <span>HealthBridge</span>
+        </a>
+        <div class="nav-row">
+          <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="doctors.html">Doctors</a></li>
+            <li><a href="services.html" class="active">Services</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+          <div class="nav-actions" id="auth-links">
+            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
+            <a href="pages/auth/login.html#signup" class="btn btn-primary btn-sm"
+              >Sign Up</a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Header -->
+    <section
+      class="hero hero-sm has-bg"
+      style="
+        background-image: url(&quot;https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=1600&q=80&quot;);
+      "
+    >
+      <div class="hero-content">
+        <h1>Our Medical <span>Services</span></h1>
+        <p>
+          Bridging the gap to professional clinical care, diagnostic accuracy,
+          and wellness solutions.
+        </p>
+      </div>
+    </section>
+
+    <!-- Services Offerings -->
+    <section class="section">
+      <div style="max-width: 1200px; margin: 0 auto">
+        <h2 class="section-title">Comprehensive <span>Healthcare</span></h2>
+        <p class="section-subtitle">
+          Select a category below to filter our clinical departments and
+          offerings.
+        </p>
+
+        <!-- Category Filter Pills -->
+        <div class="services-filters fade-in">
+          <button class="filter-pill active" data-filter="all">
+            All Services
+          </button>
+          <button class="filter-pill" data-filter="general">
+            General Care
+          </button>
+          <button class="filter-pill" data-filter="specialist">
+            Specialized Care
+          </button>
+          <button class="filter-pill" data-filter="diagnostics">
+            Diagnostics &amp; Wellness
+          </button>
+        </div>
+
+        <!-- Services Cards Grid -->
+        <div class="services-grid fade-in-stagger">
+          <!-- Service 1: General Practitioner -->
+          <div class="service-card" data-category="general">
+            <div class="service-icon"><i class="fas fa-stethoscope" aria-hidden="true"></i></div>
+            <h3>General Consultation</h3>
+            <p>
+              Comprehensive health assessments, medical prescriptions, and
+              family healthcare guidance from experienced general practitioners.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">General Care</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+
+          <!-- Service 2: Pediatrics -->
+          <div class="service-card" data-category="general">
+            <div class="service-icon"><i class="fas fa-baby" aria-hidden="true"></i></div>
+            <h3>Pediatrics Department</h3>
+            <p>
+              Loving and expert clinical care for infants, children, and
+              adolescents, covering vaccinations, growth tracking, and illness
+              treatment.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">General Care</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+
+          <!-- Service 3: Cardiology -->
+          <div class="service-card" data-category="specialist">
+            <div class="service-icon"><i class="fas fa-heart-pulse" aria-hidden="true"></i></div>
+            <h3>Cardiovascular Care</h3>
+            <p>
+              Advanced heart assessments, ECG analysis, hypertension management,
+              and expert consultations for long-term cardiovascular health.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">Specialist</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+
+          <!-- Service 4: Neurology -->
+          <div class="service-card" data-category="specialist">
+            <div class="service-icon"><i class="fas fa-brain" aria-hidden="true"></i></div>
+            <h3>Neurological Science</h3>
+            <p>
+              Diagnostic testing, evaluations, and customized therapies for
+              nervous system disorders, migraines, epilepsy, and cognitive
+              health.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">Specialist</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+
+          <!-- Service 5: Psychiatry & Therapy -->
+          <div class="service-card" data-category="specialist">
+            <div class="service-icon"><i class="fas fa-comments" aria-hidden="true"></i></div>
+            <h3>Mental Health Support</h3>
+            <p>
+              Compassionate therapy, counseling, stress management, and
+              psychiatric treatment designed to support emotional and mental
+              well-being.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">Specialist</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+
+          <!-- Service 6: Laboratory & Pathology -->
+          <div class="service-card" data-category="diagnostics">
+            <div class="service-icon"><i class="fas fa-vial" aria-hidden="true"></i></div>
+            <h3>Laboratory &amp; Diagnostics</h3>
+            <p>
+              Fast and precise blood tests, pathology diagnostics, urine
+              analyses, and comprehensive lab screenings using advanced
+              technology.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">Diagnostics</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+
+          <!-- Service 7: Radiology & Imaging -->
+          <div class="service-card" data-category="diagnostics">
+            <div class="service-icon"><i class="fas fa-x-ray" aria-hidden="true"></i></div>
+            <h3>Radiology &amp; Imaging</h3>
+            <p>
+              High-resolution X-rays, ultrasounds, MRI, and CT scan
+              interpretations by certified specialists to detect internal issues
+              early.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">Diagnostics</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+
+          <!-- Service 8: Preventive Care -->
+          <div class="service-card" data-category="diagnostics">
+            <div class="service-icon"><i class="fas fa-leaf" aria-hidden="true"></i></div>
+            <h3>Preventive Wellness</h3>
+            <p>
+              Proactive screening packages, nutrition counseling, life-style
+              checks, and preventive education to maintain a healthy and vibrant
+              lifestyle.
+            </p>
+            <div class="service-meta">
+              <span class="service-badge">Diagnostics</span>
+              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Banner -->
+    <section class="section" style="padding-top: 0">
+      <div style="max-width: 1200px; margin: 0 auto">
+        <div class="services-cta fade-in">
+          <h2>Need Immediate Medical Attention?</h2>
+          <p>
+            Log in or sign up to schedule an instant online consultation or book
+            an in-person appointment with one of our certified specialists.
+          </p>
+          <div style="display: flex; justify-content: center; gap: var(--s4)">
+            <a href="pages/auth/login.html" class="btn btn-primary">Book an Appointment</a>
+            <a href="contact.html" class="btn btn-outline">Contact Clinic</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section
+      class="section"
+      style="background: var(--bg-surface); padding: var(--s16) var(--s8)"
+    >
+      <div class="faq-section">
+        <h2 class="section-title">Frequently Asked <span>Questions</span></h2>
+        <p class="section-subtitle">
+          Find quick answers to common questions about booking, payments, and
+          appointments.
+        </p>
+
+        <div class="faq-list fade-in-stagger">
+          <!-- FAQ 1 -->
+          <div class="faq-card">
+            <button class="faq-question" aria-expanded="false">
+              <span>How do I book an appointment?</span>
+              <span class="faq-toggle-icon">&plus;</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Simply log in to your account, search for a specialist under the
+                "Doctors" tab, choose an available time slot, and click "Book".
+                If you don't have an account, click "Sign Up" in the navigation
+                bar to register.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 2 -->
+          <div class="faq-card">
+            <button class="faq-question" aria-expanded="false">
+              <span>Can I cancel or reschedule my appointment?</span>
+              <span class="faq-toggle-icon">&plus;</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Yes, you can cancel or reschedule appointments directly from
+                your patient dashboard. Please go to the 'Appointments' tab in
+                your dashboard, locate the appointment you wish to change, and
+                select either cancel or reschedule. Make sure to do this at
+                least 24 hours in advance.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 3 -->
+          <div class="faq-card">
+            <button class="faq-question" aria-expanded="false">
+              <span>Do you accept health insurance?</span>
+              <span class="faq-toggle-icon">&plus;</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Yes! We partner with major healthcare insurance providers. You
+                can add your insurance policy details during check-in or update
+                your profile from your patient dashboard to see if your plan
+                covers your selected doctor's consultation.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 4 -->
+          <div class="faq-card">
+            <button class="faq-question" aria-expanded="false">
+              <span>Are online consultations available?</span>
+              <span class="faq-toggle-icon">&plus;</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Absolutely. Many of our doctors support remote video
+                consultations. You can select the video call option when
+                scheduling your appointment from the dashboard. Once booked, you
+                will find the video link in your patient dashboard under the
+                appointments tab.
+              </p>
+            </div>
+          </div>
+
+          <!-- FAQ 5 -->
+          <div class="faq-card">
+            <button class="faq-question" aria-expanded="false">
+              <span>How can I access my lab test results?</span>
+              <span class="faq-toggle-icon">&plus;</span>
+            </button>
+            <div class="faq-answer">
+              <p>
+                Once your lab tests are completed by our diagnostics team, the
+                results are securely uploaded directly to your HealthBridge
+                patient dashboard. You will receive an email and notification as
+                soon as they are ready to view or download.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <!-- Brand -->
+        <div class="footer-brand">
+          <a href="index.html" class="footer-logo">
+            <span style="font-size: 1.3rem"><i class="fas fa-hospital" aria-hidden="true"></i></span>
+            <span>HealthBridge</span>
+          </a>
+          <p>
+            Modern healthcare at your fingertips. Book appointments, track your
+            health, and connect with certified medical professionals — anytime,
+            anywhere.
+          </p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="footer-nav-cols">
+          <div class="footer-nav-col">
+            <div class="footer-nav-label">Company</div>
+            <ul class="footer-nav-list">
+              <li><a href="index.html">Home</a></li>
+              <li><a href="about.html">About Us</a></li>
+              <li><a href="contact.html">Contact Us</a></li>
+            </ul>
+          </div>
+          <div class="footer-nav-col">
+            <div class="footer-nav-label">Services</div>
+            <ul class="footer-nav-list">
+              <li><a href="doctors.html">Find a Doctor</a></li>
+              <li><a href="services.html">Our Services</a></li>
+              <li><a href="pages/auth/login.html#signup">Get Started</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="footer-contact">
+          <div class="footer-contact-label">Get in Touch</div>
+          <div class="footer-contact-items">
+            <a href="tel:+12345678900">
+              <span>+1 (234) 567-890</span>
+              <span class="contact-icon"><i class="fas fa-phone" aria-hidden="true"></i></span>
+            </a>
+            <a href="mailto:support@healthbridge.com">
+              <span>support@healthbridge.com</span>
+              <span class="contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+            </a>
+            <span>
+              <span>El-Nabawy El-Mohandes St, Faiyum, Egypt</span>
+              <span class="contact-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="footer-bottom">
+        <p>
+          &copy; 2026 HealthBridge. All rights reserved. Built for better
+          healthcare.
+        </p>
+        <div class="footer-socials">
+          <a href="#" aria-label="Twitter" title="Twitter">𝕏</a>
+          <a href="#" aria-label="Facebook" title="Facebook">f</a>
+          <a href="#" aria-label="Instagram" title="Instagram">◎</a>
+          <a href="#" aria-label="LinkedIn" title="LinkedIn">in</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/js/core/main.js?v=2"></script>
+    <script src="assets/js/pages/services.js?v=2"></script>
+  </body>
+</html>
+
+
+

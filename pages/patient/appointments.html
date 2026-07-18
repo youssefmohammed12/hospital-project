@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redirecting... — HealthBridge</title>
+  <script>
+    // Redirect patients to their unified dashboard, preserving hashes like #history
+    const hash = window.location.hash || '#book';
+    window.location.replace("dashboard.html" + hash);
+  </script>
+</head>
+<body>
+  <div style="font-family: 'Sora', sans-serif; text-align: center; margin-top: 15%; color: #7fb3d3; background-color: #070d1a; position: fixed; top: 0; left: 0; right: 0; bottom: 0; padding: 2rem;">
+    <h2 style="color: #e0f7fa;">Redirecting to your Dashboard...</h2>
+    <p style="margin-top: 1rem;">
+      If you are not redirected automatically, please <a href="dashboard.html#book" style="color: #22d3ee; text-decoration: underline;">click here</a>.
+    </p>
+  </div>
+</body>
+</html>
+
+

@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="HealthBridge — Book appointments with top doctors online."
+    />
+    <title>HealthBridge — Your Health Companion</title>
+    <link rel="stylesheet" href="assets/css/style.css?v=2" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="assets/css/pages/home.css?v=2" />
+    <link rel="stylesheet" href="assets/css/pages/settings.css?v=2" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+      <div class="nav-container">
+        <a href="index.html" class="logo">
+          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+          <span>HealthBridge</span>
+        </a>
+        <div class="nav-row" id="nav-menu">
+          <ul class="nav-links">
+            <li><a href="index.html" class="active">Home</a></li>
+            <li><a href="doctors.html">Doctors</a></li>
+            <li><a href="services.html">Services</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+          <div class="nav-actions" id="auth-links">
+            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
+            <a href="pages/auth/login.html#signup" class="btn btn-primary btn-sm"
+              >Sign Up</a
+            >
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section
+      class="hero has-bg"
+      style="
+        background-image: url(&quot;https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=1600&q=80&quot;);
+      "
+    >
+      <div class="hero-content fade-in">
+        <div class="hero-emergency-badge">
+          <span class="pulse-dot"></span>
+          <span
+            >ER Active 24/7:
+            <a href="tel:+12345678999">+1 (234) 567-8999</a></span
+          >
+        </div>
+        <h1>Your Health, Our <span>Priority</span></h1>
+        <p>
+          Book appointments with top-rated doctors in a simple, clear, and fast
+          way.
+        </p>
+        <div class="search-bar" style="margin-bottom: var(--s8)">
+          <input
+            type="text"
+            id="hero-search"
+            placeholder="Search doctors or specialties…"
+          />
+          <button onclick="window.location.href = 'doctors.html'">
+            Search
+          </button>
+        </div>
+        <div class="hero-actions">
+          <a
+            href="pages/patient/dashboard.html"
+            class="btn btn-primary"
+            style="font-size: 1rem; padding: var(--s4) var(--s8)"
+            >Get Started Free</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Actions Panel -->
+    <section class="hero-quick-actions">
+      <!-- Action 1 -->
+      <div class="action-card fade-in">
+        <div class="action-icon"><i class="fas fa-calendar-days" aria-hidden="true"></i></div>
+        <h3>Book an Appointment</h3>
+        <p>
+          Choose your doctor, pick a slot, and get instant booking confirmation
+          24/7.
+        </p>
+        <a href="pages/auth/login.html" class="action-link">Schedule Visit &rarr;</a>
+      </div>
+
+      <!-- Action 2 -->
+      <div class="action-card fade-in">
+        <div class="action-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+        <h3>Our Services</h3>
+        <p>
+          Explore our wide range of primary care, diagnostic screening, and
+          specialized clinics.
+        </p>
+        <a href="services.html" class="action-link">View Specialties &rarr;</a>
+      </div>
+
+      <!-- Action 3 -->
+      <div class="action-card urgent fade-in">
+        <div class="action-icon" style="color: #ef4444"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></div>
+        <h3>Urgent Helpline</h3>
+        <p>
+          Get in immediate contact with our clinical triage desk for severe
+          health situations.
+        </p>
+        <a href="tel:+12345678999" class="action-link" style="color: #fca5a5"
+          >Call +1 (234) 567-8999 &rarr;</a
+        >
+      </div>
+    </section>
+
+    <!-- Services -->
+    <section class="section">
+      <h2 class="section-title">What We <span>Offer</span></h2>
+      <p class="section-subtitle">
+        Comprehensive healthcare solutions designed for your convenience.
+      </p>
+      <div class="card-grid fade-in-stagger">
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-calendar-days" aria-hidden="true"></i></div>
+          <h3 style="margin-bottom: var(--s3)">Online Booking</h3>
+          <p>
+            Book appointments with top doctors instantly through our easy-to-use
+            platform, 24/7.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-comments" aria-hidden="true"></i></div>
+          <h3 style="margin-bottom: var(--s3)">24/7 Support</h3>
+          <p>
+            Get answers instantly with our dedicated support team and live chat
+            widget.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon"><i class="fas fa-user-doctor" aria-hidden="true"></i></div>
+          <h3 style="margin-bottom: var(--s3)">Doctor Profiles</h3>
+          <p>
+            Browse doctors by specialty, rating, experience, and availability
+            before booking.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Clinical Departments -->
+    <section class="section" style="padding-top: 0">
+      <h2 class="section-title">Clinical <span>Departments</span></h2>
+      <p class="section-subtitle">
+        World-class medical specialties staffed by board-certified physicians.
+      </p>
+      <div class="departments-grid fade-in-stagger" id="home-departments-grid">
+        <!-- Dynamically loaded from departments API via home.js -->
+      </div>
+    </section>
+
+    <!-- Operational Hours & Location -->
+    <section class="section" style="padding-top: 0">
+      <div class="hours-info-section">
+        <!-- Opening Hours Table -->
+        <div class="hours-table-wrapper fade-in">
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin-bottom: var(--s4);
+              color: var(--text-primary);
+            "
+          >
+            <i class="fas fa-clock" aria-hidden="true"></i> Clinic Operating Hours
+          </h3>
+          <!-- Dynamic Hospital Working Hours — compact summary below heading -->
+          <div class="hospital-hours-summary" id="hospital-working-hours">
+            <span class="summary-icon"><i class="fas fa-clock" aria-hidden="true"></i></span>
+            <span class="summary-label">Hospital Working Hours:</span>
+            <span class="summary-value" id="hospital-hours-text">Loading...</span>
+          </div>
+          <table class="hours-table">
+            <thead>
+              <tr>
+                <th>Department</th>
+                <th>Working Hours</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Emergency &amp; Trauma</td>
+                <td><strong>24 Hours / 7 Days</strong></td>
+                <td><span class="status-badge">Active</span></td>
+              </tr>
+              <tr>
+                <td>General Outpatient</td>
+                <td>Mon - Fri: 8:00 AM - 8:00 PM</td>
+                <td>Open</td>
+              </tr>
+              <tr>
+                <td>Specialist Clinics</td>
+                <td>Mon - Sat: 9:00 AM - 6:00 PM</td>
+                <td>Open</td>
+              </tr>
+              <tr>
+                <td>Diagnostics &amp; Labs</td>
+                <td>Daily: 7:00 AM - 10:00 PM</td>
+                <td>Open</td>
+              </tr>
+              <tr>
+                <td>In-House Pharmacy</td>
+                <td><strong>24 Hours / 7 Days</strong></td>
+                <td><span class="status-badge">Active</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Contact & Location details -->
+        <div class="info-details-wrapper fade-in">
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin-bottom: var(--s2);
+              color: var(--text-primary);
+            "
+          >
+            <i class="fas fa-location-dot" aria-hidden="true"></i> Hospital Location
+          </h3>
+          <p style="margin-bottom: var(--s4)">
+            Our central healthcare facility is located in the medical city,
+            accessible by public and private transit. Safe parking is available
+            on-site.
+          </p>
+
+          <div class="info-item">
+            <div class="info-item-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
+            <div>
+              <h4>Main Address</h4>
+              <p>123 Healthcare Ave, Medical City, Faiyum, Egypt</p>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-item-icon"><i class="fas fa-phone" aria-hidden="true"></i></div>
+            <div>
+              <h4>Contact Phone</h4>
+              <p>+1 (234) 567-890 &bull; +1 (234) 567-8999 (ER)</p>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-item-icon"><i class="fas fa-envelope" aria-hidden="true"></i></div>
+            <div>
+              <h4>Email Communications</h4>
+              <p>reception@healthbridge.com &bull; support@healthbridge.com</p>
+            </div>
+          </div>
+
+          <a
+            href="contact.html"
+            class="btn btn-outline"
+            style="margin-top: var(--s3); align-self: flex-start"
+            >View Interactive Map</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section
+      style="background: var(--bg-surface); padding: var(--s16) var(--s8)"
+    >
+      <div style="max-width: 1100px; margin: 0 auto">
+        <h2 class="section-title">What Patients <span>Say</span></h2>
+        <p class="section-subtitle">
+          Real feedback from our community of patients.
+        </p>
+        <div class="card-grid fade-in-stagger">
+          <div class="card">
+            <div
+              style="
+                color: var(--warning);
+                font-size: 1.1rem;
+                margin-bottom: var(--s3);
+              "
+            >
+              <i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i>
+            </div>
+            <p style="font-style: italic; margin-bottom: var(--s4)">
+              "Booking an appointment was incredibly easy. The doctor was
+              professional and the whole experience was seamless."
+            </p>
+            <p
+              style="
+                color: var(--primary);
+                font-weight: 600;
+                font-size: 0.85rem;
+              "
+            >
+              — Sarah M.
+            </p>
+          </div>
+          <div class="card">
+            <div
+              style="
+                color: var(--warning);
+                font-size: 1.1rem;
+                margin-bottom: var(--s3);
+              "
+            >
+              <i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i>
+            </div>
+            <p style="font-style: italic; margin-bottom: var(--s4)">
+              "HealthBridge saved me so much time. No more waiting on hold to
+              book appointments!"
+            </p>
+            <p
+              style="
+                color: var(--primary);
+                font-weight: 600;
+                font-size: 0.85rem;
+              "
+            >
+              — Ahmed K.
+            </p>
+          </div>
+          <div class="card">
+            <div
+              style="
+                color: var(--warning);
+                font-size: 1.1rem;
+                margin-bottom: var(--s3);
+              "
+            >
+              <i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="fas fa-star" aria-hidden="true"></i><i class="far fa-star" aria-hidden="true"></i>
+            </div>
+            <p style="font-style: italic; margin-bottom: var(--s4)">
+              "Great selection of specialists. I found a great cardiologist
+              within minutes. Highly recommend!"
+            </p>
+            <p
+              style="
+                color: var(--primary);
+                font-weight: 600;
+                font-size: 0.85rem;
+              "
+            >
+              — Fatima R.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Insurance Partners -->
+    <section class="section" style="padding-top: 0">
+      <h2 class="section-title">Accepted <span>Insurance</span></h2>
+      <p class="section-subtitle">
+        We partner with leading national and global insurance providers to
+        simplify your claims.
+      </p>
+      <div class="insurance-partners fade-in-stagger">
+        <div class="partner-logo">Bupa</div>
+        <div class="partner-logo">AXA</div>
+        <div class="partner-logo">MetLife</div>
+        <div class="partner-logo">Allianz</div>
+        <div class="partner-logo">Cigna</div>
+        <div class="partner-logo">Aetna</div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section
+      style="
+        text-align: center;
+        padding: var(--s16) var(--s8);
+        background: linear-gradient(
+          135deg,
+          var(--primary-subtle) 0%,
+          transparent 100%
+        );
+      "
+    >
+      <h2
+        style="font-size: clamp(1.6rem, 3vw, 2.4rem); margin-bottom: var(--s4)"
+      >
+        Ready to Take Control of Your Health?
+      </h2>
+      <p style="margin-bottom: var(--s8)">
+        Join thousands of patients who trust HealthBridge for their care.
+      </p>
+      <a
+        href="pages/auth/login.html#signup"
+        class="btn btn-primary"
+        style="padding: var(--s4) var(--s10); font-size: 1rem"
+        >Get Started Today — It's Free</a
+      >
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <!-- Brand -->
+        <div class="footer-brand">
+          <a href="index.html" class="footer-logo">
+            <span style="font-size: 1.3rem"><i class="fas fa-hospital" aria-hidden="true"></i></span>
+            <span>HealthBridge</span>
+          </a>
+          <p>
+            Modern healthcare at your fingertips. Book appointments, track your
+            health, and connect with certified medical professionals — anytime,
+            anywhere.
+          </p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="footer-nav-cols">
+          <div class="footer-nav-col">
+            <div class="footer-nav-label">Company</div>
+            <ul class="footer-nav-list">
+              <li><a href="index.html">Home</a></li>
+              <li><a href="about.html">About Us</a></li>
+              <li><a href="contact.html">Contact Us</a></li>
+            </ul>
+          </div>
+          <div class="footer-nav-col">
+            <div class="footer-nav-label">Services</div>
+            <ul class="footer-nav-list">
+              <li><a href="doctors.html">Find a Doctor</a></li>
+              <li><a href="services.html">Our Services</a></li>
+              <li><a href="pages/auth/login.html#signup">Get Started</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="footer-contact">
+          <div class="footer-contact-label">Get in Touch</div>
+          <div class="footer-contact-items">
+            <a href="tel:+12345678900">
+              <span>+1 (234) 567-890</span>
+              <span class="contact-icon"><i class="fas fa-phone" aria-hidden="true"></i></span>
+            </a>
+            <a href="mailto:support@healthbridge.com">
+              <span>support@healthbridge.com</span>
+              <span class="contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+            </a>
+            <span>
+              <span>El-Nabawy El-Mohandes St, Faiyum, Egypt</span>
+              <span class="contact-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="footer-bottom">
+        <p>
+          &copy; 2026 HealthBridge. All rights reserved. Built for better
+          healthcare.
+        </p>
+        <div class="footer-socials">
+          <a href="#" aria-label="Twitter" title="Twitter">𝕏</a>
+          <a href="#" aria-label="Facebook" title="Facebook">f</a>
+          <a href="#" aria-label="Instagram" title="Instagram">◎</a>
+          <a href="#" aria-label="LinkedIn" title="LinkedIn">in</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/js/core/main.js?v=2"></script>
+    <script src="assets/js/pages/home.js?v=2"></script>
+  </body>
+</html>
+
+
+
