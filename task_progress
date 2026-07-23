@@ -1,37 +1,29 @@
-# Audit Generalization + Schedule Redesign — Implementation Progress
+# Duplicate Appointment Bug - Investigation & Fix
 
-## Phase 1: Database Migration
-- [ ] Inspect admin_audit FK constraint
-- [ ] Create migration SQL (rename admin_id→actor_id, add actor_role, add description)
-- [ ] Update canonical database.sql
-- [ ] Run migration
+## Root Cause Analysis
 
-## Phase 2: AuditService (new universal service)
-- [ ] Create php/services/AuditService.php
-- [ ] Refactor AdminAuditService to extend AuditService (backward compatible)
+### PRIMARY ROOT CAUSE: SQL Cartesian Product in `PatientPortalService::getAppointmentTimeline()`
+- **File**: `services/PatientPortalService.php`
+- **Function**: `getAppointmentTimeline()`
+- **The Bug**: The SQL query uses `LEFT JOIN` on `prescriptions` (p) and `ratings` (r) tables. When an appointment has multiple related records in these tables, the JOIN creates duplicate rows for the same appointment. The PHP code iterates ALL rows without deduplication by `a.id`.
 
-## Phase 3: Add Audit Logging to Endpoints
-- [ ] update_doctor_schedule.php (admin + doctor roles)
-- [ ] toggle_doctor_status.php
-- [ ] toggle_patient_status.php
-- [ ] approve_appointment.php, decline_appointment.php, book_appointment.php
-- [ ] doctor_update_appointment.php
-- [ ] assign_doctor_department.php, update_doctor.php
-- [ ] add_doctor.php, delete_doctor.php
-- [ ] Update get_audit_log.php for actor_role support
+Example: 1 appointment × 2 prescriptions × 1 rating = 2 identical rows for that appointment
 
-## Phase 4: Schedule UI Redesign
-- [ ] Redesign schedule.js layout (pill-badge days, inline time selects, responsive grid)
-- [ ] Update schedule.css
-- [ ] Keep shared ScheduleManager for both doctor and admin
+### SECONDARY ROOT CAUSE: Double Rendering in `booking-wizard.js`
+- **File**: `assets/js/components/booking-wizard.js`
+- **Function**: `handleFormSubmit()`
+- **The Bug**: After successful booking, it does BOTH:
+  1. Optimistic UI: pushes tempAppt to AppointmentsPage.data + calls renderAppointments()
+  2. Calls onSuccess → AppointmentsPage.load() → API fetch → renderAppointments() again
 
-## Phase 5: Human-Readable Schedule History
-- [ ] Create renderScheduleDiff() in admin-doctor-profile.js
-- [ ] Add diff styles in admin-doctor-profile.css
+## Fixes Applied
 
-## Phase 6: Test
-- [ ] Admin schedule editing
-- [ ] Doctor schedule editing
-- [ ] Audit entries show correct actor/role
-- [ ] Only real changes logged (no false diffs)
-- [ ] No raw JSON shown
+### Fix 1: PatientPortalService.php - Deduplicate SQL with `GROUP BY a.id`
+Added `GROUP BY a.id` to prevent cartesian product from LEFT JOINs on prescriptions and ratings.
+
+### Fix 2: booking-wizard.js - Remove optimistic UI that causes double render
+Removed the optimistic UI insertion block that directly adds to AppointmentsPage.data and calls renderAppointments() before the API refresh reloads the data.
+
+## Files Modified
+- `services/PatientPortalService.php` ✅
+- `assets/js/components/booking-wizard.js` ✅

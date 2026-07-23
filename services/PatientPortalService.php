@@ -338,10 +338,10 @@ class PatientPortalService
                 dep.name AS department_name,
                 vw.status AS workflow_status,
                 vw.completed_at,
-                p.id AS prescription_id,
-                p.status AS prescription_status,
-                r.id AS rating_id,
-                r.stars AS rating_stars
+                MAX(p.id) AS prescription_id,
+                MAX(p.status) AS prescription_status,
+                MAX(r.id) AS rating_id,
+                MAX(r.stars) AS rating_stars
             FROM appointments a
             LEFT JOIN doctors d ON a.doctor_id = d.user_id
             LEFT JOIN departments dep ON a.department_id = dep.id
@@ -349,6 +349,7 @@ class PatientPortalService
             LEFT JOIN prescriptions p ON p.appointment_id = a.id
             LEFT JOIN ratings r ON r.appointment_id = a.id
             WHERE a.user_id = ?
+            GROUP BY a.id
             ORDER BY a.date DESC, a.time DESC
         ";
 

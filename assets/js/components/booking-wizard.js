@@ -776,28 +776,9 @@ const BookingWizard = {
         console.warn('Failed to cache booked slot:', e);
       }
 
-      // Insert a pending appointment into the local appointments list (optimistic UI)
-      try {
-        if (typeof AppointmentsPage !== 'undefined' && AppointmentsPage.data && Array.isArray(AppointmentsPage.data.appointments)) {
-          const tempId = result.data?.appointment?.id || `temp-${Date.now()}`;
-          const tempAppt = {
-            id: tempId,
-            doctor: data.doctor,
-            department: data.department,
-            date: data.date,
-            time: data.time,
-            time_range: data.time,
-            notes: data.notes || '',
-            category: 'pending',
-            status: 'Pending',
-            booked_at: new Date().toISOString(),
-          };
-          AppointmentsPage.data.appointments.unshift(tempAppt);
-          AppointmentsPage.renderAppointments();
-        }
-      } catch (e) {
-        console.warn('Failed to update appointments list locally:', e);
-      }
+      // The onSuccess callback will trigger AppointmentsPage.load() which fetches
+      // fresh data from the API and calls renderAppointments(). No optimistic UI
+      // insertion here to avoid double rendering of the same appointment.
 
       // Refresh slots UI so the just-booked slot is no longer selectable
       try {
