@@ -1185,6 +1185,81 @@
   background: rgba(59,130,246,0.05);
 }
 
+/* ── Featured Upcoming Appointment Card ──────────────────── */
+.featured-upcoming-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+  background: linear-gradient(135deg, rgba(34,211,238,0.06), rgba(59,130,246,0.04));
+  border: 1px solid rgba(34,211,238,0.2);
+  border-radius: var(--r-lg);
+  margin-bottom: var(--s4);
+}
+
+.featured-upcoming-card .featured-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: rgba(34,211,238,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.featured-upcoming-card .featured-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.featured-upcoming-card .featured-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.featured-upcoming-card .featured-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+}
+
+.featured-upcoming-card .featured-meta {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.featured-upcoming-card .featured-meta span {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.featured-upcoming-card .featured-meta span i {
+  color: var(--primary);
+  font-size: 0.72rem;
+}
+
+.featured-upcoming-card .featured-actions {
+  display: flex;
+  gap: var(--s2);
+  flex-shrink: 0;
+}
+
+.featured-upcoming-card .featured-actions .btn {
+  font-size: 0.78rem;
+  padding: 6px 14px;
+}
+
 /* ── Empty & Error States ────────────────────────────────── */
 .appointments-empty {
   text-align: center;

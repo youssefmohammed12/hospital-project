@@ -133,7 +133,8 @@ const AppointmentsPage = {
   // ── Render Single Appointment Card ─────────────────────────
   renderAppointmentCard(appt) {
     const statusColors = {
-      upcoming: "var(--success)",
+      upcoming: "var(--warning)",
+      confirmed: "var(--success)",
       completed: "var(--primary)",
       cancelled: "var(--danger)",
       missed: "var(--warning)",
@@ -142,7 +143,8 @@ const AppointmentsPage = {
     };
 
     const statusLabels = {
-      upcoming: "Confirmed",
+      upcoming: "Pending",
+      confirmed: "Confirmed",
       completed: "Completed",
       cancelled: "Cancelled",
       missed: "Missed",
@@ -182,7 +184,7 @@ const AppointmentsPage = {
 
     // Action buttons based on status
     let actions = "";
-    if (appt.category === "upcoming") {
+    if (appt.category === "upcoming" || appt.category === "confirmed") {
       actions = `
         <button class="btn btn-outline btn-sm" onclick="AppointmentsPage.viewDetails(${appt.id})">View Details</button>
         <button class="btn btn-outline btn-sm" onclick="AppointmentsPage.reschedule(${appt.id})">Reschedule</button>
@@ -205,9 +207,9 @@ const AppointmentsPage = {
       `;
     }
 
-    // Calendar button for upcoming appointments
+    // Calendar button for upcoming/confirmed appointments
     let calendarBtn = "";
-    if (appt.category === "upcoming") {
+    if (appt.category === "upcoming" || appt.category === "confirmed") {
       calendarBtn = `<button class="card-action-icon" onclick="AppointmentsPage.downloadICS(${appt.id})" title="Add to Calendar"><i class="fas fa-calendar-plus" aria-hidden="true"></i></button>`;
     }
 

@@ -9,7 +9,7 @@
  * Query Params:
  *   - page: Page number (default 1)
  *   - limit: Items per page (default 10, max 50)
- *   - status: Filter by status (upcoming|completed|cancelled|missed|all)
+ *   - status: Filter by status (upcoming|confirmed|completed|cancelled|missed|all)
  *   - search: Search term (doctor name, department, appointment ID)
  *
  * Response:
@@ -65,7 +65,10 @@ withDB(function (PDO $db) use ($userId, $status, $search, $limit, $offset) {
     // Flatten all appointments into a single array
     $allAppointments = [];
     foreach ($timeline['upcoming'] as $appt) {
-        $allAppointments[] = array_merge($appt, ['category' => 'upcoming']);
+        // Upcoming appointments with status 'Confirmed' get category 'confirmed'
+        // Others (Pending) stay as 'upcoming'
+        $cat = ($appt['status'] === 'Confirmed') ? 'confirmed' : 'upcoming';
+        $allAppointments[] = array_merge($appt, ['category' => $cat]);
     }
     foreach ($timeline['completed'] as $appt) {
         $allAppointments[] = array_merge($appt, ['category' => 'completed']);

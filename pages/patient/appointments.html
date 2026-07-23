@@ -45,6 +45,7 @@
         <div class="notif-filters" id="filter-chips">
           <button class="notif-filter-btn filter-chip active" data-filter="all">All</button>
           <button class="notif-filter-btn filter-chip" data-filter="upcoming">Upcoming</button>
+          <button class="notif-filter-btn filter-chip" data-filter="confirmed">Confirmed</button>
           <button class="notif-filter-btn filter-chip" data-filter="completed">Completed</button>
           <button class="notif-filter-btn filter-chip" data-filter="cancelled">Cancelled</button>
           <button class="notif-filter-btn filter-chip" data-filter="missed">Missed</button>
@@ -277,9 +278,10 @@
   <script src="../../assets/js/components/booking-wizard.js?v=1"></script>
   <script src="../../assets/js/pages/patient/appointments.js?v=1"></script>
   <script>
-    // ── Featured Upcoming Appointment Panel ───────────────────
-    // Wraps AppointmentsPage.renderAppointments to show the next
-    // upcoming appointment as a featured card above the list.
+    // ── Featured Next Appointment Panel ───────────────────────
+    // Displays the next confirmed (or upcoming pending) appointment
+    // as a compact summary card above the list. Shows nothing if there
+    // is no confirmed or pending appointment.
     document.addEventListener('DOMContentLoaded', function() {
       const origRender = AppointmentsPage.renderAppointments.bind(AppointmentsPage);
       AppointmentsPage.renderAppointments = function() {
@@ -291,7 +293,10 @@
           container.style.display = 'none';
           return;
         }
-        const upcoming = apps.find(a => a.category === 'upcoming');
+        // Prefer a confirmed appointment; fall back to pending (upcoming)
+        const confirmed = apps.find(a => a.category === 'confirmed');
+        const pending = apps.find(a => a.category === 'upcoming');
+        const upcoming = confirmed || pending;
         if (!upcoming) {
           container.style.display = 'none';
           return;

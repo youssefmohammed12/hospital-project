@@ -1,24 +1,22 @@
-# HealthBridge Bug Fixes - Investigation & Resolution
+# HealthBridge Final Fixes - Remaining Issues
 
-## Issue 1: Second Appointment Entry Without Proper UI
-**Root Cause**: The featured upcoming appointment component was rendering INSIDE the appointments list. The `pages/patient/appointments.html` has a script that wraps `AppointmentsPage.renderAppointments()` to also render a featured upcoming card. Combined with the now-removed optimistic UI insertion (booking-wizard.js), the featured card could appear mixed into the grid area.
-**Fix**: Already applied - removed optimistic UI insertion. The featured upcoming container (#featured-upcoming-container) is a separate element, but needs CSS verification.
+## Issue 1: Feature Upcoming "Next Appointment" Component
+- The `#featured-upcoming-container` is rendered by inline script in `pages/patient/appointments.html`
+- It uses CSS class `.featured-upcoming-card` which ONLY has responsive overrides in appointments.css — NO base styling exists
+- This is why it renders as raw HTML - the base card, icon, body, label, title, meta, and actions styles are completely missing
+- **Fix**: Add proper CSS base styles for `.featured-upcoming-card` in appointments.css
 
-## Issue 2: Workflow Status "Completed" Too Early
-**File**: `services/VisitWorkflowService.php`
-**Function**: `getOrCreateWorkflow()`
-**Bug**: When auto-creating a workflow for a Confirmed appointment in the past, it sets `workflow_status = 'Completed'` immediately with `completed_at = NOW()`. This makes any past Confirmed appointment appear as "Completed" to the patient, even though the doctor never actually completed the visit.
-**Fix**: Past Confirmed appointments should create workflow with `Waiting` status, not `Completed`. Only a doctor's explicit action should set `Completed`.
+## Issue 2: Missing "Confirmed" Filter
+- Need to add a `<button>` for "Confirmed" filter in filter-chips
+- API needs to handle `confirmed` status
+- JS needs to handle the filter
 
-## Issue 3: Incorrect Status Display in PatientPortalService
-**File**: `services/PatientPortalService.php`
-**Function**: `getAppointmentTimeline()`
-**Bug**: Past Confirmed appointments with `workflow_status = 'Completed'` are categorized as `completed` category. Combined with Issue 2, this shows "Completed" label immediately after doctor approval.
-**Fix**: Need to align with corrected workflow. Only appointment status 'Confirmed' should show as "Confirmed", not "Completed".
-
-## To Do:
-- [x] Remove optimistic UI insertion (booking-wizard.js)
-- [x] Fix SQL cartesian product (PatientPortalService.php) - RETAINED (valid fix)
-- [ ] Fix VisitWorkflowService::getOrCreateWorkflow() - don't auto-complete past appointments
-- [ ] Fix getAppointmentTimeline() to show "Confirmed" label correctly
-- [ ] Verify featured upcoming container doesn't interfere
+## Fixes Applied:
+- [x] Add CSS for featured-upcoming-card base styles
+- [x] Add "Confirmed" filter chip to appointments.html  
+- [x] Update appointments API to handle 'confirmed' filter
+- [x] Update AppointmentsPage JS to handle confirmed in status labels/colors
+- [x] Remove deprecated optimistic UI code in booking-wizard.js
+- [x] Fix SQL cartesian product in PatientPortalService.php
+- [x] Fix VisitWorkflowService auto-completion
+- [x] Fix PatientPortalService status categorization
