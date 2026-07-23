@@ -8,525 +8,125 @@
   <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=2" />
   <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/pages/admin.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/modules/medical-records.css?v=2" />
   <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/modules/prescription.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/modules/schedule.css?v=2" />
-  <script src="../../assets/js/modules/departments-loader.js?v=2"></script>
+  <script src="../../assets/js/core/main.js?v=2"></script>
+  <script src="../../assets/js/components/layout.js?v=2"></script>
 </head>
 <body>
-  <!-- Navbar -->
-  <nav class="navbar" id="navbar">
-    <div class="nav-container">
-      <a href="../../index.html" class="logo">
-        <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-        <span>HealthBridge</span>
-      </a>
-      <div class="nav-row">
-        <ul class="nav-links">
-          <li><a href="../../index.html">Home</a></li>
-          <li><a href="../../doctors.html">Doctors</a></li>
-          <li><a href="../../services.html">Services</a></li>
-          <li><a href="../../about.html">About</a></li>
-          <li><a href="../../contact.html">Contact</a></li>
-        </ul>
-        <div class="nav-actions" id="auth-links">
-          <a href="../auth/login.html" class="btn btn-outline btn-sm">Login</a>
-          <a href="../auth/login.html#signup" class="btn btn-primary btn-sm">Sign Up</a>
-        </div>
-      </div>
-    </div>
-  </nav>
-
+  <div id="navbar-container"></div>
   <div class="dashboard">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div>
-        <div class="sidebar-user">
-          <div class="sidebar-avatar-container">
-            <div class="sidebar-avatar"><i class="fas fa-user" aria-hidden="true"></i></div>
-            <div class="status-dot" title="System Status: Online"></div>
-          </div>
-          <h3 id="sidebar-name">Patient Account</h3>
-          <p id="sidebar-email">patient@healthbridge.com</p>
-        </div>
-        <nav class="sidebar-nav">
-          <a href="#overview" class="active"><i class="fas fa-chart-line" aria-hidden="true"></i> Overview</a>
-          <a href="#book"><i class="fas fa-calendar-days" aria-hidden="true"></i> Book Appointment</a>
-          <a href="#history"><i class="fas fa-scroll" aria-hidden="true"></i> Booking History</a>
-          <a href="#medical-record"><i class="fas fa-notes-medical" aria-hidden="true"></i> Medical Record</a>
-          <a href="#prescriptions"><i class="fas fa-prescription" aria-hidden="true"></i> Prescriptions</a>
-          <a href="#messages"><i class="fas fa-comments" aria-hidden="true"></i> Support Messages</a>
-        </nav>
-      </div>
-      <div class="sidebar-footer">
-        <nav class="sidebar-nav">
-          <a href="javascript:void(0)" onclick="openSettings()"><i class="fas fa-gear" aria-hidden="true"></i> Settings</a>
-          <a href="../../index.html"><i class="fas fa-globe" aria-hidden="true"></i> View Site</a>
-          <a href="#" class="logout-link" onclick="logoutUser()"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Logout</a>
-        </nav>
-      </div>
-    </aside>
-
-    <!-- Main -->
+    <div id="sidebar-container"></div>
     <main class="main-content">
-      <!-- Overview -->
-      <section id="overview" class="active">
-        <div class="flex-between flex-wrap gap-4" style="margin-bottom: var(--s8)">
-          <div>
-            <h2 id="patient-welcome-name" style="border: none; margin: 0; padding: 0"><i class="fas fa-chart-line" aria-hidden="true"></i> Patient Dashboard</h2>
-            <p style="margin-top: var(--s2)">Manage your health, bookings, and consult history.</p>
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="refreshPatientPage()"><i class="fas fa-rotate" aria-hidden="true"></i> Refresh</button>
+      <div class="portal-content">
+        <!-- Hero — Skeleton / Error / Content -->
+        <div id="hero-skeleton">
+          <div class="skeleton skeleton-card" style="height:180px"></div>
         </div>
-
-        <div class="stats-grid" style="margin-bottom: var(--s8)">
-          <div class="stat-card" data-tab="history">
-            <div style="display: flex; align-items: center; gap: var(--s4)">
-              <div class="stat-icon-wrapper"><i class="fas fa-calendar-days" aria-hidden="true"></i></div>
-              <div>
-                <h4 id="total-appointments" style="margin: 0; font-size: 1.85rem">0</h4>
-                <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary)">Total Bookings</p>
-              </div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div style="display: flex; align-items: center; gap: var(--s4)">
-              <div class="stat-icon-wrapper" style="color: var(--primary); background: rgba(34, 211, 238, 0.08); border-color: rgba(34, 211, 238, 0.15)"><i class="fas fa-star" aria-hidden="true"></i></div>
-              <div>
-                <h4 style="margin: 0; font-size: 1.85rem">4.8</h4>
-                <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary)">Patient Rating</p>
-              </div>
-            </div>
+        <div id="hero-error" style="display:none">
+          <div class="card" style="text-align:center;padding:var(--s6)">
+            <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:var(--danger);margin-bottom:var(--s3)"></i>
+            <h3>Failed to Load Dashboard</h3>
+            <p style="color:var(--text-secondary)">Please refresh or try again later.</p>
+            <button class="btn btn-primary" onclick="Dashboard.refresh()">Retry</button>
           </div>
         </div>
-
-        <div class="grid-2" style="margin-bottom: var(--s8)">
-          <div class="profile-card">
-            <h3 style="font-size: 1.15rem; margin-bottom: var(--s3)"><i class="fas fa-user" aria-hidden="true"></i> Profile Details</h3>
-            <div style="display: flex; flex-direction: column; gap: var(--s3); font-size: 0.9rem">
-              <div style="display: flex; justify-content: space-between">
-                <span style="color: var(--text-muted)">Full Name:</span>
-                <span id="patient-profile-name" style="font-weight: 500">-</span>
-              </div>
-              <div style="display: flex; justify-content: space-between">
-                <span style="color: var(--text-muted)">Email:</span>
-                <span id="patient-profile-email" style="font-weight: 500">-</span>
-              </div>
-              <div style="display: flex; justify-content: space-between">
-                <span style="color: var(--text-muted)">Role:</span>
-                <span style="font-weight: 500">Patient</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="card" style="background: var(--primary-subtle); border-color: var(--border); display: flex; flex-direction: column; justify-content: center; padding: var(--s6)">
-            <h3 style="font-size: 1.15rem; margin-bottom: var(--s1)">Need to see a doctor?</h3>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: var(--s4)">Book an appointment with our top specialists today.</p>
-            <button class="btn btn-primary" onclick="switchToBookTab()" style="align-self: flex-start">Book Now</button>
-          </div>
-        </div>
-
-        <section style="margin-bottom: 0">
-          <div class="flex-between" style="margin-bottom: var(--s4)">
-            <h3 style="font-size: 1.1rem"><i class="fas fa-calendar-days" aria-hidden="true"></i> Upcoming Visits</h3>
-            <button class="btn btn-outline btn-sm" onclick="switchToHistoryTab()">View History</button>
-          </div>
-          <div id="upcoming-appointments">
-            <p style="color: var(--text-secondary); text-align: center; padding: var(--s5)">No upcoming visits found.</p>
-          </div>
-        </section>
-      </section>
-
-      <!-- Book Appointment — Guided Booking Wizard -->
-      <section id="book">
-        <div class="booking-wizard">
-          <!-- LEFT COLUMN: Booking Steps -->
-          <div class="booking-wizard-left">
-            <div class="booking-header">
-              <h3><i class="fas fa-calendar-days" aria-hidden="true"></i> Book an Appointment</h3>
-              <p>Follow the steps below to schedule your consultation.</p>
-            </div>
-
-            <!-- Step Progress -->
-            <div class="booking-steps" role="progressbar" aria-label="Booking progress">
-              <div class="booking-step-indicator active" data-step="1" id="step-indicator-1">
-                <span class="step-num">1</span>
-                <span class="step-label">Department</span>
-              </div>
-              <div class="booking-step-indicator locked" data-step="2" id="step-indicator-2">
-                <span class="step-num">2</span>
-                <span class="step-label">Doctor</span>
-              </div>
-              <div class="booking-step-indicator locked" data-step="3" id="step-indicator-3">
-                <span class="step-num">3</span>
-                <span class="step-label">Date</span>
-              </div>
-              <div class="booking-step-indicator locked" data-step="4" id="step-indicator-4">
-                <span class="step-num">4</span>
-                <span class="step-label">Time</span>
-              </div>
-            </div>
-
-            <form id="booking-form" novalidate>
-              <!-- STEP 1: Department -->
-              <div class="booking-step active" data-step="1" id="booking-step-1">
-                <div class="step-card">
-                  <div class="booking-step-title"><i class="fas fa-building" aria-hidden="true"></i> Choose Department</div>
-                  <p class="booking-step-desc">Select the medical department you'd like to visit.</p>
-                  <div class="form-group">
-                    <label for="appt-department">Department</label>
-                    <select name="department" id="appt-department" class="form-select" required>
-                      <option value="">Select a department</option>
-                      <option value="Cardiology">Cardiology</option>
-                      <option value="Dermatology">Dermatology</option>
-                      <option value="Neurology">Neurology</option>
-                      <option value="Pediatrics">Pediatrics</option>
-                      <option value="Orthopedics">Orthopedics</option>
-                      <option value="Dentistry">Dentistry</option>
-                      <option value="Ophthalmology">Ophthalmology</option>
-                      <option value="Gynecology">Gynecology</option>
-                      <option value="General Practice">General Practice</option>
-                    </select>
-                  </div>
-                  <div class="booking-nav">
-                    <span></span>
-                    <button type="button" class="btn btn-primary" id="step-1-next" disabled onclick="goToStep(2)">
-                      Next <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                    </button>
-                  </div>
+        <div id="hero-content" style="display:none">
+          <div class="welcome-hero">
+            <div class="welcome-hero-top">
+              <div class="welcome-greeting">
+                <h1 id="welcome-greeting">Welcome, Patient</h1>
+                <p id="hero-subtitle"></p>
+                <div class="current-datetime" id="current-datetime"></div>
+                <div class="welcome-meta">
+                  <div class="welcome-meta-item"><span class="meta-label">Patient #</span><span class="meta-value" id="patient-number">-</span></div>
+                  <div class="welcome-meta-item"><span class="meta-label">Member Since</span><span class="meta-value" id="member-since">-</span></div>
+                  <div class="welcome-meta-item"><span class="meta-label">Hospital</span><span class="meta-value" id="hospital-status">-</span></div>
                 </div>
               </div>
-
-              <!-- STEP 2: Doctor -->
-              <div class="booking-step" data-step="2" id="booking-step-2">
-                <div class="step-card">
-                  <div class="booking-step-title"><i class="fas fa-user-doctor" aria-hidden="true"></i> Choose Doctor</div>
-                  <p class="booking-step-desc">Pick a specialist from the selected department.</p>
-                  <div class="form-group">
-                    <label for="appt-doctor">Doctor</label>
-                    <select name="doctor" id="appt-doctor" class="form-select" required>
-                      <option value="">Select a doctor</option>
-                    </select>
-                  </div>
-
-                  <!-- Doctor Preview Card -->
-                  <div id="doctor-preview-container"></div>
-
-                  <div class="booking-nav">
-                    <button type="button" class="btn btn-outline" onclick="goToStep(1)">
-                      <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
-                    </button>
-                    <button type="button" class="btn btn-primary" id="step-2-next" disabled onclick="goToStep(3)">
-                      Next <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
+              <div style="display:flex;align-items:center;gap:var(--s3);flex-shrink:0">
+                <button class="btn btn-primary" onclick="Dashboard.openBookModal()"><i class="fas fa-calendar-plus"></i> Book Appointment</button>
               </div>
-
-              <!-- STEP 3: Date -->
-              <div class="booking-step" data-step="3" id="booking-step-3">
-                <div class="step-card">
-                  <div class="booking-step-title"><i class="fas fa-calendar" aria-hidden="true"></i> Choose Date</div>
-                  <p class="booking-step-desc">Pick a date for your appointment.</p>
-                  <div class="form-group booking-date-wrapper">
-                    <i class="fas fa-calendar-alt date-icon" aria-hidden="true"></i>
-                    <input type="date" name="date" id="appt-date" required />
+            </div>
+            <div class="welcome-hero-bottom">
+              <div id="next-appt-hero" style="display:none">
+                <div class="next-appointment-hero">
+                  <div class="next-appt-header">
+                    <h3><i class="fas fa-calendar-days"></i> Next Appointment</h3>
+                    <span class="next-appt-countdown" id="next-appt-countdown"></span>
                   </div>
-                  <div class="booking-nav">
-                    <button type="button" class="btn btn-outline" onclick="goToStep(2)">
-                      <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
-                    </button>
-                    <button type="button" class="btn btn-primary" id="step-3-next" disabled onclick="goToStep(4)">
-                      Next <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- STEP 4: Time Slots -->
-              <div class="booking-step" data-step="4" id="booking-step-4">
-                <div class="step-card">
-                  <div class="booking-step-title"><i class="fas fa-clock" aria-hidden="true"></i> Choose Time</div>
-                  <p class="booking-step-desc">Select an available appointment time.</p>
-
-                  <!-- Duration Bar (shown once) -->
-                  <div class="slot-duration-bar" id="slot-duration-bar" style="display:none">
-                    <i class="fas fa-clock" aria-hidden="true"></i>
-                    <span>Appointment Duration: <strong id="slot-duration-text">30 Minutes</strong></span>
-                  </div>
-
-                  <!-- Period Tabs -->
-                  <div class="slot-tabs" id="slot-tabs" role="tablist" style="display:none">
-                    <button class="slot-tab active" role="tab" aria-selected="true" aria-controls="slot-panel-morning" id="slot-tab-morning" onclick="switchSlotTab('morning')" tabindex="0">
-                      <i class="fas fa-sun" aria-hidden="true"></i> Morning <span class="slot-tab-count" id="slot-count-morning">0</span>
-                    </button>
-                    <button class="slot-tab" role="tab" aria-selected="false" aria-controls="slot-panel-afternoon" id="slot-tab-afternoon" onclick="switchSlotTab('afternoon')" tabindex="-1">
-                      <i class="fas fa-cloud-sun" aria-hidden="true"></i> Afternoon <span class="slot-tab-count" id="slot-count-afternoon">0</span>
-                    </button>
-                    <button class="slot-tab" role="tab" aria-selected="false" aria-controls="slot-panel-evening" id="slot-tab-evening" onclick="switchSlotTab('evening')" tabindex="-1">
-                      <i class="fas fa-moon" aria-hidden="true"></i> Evening <span class="slot-tab-count" id="slot-count-evening">0</span>
-                    </button>
-                  </div>
-
-                  <!-- Slot Container (contains everything: skeleton, tabs, scroll area, slots) -->
-                  <div id="slot-picker-container">
-                    <p class="slot-placeholder" style="color:var(--text-muted);font-size:0.85rem">Select a doctor and date to see available slots.</p>
-                  </div>
-                  <input type="hidden" name="time" id="appt-time" value="" />
-
-                  <!-- Sticky Summary -->
-                  <div class="slot-summary-wrapper" id="slot-summary-wrapper">
-                    <div class="slot-summary-bar">
-                      <div class="slot-summary-info">
-                        <div class="slot-summary-label">Selected Appointment</div>
-                        <div class="slot-summary-details" id="slot-summary-details">
-                          <span class="slot-summary-detail" id="summary-doctor">
-                            <i class="fas fa-user-doctor" aria-hidden="true"></i>
-                            <span id="summary-doctor-name"></span>
-                          </span>
-                          <span class="slot-summary-detail" id="summary-date">
-                            <i class="fas fa-calendar" aria-hidden="true"></i>
-                            <span id="summary-date-text"></span>
-                          </span>
-                          <span class="slot-summary-detail" id="summary-time">
-                            <i class="fas fa-clock" aria-hidden="true"></i>
-                            <span id="summary-time-text"></span>
-                          </span>
-                        </div>
+                  <div class="next-appt-body">
+                    <div class="next-appt-avatar" id="next-appt-avatar">DR</div>
+                    <div class="next-appt-info">
+                      <h4 id="next-appt-doctor">-</h4>
+                      <span class="department-tag" id="next-appt-dept">-</span>
+                      <div class="appt-time-detail"><i class="fas fa-calendar"></i> <span id="next-appt-date"></span> at <span id="next-appt-time"></span></div>
+                      <div class="next-appt-actions">
+                        <button class="btn btn-primary btn-sm" id="view-appointment-btn" onclick="Dashboard.openBookModal()">View Details</button>
                       </div>
                     </div>
                   </div>
-
-                  <div class="booking-nav">
-                    <button type="button" class="btn btn-outline" onclick="goToStep(3)">
-                      <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="booking-submit-btn" disabled>Confirm Booking</button>
+                </div>
+              </div>
+              <div id="next-appt-empty" style="display:none">
+                <div class="next-appointment-hero" style="display:flex;align-items:center;justify-content:space-between;padding:var(--s6)">
+                  <span><i class="fas fa-calendar"></i> No upcoming appointments</span>
+                  <button class="btn btn-outline btn-sm" onclick="Dashboard.openBookModal()">Book Now</button>
+                </div>
+              </div>
+              <div id="primary-doctor-row" style="display:none">
+                <div class="primary-doctor-card">
+                  <h3><i class="fas fa-user-doctor"></i> Primary Doctor</h3>
+                  <div class="primary-doctor-body">
+                    <div class="primary-doc-avatar" id="primary-doc-avatar">DR</div>
+                    <div class="primary-doc-info">
+                      <h4 id="primary-doctor-name">-</h4>
+                      <p id="primary-doctor-specialty">-</p>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <!-- Hidden fields for backend -->
-              <div class="form-group" style="display:none">
-                <label for="appt-patient">Patient Name</label>
-                <input type="text" name="patientName" id="appt-patient" maxlength="100" />
-              </div>
-              <div class="form-group" style="display:none">
-                <label for="appt-notes">Notes</label>
-                <textarea name="notes" id="appt-notes" maxlength="1000"></textarea>
-              </div>
-            </form>
-          </div>
-
-          <!-- RIGHT COLUMN: Live Summary -->
-          <div class="booking-wizard-right">
-            <div class="booking-summary-card" id="booking-summary-card">
-              <div class="summary-empty" id="summary-empty-state">
-                <i class="fas fa-calendar-plus" aria-hidden="true"></i>
-                <h4>No appointment selected</h4>
-              </div>
-              <div id="summary-content" style="display:none">
-                <div class="summary-header">Appointment Summary</div>
-                <div id="summary-details-container"></div>
-                <button type="button" class="btn btn-primary booking-submit-btn" id="booking-summary-submit-btn" disabled>
-                  <i class="fas fa-check-circle" aria-hidden="true"></i> Confirm Booking
-                </button>
-              </div>
             </div>
           </div>
         </div>
-      </section>
 
-      <!-- History -->
-      <section id="history">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
-            <div>
-              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-scroll" aria-hidden="true"></i> Consultation History</h3>
-              <p style="font-size: 0.85rem; margin: 0">Review your past and current bookings.</p>
-            </div>
-          </div>
+        <!-- Health Alerts -->
+        <div class="section-header" id="health-alerts-container" style="display:none"><h2><i class="fas fa-exclamation-circle"></i> Health Alerts</h2></div>
+        <div id="health-alerts" class="health-alerts"></div>
 
-          <div class="table-controls">
-            <div class="search-box">
-              <input type="text" id="patient-appt-search" placeholder="Search by doctor, department, notes..." onkeyup="filterPatientAppointments()" />
-            </div>
-            <div class="filter-group">
-              <label for="patient-status-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Status:</label>
-              <select id="patient-status-filter" onchange="filterPatientAppointments()">
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
+        <!-- Health Snapshot -->
+        <div class="section-header"><h2><i class="fas fa-heart-pulse"></i> Health Snapshot</h2></div>
+        <div id="kpi-skeleton" style="display:block"><div class="kpi-grid-compact"><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div></div></div>
+        <div id="kpi-error" style="display:none"><div class="card" style="text-align:center;padding:var(--s4)"><p style="color:var(--text-muted)">Unable to load health snapshot.</p></div></div>
+        <div id="kpi-content" class="kpi-grid-compact" style="display:none"></div>
 
-          <div class="table-wrap" style="border: none; border-radius: 0">
-            <table>
-              <thead>
-                <tr>
-                  <th>Doctor</th>
-                  <th>Department</th>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="appointment-history">
-                <tr><td colspan="6" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading history...</td></tr>
-              </tbody>
-            </table>
-          </div>
-      </section>
-
-      <!-- Medical Record -->
-      <section id="medical-record">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
-            <div>
-              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-notes-medical" aria-hidden="true"></i> Medical Record</h3>
-              <p style="font-size: 0.85rem; margin: 0">View your complete medical history and health information.</p>
-            </div>
-          </div>
-          <div style="padding: var(--s6)">
-            <div id="medical-record-container"></div>
-          </div>
+        <!-- Patient Care Section Header -->
+        <div class="section-header">
+          <h2><i class="fa-solid fa-user-doctor"></i> Patient Care</h2>
         </div>
-      </section>
 
-      <!-- Prescriptions -->
-      <section id="prescriptions">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="flex-between flex-wrap gap-4" style="padding: var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
-            <div>
-              <h3 style="font-size: 1.25rem; margin-bottom: var(--s1); display: flex; align-items: center; gap: var(--s3)"><i class="fas fa-prescription" aria-hidden="true"></i> My Prescriptions</h3>
-              <p style="font-size: 0.85rem; margin: 0">View all prescriptions issued by your doctors.</p>
-            </div>
-          </div>
-
-          <div class="table-wrap" style="border: none; border-radius: 0">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date Issued</th>
-                  <th>Doctor</th>
-                  <th>Appointment Date</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Items</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="patient-prescriptions-list">
-                <tr><td colspan="7" class="text-center" style="padding: var(--s8); color: var(--text-muted)">Loading prescriptions...</td></tr>
-              </tbody>
-            </table>
-          </div>
+        <!-- Dashboard Widget Grid -->
+        <div class="dashboard-widget-grid">
+          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-user-md"></i> My Care Team</h3><a href="../../doctors.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="care-team-skeleton" style="height:100px"></div><div id="care-team-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No care team data.</p></div></div><div id="care-team-content" style="display:none"><div id="care-team-list"></div></div></div>
+          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-clock-rotate-left"></i> Recent Activity</h3><a href="history.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="recent-activity-skeleton" style="height:100px"></div><div id="recent-activity-empty" style="display:none"><div class="empty-state"><div class="empty-icon"><i class="fas fa-clock" aria-hidden="true"></i></div><h4>No recent activity</h4><p>Your recent appointments and medical updates will appear here.</p></div></div><div id="recent-activity-content" style="display:none"><div id="dashboard-timeline-items"></div></div></div>
+          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-prescription"></i> Latest Prescription</h3><a href="prescriptions.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="latest-rx-skeleton" style="height:100px"></div><div id="latest-rx-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No prescriptions.</p></div></div><div id="latest-rx-content" style="display:none"><div id="latest-rx-card"></div></div></div>
+          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-bell"></i> Notifications</h3><a href="notifications.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="recent-notif-skeleton" style="height:100px"></div><div id="recent-notif-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No notifications.</p></div></div><div id="recent-notif-content" style="display:none"><div id="recent-notif-list"></div></div></div>
+          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-download"></i> Downloads</h3><a href="downloads.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="recent-dl-skeleton" style="height:100px"></div><div id="recent-dl-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No downloads.</p></div></div><div id="recent-dl-content" style="display:none"><div id="recent-dl-list"></div></div></div>
+          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-chart-line"></i> Health Insights</h3><a href="insights.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="insights-preview-skeleton" style="height:100px"></div><div id="insights-preview-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No insights data.</p></div></div><div id="insights-preview-content" style="display:none"></div></div>
         </div>
-      </section>
-
-      <!-- Support Messages -->
-      <section id="messages">
-        <div style="display: flex; flex-direction: column; gap: var(--s6); max-width: 100%">
-
-          <div class="contact-form-wrapper" style="padding: var(--s6)">
-            <h3 style="font-size: 1.15rem; margin-bottom: var(--s2)"><i class="fas fa-comments" aria-hidden="true"></i> Contact Support</h3>
-            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: var(--s4)">Need help with your appointments, billing, or technical issues? Ask support directly.</p>
-
-            <form id="dashboard-message-form" novalidate>
-              <div class="grid-2">
-                <div class="form-group">
-                  <label for="dashboard-msg-phone">Phone Number</label>
-                  <input type="tel" id="dashboard-msg-phone" name="phone" placeholder="e.g. +1234567890" maxlength="20" />
-                </div>
-                <div class="form-group">
-                  <label for="dashboard-msg-dept">Department *</label>
-                  <select id="dashboard-msg-dept" name="department" required>
-                    <option value="General Inquiry">General Inquiries</option>
-                    <option value="Billing & Insurance">Billing & Insurance</option>
-                    <option value="Medical Records">Medical Records Support</option>
-                    <option value="Doctor Partnership">Doctor Partnerships</option>
-                    <option value="Careers">Careers & Recruiting</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="dashboard-msg-subject">Subject *</label>
-                <input type="text" id="dashboard-msg-subject" name="subject" placeholder="What is this regarding?" maxlength="200" required />
-              </div>
-              <div class="form-group">
-                <label for="dashboard-msg-body">Message *</label>
-                <textarea id="dashboard-msg-body" name="message" placeholder="Type your message here..." required minlength="10" maxlength="5000" style="min-height: 120px"></textarea>
-              </div>
-              <button type="submit" class="btn btn-primary btn-block">Send to Support</button>
-            </form>
-          </div>
-
-          <div class="card" style="padding: 0">
-            <div style="padding: var(--s6) var(--s8); border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), transparent)">
-              <h3 style="font-size: 1.15rem; margin: 0"><i class="fas fa-scroll" aria-hidden="true"></i> Support Conversation History</h3>
-            </div>
-            <div id="support-messages-list" style="padding: var(--s6); display: flex; flex-direction: column; gap: var(--s5)">
-              <p class="text-center" style="color: var(--text-muted); padding: var(--s8)">Loading conversation history...</p>
-            </div>
-          </div>
-
-        </div>
-      </section>
+      </div>
     </main>
   </div>
 
-  <!-- Rating Modal -->
-  <div class="modal-overlay" id="rating-modal-overlay">
-    <div class="modal" id="rating-modal" style="max-width: 520px; width: min(520px, 100%)">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s5);">
-        <h3>Rate Doctor</h3>
-        <button type="button" class="btn btn-outline btn-sm" id="rating-modal-close" style="padding: 0.25rem 0.5rem; font-size: 1.1rem; line-height: 1">&times;</button>
-      </div>
-      <div id="rating-modal-content">
-        <p id="rating-doctor-name" style="margin-bottom: var(--s4); color: var(--text-secondary);"></p>
-
-        <div style="margin-bottom: var(--s5);">
-          <label style="display: block; margin-bottom: var(--s2);">Rating</label>
-          <div id="star-rating" style="font-size: 2.5rem; cursor: pointer; letter-spacing: 0.5rem; color: var(--text-muted)">
-            <span data-rating="1" class="star-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
-            <span data-rating="2" class="star-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
-            <span data-rating="3" class="star-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
-            <span data-rating="4" class="star-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
-            <span data-rating="5" class="star-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
-          </div>
-          <p id="rating-value" style="margin-top: var(--s2); color: var(--text-secondary); font-size: 0.9rem;">Select a rating</p>
-        </div>
-
-        <div class="form-group">
-          <label for="rating-review">Review (Optional)</label>
-          <textarea id="rating-review" placeholder="Share your experience with this doctor..." maxlength="500" style="resize: vertical; min-height: 100px;"></textarea>
-          <small style="color: var(--text-secondary); display: block; margin-top: var(--s1)"><span id="review-count">0</span>/500 characters</small>
-        </div>
-
-        <div style="display: flex; gap: var(--s3); margin-top: var(--s5);">
-          <button type="button" class="btn btn-primary" id="rating-modal-submit" disabled>Submit Rating</button>
-          <button type="button" class="btn btn-outline" id="rating-modal-cancel">Cancel</button>
-        </div>
-
-        <div id="rating-message" style="margin-top: var(--s4); padding: var(--s3); border-radius: 0.5rem; display: none;" class="alert-info"></div>
-      </div>
+  <!-- Appointment Details Modal -->
+  <div class="modal-overlay" id="appointment-modal">
+    <div class="modal" style="max-width:560px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s5)"><h3><i class="fas fa-calendar-days"></i> Appointment Details</h3><button class="close-btn" onclick="Dashboard.closeApptModal()">&times;</button></div>
+      <div id="appointment-modal-body"></div>
     </div>
   </div>
 
-  <script src="../../assets/js/core/main.js?v=2"></script>
-  <script src="../../assets/js/pages/dashboard.js?v=2"></script>
-  <script src="../../assets/js/modules/medical-records.js?v=2"></script>
-  <script src="../../assets/js/modules/prescriptions.js?v=2"></script>
-  <script src="../../assets/js/pages/settings.js?v=2"></script>
-  <script src="../../assets/js/modules/notifications.js?v=2"></script>
+  <script src="../../assets/js/pages/patient/dashboard.js?v=1"></script>
 </body>
 </html>
-
-

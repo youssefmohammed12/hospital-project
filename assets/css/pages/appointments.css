@@ -1,0 +1,1536 @@
+/* ══════════════════════════════════════════════════════════════
+   HealthBridge — Appointments & Booking Wizard Styles
+   Single source of truth for the booking wizard layout.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Page Header ─────────────────────────────────────────── */
+.appointments-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  margin-bottom: var(--s6);
+}
+
+.appointments-page-header .page-title h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  color: var(--text-primary);
+}
+
+.appointments-page-header .page-title h1 i {
+  color: var(--primary);
+}
+
+.page-subtitle {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-top: var(--s1);
+}
+
+/* ── Search & Filters ────────────────────────────────────── */
+.appointments-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin-bottom: var(--s6);
+}
+
+.search-bar {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.search-bar i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-chips {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  padding: 6px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ── Appointments Grid ───────────────────────────────────── */
+.appointments-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BOOKING MODAL — ROOT CAUSE FIX
+   ══════════════════════════════════════════════════════════════
+   The HTML structure was broken: an extra </div> before
+   .booking-wizard-right caused it to be a sibling of .modal-body
+   instead of a child. That prevented CSS Grid from ever working.
+   The extra </div> has been removed from appointments.html.
+   
+   All styles below are applied via the external CSS file,
+   with no duplicate inline <style> block to prevent conflicts.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Modal Overlay ───────────────────────────────────────── */
+#book-appointment-modal {
+  /* Inherited from .modal-overlay in style.css */
+}
+
+/* ── Booking Modal: Reduced size ─────────────────────────── */
+#book-appointment-modal .booking-modal {
+  max-width: 1100px;
+  width: min(94vw, 1100px);
+  max-height: 82vh;
+  height: min(82vh, 780px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+}
+
+/* ── Modal Header ────────────────────────────────────────── */
+#book-appointment-modal .modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s1);
+  padding: var(--s5) var(--s6) var(--s3);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+  position: relative;
+}
+
+#book-appointment-modal .modal-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+#book-appointment-modal .modal-header h3 i {
+  color: var(--primary);
+}
+
+#book-appointment-modal .modal-subtitle {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+#book-appointment-modal .modal-header .close-btn {
+  position: absolute;
+  top: var(--s4);
+  right: var(--s4);
+}
+
+/* ── Modal Body — True Two-Column Grid ──────────────────────
+   Left: ~68% width | Right: ~32% (300px fixed)              */
+#book-appointment-modal .modal-body {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 0;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Left Column: Scrollable Wizard Steps ────────────────── */
+.booking-wizard-left {
+  padding: var(--s5) var(--s6);
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(82vh - 70px);
+}
+
+/* ── Right Column: Sticky Appointment Summary ───────────────
+     Always visible on desktop, never below the wizard.       */
+.booking-wizard-right {
+  padding: var(--s5);
+  background: var(--bg-subtle);
+  border-left: 1px solid var(--border-light);
+  overflow-y: auto;
+  max-height: calc(82vh - 70px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.booking-wizard-right .booking-summary-card {
+  position: sticky;
+  top: 0;
+  min-height: 180px;
+}
+
+/* ── Booking Header ──────────────────────────────────────── */
+.booking-header {
+  margin-bottom: var(--s5);
+}
+
+.booking-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+}
+
+.booking-header p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* ── Connected Horizontal Progress Stepper — Compact ─────── */
+.booking-steps {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: var(--s5);
+  background: var(--bg-subtle);
+  border-radius: var(--r-lg);
+  padding: 4px;
+  position: relative;
+}
+
+.booking-step-indicator {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+  position: relative;
+  cursor: default;
+  background: transparent;
+}
+
+.booking-step-indicator:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 35%;
+  background: var(--border-light);
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+
+.booking-step-indicator.active:not(:last-child)::after,
+.booking-step-indicator.completed:not(:last-child)::after {
+  background: var(--primary);
+}
+
+.booking-step-indicator .step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--border-light);
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.booking-step-indicator .step-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.booking-step-indicator.active {
+  color: #fff;
+  background: var(--primary);
+  box-shadow: 0 3px 10px rgba(59,130,246,0.25);
+}
+
+.booking-step-indicator.active .step-num {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+.booking-step-indicator.completed {
+  color: var(--primary);
+}
+
+.booking-step-indicator.completed .step-num {
+  background: var(--primary);
+  color: #fff;
+}
+
+.booking-step-indicator.locked {
+  opacity: 0.4;
+}
+
+.booking-step-indicator.completed::before {
+  content: "\f00c";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 0.55rem;
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-card);
+  z-index: 1;
+}
+
+/* ── Step Cards ──────────────────────────────────────────── */
+.booking-step {
+  display: none;
+  animation: fadeInUp 0.3s ease;
+}
+
+.booking-step.active {
+  display: block;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+}
+
+.booking-step-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.booking-step-title i {
+  color: var(--primary);
+  font-size: 1.05rem;
+}
+
+.booking-step-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s4);
+}
+
+/* ── Step Actions (Back/Next buttons) ────────────────────── */
+.step-actions {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-light);
+  justify-content: space-between;
+}
+
+.step-actions:first-child {
+  justify-content: flex-end;
+}
+
+.step-actions .btn {
+  min-width: 100px;
+  justify-content: center;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+}
+
+/* ── Department Selection Cards (~110px tall) ────────────── */
+.selection-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+
+.selection-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s4) var(--s3);
+  border: 2px solid var(--border-light);
+  border-radius: var(--r-lg);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+  width: 100%;
+  font-family: inherit;
+  min-height: 110px;
+  justify-content: center;
+}
+
+.selection-card:hover {
+  border-color: var(--primary);
+  background: rgba(59,130,246,0.03);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+}
+
+.selection-card.selected {
+  border-color: var(--primary);
+  background: rgba(59,130,246,0.07);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+.selection-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selection-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: rgba(59,130,246,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  transition: all 0.25s;
+}
+
+.selection-card.selected .selection-card-icon {
+  background: var(--primary);
+  color: #fff;
+}
+
+.selection-card-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.selection-card-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 160px;
+}
+
+/* ── Doctor Selection Cards (~120px tall) ────────────────── */
+.doctor-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+
+.doctor-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+  border: 2px solid var(--border-light);
+  border-radius: var(--r-lg);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  min-height: 120px;
+}
+
+.doctor-card:hover {
+  border-color: var(--primary);
+  background: rgba(59,130,246,0.03);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+}
+
+.doctor-card.selected {
+  border-color: var(--primary);
+  background: rgba(59,130,246,0.07);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+.doctor-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.doctor-card-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.doctor-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.doctor-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.doctor-card-header h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.doctor-card-header p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.doctor-card-badge {
+  padding: 3px 12px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.doctor-card-badge.available {
+  background: rgba(34,197,94,0.12);
+  color: var(--success);
+}
+
+.doctor-card-badge.unavailable {
+  background: rgba(239,68,68,0.12);
+  color: var(--danger);
+}
+
+.doctor-card-meta {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.doctor-card-meta span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.doctor-card-meta span i {
+  color: var(--warning);
+  font-size: 0.68rem;
+}
+
+.doctor-card .btn-select {
+  flex-shrink: 0;
+  margin-left: var(--s3);
+  min-width: 90px;
+}
+
+.doctor-card.selected .btn-select {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ── Doctor Preview ──────────────────────────────────────── */
+#doctor-preview-container {
+  margin-top: var(--s3);
+}
+
+.doctor-preview-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4);
+  background: rgba(59,130,246,0.04);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: var(--r-lg);
+}
+
+.doctor-preview-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.doctor-preview-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.doctor-preview-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.doctor-preview-specialty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.doctor-preview-meta {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s1);
+  flex-wrap: wrap;
+}
+
+.doctor-preview-meta span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.doctor-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  margin-top: var(--s1);
+}
+
+.doctor-preview-badge.available {
+  background: rgba(34,197,94,0.12);
+  color: var(--success);
+}
+
+.doctor-preview-badge.unavailable {
+  background: rgba(239,68,68,0.12);
+  color: var(--danger);
+}
+
+/* ── Date Input ──────────────────────────────────────────── */
+.booking-date-wrapper {
+  position: relative;
+}
+
+.booking-date-wrapper input[type="date"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.925rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.booking-date-wrapper input[type="date"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+
+/* ── Slot Picker ─────────────────────────────────────────── */
+#slot-picker-container {
+  min-height: 100px;
+}
+
+.slot-placeholder {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: var(--s6);
+}
+
+.slot-tabs {
+  display: flex;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+  background: var(--bg-subtle);
+  border-radius: var(--r-md);
+  padding: 4px;
+}
+
+.slot-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.slot-tab:hover {
+  color: var(--text-primary);
+}
+
+.slot-tab.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.slot-scroll-area {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.slot-panel {
+  display: none;
+}
+
+.slot-panel.active {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--s3);
+}
+
+.slot-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: 14px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  text-align: center;
+  min-height: 48px;
+}
+
+.slot-chip:hover {
+  border-color: var(--primary);
+  background: rgba(59,130,246,0.03);
+}
+
+.slot-chip.selected {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(59,130,246,0.3);
+}
+
+.slot-chip .slot-check {
+  display: none;
+  font-size: 0.8rem;
+}
+
+.slot-chip.selected .slot-check {
+  display: inline-flex;
+}
+
+.slot-empty-card {
+  text-align: center;
+  padding: var(--s6);
+}
+
+.slot-empty-icon {
+  font-size: 2rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s2);
+  opacity: 0.4;
+}
+
+.slot-empty-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+}
+
+.slot-empty-desc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* ── Slot Summary (inside step 3) ────────────────────────── */
+.slot-summary-wrapper {
+  display: none;
+  margin-top: var(--s4);
+}
+
+.slot-summary-wrapper.visible {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+.slot-summary-card {
+  padding: var(--s4) var(--s5);
+  background: rgba(59,130,246,0.05);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: var(--r-lg);
+}
+
+.slot-summary-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: var(--s1);
+}
+
+.slot-summary-card h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+}
+
+.slot-summary-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ── Review Card (Step 4) ────────────────────────────────── */
+.review-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  margin-top: var(--s4);
+}
+
+.review-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.review-row:last-child {
+  border-bottom: none;
+}
+
+.review-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.review-value {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ── Summary Sidebar (Right Column) ──────────────────────── */
+.booking-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  padding: var(--s4);
+}
+
+.booking-summary-card .summary-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 160px;
+  color: var(--text-muted);
+}
+
+.booking-summary-card .summary-empty i {
+  font-size: 2.4rem;
+  color: var(--border-light);
+  margin-bottom: var(--s2);
+}
+
+.booking-summary-card .summary-empty h4 {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.booking-summary-card .summary-header {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: var(--s3);
+}
+
+.summary-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s2) 0;
+}
+
+.summary-row i {
+  color: var(--primary);
+  font-size: 0.82rem;
+  margin-top: 2px;
+  width: 18px;
+  text-align: center;
+}
+
+.summary-row-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  margin-bottom: 1px;
+}
+
+.summary-row-value {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.summary-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: var(--s1) 0;
+}
+
+.booking-submit-btn {
+  margin-top: var(--s4);
+  width: 100%;
+  padding: 10px !important;
+  font-size: 0.85rem;
+}
+
+/* ── Success Confirmation Screen ─────────────────────────── */
+.booking-success {
+  display: none;
+  text-align: center;
+  padding: var(--s10) var(--s4);
+  animation: fadeInUp 0.4s ease;
+}
+
+.booking-success.visible {
+  display: block;
+}
+
+.booking-success-icon {
+  font-size: 3.5rem;
+  color: var(--success);
+  margin-bottom: var(--s4);
+}
+
+.booking-success h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s1);
+}
+
+.booking-success p {
+  color: var(--text-secondary);
+  margin-bottom: var(--s2);
+}
+
+/* ── Appointment Cards ───────────────────────────────────── */
+.appointment-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s5);
+  padding: var(--s5) var(--s6);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.appointment-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.appointment-card-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 64px;
+}
+
+.doctor-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  flex-shrink: 0;
+}
+
+.appointment-status-badge {
+  padding: 3px 12px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.appointment-card-center {
+  flex: 1;
+  min-width: 0;
+}
+
+.appointment-card-center .doctor-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.appointment-card-center .department-name {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s2);
+}
+
+.appointment-meta {
+  display: flex;
+  gap: var(--s5);
+  flex-wrap: wrap;
+}
+
+.appointment-meta span {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.appointment-meta span i {
+  color: var(--primary);
+  font-size: 0.78rem;
+}
+
+.appointment-notes {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--bg-subtle);
+  border-radius: var(--r-sm);
+  font-style: italic;
+}
+
+.appointment-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+  flex-shrink: 0;
+}
+
+.appointment-actions {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.appointment-actions .btn {
+  font-size: 0.78rem;
+  padding: 6px 14px;
+}
+
+.card-secondary-actions {
+  display: flex;
+  gap: var(--s1);
+}
+
+.card-action-icon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.card-action-icon:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(59,130,246,0.05);
+}
+
+/* ── Empty & Error States ────────────────────────────────── */
+.appointments-empty {
+  text-align: center;
+  padding: var(--s12) var(--s6);
+}
+
+.appointments-empty .empty-icon {
+  font-size: 3rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s4);
+  opacity: 0.5;
+}
+
+.appointments-empty h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--s2);
+}
+
+.appointments-empty p {
+  color: var(--text-muted);
+  margin-bottom: var(--s5);
+}
+
+/* ── Pagination ──────────────────────────────────────────── */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border-light);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: var(--s1);
+}
+
+.page-number {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.page-number:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.page-number.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ── Details Modal ───────────────────────────────────────── */
+#appointment-modal .appointment-details {
+  padding: var(--s2) 0;
+}
+
+#appointment-modal .detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border-light);
+}
+
+#appointment-modal .detail-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+#appointment-modal .detail-info h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+#appointment-modal .detail-info p {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+#appointment-modal .detail-section {
+  margin-bottom: var(--s4);
+}
+
+#appointment-modal .detail-section h5 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: var(--s1);
+}
+
+#appointment-modal .detail-section p {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+#appointment-modal .detail-actions {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── Skeleton ────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--bg-subtle) 50%, var(--border-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--r-md);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-card {
+  border-radius: var(--r-lg);
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  #book-appointment-modal .modal-body {
+    grid-template-columns: 1fr 280px;
+  }
+
+  .selection-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .appointments-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .appointments-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-bar {
+    max-width: none;
+  }
+
+  .appointment-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .appointment-card-left {
+    flex-direction: row;
+    min-width: auto;
+  }
+
+  .appointment-card-right {
+    align-items: stretch;
+  }
+
+  .appointment-actions {
+    justify-content: stretch;
+  }
+
+  .appointment-actions .btn {
+    flex: 1;
+  }
+
+  #book-appointment-modal .booking-modal {
+    width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+  }
+
+  #book-appointment-modal .modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-wizard-right {
+    display: none;
+  }
+
+  .booking-wizard-right.visible-mobile {
+    display: block;
+    border-left: none;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .booking-wizard-left {
+    max-height: none;
+    padding: var(--s4);
+  }
+
+  .selection-card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .selection-card {
+    min-height: 110px;
+    padding: var(--s3) var(--s2);
+  }
+
+  .doctor-card {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: auto;
+  }
+
+  .doctor-card .btn-select {
+    margin-left: 0;
+    margin-top: var(--s2);
+    width: 100%;
+  }
+
+  .featured-upcoming-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .featured-upcoming-card .featured-actions {
+    width: 100%;
+  }
+
+  .featured-upcoming-card .featured-actions .btn {
+    flex: 1;
+  }
+
+  .booking-step-indicator .step-label {
+    display: none;
+  }
+
+  .booking-step-indicator {
+    padding: 8px 10px;
+  }
+
+  .booking-steps {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .selection-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-chips {
+    gap: var(--s1);
+  }
+
+  .filter-chip {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+  }
+
+  .step-actions {
+    flex-direction: column;
+  }
+
+  .step-actions .btn {
+    width: 100%;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
+
+/* ── Reduced Motion ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .booking-step,
+  .booking-success.visible,
+  .slot-panel.active,
+  .selection-card,
+  .doctor-card {
+    animation: none;
+    transition: none;
+  }
+
+  .skeleton {
+    animation: none;
+  }
+
+  .selection-card,
+  .doctor-card,
+  .slot-chip,
+  .filter-chip,
+  .pagination-btn,
+  .page-number {
+    transition: none;
+  }
+}

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Notifications — HealthBridge" />
+  <title>Notifications — HealthBridge</title>
+  <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=7" />
+  <script src="../../assets/js/core/main.js?v=2"></script>
+  <script src="../../assets/js/components/layout.js?v=2"></script>
+  <script src="../../assets/js/modules/notifications.js?v=2"></script>
+</head>
+<body>
+  <div id="navbar-container"></div>
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+    <main class="main-content">
+      <div class="portal-content">
+        <div class="page-header">
+          <h1><i class="fas fa-bell" aria-hidden="true"></i> Notifications</h1>
+          <p class="page-subtitle">Your notifications and alerts</p>
+        </div>
+        <div id="notifications-container">
+          <div class="skeleton-loader">
+            <div class="skeleton skeleton-card" style="height: 60px; margin-bottom: var(--s3);"></div>
+            <div class="skeleton skeleton-card" style="height: 60px; margin-bottom: var(--s3);"></div>
+            <div class="skeleton skeleton-card" style="height: 60px; margin-bottom: var(--s3);"></div>
+            <div class="skeleton skeleton-card" style="height: 60px;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="../../assets/js/pages/patient/notifications.js?v=1"></script>
+</body>
+</html>

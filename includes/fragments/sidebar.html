@@ -1,0 +1,53 @@
+<!-- Shared Patient Portal Sidebar Fragment -->
+<!-- Loaded via fetch() by layout.js -->
+<aside class="sidebar">
+  <div>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar-container">
+        <div class="sidebar-avatar"><i class="fas fa-user" aria-hidden="true"></i></div>
+        <div class="status-dot" title="System Status: Online"></div>
+      </div>
+      <h3 id="sidebar-name">Patient Account</h3>
+      <p id="sidebar-email">patient@healthbridge.com</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-link" data-page="dashboard">
+        <i class="fas fa-chart-line" aria-hidden="true"></i> Dashboard
+      </a>
+      <a href="appointments.html" class="nav-link" data-page="appointments">
+        <i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments
+      </a>
+      <a href="history.html" class="nav-link" data-page="history">
+        <i class="fas fa-timeline" aria-hidden="true"></i> Medical History
+      </a>
+      <a href="prescriptions.html" class="nav-link" data-page="prescriptions">
+        <i class="fas fa-prescription" aria-hidden="true"></i> Prescriptions
+      </a>
+      <a href="notifications.html" class="nav-link" data-page="notifications">
+        <i class="fas fa-bell" aria-hidden="true"></i> Notifications
+      </a>
+      <a href="downloads.html" class="nav-link" data-page="downloads">
+        <i class="fas fa-download" aria-hidden="true"></i> Downloads
+      </a>
+      <a href="profile.html" class="nav-link" data-page="profile">
+        <i class="fas fa-user-md" aria-hidden="true"></i> Profile
+      </a>
+      <a href="insights.html" class="nav-link" data-page="insights">
+        <i class="fas fa-chart-bar" aria-hidden="true"></i> Health Insights
+      </a>
+    </nav>
+  </div>
+  <div class="sidebar-footer">
+    <nav class="sidebar-nav">
+      <a href="settings.html" class="nav-link" data-page="settings">
+        <i class="fas fa-gear" aria-hidden="true"></i> Settings
+      </a>
+      <a href="../../index.html" class="nav-link">
+        <i class="fas fa-globe" aria-hidden="true"></i> View Site
+      </a>
+      <a href="#" class="nav-link logout-link" onclick="logoutUser(); return false;">
+        <i class="fas fa-right-from-bracket" aria-hidden="true"></i> Logout
+      </a>
+    </nav>
+  </div>
+</aside>

@@ -130,14 +130,6 @@
   background: linear-gradient(135deg, transparent 0%, rgba(34, 211, 238, 0.02) 100%);
 }
 
-.main-content h2 {
-  font-size: 1.75rem;
-  margin-bottom: var(--s6);
-  padding-bottom: var(--s4);
-  border-bottom: 1px solid var(--border-light);
-  font-weight: 700;
-}
-
 /* Page entrance animation for dashboard cards */
 .main-content section > .card,
 .main-content section > .flex-between {
