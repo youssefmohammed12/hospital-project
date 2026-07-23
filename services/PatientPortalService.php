@@ -389,16 +389,20 @@ class PatientPortalService
                 'can_rate'           => $a['date'] < $today && $a['status'] === 'Confirmed' && !$a['rating_id'],
             ];
 
+            // Workflow: Pending (booked, waiting approval) → Confirmed (approved) → Completed (doctor finished)
+            // A Confirmed appointment remains 'Confirmed' regardless of date.
+            // Only a doctor's explicit completion action sets workflow_status = 'Completed'.
+            // Past confirmed appointments that were never completed by a doctor are 'missed'.
             if ($a['status'] === 'Cancelled') {
                 $cancelled[] = $item;
-            } elseif ($a['date'] < $today && $a['status'] === 'Confirmed') {
+            } elseif ($a['status'] === 'Confirmed') {
                 if ($a['workflow_status'] === 'Completed') {
                     $completed[] = $item;
-                } else {
+                } elseif ($a['date'] < $today) {
                     $missed[] = $item;
+                } else {
+                    $upcoming[] = $item;
                 }
-            } elseif ($a['date'] >= $today && $a['status'] !== 'Cancelled') {
-                $upcoming[] = $item;
             } elseif ($a['status'] === 'Pending') {
                 $upcoming[] = $item;
             }

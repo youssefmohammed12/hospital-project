@@ -57,18 +57,10 @@ class VisitWorkflowService {
             // Appointment doesn't exist - create with Waiting status
             $this->create($appointmentId, self::STATUS_WAITING);
         } elseif ($appt['status'] === 'Confirmed') {
-            // Confirmed appointment - set status based on date
-            $today = date('Y-m-d');
-            $apptDate = $appt['date'];
-            $workflowStatus = ($apptDate < $today) ? self::STATUS_COMPLETED : self::STATUS_WAITING;
-            $this->create($appointmentId, $workflowStatus);
-
-            // If completed, set timestamps
-            if ($workflowStatus === self::STATUS_COMPLETED) {
-                $this->db->prepare(
-                    "UPDATE visit_workflow SET started_at = NOW(), completed_at = NOW() WHERE appointment_id = ?"
-                )->execute([$appointmentId]);
-            }
+            // Confirmed appointment - create workflow with Waiting status.
+            // Do NOT auto-complete past appointments. Only the doctor's explicit
+            // action through the visit workflow should mark an appointment as Completed.
+            $this->create($appointmentId, self::STATUS_WAITING);
         } else {
             // Not confirmed - create with Waiting status
             $this->create($appointmentId, self::STATUS_WAITING);

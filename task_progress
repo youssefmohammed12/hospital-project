@@ -1,29 +1,24 @@
-# Duplicate Appointment Bug - Investigation & Fix
+# HealthBridge Bug Fixes - Investigation & Resolution
 
-## Root Cause Analysis
+## Issue 1: Second Appointment Entry Without Proper UI
+**Root Cause**: The featured upcoming appointment component was rendering INSIDE the appointments list. The `pages/patient/appointments.html` has a script that wraps `AppointmentsPage.renderAppointments()` to also render a featured upcoming card. Combined with the now-removed optimistic UI insertion (booking-wizard.js), the featured card could appear mixed into the grid area.
+**Fix**: Already applied - removed optimistic UI insertion. The featured upcoming container (#featured-upcoming-container) is a separate element, but needs CSS verification.
 
-### PRIMARY ROOT CAUSE: SQL Cartesian Product in `PatientPortalService::getAppointmentTimeline()`
-- **File**: `services/PatientPortalService.php`
-- **Function**: `getAppointmentTimeline()`
-- **The Bug**: The SQL query uses `LEFT JOIN` on `prescriptions` (p) and `ratings` (r) tables. When an appointment has multiple related records in these tables, the JOIN creates duplicate rows for the same appointment. The PHP code iterates ALL rows without deduplication by `a.id`.
+## Issue 2: Workflow Status "Completed" Too Early
+**File**: `services/VisitWorkflowService.php`
+**Function**: `getOrCreateWorkflow()`
+**Bug**: When auto-creating a workflow for a Confirmed appointment in the past, it sets `workflow_status = 'Completed'` immediately with `completed_at = NOW()`. This makes any past Confirmed appointment appear as "Completed" to the patient, even though the doctor never actually completed the visit.
+**Fix**: Past Confirmed appointments should create workflow with `Waiting` status, not `Completed`. Only a doctor's explicit action should set `Completed`.
 
-Example: 1 appointment × 2 prescriptions × 1 rating = 2 identical rows for that appointment
+## Issue 3: Incorrect Status Display in PatientPortalService
+**File**: `services/PatientPortalService.php`
+**Function**: `getAppointmentTimeline()`
+**Bug**: Past Confirmed appointments with `workflow_status = 'Completed'` are categorized as `completed` category. Combined with Issue 2, this shows "Completed" label immediately after doctor approval.
+**Fix**: Need to align with corrected workflow. Only appointment status 'Confirmed' should show as "Confirmed", not "Completed".
 
-### SECONDARY ROOT CAUSE: Double Rendering in `booking-wizard.js`
-- **File**: `assets/js/components/booking-wizard.js`
-- **Function**: `handleFormSubmit()`
-- **The Bug**: After successful booking, it does BOTH:
-  1. Optimistic UI: pushes tempAppt to AppointmentsPage.data + calls renderAppointments()
-  2. Calls onSuccess → AppointmentsPage.load() → API fetch → renderAppointments() again
-
-## Fixes Applied
-
-### Fix 1: PatientPortalService.php - Deduplicate SQL with `GROUP BY a.id`
-Added `GROUP BY a.id` to prevent cartesian product from LEFT JOINs on prescriptions and ratings.
-
-### Fix 2: booking-wizard.js - Remove optimistic UI that causes double render
-Removed the optimistic UI insertion block that directly adds to AppointmentsPage.data and calls renderAppointments() before the API refresh reloads the data.
-
-## Files Modified
-- `services/PatientPortalService.php` ✅
-- `assets/js/components/booking-wizard.js` ✅
+## To Do:
+- [x] Remove optimistic UI insertion (booking-wizard.js)
+- [x] Fix SQL cartesian product (PatientPortalService.php) - RETAINED (valid fix)
+- [ ] Fix VisitWorkflowService::getOrCreateWorkflow() - don't auto-complete past appointments
+- [ ] Fix getAppointmentTimeline() to show "Confirmed" label correctly
+- [ ] Verify featured upcoming container doesn't interfere
