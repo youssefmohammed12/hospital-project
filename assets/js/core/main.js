@@ -211,7 +211,22 @@ function applyTheme(theme) {
 }
 
 function toggleTheme() {
-  applyTheme(getCurrentTheme() === "dark" ? "light" : "dark");
+  const newTheme = getCurrentTheme() === "dark" ? "light" : "dark";
+  applyTheme(newTheme);
+
+  // Sync theme with DB preference if user is logged in
+  const user = getUser();
+  if (user) {
+    apiFetch(
+      getBasePath() + "api/settings/update.php",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section: "appearance", theme: newTheme }),
+      },
+      "Failed to sync theme."
+    ).catch(() => {});
+  }
 }
 
 function initTheme() {
@@ -881,9 +896,17 @@ document.addEventListener("DOMContentLoaded", () => {
   initScrollAnimations();
   initModalSystem();
 
-  // Load settings.js and notifications.js dynamically if user is logged in.
+  // Load settings.js, settings.css, and notifications.js dynamically if user is logged in.
   // This ensures the Settings gear and Notification bell work on ALL pages.
   if (getUser()) {
+    // Ensure settings.css is present
+    if (!document.querySelector('link[href*="settings.css"]')) {
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = getBasePath() + "assets/css/pages/settings.css?v=3";
+      document.head.appendChild(css);
+    }
+
     // Prevent duplicate notification initialization
     if (!window._hbNotificationsInitialized) {
       // Load settings.js if not already loaded

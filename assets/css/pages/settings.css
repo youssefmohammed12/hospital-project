@@ -372,7 +372,7 @@
 
 /* ── Light theme overrides ──────────────────────────────── */
 [data-theme="light"] .settings-card {
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 [data-theme="light"] .settings-card-danger {
@@ -380,5 +380,5 @@
 }
 
 [data-theme="light"] .toggle-slider {
-  background: #e4eef9;
+  background: var(--bg-surface);
 }

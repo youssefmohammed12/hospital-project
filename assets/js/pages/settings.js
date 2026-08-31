@@ -49,11 +49,23 @@ function closeSettings(e) {
    ============================================================ */
 
 function buildSettingsModal() {
+  // Ensure settings.css is loaded so the modal renders with full styles on any page
+  if (!document.querySelector('link[href*="settings.css"]')) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = getBasePath() + "assets/css/pages/settings.css?v=3";
+    document.head.appendChild(link);
+  }
+
   const modal = document.createElement("div");
   modal.className = "modal-overlay";
   modal.id = "settings-modal";
-  modal.style.cssText =
-    "z-index:3000;align-items:flex-start;padding-top:60px;overflow-y:auto";
+  // Use individual properties so modal-overlay background, opacity, pointer-events
+  // from the CSS class are NOT overridden by cssText assignment.
+  modal.style.zIndex = "3000";
+  modal.style.alignItems = "flex-start";
+  modal.style.paddingTop = "60px";
+  modal.style.overflowY = "auto";
 
   modal.innerHTML = `
     <div class="settings-modal-content">
@@ -404,34 +416,16 @@ async function loadSettingsData() {
     if (radio) radio.checked = isSelected;
   });
 
-  // Sync localStorage with DB preference for correct theme toggle icon
-  if (savedTheme === "system") {
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    localStorage.setItem("hb_theme", prefersDark ? "dark" : "light");
+  // If user explicitly saved light or dark in DB, respect it
+  if (savedTheme === "light" || savedTheme === "dark") {
+    applyTheme(savedTheme);
   } else {
-    localStorage.setItem("hb_theme", savedTheme);
+    // If system and no local preference exists yet, initialize from system
+    if (!localStorage.getItem("hb_theme")) {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      applyTheme(prefersDark ? "dark" : "light");
+    }
   }
-  // Update theme toggle icons to match (read-only — do NOT apply theme)
-  const currentTheme =
-    savedTheme === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : savedTheme;
-  // Only update toggle button icons, do NOT overwrite the user's current theme
-  document.querySelectorAll(".theme-toggle").forEach((btn) => {
-    btn.innerHTML = currentTheme === "light" ? MOON_SVG : SUN_SVG;
-    btn.setAttribute(
-      "aria-label",
-      currentTheme === "light" ? "Switch to dark mode" : "Switch to light mode",
-    );
-    btn.setAttribute(
-      "title",
-      currentTheme === "light" ? "Dark mode" : "Light mode",
-    );
-  });
 
   // Populate notifications
   if (prefs) {
@@ -481,7 +475,7 @@ function setVal(id, val) {
 }
 
 function setChecked(name, checked) {
-  const el = document.querySelector(`#settings-modal [name="${name}"]`);
+  const el = document.querySelector(`#settings-modal [name="${name}"], [name="${name}"]`);
   if (el) el.checked = checked;
 }
 
@@ -495,7 +489,8 @@ function capitalize(str) {
 
 function initSettingsTabs() {
   const tabs = document.querySelectorAll("#settings-tabs .settings-tab");
-  const panels = document.querySelectorAll(".settings-panels .settings-panel");
+  const modalPanels = document.querySelectorAll(".settings-panels .settings-panel");
+  const pageSections = document.querySelectorAll("main.main-content section[id]");
   if (!tabs.length) return;
 
   tabs.forEach((tab) => {
@@ -503,9 +498,26 @@ function initSettingsTabs() {
       const section = tab.dataset.section;
       tabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
-      panels.forEach((p) => p.classList.remove("active"));
-      const panel = document.getElementById(`panel-${section}`);
-      if (panel) panel.classList.add("active");
+
+      // Modal mode panels
+      if (modalPanels.length) {
+        modalPanels.forEach((p) => p.classList.remove("active"));
+        const panel = document.getElementById(`panel-${section}`);
+        if (panel) panel.classList.add("active");
+      }
+
+      // Standalone page sections
+      if (pageSections.length) {
+        pageSections.forEach((s) => {
+          if (s.id === section) {
+            s.style.display = "block";
+            s.classList.add("active");
+          } else {
+            s.style.display = "none";
+            s.classList.remove("active");
+          }
+        });
+      }
     });
   });
 
@@ -940,4 +952,17 @@ window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.openDeleteModal = openDeleteModal;
 window.closeDeleteModal = closeDeleteModal;
+
+// Auto-initialize when loaded on standalone settings page.
+// Works whether DOMContentLoaded has already fired (script at body bottom) or not.
+function _tryAutoInitSettings() {
+  if (document.getElementById("settings-profile-form")) {
+    initSettings();
+  }
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", _tryAutoInitSettings);
+} else {
+  _tryAutoInitSettings();
+}
 

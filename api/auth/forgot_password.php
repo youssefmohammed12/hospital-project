@@ -51,7 +51,7 @@ try {
     $host      = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $dir       = dirname(dirname($_SERVER['SCRIPT_NAME']));
     $dir       = rtrim($dir, '/');
-    $resetUrl  = "{$protocol}://{$host}{$dir}/reset-password.html?token={$token}";
+    $resetUrl  = "{$protocol}://{$host}{$dir}/pages/auth/reset-password.html?token={$token}";
 
     jsonResponse(true, [
         'message'   => 'Reset link generated! Click the button below to set your new password.',

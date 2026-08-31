@@ -102,6 +102,10 @@ class PatientPortalService
                     a.time,
                     a.appointment_time_range,
                     a.notes,
+                    a.reschedule_status,
+                    a.pending_reschedule_date,
+                    a.pending_reschedule_time,
+                    a.reschedule_reason,
                     d.rating AS doctor_rating,
                     dep.name AS department_name,
                     (SELECT specialty FROM doctors WHERE user_id = a.doctor_id LIMIT 1) AS doctor_specialty
@@ -109,9 +113,11 @@ class PatientPortalService
                 LEFT JOIN doctors d ON a.doctor_id = d.user_id
                 LEFT JOIN departments dep ON a.department_id = dep.id
                 WHERE a.user_id = ?
-                  AND a.date >= CURDATE()
                   AND a.status != 'Cancelled'
-                ORDER BY a.date ASC, a.time ASC
+                ORDER BY
+                    CASE WHEN a.reschedule_status = 'pending' THEN 0 ELSE 1 END,
+                    a.date ASC,
+                    a.time ASC
                 LIMIT 1
             ),
             unread AS (
@@ -142,6 +148,10 @@ class PatientPortalService
                 na.appointment_time_range AS next_time_range,
                 na.notes AS next_notes, na.doctor_rating, na.doctor_specialty,
                 na.department_name AS next_department_name,
+                na.reschedule_status AS next_reschedule_status,
+                na.pending_reschedule_date AS next_pending_reschedule_date,
+                na.pending_reschedule_time AS next_pending_reschedule_time,
+                na.reschedule_reason AS next_reschedule_reason,
                 pd.name AS primary_doctor_name,
                 pd.specialty AS primary_doctor_specialty,
                 pd.rating AS primary_doctor_rating,
@@ -208,6 +218,10 @@ class PatientPortalService
                 'notes'       => $data['next_notes'],
                 'countdown'   => $nextCountdown,
                 'doctor_rating' => $data['doctor_rating'] ? (float)$data['doctor_rating'] : null,
+                'reschedule_status' => $data['next_reschedule_status'] ?? 'none',
+                'pending_reschedule_date' => $data['next_pending_reschedule_date'] ?? null,
+                'pending_reschedule_time' => $data['next_pending_reschedule_time'] ?? null,
+                'reschedule_reason' => $data['next_reschedule_reason'] ?? null,
             ] : null,
             'primary_doctor'        => $data['primary_doctor_name'] ? [
                 'name'        => $data['primary_doctor_name'],
@@ -332,6 +346,11 @@ class PatientPortalService
                 a.notes,
                 a.status,
                 a.created_at AS booked_at,
+                a.reschedule_status,
+                a.pending_reschedule_date,
+                a.pending_reschedule_time,
+                a.reschedule_reason,
+                a.reschedule_requested_at,
                 d.rating AS doctor_rating,
                 d.specialty AS doctor_specialty,
                 d.available AS doctor_available,
@@ -362,6 +381,7 @@ class PatientPortalService
         $completed = [];
         $cancelled = [];
         $missed = [];
+        $rescheduled = [];
 
         foreach ($appointments as $a) {
             $item = [
@@ -387,13 +407,21 @@ class PatientPortalService
                 'has_rating'         => (bool)$a['rating_id'],
                 'rating_stars'       => $a['rating_stars'] ? (int)$a['rating_stars'] : null,
                 'can_rate'           => $a['date'] < $today && $a['status'] === 'Confirmed' && !$a['rating_id'],
+                // Reschedule fields
+                'reschedule_status'  => $a['reschedule_status'] ?? 'none',
+                'pending_reschedule_date' => $a['pending_reschedule_date'] ?? null,
+                'pending_reschedule_time' => $a['pending_reschedule_time'] ?? null,
+                'reschedule_reason'  => $a['reschedule_reason'] ?? null,
+                'reschedule_requested_at' => $a['reschedule_requested_at'] ?? null,
             ];
 
             // Workflow: Pending (booked, waiting approval) → Confirmed (approved) → Completed (doctor finished)
             // A Confirmed appointment remains 'Confirmed' regardless of date.
             // Only a doctor's explicit completion action sets workflow_status = 'Completed'.
             // Past confirmed appointments that were never completed by a doctor are 'missed'.
-            if ($a['status'] === 'Cancelled') {
+            if ($a['status'] === 'Reschedule Requested') {
+                $rescheduled[] = $item;
+            } elseif ($a['status'] === 'Cancelled') {
                 $cancelled[] = $item;
             } elseif ($a['status'] === 'Confirmed') {
                 if ($a['workflow_status'] === 'Completed') {
@@ -413,11 +441,13 @@ class PatientPortalService
             'completed' => $completed,
             'cancelled' => $cancelled,
             'missed'    => $missed,
+            'rescheduled' => $rescheduled,
             'counts'    => [
                 'upcoming'  => count($upcoming),
                 'completed' => count($completed),
                 'cancelled' => count($cancelled),
                 'missed'    => count($missed),
+                'rescheduled' => count($rescheduled),
                 'total'     => count($appointments),
             ],
         ];
@@ -559,6 +589,44 @@ class PatientPortalService
                     ],
                 ];
             }
+        }
+
+        // Add reschedule events from audit log
+        $rescheduleSql = "
+            SELECT created_at, action, description, entity_id
+            FROM admin_audit
+            WHERE patient_id = ?
+              AND action IN ('reschedule_request', 'reschedule_approved', 'reschedule_rejected', 'reschedule_cancelled', 'reschedule_suggested', 'reschedule_suggestion_accepted', 'reschedule_suggestion_declined')
+            ORDER BY created_at ASC
+        ";
+        $rescheduleStmt = $this->db->prepare($rescheduleSql);
+        $rescheduleStmt->execute([$patientId]);
+        $rescheduleEvents = $rescheduleStmt->fetchAll();
+
+        $rescheduleIcons = [
+            'reschedule_request' => ['icon' => 'fa-clock', 'color' => 'var(--warning)', 'title' => 'Reschedule Requested'],
+            'reschedule_approved' => ['icon' => 'fa-check-circle', 'color' => 'var(--success)', 'title' => 'Reschedule Approved'],
+            'reschedule_rejected' => ['icon' => 'fa-times-circle', 'color' => 'var(--danger)', 'title' => 'Reschedule Declined'],
+            'reschedule_cancelled' => ['icon' => 'fa-ban', 'color' => 'var(--text-muted)', 'title' => 'Reschedule Cancelled'],
+            'reschedule_suggested' => ['icon' => 'fa-calendar-day', 'color' => '#8b5cf6', 'title' => 'New Time Suggested'],
+            'reschedule_suggestion_accepted' => ['icon' => 'fa-check', 'color' => 'var(--success)', 'title' => 'Suggestion Accepted'],
+            'reschedule_suggestion_declined' => ['icon' => 'fa-xmark', 'color' => 'var(--danger)', 'title' => 'Suggestion Declined'],
+        ];
+
+        foreach ($rescheduleEvents as $re) {
+            $info = $rescheduleIcons[$re['action']] ?? ['icon' => 'fa-calendar', 'color' => 'var(--primary)', 'title' => 'Reschedule Event'];
+            $events[] = [
+                'date'        => $re['created_at'],
+                'type'        => $re['action'],
+                'title'       => $info['title'],
+                'description' => $re['description'] ?: 'Reschedule workflow event.',
+                'icon'        => $info['icon'],
+                'color'       => $info['color'],
+                'metadata'    => [
+                    'appointment_id' => (int)$re['entity_id'],
+                    'action'         => $re['action'],
+                ],
+            ];
         }
 
         $auditSql = "
@@ -1149,7 +1217,7 @@ class PatientPortalService
             $alerts[] = ['type' => 'appointment_today', 'severity' => 'info', 'icon' => 'fa-calendar-day',
                 'title' => 'Appointment Today',
                 'message' => "You have an appointment with {$todayAppt['doctor']} in {$todayAppt['department']} at " . ($todayAppt['appointment_time_range'] ?: $todayAppt['time']) . ".",
-                'action' => ['label' => 'View Details', 'url' => '#appointments']];
+                'action' => ['label' => 'View Details', 'url' => 'appointments.html']];
         }
 
         $tomorrowSql = "
@@ -1164,7 +1232,7 @@ class PatientPortalService
             $alerts[] = ['type' => 'appointment_tomorrow', 'severity' => 'warning', 'icon' => 'fa-calendar-day',
                 'title' => 'Appointment Tomorrow',
                 'message' => "You have an appointment with {$tomorrowAppt['doctor']} at " . ($tomorrowAppt['appointment_time_range'] ?: $tomorrowAppt['time']) . ".",
-                'action' => ['label' => 'View Details', 'url' => '#appointments']];
+                'action' => ['label' => 'View Details', 'url' => 'appointments.html']];
         }
 
         $expiringSql = "SELECT COUNT(*) AS cnt FROM prescriptions WHERE patient_id = ? AND status = 'Active' AND created_at <= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
@@ -1175,7 +1243,7 @@ class PatientPortalService
             $alerts[] = ['type' => 'prescription_old', 'severity' => 'warning', 'icon' => 'fa-prescription',
                 'title' => 'Active Prescription' . ($expiringCount > 1 ? 's' : '') . ' Need Review',
                 'message' => "You have {$expiringCount} active prescription" . ($expiringCount > 1 ? 's that have' : ' that has') . " been active for over 30 days.",
-                'action' => ['label' => 'View Prescriptions', 'url' => '#prescriptions']];
+                'action' => ['label' => 'View Prescriptions', 'url' => 'prescriptions.html']];
         }
 
         $completion = $this->getProfileCompletion($patientId);
@@ -1184,7 +1252,7 @@ class PatientPortalService
             $alerts[] = ['type' => 'incomplete_profile', 'severity' => $completion['percentage'] < 50 ? 'danger' : 'info', 'icon' => 'fa-user-pen',
                 'title' => 'Complete Your Profile',
                 'message' => "Your profile is {$completion['percentage']}% complete. Missing: " . implode(', ', array_map(fn($f) => $f['label'], $missingFields)) . ".",
-                'action' => ['label' => 'Complete Profile', 'url' => '#profile']];
+                'action' => ['label' => 'Complete Profile', 'url' => 'profile.html']];
         }
 
         $hospital = $this->getHospitalStatus();
@@ -1201,18 +1269,32 @@ class PatientPortalService
         if ($unread > 0) {
             $alerts[] = ['type' => 'unread_notifications', 'severity' => 'info', 'icon' => 'fa-bell',
                 'title' => 'Unread Notifications', 'message' => "You have {$unread} unread notification" . ($unread > 1 ? 's' : '') . ".",
-                'action' => ['label' => 'View Notifications', 'url' => '#notifications']];
+                'action' => ['label' => 'View Notifications', 'url' => 'notifications.html']];
         }
 
-        $ecSql = "SELECT emergency_contact_name FROM medical_records WHERE patient_id = ?";
-        $stmt = $this->db->prepare($ecSql);
+        $mrSql = "SELECT allergies, chronic_diseases, insurance_provider, emergency_contact_name FROM medical_records WHERE patient_id = ?";
+        $stmt = $this->db->prepare($mrSql);
         $stmt->execute([$patientId]);
-        $ec = $stmt->fetch();
-        if ($ec && empty($ec['emergency_contact_name'])) {
-            $alerts[] = ['type' => 'missing_emergency_contact', 'severity' => 'danger', 'icon' => 'fa-phone',
-                'title' => 'Emergency Contact Missing',
-                'message' => 'Please add an emergency contact to your profile.',
-                'action' => ['label' => 'Add Now', 'url' => '#profile']];
+        $mr = $stmt->fetch();
+        if ($mr) {
+            if (!empty($mr['allergies'])) {
+                $alerts[] = ['type' => 'allergies_recorded', 'severity' => 'warning', 'icon' => 'fa-allergies',
+                    'title' => 'Known Allergies Recorded',
+                    'message' => "Medical file notes active allergy alerts: {$mr['allergies']}.",
+                    'action' => ['label' => 'View Profile', 'url' => 'profile.html']];
+            }
+            if (empty($mr['emergency_contact_name'])) {
+                $alerts[] = ['type' => 'missing_emergency_contact', 'severity' => 'danger', 'icon' => 'fa-phone',
+                    'title' => 'Emergency Contact Missing',
+                    'message' => 'Please add an emergency contact to your profile.',
+                    'action' => ['label' => 'Add Now', 'url' => 'profile.html']];
+            }
+            if (empty($mr['insurance_provider'])) {
+                $alerts[] = ['type' => 'missing_insurance', 'severity' => 'info', 'icon' => 'fa-id-card',
+                    'title' => 'Insurance Info Needed',
+                    'message' => 'Add your health insurance details to streamline clinic billing.',
+                    'action' => ['label' => 'Update Information', 'url' => 'profile.html']];
+            }
         }
 
         $severityOrder = ['danger' => 0, 'warning' => 1, 'info' => 2];

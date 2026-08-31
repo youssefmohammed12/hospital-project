@@ -3,6 +3,27 @@
    Professional Epic/Cerner-style EMR layout.
    ═══════════════════════════════════════════════════════════ */
 
+.sidebar-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  transition: all var(--transition);
+}
+
+.sidebar-link-btn:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
 /* ── Workspace Container ── */
 
 .ws-container {
@@ -102,7 +123,7 @@
 
 .ws-sticky-badge.warning {
   background: rgba(250, 204, 21, 0.12);
-  color: #b8860b;
+  color: var(--warning);
   border: 1px solid rgba(250, 204, 21, 0.2);
 }
 
@@ -272,7 +293,7 @@
 .ws-alert-warning {
   background: rgba(250, 204, 21, 0.08);
   border-color: rgba(250, 204, 21, 0.2);
-  color: #b8860b;
+  color: var(--warning);
 }
 
 .ws-alert-info {
@@ -960,12 +981,12 @@
 }
 
 .ws-tl-dot.prescription {
-  background: #f59e0b;
+  background: var(--warning);
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
 }
 
 .ws-tl-dot.completed {
-  background: #10b981;
+  background: var(--success);
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
 }
 
@@ -1298,4 +1319,174 @@
   .ws-autosave-indicator { bottom: var(--s3); right: var(--s3); font-size: 0.7rem; padding: var(--s1) var(--s3); }
   .ws-rx-summary-card { flex-direction: column; align-items: flex-start; }
   .ws-rx-summary-actions { width: 100%; justify-content: flex-start; }
+}
+
+/* ============================================================
+   PRESCRIPTION REMOVE BUTTON & PRINT MEDIA
+   ============================================================ */
+
+.rx-remove-row-btn {
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.rx-remove-row-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .navbar, .sidebar, .ws-back, .ws-progress-bar, .ws-tabs, .ws-summary-actions {
+    display: none !important;
+  }
+  .ws-container, #ws-main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  .emr-print-preview, .emr-print-preview * {
+    visibility: visible !important;
+  }
+  .emr-print-preview {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* ============================================================
+   LIGHT MODE OVERRIDES FOR DOCTOR CLINICAL WORKSPACE
+   ============================================================ */
+
+[data-theme="light"] .doctor-workspace-body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .ws-summary-card,
+[data-theme="light"] .ws-sticky-header {
+  background: var(--bg-card);
+  border-color: rgba(8, 145, 178, 0.18);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .ws-progress-bar {
+  background: var(--bg-card);
+  border-color: rgba(8, 145, 178, 0.15);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .ws-progress-icon {
+  background: var(--bg-surface);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .ws-progress-step.active .ws-progress-icon {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+[data-theme="light"] .ws-progress-step.completed .ws-progress-icon {
+  background: var(--success);
+  color: #ffffff;
+  border-color: var(--success);
+}
+
+[data-theme="light"] .ws-progress-connector {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .ws-progress-connector.active {
+  background: var(--primary);
+}
+
+[data-theme="light"] .ws-tabs {
+  background: var(--bg-card);
+  border-bottom-color: rgba(8, 145, 178, 0.18);
+}
+
+[data-theme="light"] .ws-tab {
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .ws-tab:hover {
+  color: var(--primary);
+  background: rgba(8, 145, 178, 0.05);
+}
+
+[data-theme="light"] .ws-tab.active {
+  color: var(--primary);
+  background: rgba(8, 145, 178, 0.08);
+  border-bottom-color: var(--primary);
+}
+
+[data-theme="light"] .ws-tab-content {
+  background: transparent;
+}
+
+[data-theme="light"] .ws-card,
+[data-theme="light"] .ws-info-card,
+[data-theme="light"] .ws-rx-card {
+  background: var(--bg-card);
+  border-color: rgba(8, 145, 178, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .ws-card-header,
+[data-theme="light"] .ws-info-card-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .ws-autosave-indicator {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: rgba(8, 145, 178, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .ws-empty {
+  background: var(--bg-card);
+  border-color: rgba(8, 145, 178, 0.15);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .ws-empty i {
+  color: var(--primary);
+}
+
+[data-theme="light"] textarea,
+[data-theme="light"] select,
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="number"],
+[data-theme="light"] input[type="date"] {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus,
+[data-theme="light"] input:focus {
+  background: var(--bg-card);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.12);
+}
+
+[data-theme="light"] .emr-modal .modal {
+  background: var(--bg-card);
+  border-color: rgba(8, 145, 178, 0.2);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .emr-modal .modal-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .emr-modal .modal-footer {
+  border-top-color: rgba(0, 0, 0, 0.06);
 }

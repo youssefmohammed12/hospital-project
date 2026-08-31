@@ -41,38 +41,58 @@
   margin-bottom: var(--s6);
 }
 
-.search-bar {
+.appointments-controls-bar .search-bar,
+.appointments-controls .search-bar {
   position: relative;
-  flex: 1;
-  min-width: 200px;
-  max-width: 400px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  background: var(--bg-surface, var(--bg-card));
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: none;
+  overflow: visible;
+  transition: border-color var(--t), box-shadow var(--t);
 }
 
-.search-bar i {
+.appointments-controls-bar .search-bar i,
+.appointments-controls .search-bar i {
   position: absolute;
-  left: 12px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   pointer-events: none;
+  z-index: 2;
 }
 
-.search-bar input {
+.appointments-controls-bar .search-bar input,
+.appointments-controls .search-bar input {
   width: 100%;
-  padding: 10px 12px 10px 36px;
-  border: 1px solid var(--border-light);
+  flex: 1;
+  padding: 12px 16px 12px 42px;
+  border: none;
   border-radius: var(--r-md);
-  background: var(--bg-card);
+  background: transparent;
   color: var(--text-primary);
-  font-size: 0.875rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  box-shadow: none;
 }
 
-.search-bar input:focus {
-  outline: none;
+.appointments-controls-bar .search-bar input::placeholder,
+.appointments-controls .search-bar input::placeholder {
+  color: var(--text-muted);
+}
+
+.appointments-controls-bar .search-bar:focus-within,
+.appointments-controls .search-bar:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 .filter-chips {
@@ -1086,15 +1106,35 @@
 }
 
 .appointment-status-badge {
-  padding: 3px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 4px 12px;
   border-radius: 99px;
   font-size: 0.72rem;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.appointment-status-badge i {
+  font-size: 0.68rem;
 }
 
 .appointment-card-center {
   flex: 1;
+  min-width: 0;
+}
+
+.appointment-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s1);
+}
+
+.appointment-card-title {
   min-width: 0;
 }
 
@@ -1105,10 +1145,24 @@
   margin-bottom: 2px;
 }
 
+.doctor-specialty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .appointment-card-center .department-name {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   margin-bottom: var(--s2);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.appointment-card-center .department-name i {
+  color: var(--primary);
+  font-size: 0.72rem;
 }
 
 .appointment-meta {
@@ -1608,4 +1662,160 @@
   .page-number {
     transition: none;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PHASE 4 — APPOINTMENTS PAGE ENHANCEMENTS
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Appointments Controls Bar ───────────────────────────────── */
+.appointments-controls-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  margin-bottom: var(--s6);
+  background: var(--bg-card);
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+}
+
+.btn-danger-text {
+  color: var(--danger) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+.btn-danger-text:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: var(--danger) !important;
+}
+
+/* ── Reschedule Banners ──────────────────────────────────────── */
+.reschedule-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  font-size: 0.82rem;
+  margin-top: var(--s3);
+  line-height: 1.4;
+}
+
+.reschedule-pending-banner {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #b45309;
+}
+[data-theme="dark"] .reschedule-pending-banner {
+  color: #fcd34d;
+}
+
+.reschedule-suggested-banner {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: #6d28d9;
+}
+[data-theme="dark"] .reschedule-suggested-banner {
+  color: #c4b5fd;
+}
+
+.reschedule-banner i {
+  font-size: 0.95rem;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.reschedule-reason-txt {
+  display: block;
+  font-size: 0.76rem;
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
+/* ── Cancel Summary Box ──────────────────────────────────────── */
+.cancel-summary-box {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  margin-bottom: var(--s4);
+}
+
+.cancel-doctor-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+/* ── Rating Modal Design ─────────────────────────────────────── */
+.rating-modal-container {
+  overflow: hidden;
+}
+
+.rating-doctor-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  margin-bottom: var(--s5);
+}
+
+.rating-doctor-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.rating-doctor-header h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.rating-stars-wrapper {
+  text-align: center;
+  padding: var(--s4) 0;
+  margin-bottom: var(--s4);
+  background: rgba(245, 158, 11, 0.03);
+  border: 1px dashed rgba(245, 158, 11, 0.2);
+  border-radius: var(--r-md);
+}
+
+.rating-value-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: var(--s2);
+}
+
+.modal-foot-actions {
+  display: flex;
+  gap: var(--s3);
+  justify-content: flex-end;
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border-light);
 }

@@ -1,0 +1,31 @@
+# HealthBridge Git Ignore Rules
+
+# Dependencies
+/vendor/
+
+# Environment and Secret Configurations
+.env
+.env.local
+.env.*.local
+cookies.txt
+*.cookie
+
+# Temporary and Build Files
+_archive/
+submission_package/
+*.log
+*.tmp
+*.bak
+
+# IDE & Editor Files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.continue/
+.kilo/
+
+# OS-generated metadata
+.DS_Store
+Thumbs.db
+desktop.ini

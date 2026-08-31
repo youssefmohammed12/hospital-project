@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Your HealthBridge patient dashboard — view appointments and manage your health." />
+  <meta name="description" content="Your HealthBridge patient dashboard — view appointments, prescriptions, and manage your health." />
   <title>Dashboard — HealthBridge</title>
-  <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=5" />
   <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=2" />
   <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
   <script src="../../assets/js/core/main.js?v=2"></script>
   <script src="../../assets/js/components/layout.js?v=2"></script>
@@ -18,71 +19,119 @@
   <div id="navbar-container"></div>
   <div class="dashboard">
     <div id="sidebar-container"></div>
-    <main class="main-content">
+    <main class="main-content" id="dashboard-main">
       <div class="portal-content">
-        <!-- Hero — Skeleton / Error / Content -->
-        <div id="hero-skeleton">
-          <div class="skeleton skeleton-card" style="height:180px"></div>
+
+        <!-- ══════════════════════════════════════
+             HERO — Skeleton / Error / Content
+             ══════════════════════════════════════ -->
+        <div id="hero-skeleton" class="hero-skeleton-wrap" aria-hidden="true">
+          <div class="skeleton" style="height:220px;border-radius:var(--r-xl)"></div>
         </div>
-        <div id="hero-error" style="display:none">
-          <div class="card" style="text-align:center;padding:var(--s6)">
-            <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:var(--danger);margin-bottom:var(--s3)"></i>
+
+        <div id="hero-error" style="display:none" role="alert">
+          <div class="card dashboard-error-card">
+            <div class="dashboard-error-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
             <h3>Failed to Load Dashboard</h3>
-            <p style="color:var(--text-secondary)">Please refresh or try again later.</p>
-            <button class="btn btn-primary" onclick="Dashboard.refresh()">Retry</button>
+            <p>Please refresh or try again later.</p>
+            <button class="btn btn-primary" onclick="Dashboard.refresh()">
+              <i class="fas fa-rotate-right"></i> Retry
+            </button>
           </div>
         </div>
+
         <div id="hero-content" style="display:none">
-          <div class="welcome-hero">
-            <div class="welcome-hero-top">
-              <div class="welcome-greeting">
-                <h1 id="welcome-greeting">Welcome, Patient</h1>
-                <p id="hero-subtitle"></p>
-                <div class="current-datetime" id="current-datetime"></div>
-                <div class="welcome-meta">
-                  <div class="welcome-meta-item"><span class="meta-label">Patient #</span><span class="meta-value" id="patient-number">-</span></div>
-                  <div class="welcome-meta-item"><span class="meta-label">Member Since</span><span class="meta-value" id="member-since">-</span></div>
-                  <div class="welcome-meta-item"><span class="meta-label">Hospital</span><span class="meta-value" id="hospital-status">-</span></div>
+          <div class="welcome-hero" role="banner">
+            <div class="hero-bg-orb hero-orb-1" aria-hidden="true"></div>
+            <div class="hero-bg-orb hero-orb-2" aria-hidden="true"></div>
+
+            <div class="hero-top">
+              <!-- Avatar + Greeting -->
+              <div class="hero-identity">
+                <div class="hero-avatar" id="hero-avatar-initials" aria-label="Patient avatar">PT</div>
+                <div class="hero-text">
+                  <h1 class="hero-greeting" id="welcome-greeting">Welcome back</h1>
+                  <p class="hero-subtitle" id="hero-subtitle"></p>
+                  <p class="hero-datetime" id="current-datetime"></p>
                 </div>
               </div>
-              <div style="display:flex;align-items:center;gap:var(--s3);flex-shrink:0">
-                <button class="btn btn-primary" onclick="Dashboard.openBookModal()"><i class="fas fa-calendar-plus"></i> Book Appointment</button>
+
+              <!-- Meta chips + CTA -->
+              <div class="hero-right">
+                <div class="hero-meta-chips">
+                  <div class="hero-chip">
+                    <span class="chip-label">Patient #</span>
+                    <span class="chip-value" id="patient-number">—</span>
+                  </div>
+                  <div class="hero-chip">
+                    <span class="chip-label">Member Since</span>
+                    <span class="chip-value" id="member-since">—</span>
+                  </div>
+                  <div class="hero-chip" id="hospital-chip">
+                    <span class="chip-label">Hospital</span>
+                    <span class="chip-value" id="hospital-status">—</span>
+                  </div>
+                </div>
+                <button class="btn btn-primary hero-book-btn" onclick="Dashboard.openBookModal()" aria-label="Book an appointment">
+                  <i class="fas fa-calendar-plus" aria-hidden="true"></i> Book Appointment
+                </button>
               </div>
             </div>
-            <div class="welcome-hero-bottom">
+
+            <!-- Next Appt + Primary Doctor row -->
+            <div class="hero-bottom">
+              <!-- Next Appointment -->
               <div id="next-appt-hero" style="display:none">
-                <div class="next-appointment-hero">
+                <div class="next-appointment-hero" role="region" aria-label="Next appointment">
                   <div class="next-appt-header">
-                    <h3><i class="fas fa-calendar-days"></i> Next Appointment</h3>
+                    <h3 id="next-appt-title"><i class="fas fa-calendar-days" aria-hidden="true"></i> Next Appointment</h3>
                     <span class="next-appt-countdown" id="next-appt-countdown"></span>
                   </div>
                   <div class="next-appt-body">
-                    <div class="next-appt-avatar" id="next-appt-avatar">DR</div>
+                    <div class="next-appt-avatar" id="next-appt-avatar" aria-hidden="true">DR</div>
                     <div class="next-appt-info">
-                      <h4 id="next-appt-doctor">-</h4>
-                      <span class="department-tag" id="next-appt-dept">-</span>
-                      <div class="appt-time-detail"><i class="fas fa-calendar"></i> <span id="next-appt-date"></span> at <span id="next-appt-time"></span></div>
-                      <div class="next-appt-actions">
-                        <button class="btn btn-primary btn-sm" id="view-appointment-btn" onclick="Dashboard.openBookModal()">View Details</button>
+                      <h4 id="next-appt-doctor">—</h4>
+                      <span class="department-tag" id="next-appt-dept">—</span>
+                      <div class="appt-time-detail">
+                        <i class="fas fa-calendar" aria-hidden="true"></i>
+                        <span id="next-appt-date"></span>
+                        <span class="time-sep">at</span>
+                        <span id="next-appt-time"></span>
                       </div>
+                    </div>
+                    <div class="next-appt-cta">
+                      <button class="btn btn-outline btn-sm" id="view-appointment-btn" aria-label="View appointment details">
+                        View Details
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div id="next-appt-empty" style="display:none">
-                <div class="next-appointment-hero" style="display:flex;align-items:center;justify-content:space-between;padding:var(--s6)">
-                  <span><i class="fas fa-calendar"></i> No upcoming appointments</span>
-                  <button class="btn btn-outline btn-sm" onclick="Dashboard.openBookModal()">Book Now</button>
+                <div class="next-appointment-hero next-appt-empty-card">
+                  <div class="next-appt-empty-inner">
+                    <div class="next-appt-empty-icon"><i class="fas fa-calendar-plus" aria-hidden="true"></i></div>
+                    <div>
+                      <h4>No Upcoming Appointments</h4>
+                      <p>Schedule your next visit in seconds.</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="Dashboard.openBookModal()">
+                      Book Now
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              <!-- Primary Doctor -->
               <div id="primary-doctor-row" style="display:none">
-                <div class="primary-doctor-card">
-                  <h3><i class="fas fa-user-doctor"></i> Primary Doctor</h3>
+                <div class="primary-doctor-card" role="region" aria-label="Primary doctor">
+                  <div class="primary-doc-label"><i class="fas fa-user-doctor" aria-hidden="true"></i> Primary Doctor</div>
                   <div class="primary-doctor-body">
-                    <div class="primary-doc-avatar" id="primary-doc-avatar">DR</div>
+                    <div class="primary-doc-avatar" id="primary-doc-avatar" aria-hidden="true">DR</div>
                     <div class="primary-doc-info">
-                      <h4 id="primary-doctor-name">-</h4>
-                      <p id="primary-doctor-specialty">-</p>
+                      <h4 id="primary-doctor-name">—</h4>
+                      <p id="primary-doctor-specialty">—</p>
                     </div>
                   </div>
                 </div>
@@ -91,42 +140,224 @@
           </div>
         </div>
 
-        <!-- Health Alerts -->
-        <div class="section-header" id="health-alerts-container" style="display:none"><h2><i class="fas fa-exclamation-circle"></i> Health Alerts</h2></div>
-        <div id="health-alerts" class="health-alerts"></div>
+        <!-- ══════════════════════════════════════
+             HEALTH ALERTS
+             ══════════════════════════════════════ -->
+        <div id="health-alerts-container" style="display:none" role="region" aria-label="Health alerts">
+          <div class="section-header">
+            <h2><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Health Alerts</h2>
+          </div>
+          <div id="health-alerts" class="health-alerts"></div>
+        </div>
 
-        <!-- Health Snapshot -->
-        <div class="section-header"><h2><i class="fas fa-heart-pulse"></i> Health Snapshot</h2></div>
-        <div id="kpi-skeleton" style="display:block"><div class="kpi-grid-compact"><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div><div class="skeleton skeleton-card" style="height:90px"></div></div></div>
-        <div id="kpi-error" style="display:none"><div class="card" style="text-align:center;padding:var(--s4)"><p style="color:var(--text-muted)">Unable to load health snapshot.</p></div></div>
-        <div id="kpi-content" class="kpi-grid-compact" style="display:none"></div>
+        <!-- ══════════════════════════════════════
+             HEALTH SNAPSHOT — KPI CARDS
+             ══════════════════════════════════════ -->
+        <div class="section-header" role="heading" aria-level="2">
+          <h2><i class="fas fa-heart-pulse" aria-hidden="true"></i> Health Snapshot</h2>
+        </div>
+        <div id="kpi-skeleton" aria-hidden="true">
+          <div class="kpi-grid">
+            <div class="skeleton kpi-skeleton-card"></div>
+            <div class="skeleton kpi-skeleton-card"></div>
+            <div class="skeleton kpi-skeleton-card"></div>
+            <div class="skeleton kpi-skeleton-card"></div>
+            <div class="skeleton kpi-skeleton-card"></div>
+            <div class="skeleton kpi-skeleton-card"></div>
+          </div>
+        </div>
+        <div id="kpi-error" style="display:none">
+          <div class="card" style="text-align:center;padding:var(--s4)">
+            <p style="color:var(--text-muted)">Unable to load health snapshot.</p>
+          </div>
+        </div>
+        <div id="kpi-content" class="kpi-grid" style="display:none" role="list" aria-label="Health statistics"></div>
 
-        <!-- Patient Care Section Header -->
+        <!-- ══════════════════════════════════════
+             QUICK ACTIONS
+             ══════════════════════════════════════ -->
         <div class="section-header">
-          <h2><i class="fa-solid fa-user-doctor"></i> Patient Care</h2>
+          <h2><i class="fas fa-bolt" aria-hidden="true"></i> Quick Actions</h2>
         </div>
+        <nav class="quick-actions-grid" aria-label="Quick actions">
+          <a href="appointments.html" class="quick-action-card" aria-label="Book an appointment">
+            <div class="qa-icon qa-icon-blue"><i class="fas fa-calendar-plus" aria-hidden="true"></i></div>
+            <div class="qa-text">
+              <div class="qa-title">Book Appointment</div>
+              <div class="qa-desc">Schedule a visit with a specialist</div>
+            </div>
+            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="prescriptions.html" class="quick-action-card" aria-label="View prescriptions">
+            <div class="qa-icon qa-icon-purple"><i class="fas fa-prescription-bottle-medical" aria-hidden="true"></i></div>
+            <div class="qa-text">
+              <div class="qa-title">My Prescriptions</div>
+              <div class="qa-desc">Review your medications</div>
+            </div>
+            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="downloads.html" class="quick-action-card" aria-label="Download medical records">
+            <div class="qa-icon qa-icon-teal"><i class="fas fa-file-medical" aria-hidden="true"></i></div>
+            <div class="qa-text">
+              <div class="qa-title">Medical Records</div>
+              <div class="qa-desc">Download & view your documents</div>
+            </div>
+            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="profile.html" class="quick-action-card" aria-label="Update profile">
+            <div class="qa-icon qa-icon-green"><i class="fas fa-user-pen" aria-hidden="true"></i></div>
+            <div class="qa-text">
+              <div class="qa-title">Update Profile</div>
+              <div class="qa-desc">Manage your personal information</div>
+            </div>
+            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
+          </a>
+        </nav>
 
-        <!-- Dashboard Widget Grid -->
-        <div class="dashboard-widget-grid">
-          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-user-md"></i> My Care Team</h3><a href="../../doctors.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="care-team-skeleton" style="height:100px"></div><div id="care-team-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No care team data.</p></div></div><div id="care-team-content" style="display:none"><div id="care-team-list"></div></div></div>
-          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-clock-rotate-left"></i> Recent Activity</h3><a href="history.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="recent-activity-skeleton" style="height:100px"></div><div id="recent-activity-empty" style="display:none"><div class="empty-state"><div class="empty-icon"><i class="fas fa-clock" aria-hidden="true"></i></div><h4>No recent activity</h4><p>Your recent appointments and medical updates will appear here.</p></div></div><div id="recent-activity-content" style="display:none"><div id="dashboard-timeline-items"></div></div></div>
-          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-prescription"></i> Latest Prescription</h3><a href="prescriptions.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="latest-rx-skeleton" style="height:100px"></div><div id="latest-rx-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No prescriptions.</p></div></div><div id="latest-rx-content" style="display:none"><div id="latest-rx-card"></div></div></div>
-          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-bell"></i> Notifications</h3><a href="notifications.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="recent-notif-skeleton" style="height:100px"></div><div id="recent-notif-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No notifications.</p></div></div><div id="recent-notif-content" style="display:none"><div id="recent-notif-list"></div></div></div>
-          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-download"></i> Downloads</h3><a href="downloads.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="recent-dl-skeleton" style="height:100px"></div><div id="recent-dl-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No downloads.</p></div></div><div id="recent-dl-content" style="display:none"><div id="recent-dl-list"></div></div></div>
-          <div class="dashboard-widget"><div class="widget-header"><h3><i class="fas fa-chart-line"></i> Health Insights</h3><a href="insights.html" class="view-all-link">View All <i class="fas fa-arrow-right"></i></a></div><div class="skeleton skeleton-card" id="insights-preview-skeleton" style="height:100px"></div><div id="insights-preview-empty" style="display:none"><div class="empty-state"><p style="color:var(--text-muted)">No insights data.</p></div></div><div id="insights-preview-content" style="display:none"></div></div>
+        <!-- ══════════════════════════════════════
+             PATIENT CARE WIDGETS
+             ══════════════════════════════════════ -->
+        <div class="section-header">
+          <h2><i class="fas fa-user-doctor" aria-hidden="true"></i> Patient Care</h2>
         </div>
-      </div>
+        <div class="dashboard-widget-grid">
+
+          <!-- My Care Team -->
+          <article class="dashboard-widget" aria-label="My care team">
+            <div class="widget-header">
+              <h3><i class="fas fa-user-nurse" aria-hidden="true"></i> My Care Team</h3>
+              <a href="../../doctors.html" class="view-all-link" aria-label="View all doctors">
+                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+            <div class="skeleton skeleton-card" id="care-team-skeleton" style="height:120px" aria-hidden="true"></div>
+            <div id="care-team-empty" style="display:none">
+              <div class="widget-empty-state">
+                <div class="widget-empty-icon"><i class="fas fa-user-doctor" aria-hidden="true"></i></div>
+                <p>Your care team will appear here once you've had appointments.</p>
+                <a href="appointments.html" class="btn btn-outline btn-sm">Book First Appointment</a>
+              </div>
+            </div>
+            <div id="care-team-content" style="display:none">
+              <div id="care-team-list" role="list"></div>
+            </div>
+          </article>
+
+          <!-- Recent Activity -->
+          <article class="dashboard-widget" aria-label="Recent activity">
+            <div class="widget-header">
+              <h3><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Recent Activity</h3>
+              <a href="history.html" class="view-all-link" aria-label="View all activity">
+                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+            <div class="skeleton skeleton-card" id="recent-activity-skeleton" style="height:120px" aria-hidden="true"></div>
+            <div id="recent-activity-empty" style="display:none">
+              <div class="widget-empty-state">
+                <div class="widget-empty-icon"><i class="fas fa-clock" aria-hidden="true"></i></div>
+                <p>Your recent appointments and medical updates will appear here.</p>
+              </div>
+            </div>
+            <div id="recent-activity-content" style="display:none">
+              <div id="dashboard-timeline-items" class="activity-timeline" role="list"></div>
+            </div>
+          </article>
+
+          <!-- Latest Prescription -->
+          <article class="dashboard-widget" aria-label="Latest prescription">
+            <div class="widget-header">
+              <h3><i class="fas fa-prescription" aria-hidden="true"></i> Latest Prescription</h3>
+              <a href="prescriptions.html" class="view-all-link" aria-label="View all prescriptions">
+                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+            <div class="skeleton skeleton-card" id="latest-rx-skeleton" style="height:120px" aria-hidden="true"></div>
+            <div id="latest-rx-empty" style="display:none">
+              <div class="widget-empty-state">
+                <div class="widget-empty-icon"><i class="fas fa-prescription-bottle" aria-hidden="true"></i></div>
+                <p>No active prescriptions found.</p>
+              </div>
+            </div>
+            <div id="latest-rx-content" style="display:none">
+              <div id="latest-rx-card"></div>
+            </div>
+          </article>
+
+          <!-- Notifications -->
+          <article class="dashboard-widget" aria-label="Recent notifications">
+            <div class="widget-header">
+              <h3><i class="fas fa-bell" aria-hidden="true"></i> Notifications</h3>
+              <a href="notifications.html" class="view-all-link" aria-label="View all notifications">
+                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+            <div class="skeleton skeleton-card" id="recent-notif-skeleton" style="height:120px" aria-hidden="true"></div>
+            <div id="recent-notif-empty" style="display:none">
+              <div class="widget-empty-state">
+                <div class="widget-empty-icon"><i class="fas fa-bell-slash" aria-hidden="true"></i></div>
+                <p>No new notifications.</p>
+              </div>
+            </div>
+            <div id="recent-notif-content" style="display:none">
+              <div id="recent-notif-list" role="list"></div>
+            </div>
+          </article>
+
+          <!-- Downloads -->
+          <article class="dashboard-widget" aria-label="Recent downloads">
+            <div class="widget-header">
+              <h3><i class="fas fa-file-arrow-down" aria-hidden="true"></i> Downloads</h3>
+              <a href="downloads.html" class="view-all-link" aria-label="View all downloads">
+                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+            <div class="skeleton skeleton-card" id="recent-dl-skeleton" style="height:120px" aria-hidden="true"></div>
+            <div id="recent-dl-empty" style="display:none">
+              <div class="widget-empty-state">
+                <div class="widget-empty-icon"><i class="fas fa-folder-open" aria-hidden="true"></i></div>
+                <p>No downloadable documents yet.</p>
+              </div>
+            </div>
+            <div id="recent-dl-content" style="display:none">
+              <div id="recent-dl-list" role="list"></div>
+            </div>
+          </article>
+
+          <!-- Health Insights -->
+          <article class="dashboard-widget" aria-label="Health insights preview">
+            <div class="widget-header">
+              <h3><i class="fas fa-chart-line" aria-hidden="true"></i> Health Insights</h3>
+              <a href="insights.html" class="view-all-link" aria-label="View full insights">
+                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+              </a>
+            </div>
+            <div class="skeleton skeleton-card" id="insights-preview-skeleton" style="height:120px" aria-hidden="true"></div>
+            <div id="insights-preview-empty" style="display:none">
+              <div class="widget-empty-state">
+                <div class="widget-empty-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></div>
+                <p>Visit more appointments to see your health trends.</p>
+              </div>
+            </div>
+            <div id="insights-preview-content" style="display:none"></div>
+          </article>
+
+        </div><!-- /.dashboard-widget-grid -->
+
+      </div><!-- /.portal-content -->
     </main>
-  </div>
+  </div><!-- /.dashboard -->
 
   <!-- Appointment Details Modal -->
-  <div class="modal-overlay" id="appointment-modal">
+  <div class="modal-overlay" id="appointment-modal" role="dialog" aria-modal="true" aria-labelledby="appt-modal-title">
     <div class="modal" style="max-width:560px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s5)"><h3><i class="fas fa-calendar-days"></i> Appointment Details</h3><button class="close-btn" onclick="Dashboard.closeApptModal()">&times;</button></div>
+      <div class="modal-head-row">
+        <h3 id="appt-modal-title"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointment Details</h3>
+        <button class="close-btn" onclick="Dashboard.closeApptModal()" aria-label="Close modal">&times;</button>
+      </div>
       <div id="appointment-modal-body"></div>
     </div>
   </div>
 
-  <script src="../../assets/js/pages/patient/dashboard.js?v=1"></script>
+  <script src="../../assets/js/pages/patient/dashboard.js?v=3"></script>
 </body>
 </html>

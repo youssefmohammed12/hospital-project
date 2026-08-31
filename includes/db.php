@@ -3,11 +3,30 @@
  * HealthBridge — Database Configuration & Connection
  */
 
-define('DB_HOST', '127.0.0.1');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'healthbridge');
-define('DB_PORT', '3306');
+// Load Composer autoloader and .env file if available
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+    if (class_exists('Dotenv\Dotenv') && file_exists(__DIR__ . '/../.env')) {
+        $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+        $dotenv->safeLoad();
+    }
+}
+
+if (!defined('DB_HOST')) {
+    define('DB_HOST', getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? '127.0.0.1'));
+}
+if (!defined('DB_USER')) {
+    define('DB_USER', getenv('DB_USER') ?: ($_ENV['DB_USER'] ?? 'root'));
+}
+if (!defined('DB_PASS')) {
+    define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : ($_ENV['DB_PASS'] ?? ''));
+}
+if (!defined('DB_NAME')) {
+    define('DB_NAME', getenv('DB_NAME') ?: ($_ENV['DB_NAME'] ?? 'healthbridge'));
+}
+if (!defined('DB_PORT')) {
+    define('DB_PORT', getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '3306'));
+}
 
 /**
  * Get a PDO database connection
@@ -29,3 +48,4 @@ function getDB(): PDO {
 
     return new PDO($dsn, DB_USER, DB_PASS, $options);
 }
+

@@ -61,12 +61,10 @@ try {
         return;
     }
 
-    // Return lightweight dashboard preview data
+    // Return complete dashboard data (both preview keys for dashboard and full section keys for portal pages)
     $allData = $portal->getAll($userId);
     
-    jsonResponse(true, ['data' => [
-        'overview'              => $allData['overview'],
-        'health_snapshot'       => $allData['health_snapshot'],
+    jsonResponse(true, ['data' => array_merge($allData, [
         'recent_activity'       => array_reverse(array_slice($allData['medical_timeline'], -3, 3)),
         'recent_notifications'  => $allData['notifications'],
         'latest_prescription'   => $allData['prescriptions']['prescriptions'][0] ?? null,
@@ -79,9 +77,7 @@ try {
             'monthly_visits' => array_slice($allData['insights']['monthly_visits'], -6, 6),
             'department_distribution' => $allData['insights']['department_distribution'],
         ],
-        'health_alerts'          => $allData['health_alerts'],
-        'profile_completion'     => $allData['profile_completion'],
-    ]]);
+    ])]);
 
 } catch (Throwable $e) {
     http_response_code(500);

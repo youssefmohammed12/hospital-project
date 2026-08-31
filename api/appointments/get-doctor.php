@@ -26,7 +26,8 @@ try {
 
     // Get appointments for this doctor
     $apptStmt = $db->prepare(
-        'SELECT a.id, a.user_id, a.patient_name, a.department, a.date, a.time, a.appointment_time_range, a.notes, a.status, a.created_at, a.doctor_id
+        'SELECT a.id, a.user_id, a.patient_name, a.department, a.date, a.time, a.appointment_time_range, a.notes, a.status, a.created_at, a.doctor_id,
+                a.reschedule_status, a.pending_reschedule_date, a.pending_reschedule_time, a.reschedule_reason, a.reschedule_requested_at
          FROM appointments a WHERE a.doctor_id = ? ORDER BY a.date DESC, a.time DESC'
     );
     $apptStmt->execute([$doctor['id']]);

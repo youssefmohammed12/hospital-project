@@ -4,6 +4,169 @@
    Supports Light and Dark themes.
    ============================================================ */
 
+/* ── Page Layout & Header ────────────────────────────────── */
+.portal-content {
+  padding: var(--s6);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--s2);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.page-header h1 i {
+  color: var(--primary);
+}
+
+.page-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ── Search Bar ──────────────────────────────────────────── */
+.search-bar {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--s3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+#rx-search-input {
+  width: 100%;
+  padding: var(--s3) var(--s3) var(--s3) var(--s8);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#rx-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+#rx-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+
+/* ── Filter Chips ────────────────────────────────────────── */
+.notif-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.notif-filter-btn,
+.filter-chip {
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notif-filter-btn:hover,
+.filter-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.notif-filter-btn.active,
+.filter-chip.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ── Status Badges ───────────────────────────────────────── */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--r-md);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border: 1px solid transparent;
+}
+
+.status-active {
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--primary);
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.status-completed {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success, #22c55e);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.status-cancelled {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ── Skeleton Loader ─────────────────────────────────────── */
+.skeleton-loader {
+  width: 100%;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 25%,
+    var(--bg-card) 50%,
+    var(--bg-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--r-md);
+}
+
+.skeleton-card {
+  border-radius: var(--r-lg);
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 /* ── Prescription ID Format ──────────────────────────────── */
 .rx-id {
   font-family: "Courier New", monospace;
@@ -622,10 +785,28 @@
   .rx-signature-right {
     text-align: left;
   }
+
+  .page-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .notif-filters {
+    gap: var(--s1);
+  }
+
+  .notif-filter-btn,
+  .filter-chip {
+    padding: var(--s1) var(--s3);
+    font-size: 0.8rem;
+  }
 }
 
 @media (max-width: 480px) {
   .rx-professional-card-body {
     grid-template-columns: 1fr;
+  }
+
+  .portal-content {
+    padding: var(--s4);
   }
 }

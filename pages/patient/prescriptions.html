@@ -1,40 +1,122 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" dir="ltr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Prescriptions — HealthBridge" />
-  <title>Prescriptions — HealthBridge</title>
-  <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=7" />
-  <link rel="stylesheet" href="../../assets/css/modules/prescription.css?v=2" />
-  <script src="../../assets/js/core/main.js?v=2"></script>
-  <script src="../../assets/js/components/layout.js?v=2"></script>
-  <script src="../../assets/js/modules/prescriptions.js?v=2"></script>
-</head>
-<body>
-  <div id="navbar-container"></div>
-  <div class="dashboard">
-    <div id="sidebar-container"></div>
-    <main class="main-content">
-      <div class="portal-content">
-        <div class="page-header">
-          <h1><i class="fas fa-prescription" aria-hidden="true"></i> Prescriptions</h1>
-          <p class="page-subtitle">Your prescriptions and medication information</p>
-        </div>
-        <div id="prescriptions-container">
-          <div class="skeleton-loader">
-            <div class="skeleton skeleton-card" style="height: 120px; margin-bottom: var(--s4);"></div>
-            <div class="skeleton skeleton-card" style="height: 120px; margin-bottom: var(--s4);"></div>
-            <div class="skeleton skeleton-card" style="height: 120px;"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Prescriptions — HealthBridge" />
+    <title>Prescriptions — HealthBridge</title>
+    <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/pages/patient-portal.css?v=7"
+    />
+    <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
+    <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/modules/prescription.css?v=2"
+    />
+    <script src="../../assets/js/core/main.js?v=2"></script>
+    <script src="../../assets/js/components/layout.js?v=2"></script>
+  </head>
+  <body>
+    <div id="navbar-container"></div>
+    <div class="dashboard">
+      <div id="sidebar-container"></div>
+      <main class="main-content">
+        <div class="portal-content">
+          <div
+            class="page-header"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: var(--s4);
+            "
+          >
+            <div>
+              <h1>
+                <i
+                  class="fas fa-prescription-bottle-medical"
+                  aria-hidden="true"
+                ></i>
+                My Prescriptions
+              </h1>
+              <p class="page-subtitle">
+                View and manage medications prescribed by your healthcare team
+              </p>
+            </div>
+          </div>
+
+          <!-- Search & Filter Controls -->
+          <div
+            style="
+              margin-bottom: var(--s5);
+              display: flex;
+              flex-direction: column;
+              gap: var(--s3);
+            "
+          >
+            <div class="search-bar" style="max-width: 100%">
+              <i class="fas fa-search search-icon" aria-hidden="true"></i>
+              <input
+                type="text"
+                id="rx-search-input"
+                placeholder="Search by medication, doctor name, or department..."
+              />
+            </div>
+            <div class="notif-filters" id="rx-filter-chips">
+              <button
+                class="notif-filter-btn filter-chip active"
+                data-filter="all"
+              >
+                All Prescriptions
+              </button>
+              <button class="notif-filter-btn filter-chip" data-filter="Active">
+                Active
+              </button>
+              <button
+                class="notif-filter-btn filter-chip"
+                data-filter="Completed"
+              >
+                Completed
+              </button>
+              <button
+                class="notif-filter-btn filter-chip"
+                data-filter="Cancelled"
+              >
+                Cancelled
+              </button>
+            </div>
+          </div>
+
+          <!-- Prescriptions Container -->
+          <div id="prescriptions-container">
+            <div class="skeleton-loader">
+              <div
+                class="skeleton skeleton-card"
+                style="height: 140px; margin-bottom: var(--s4)"
+              ></div>
+              <div
+                class="skeleton skeleton-card"
+                style="height: 140px; margin-bottom: var(--s4)"
+              ></div>
+              <div class="skeleton skeleton-card" style="height: 140px"></div>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
-  </div>
-  <script src="../../assets/js/pages/patient/prescriptions.js?v=1"></script>
-</body>
+      </main>
+    </div>
+    <script src="../../assets/js/pages/patient/prescriptions.js?v=2"></script>
+  </body>
 </html>

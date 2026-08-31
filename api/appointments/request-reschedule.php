@@ -25,6 +25,7 @@
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/RescheduleService.php';
+require_once __DIR__ . '/../../services/ScheduleService.php';
 
 header('Content-Type: application/json');
 
@@ -76,8 +77,8 @@ try {
         echo json_encode($result);
     }
 
-} catch (Exception $e) {
-    error_log('Request Reschedule Error: ' . $e->getMessage());
-    http_response_code(500);
+} catch (\Throwable $e) {
+    error_log('Request Reschedule Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+    http_response_code(409);
     echo json_encode(['success' => false, 'message' => 'Failed to submit reschedule request.']);
 }

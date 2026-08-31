@@ -1067,7 +1067,7 @@ class ScheduleService
      * @param string $date  YYYY-MM-DD
      * @return array  Array of ['start' => minutes, 'end' => minutes] for each booking
      */
-    private function getBookedRanges(int $doctorId, string $date): array
+    public function getBookedRanges(int $doctorId, string $date): array
     {
         $stmt = $this->db->prepare(
             "SELECT time, appointment_time_range FROM appointments

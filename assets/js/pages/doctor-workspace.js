@@ -59,6 +59,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   initKeyboardShortcuts();   // Part 11
   initBeforeUnload();        // Part 4
   initClinicalHistoryForms(); // Phase 5.3.2
+
+  const logoutBtn = document.getElementById('doctor-ws-logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (typeof window.logoutUser === 'function') window.logoutUser();
+    });
+  }
+
   await loadData();
 
   const hash = window.location.hash.substring(1);
@@ -845,12 +854,18 @@ function debouncedStatusCheck() {
    ═══════════════════════════════════════════════════════════ */
 
 function initReviewModal() {
-  document.getElementById('ws-review-confirm-btn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('ws-review-confirm-btn');
+  const handler = async (btn) => {
+    if (!btn) return;
     setLoading(btn, true, 'Completing...');
     await completeVisit();
     setLoading(btn, false, 'Complete Visit');
-  });
+  };
+
+  const btn1 = document.getElementById('ws-review-confirm-btn');
+  if (btn1) btn1.addEventListener('click', () => handler(btn1));
+
+  const btn2 = document.getElementById('ws-confirm-complete-btn');
+  if (btn2) btn2.addEventListener('click', () => handler(btn2));
 }
 
 function openReviewModal() {
@@ -1389,6 +1404,7 @@ function openRxModal() {
 
 function wsRxAddRow() {
   const c = document.getElementById('ws-rx-items');
+  if (!c) return;
   const row = document.createElement('div');
   row.className = 'ws-rx-row form-grid';
   row.style.marginBottom = 'var(--s2)';
@@ -1399,12 +1415,35 @@ function wsRxAddRow() {
     <div class="form-group"><input type="text" class="rx-freq" placeholder="Frequency" /></div>
     <div class="form-group"><input type="text" class="rx-dur" placeholder="Duration" /></div>
     <div class="form-group" style="display:flex;align-items:flex-end">
-      <button type="button" class="btn btn-outline btn-sm" onclick="this.closest('.ws-rx-row').remove()" style="color:var(--danger)"><i class="fas fa-trash-can"></i></button>
+      <button type="button" class="btn btn-outline btn-sm rx-remove-row-btn" style="color:var(--danger)"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
     </div>`;
   c.appendChild(row);
 }
 
 function initRxForm() {
+  const addBtn = document.getElementById('ws-rx-add-row-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', wsRxAddRow);
+  }
+
+  const itemsContainer = document.getElementById('ws-rx-items');
+  if (itemsContainer) {
+    itemsContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.rx-remove-row-btn');
+      if (btn) {
+        const row = btn.closest('.ws-rx-row');
+        if (row) {
+          const allRows = itemsContainer.querySelectorAll('.ws-rx-row');
+          if (allRows.length > 1) {
+            row.remove();
+          } else {
+            showToast('Prescription must contain at least one medication row.', 'info');
+          }
+        }
+      }
+    });
+  }
+
   const form = document.getElementById('ws-rx-form');
   if (!form) return;
   form.addEventListener('submit', async (e) => {

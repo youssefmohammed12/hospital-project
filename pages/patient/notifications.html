@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Notifications — HealthBridge" />
   <title>Notifications — HealthBridge</title>
-  <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
+  <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
   <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=7" />
+  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
+  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
   <script src="../../assets/js/core/main.js?v=2"></script>
   <script src="../../assets/js/components/layout.js?v=2"></script>
-  <script src="../../assets/js/modules/notifications.js?v=2"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -20,9 +21,14 @@
     <div id="sidebar-container"></div>
     <main class="main-content">
       <div class="portal-content">
-        <div class="page-header">
-          <h1><i class="fas fa-bell" aria-hidden="true"></i> Notifications</h1>
-          <p class="page-subtitle">Your notifications and alerts</p>
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--s4)">
+          <div>
+            <h1><i class="fas fa-bell" aria-hidden="true"></i> Notifications</h1>
+            <p class="page-subtitle">Stay updated on your appointment status, prescriptions, and health alerts</p>
+          </div>
+          <button class="btn btn-outline btn-sm" id="mark-all-read-btn" style="display:none">
+            <i class="fas fa-check-double" aria-hidden="true"></i> Mark All as Read
+          </button>
         </div>
         <div id="notifications-container">
           <div class="skeleton-loader">
@@ -35,6 +41,6 @@
       </div>
     </main>
   </div>
-  <script src="../../assets/js/pages/patient/notifications.js?v=1"></script>
+  <script src="../../assets/js/pages/patient/notifications.js?v=2"></script>
 </body>
 </html>

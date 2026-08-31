@@ -410,7 +410,7 @@ class PrescriptionService
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        return $this->withItemCounts($stmt->fetchAll());
+        return $this->withItems($stmt->fetchAll());
     }
 
     /**
@@ -422,16 +422,18 @@ class PrescriptionService
     }
 
     /**
-     * Attach item counts to prescription rows.
+     * Attach full medication items list and items_count to prescription rows.
      */
-    private function withItemCounts(array $prescriptions): array
+    private function withItems(array $prescriptions): array
     {
-        $countStmt = $this->db->prepare(
-            'SELECT COUNT(*) as c FROM prescription_items WHERE prescription_id = ?'
+        $itemStmt = $this->db->prepare(
+            'SELECT * FROM prescription_items WHERE prescription_id = ? ORDER BY sort_order ASC'
         );
         foreach ($prescriptions as &$rx) {
-            $countStmt->execute([(int)$rx['id']]);
-            $rx['items_count'] = (int) $countStmt->fetch()['c'];
+            $itemStmt->execute([(int)$rx['id']]);
+            $items = $itemStmt->fetchAll();
+            $rx['items'] = $items ?: [];
+            $rx['items_count'] = count($rx['items']);
         }
         return $prescriptions;
     }

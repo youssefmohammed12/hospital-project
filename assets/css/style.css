@@ -18,6 +18,7 @@
   --bg-card-hover: #172540;
   --bg-input: #0e1b30;
   --bg-secondary: #0c1427;
+  --bg-subtle: #0e1929;
 
   /* Brand colors */
   --primary: #22d3ee;
@@ -46,6 +47,7 @@
   --s4: 1rem;
   --s5: 1.25rem;
   --s6: 1.5rem;
+  --s7: 1.75rem;
   --s8: 2rem;
   --s10: 2.5rem;
   --s12: 3rem;
@@ -2047,6 +2049,7 @@ tbody tr:hover td {
   --bg-card-hover: #f0f8ff;
   --bg-input: #eaf3fd;
   --bg-secondary: #e4eef9;
+  --bg-subtle: #f4f8fd;
 
   --primary: #0891b2;
   --primary-dark: #0e7490;

@@ -41,6 +41,16 @@ class NotificationService
     const TYPE_PRESCRIPTION_CANCELLED = 'prescription_cancelled';
     const TYPE_APPOINTMENT_COMPLETED  = 'appointment_completed';
 
+    // ── Reschedule Workflow Notification Types ──────────────
+    const TYPE_RESCHEDULE_REQUEST             = 'reschedule_request';
+    const TYPE_RESCHEDULE_SUBMITTED           = 'reschedule_submitted';
+    const TYPE_RESCHEDULE_SUGGESTED           = 'reschedule_suggested';
+    const TYPE_RESCHEDULE_SUGGESTION_ACCEPTED = 'reschedule_suggestion_accepted';
+    const TYPE_RESCHEDULE_SUGGESTION_DECLINED = 'reschedule_suggestion_declined';
+    const TYPE_RESCHEDULE_APPROVED            = 'reschedule_approved';
+    const TYPE_RESCHEDULE_REJECTED            = 'reschedule_rejected';
+    const TYPE_RESCHEDULE_REQUEST_CANCELLED   = 'reschedule_request_cancelled';
+
     /**
      * Map each notification type to its corresponding preference column
      * in the user_preferences table. This reuses the existing preference
@@ -49,27 +59,35 @@ class NotificationService
      * @var array<string, string>  type => preference column name
      */
     private const TYPE_TO_PREF = [
-        self::TYPE_APPOINTMENT_CONFIRMED  => 'notif_appointment',
-        self::TYPE_APPOINTMENT_DECLINED   => 'notif_appointment',
-        self::TYPE_APPOINTMENT_REQUEST    => 'notif_appointment',
-        self::TYPE_APPOINTMENT_CANCELLED  => 'notif_appointment',
-        self::TYPE_APPOINTMENT_CHANGED    => 'notif_appointment',
-        self::TYPE_APPOINTMENT_COMPLETED  => 'notif_appointment',
-        self::TYPE_RATING_RECEIVED        => 'notif_ratings',
-        self::TYPE_REVIEW_RECEIVED        => 'notif_ratings',
-        self::TYPE_SUPPORT_REPLY          => 'notif_messages',
-        self::TYPE_PASSWORD_CHANGED       => 'notif_appointment',
-        self::TYPE_PROFILE_UPDATED        => 'notif_appointment',
-        self::TYPE_ACCOUNT_STATUS_CHANGED => 'notif_appointment',
-        self::TYPE_NEW_PATIENT            => 'notif_announcements',
-        self::TYPE_NEW_DOCTOR             => 'notif_announcements',
-        self::TYPE_NEW_SUPPORT_TICKET     => 'notif_messages',
-        self::TYPE_MEDICAL_RECORD_UPDATED => 'notif_appointment',
-        self::TYPE_VISIT_NOTE_ADDED       => 'notif_appointment',
-        self::TYPE_PRESCRIPTION_ISSUED    => 'notif_appointment',
-        self::TYPE_PRESCRIPTION_UPDATED   => 'notif_appointment',
-        self::TYPE_PRESCRIPTION_COMPLETED => 'notif_appointment',
-        self::TYPE_PRESCRIPTION_CANCELLED => 'notif_appointment',
+        self::TYPE_APPOINTMENT_CONFIRMED          => 'notif_appointment',
+        self::TYPE_APPOINTMENT_DECLINED           => 'notif_appointment',
+        self::TYPE_APPOINTMENT_REQUEST            => 'notif_appointment',
+        self::TYPE_APPOINTMENT_CANCELLED          => 'notif_appointment',
+        self::TYPE_APPOINTMENT_CHANGED            => 'notif_appointment',
+        self::TYPE_APPOINTMENT_COMPLETED          => 'notif_appointment',
+        self::TYPE_RESCHEDULE_REQUEST             => 'notif_appointment',
+        self::TYPE_RESCHEDULE_SUBMITTED           => 'notif_appointment',
+        self::TYPE_RESCHEDULE_SUGGESTED           => 'notif_appointment',
+        self::TYPE_RESCHEDULE_SUGGESTION_ACCEPTED => 'notif_appointment',
+        self::TYPE_RESCHEDULE_SUGGESTION_DECLINED => 'notif_appointment',
+        self::TYPE_RESCHEDULE_APPROVED            => 'notif_appointment',
+        self::TYPE_RESCHEDULE_REJECTED            => 'notif_appointment',
+        self::TYPE_RESCHEDULE_REQUEST_CANCELLED   => 'notif_appointment',
+        self::TYPE_RATING_RECEIVED                => 'notif_ratings',
+        self::TYPE_REVIEW_RECEIVED                => 'notif_ratings',
+        self::TYPE_SUPPORT_REPLY                  => 'notif_messages',
+        self::TYPE_PASSWORD_CHANGED               => 'notif_appointment',
+        self::TYPE_PROFILE_UPDATED                => 'notif_appointment',
+        self::TYPE_ACCOUNT_STATUS_CHANGED         => 'notif_appointment',
+        self::TYPE_NEW_PATIENT                    => 'notif_announcements',
+        self::TYPE_NEW_DOCTOR                     => 'notif_announcements',
+        self::TYPE_NEW_SUPPORT_TICKET             => 'notif_messages',
+        self::TYPE_MEDICAL_RECORD_UPDATED         => 'notif_appointment',
+        self::TYPE_VISIT_NOTE_ADDED               => 'notif_appointment',
+        self::TYPE_PRESCRIPTION_ISSUED            => 'notif_appointment',
+        self::TYPE_PRESCRIPTION_UPDATED           => 'notif_appointment',
+        self::TYPE_PRESCRIPTION_COMPLETED         => 'notif_appointment',
+        self::TYPE_PRESCRIPTION_CANCELLED         => 'notif_appointment',
     ];
 
     /**
@@ -81,27 +99,35 @@ class NotificationService
     public static function getAllTypes(): array
     {
         return [
-            self::TYPE_APPOINTMENT_CONFIRMED  => 'Appointment Confirmed',
-            self::TYPE_APPOINTMENT_DECLINED   => 'Appointment Declined',
-            self::TYPE_APPOINTMENT_REQUEST    => 'New Appointment Request',
-            self::TYPE_APPOINTMENT_CANCELLED  => 'Appointment Cancelled',
-            self::TYPE_APPOINTMENT_CHANGED    => 'Appointment Time Changed',
-            self::TYPE_APPOINTMENT_COMPLETED  => 'Appointment Completed',
-            self::TYPE_RATING_RECEIVED        => 'Rating Received',
-            self::TYPE_REVIEW_RECEIVED        => 'Review Received',
-            self::TYPE_SUPPORT_REPLY          => 'Support Reply',
-            self::TYPE_PASSWORD_CHANGED       => 'Password Changed',
-            self::TYPE_PROFILE_UPDATED        => 'Profile Updated',
-            self::TYPE_ACCOUNT_STATUS_CHANGED => 'Account Status Changed',
-            self::TYPE_NEW_PATIENT            => 'New Patient Registered',
-            self::TYPE_NEW_DOCTOR             => 'New Doctor Registered',
-            self::TYPE_NEW_SUPPORT_TICKET     => 'New Support Ticket',
-            self::TYPE_MEDICAL_RECORD_UPDATED => 'Medical Record Updated',
-            self::TYPE_VISIT_NOTE_ADDED       => 'Visit Notes Added',
-            self::TYPE_PRESCRIPTION_ISSUED    => 'Prescription Issued',
-            self::TYPE_PRESCRIPTION_UPDATED   => 'Prescription Updated',
-            self::TYPE_PRESCRIPTION_COMPLETED => 'Prescription Completed',
-            self::TYPE_PRESCRIPTION_CANCELLED => 'Prescription Cancelled',
+            self::TYPE_APPOINTMENT_CONFIRMED          => 'Appointment Confirmed',
+            self::TYPE_APPOINTMENT_DECLINED           => 'Appointment Declined',
+            self::TYPE_APPOINTMENT_REQUEST            => 'New Appointment Request',
+            self::TYPE_APPOINTMENT_CANCELLED          => 'Appointment Cancelled',
+            self::TYPE_APPOINTMENT_CHANGED            => 'Appointment Time Changed',
+            self::TYPE_APPOINTMENT_COMPLETED          => 'Appointment Completed',
+            self::TYPE_RESCHEDULE_REQUEST             => 'Reschedule Requested',
+            self::TYPE_RESCHEDULE_SUBMITTED           => 'Reschedule Request Submitted',
+            self::TYPE_RESCHEDULE_SUGGESTED           => 'New Appointment Time Suggested',
+            self::TYPE_RESCHEDULE_SUGGESTION_ACCEPTED => 'Reschedule Suggestion Accepted',
+            self::TYPE_RESCHEDULE_SUGGESTION_DECLINED => 'Reschedule Suggestion Declined',
+            self::TYPE_RESCHEDULE_APPROVED            => 'Reschedule Approved',
+            self::TYPE_RESCHEDULE_REJECTED            => 'Reschedule Declined',
+            self::TYPE_RESCHEDULE_REQUEST_CANCELLED   => 'Reschedule Request Cancelled',
+            self::TYPE_RATING_RECEIVED                => 'Rating Received',
+            self::TYPE_REVIEW_RECEIVED                => 'Review Received',
+            self::TYPE_SUPPORT_REPLY                  => 'Support Reply',
+            self::TYPE_PASSWORD_CHANGED               => 'Password Changed',
+            self::TYPE_PROFILE_UPDATED                => 'Profile Updated',
+            self::TYPE_ACCOUNT_STATUS_CHANGED         => 'Account Status Changed',
+            self::TYPE_NEW_PATIENT                    => 'New Patient Registered',
+            self::TYPE_NEW_DOCTOR                     => 'New Doctor Registered',
+            self::TYPE_NEW_SUPPORT_TICKET             => 'New Support Ticket',
+            self::TYPE_MEDICAL_RECORD_UPDATED         => 'Medical Record Updated',
+            self::TYPE_VISIT_NOTE_ADDED               => 'Visit Notes Added',
+            self::TYPE_PRESCRIPTION_ISSUED            => 'Prescription Issued',
+            self::TYPE_PRESCRIPTION_UPDATED           => 'Prescription Updated',
+            self::TYPE_PRESCRIPTION_COMPLETED         => 'Prescription Completed',
+            self::TYPE_PRESCRIPTION_CANCELLED         => 'Prescription Cancelled',
         ];
     }
 
@@ -120,6 +146,11 @@ class NotificationService
                 self::TYPE_APPOINTMENT_CANCELLED,
                 self::TYPE_APPOINTMENT_CHANGED,
                 self::TYPE_APPOINTMENT_COMPLETED,
+                self::TYPE_RESCHEDULE_SUBMITTED,
+                self::TYPE_RESCHEDULE_SUGGESTED,
+                self::TYPE_RESCHEDULE_APPROVED,
+                self::TYPE_RESCHEDULE_REJECTED,
+                self::TYPE_RESCHEDULE_REQUEST_CANCELLED,
                 self::TYPE_SUPPORT_REPLY,
                 self::TYPE_PASSWORD_CHANGED,
                 self::TYPE_PROFILE_UPDATED,
@@ -134,6 +165,10 @@ class NotificationService
             'doctor' => [
                 self::TYPE_APPOINTMENT_REQUEST,
                 self::TYPE_APPOINTMENT_CANCELLED,
+                self::TYPE_RESCHEDULE_REQUEST,
+                self::TYPE_RESCHEDULE_SUGGESTION_ACCEPTED,
+                self::TYPE_RESCHEDULE_SUGGESTION_DECLINED,
+                self::TYPE_RESCHEDULE_REQUEST_CANCELLED,
                 self::TYPE_RATING_RECEIVED,
                 self::TYPE_REVIEW_RECEIVED,
                 self::TYPE_SUPPORT_REPLY,
@@ -145,6 +180,10 @@ class NotificationService
                 self::TYPE_NEW_PATIENT,
                 self::TYPE_NEW_DOCTOR,
                 self::TYPE_NEW_SUPPORT_TICKET,
+                self::TYPE_RESCHEDULE_REQUEST,
+                self::TYPE_RESCHEDULE_SUGGESTED,
+                self::TYPE_RESCHEDULE_APPROVED,
+                self::TYPE_RESCHEDULE_REJECTED,
                 self::TYPE_RATING_RECEIVED,
                 self::TYPE_SUPPORT_REPLY,
                 self::TYPE_PASSWORD_CHANGED,
@@ -213,15 +252,17 @@ class NotificationService
         $unreadStmt->execute([$userId]);
         $unreadCount = (int) $unreadStmt->fetch()['c'];
 
-        // Paginated results
+        // Paginated results (interpolated limit & offset to prevent PDO MySQL type binding errors)
+        $limit = max(1, (int) $perPage);
+        $off   = max(0, (int) $offset);
         $stmt = $this->db->prepare(
-            'SELECT id, type, title, message, ref_type, ref_id, is_read, created_at
+            "SELECT id, type, title, message, ref_type, ref_id, is_read, created_at
              FROM notifications
              WHERE user_id = ?
              ORDER BY created_at DESC
-             LIMIT ? OFFSET ?'
+             LIMIT {$limit} OFFSET {$off}"
         );
-        $stmt->execute([$userId, $perPage, $offset]);
+        $stmt->execute([$userId]);
         $notifications = $stmt->fetchAll();
 
         return [

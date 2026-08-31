@@ -977,9 +977,6 @@ function toggleReplyMessageModal() {
 }
 
 function openReplyModal(id) {
-  console.log("openReplyModal invoked for ID:", id);
-  console.log("Available messages in state:", allContactMessages);
-
   const msg = allContactMessages.find((m) => Number(m.id) === Number(id));
   if (!msg) {
     console.error("No message matching ID found:", id);

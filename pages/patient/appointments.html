@@ -1,336 +1,792 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" dir="ltr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Appointments — HealthBridge" />
-  <title>Appointments — HealthBridge</title>
-  <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/pages/appointments.css?v=2" />
-  <script src="../../assets/js/core/main.js?v=2"></script>
-  <script src="../../assets/js/components/layout.js?v=2"></script>
-  <script src="../../assets/js/modules/departments-loader.js?v=2"></script>
-</head>
-<body>
-  <div id="navbar-container"></div>
-  <div class="dashboard">
-    <div id="sidebar-container"></div>
-    <main class="main-content">
-      <div class="portal-content">
-        <!-- Page Header -->
-        <div class="appointments-page-header">
-          <div>
-            <h1><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments</h1>
-            <p class="page-subtitle">Manage your appointments, book new ones, and view history</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Appointments — HealthBridge Patient Portal"
+    />
+    <title>Appointments — HealthBridge</title>
+    <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/pages/patient-portal.css?v=5"
+    />
+    <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
+    <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/components/modal-fix.css?v=2"
+    />
+    <link rel="stylesheet" href="../../assets/css/pages/appointments.css?v=5" />
+    <script src="../../assets/js/core/main.js?v=2"></script>
+    <script src="../../assets/js/components/layout.js?v=2"></script>
+    <script src="../../assets/js/modules/departments-loader.js?v=2"></script>
+  </head>
+  <body>
+    <div id="navbar-container"></div>
+    <div class="dashboard">
+      <div id="sidebar-container"></div>
+      <main class="main-content" id="appointments-main">
+        <div class="portal-content">
+          <!-- Page Header -->
+          <header class="appointments-page-header">
+            <div>
+              <h1>
+                <i class="fas fa-calendar-days" aria-hidden="true"></i>
+                Appointments
+              </h1>
+              <p class="page-subtitle">
+                Manage your appointments, book new ones, and track visit
+                history.
+              </p>
+            </div>
+            <button
+              class="btn btn-primary"
+              onclick="AppointmentsPage.toggleBookModal()"
+              aria-label="Book a new appointment"
+            >
+              <i class="fas fa-calendar-plus" aria-hidden="true"></i> Book
+              Appointment
+            </button>
+          </header>
+
+          <!-- Search & Filter Controls Toolbar -->
+          <div class="appointments-controls-bar">
+            <div class="search-bar">
+              <i class="fas fa-search search-icon" aria-hidden="true"></i>
+              <input
+                type="text"
+                id="appointments-search"
+                placeholder="Search by doctor, department, or date..."
+                aria-label="Search appointments"
+              />
+            </div>
+            <div
+              class="filter-chips"
+              id="filter-chips"
+              role="tablist"
+              aria-label="Filter appointments by status"
+            >
+              <button
+                class="filter-chip active"
+                data-filter="all"
+                role="tab"
+                aria-selected="true"
+              >
+                All
+              </button>
+              <button
+                class="filter-chip"
+                data-filter="upcoming"
+                role="tab"
+                aria-selected="false"
+              >
+                Upcoming
+              </button>
+              <button
+                class="filter-chip"
+                data-filter="confirmed"
+                role="tab"
+                aria-selected="false"
+              >
+                Confirmed
+              </button>
+              <button
+                class="filter-chip"
+                data-filter="reschedule_requested"
+                role="tab"
+                aria-selected="false"
+              >
+                Reschedule
+              </button>
+              <button
+                class="filter-chip"
+                data-filter="completed"
+                role="tab"
+                aria-selected="false"
+              >
+                Completed
+              </button>
+              <button
+                class="filter-chip"
+                data-filter="cancelled"
+                role="tab"
+                aria-selected="false"
+              >
+                Cancelled
+              </button>
+              <button
+                class="filter-chip"
+                data-filter="missed"
+                role="tab"
+                aria-selected="false"
+              >
+                Missed
+              </button>
+            </div>
           </div>
-          <button class="btn btn-primary" onclick="AppointmentsPage.toggleBookModal()">
-            <i class="fas fa-calendar-plus" aria-hidden="true"></i> Book Appointment
+
+          <!-- Featured Upcoming Appointment Card -->
+          <div
+            id="featured-upcoming-container"
+            style="display: none"
+            role="region"
+            aria-label="Next upcoming appointment"
+          ></div>
+
+          <!-- Loading Skeleton -->
+          <div id="appointments-skeleton" aria-hidden="true">
+            <div
+              class="skeleton skeleton-card"
+              style="height: 140px; margin-bottom: var(--s4)"
+            ></div>
+            <div
+              class="skeleton skeleton-card"
+              style="height: 140px; margin-bottom: var(--s4)"
+            ></div>
+            <div class="skeleton skeleton-card" style="height: 140px"></div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="appointments-empty" style="display: none" role="status">
+            <div class="appointments-empty">
+              <div class="empty-icon">
+                <i class="fas fa-calendar-xmark" aria-hidden="true"></i>
+              </div>
+              <h3>No Appointments Found</h3>
+              <p>
+                You don't have any appointments matching your selected filter.
+              </p>
+              <button
+                class="btn btn-primary"
+                onclick="AppointmentsPage.toggleBookModal()"
+              >
+                <i class="fas fa-calendar-plus" aria-hidden="true"></i> Book an
+                Appointment
+              </button>
+            </div>
+          </div>
+
+          <!-- Error State -->
+          <div id="appointments-error" style="display: none" role="alert">
+            <div class="card" style="text-align: center; padding: var(--s8)">
+              <i
+                class="fas fa-exclamation-triangle"
+                style="
+                  font-size: 2.5rem;
+                  color: var(--danger);
+                  margin-bottom: var(--s3);
+                "
+              ></i>
+              <h3>Failed to Load Appointments</h3>
+              <p style="color: var(--text-secondary); margin-bottom: var(--s4)">
+                Something went wrong fetching your schedule. Please try again.
+              </p>
+              <button class="btn btn-primary" onclick="AppointmentsPage.load()">
+                <i class="fas fa-rotate-right" aria-hidden="true"></i> Retry
+              </button>
+            </div>
+          </div>
+
+          <!-- Appointments List Grid -->
+          <section
+            class="appointments-grid"
+            id="appointments-grid"
+            style="display: none"
+            aria-label="Appointments list"
+          ></section>
+
+          <!-- Pagination Bar -->
+          <nav
+            id="pagination-container"
+            class="pagination-container"
+            style="display: none"
+            aria-label="Appointments pagination"
+          >
+            <button
+              class="pagination-btn"
+              id="prev-page"
+              aria-label="Previous page"
+            >
+              <i class="fas fa-chevron-left" aria-hidden="true"></i> Previous
+            </button>
+            <div id="page-numbers" class="page-numbers"></div>
+            <button
+              class="pagination-btn"
+              id="next-page"
+              aria-label="Next page"
+            >
+              Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </button>
+          </nav>
+        </div>
+      </main>
+    </div>
+
+    <!-- Appointment Details Modal -->
+    <div
+      class="modal-overlay"
+      id="appointment-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-details-title"
+    >
+      <div class="modal" style="max-width: 580px">
+        <div class="modal-head-row">
+          <h3 id="modal-details-title">
+            <i class="fas fa-calendar-days" aria-hidden="true"></i> Appointment
+            Details
+          </h3>
+          <button
+            class="close-btn"
+            onclick="AppointmentsPage.closeModal()"
+            aria-label="Close modal"
+          >
+            &times;
           </button>
         </div>
-
-        <!-- Search Bar -->
-        <div style="margin-bottom:var(--s4)">
-          <div class="search-bar" style="max-width:100%">
-            <i class="fas fa-search search-icon" aria-hidden="true"></i>
-            <input type="text" id="appointments-search" placeholder="Search by doctor, department..." />
-          </div>
-        </div>
-
-        <!-- Filter Chips -->
-        <div class="notif-filters" id="filter-chips">
-          <button class="notif-filter-btn filter-chip active" data-filter="all">All</button>
-          <button class="notif-filter-btn filter-chip" data-filter="upcoming">Upcoming</button>
-          <button class="notif-filter-btn filter-chip" data-filter="confirmed">Confirmed</button>
-          <button class="notif-filter-btn filter-chip" data-filter="completed">Completed</button>
-          <button class="notif-filter-btn filter-chip" data-filter="cancelled">Cancelled</button>
-          <button class="notif-filter-btn filter-chip" data-filter="missed">Missed</button>
-        </div>
-
-        <!-- Featured Upcoming Appointment -->
-        <div id="featured-upcoming-container" style="display:none"></div>
-
-        <!-- Skeleton -->
-        <div id="appointments-skeleton">
-          <div class="skeleton skeleton-card" style="height:120px;margin-bottom:var(--s4)"></div>
-          <div class="skeleton skeleton-card" style="height:120px;margin-bottom:var(--s4)"></div>
-          <div class="skeleton skeleton-card" style="height:120px"></div>
-        </div>
-
-        <!-- Empty State -->
-        <div id="appointments-empty" style="display:none">
-          <div class="empty-state">
-            <div class="empty-icon"><i class="fas fa-calendar" aria-hidden="true"></i></div>
-            <h4>No Appointments Found</h4>
-            <p>You don't have any appointments matching your criteria.</p>
-            <button class="btn btn-primary" onclick="AppointmentsPage.toggleBookModal()">Book an Appointment</button>
-          </div>
-        </div>
-
-        <!-- Error State -->
-        <div id="appointments-error" style="display:none">
-          <div class="card" style="text-align:center;padding:var(--s6)">
-            <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:var(--danger);margin-bottom:var(--s3)"></i>
-            <h3>Failed to Load Appointments</h3>
-            <p style="color:var(--text-secondary)">Please try again later.</p>
-            <button class="btn btn-primary" onclick="AppointmentsPage.load()">Retry</button>
-          </div>
-        </div>
-
-        <!-- Appointments Grid -->
-        <div class="appointments-grid" id="appointments-grid" style="display:none"></div>
-
-        <!-- Pagination -->
-        <div id="pagination-container" style="display:none;margin-top:var(--s6)">
-          <div style="display:flex;justify-content:center;align-items:center;gap:var(--s3)">
-            <button class="btn btn-outline btn-sm" id="prev-page"><i class="fas fa-chevron-left"></i> Previous</button>
-            <div id="page-numbers" style="display:flex;gap:var(--s2)"></div>
-            <button class="btn btn-outline btn-sm" id="next-page">Next <i class="fas fa-chevron-right"></i></button>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <!-- Appointment Details Modal -->
-  <div class="modal-overlay" id="appointment-modal">
-    <div class="modal" style="max-width:560px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s5)">
-        <h3><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointment Details</h3>
-        <button class="close-btn" onclick="AppointmentsPage.closeModal()">&times;</button>
-      </div>
-      <div id="appointment-modal-body"></div>
-    </div>
-  </div>
-
-  <!-- Cancel Appointment Modal -->
-  <div class="modal-overlay" id="cancel-modal">
-    <div class="modal" style="max-width:480px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s5)">
-        <h3 style="color:var(--danger)"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Cancel Appointment</h3>
-        <button class="close-btn" onclick="AppointmentsPage.closeCancelModal()">&times;</button>
-      </div>
-      <p style="color:var(--text-secondary);margin-bottom:var(--s5)">Are you sure you want to cancel this appointment? This action cannot be undone.</p>
-      <div style="display:flex;align-items:center;gap:var(--s4);padding:var(--s4);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:var(--s5)">
-        <div style="width:48px;height:48px;border-radius:50%;background:var(--primary-subtle);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0" id="cancel-doctor-initials">DR</div>
-        <div>
-          <h4 id="cancel-doctor-name" style="margin:0;font-size:0.95rem">-</h4>
-          <p id="cancel-department-name" style="margin:0;font-size:0.8rem;color:var(--text-muted)">-</p>
-          <p style="margin:var(--s1) 0 0 0;font-size:0.8rem;color:var(--text-secondary)"><span id="cancel-date">-</span> at <span id="cancel-time">-</span></p>
-        </div>
-      </div>
-      <div style="display:flex;gap:var(--s3);justify-content:flex-end">
-        <button class="btn btn-outline" onclick="AppointmentsPage.closeCancelModal()">Keep Appointment</button>
-        <button class="btn btn-danger" onclick="AppointmentsPage.confirmCancel()">Yes, Cancel</button>
+        <div id="appointment-modal-body"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Booking Wizard Modal (from booking-wizard.js) -->
-  <div class="modal-overlay" id="book-appointment-modal">
-    <div class="modal booking-modal">
-      <div class="modal-header">
-        <h3><i class="fas fa-calendar-days" aria-hidden="true"></i> Book Appointment</h3>
-        <p class="modal-subtitle">Quickly schedule your next visit with a specialist in four simple steps.</p>
-        <button class="close-btn" onclick="BookingWizard.close()">&times;</button>
-      </div>
-      <div class="booking-wizard">
-        <div class="modal-body">
-          <div class="booking-wizard-left">
-          <div class="booking-steps" role="progressbar" aria-label="Booking progress">
-            <div class="booking-step-indicator active" data-step="1" id="step-indicator-1">
-              <span class="step-num">1</span>
-              <span class="step-label">Department</span>
-            </div>
-            <div class="booking-step-indicator locked" data-step="2" id="step-indicator-2">
-              <span class="step-num">2</span>
-              <span class="step-label">Doctor</span>
-            </div>
-            <div class="booking-step-indicator locked" data-step="3" id="step-indicator-3">
-              <span class="step-num">3</span>
-              <span class="step-label">Date & Time</span>
-            </div>
-            <div class="booking-step-indicator locked" data-step="4" id="step-indicator-4">
-              <span class="step-num">4</span>
-              <span class="step-label">Confirmation</span>
-            </div>
+    <!-- Cancel Appointment Modal -->
+    <div
+      class="modal-overlay"
+      id="cancel-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-cancel-title"
+    >
+      <div class="modal" style="max-width: 480px">
+        <div class="modal-head-row">
+          <h3 id="modal-cancel-title" style="color: var(--danger)">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            Cancel Appointment
+          </h3>
+          <button
+            class="close-btn"
+            onclick="AppointmentsPage.closeCancelModal()"
+            aria-label="Close modal"
+          >
+            &times;
+          </button>
+        </div>
+        <p
+          style="
+            color: var(--text-secondary);
+            margin-bottom: var(--s4);
+            font-size: 0.875rem;
+          "
+        >
+          Are you sure you want to cancel this appointment? This action cannot
+          be undone.
+        </p>
+        <div class="cancel-summary-box">
+          <div class="cancel-doctor-avatar" id="cancel-doctor-initials">DR</div>
+          <div>
+            <h4
+              id="cancel-doctor-name"
+              style="margin: 0; font-size: 0.95rem; font-weight: 600"
+            >
+              —
+            </h4>
+            <p
+              id="cancel-department-name"
+              style="margin: 0; font-size: 0.8rem; color: var(--text-muted)"
+            >
+              —
+            </p>
+            <p
+              style="
+                margin: var(--s1) 0 0 0;
+                font-size: 0.8rem;
+                color: var(--text-secondary);
+              "
+            >
+              <i class="fas fa-calendar" aria-hidden="true"></i>
+              <span id="cancel-date">—</span> at <span id="cancel-time">—</span>
+            </p>
           </div>
-          <form id="booking-form" novalidate>
-            <div class="booking-step active" data-step="1" id="booking-step-1">
-              <div class="step-card">
-                <div class="booking-step-title"><i class="fas fa-building"></i> Choose Department</div>
-                <p class="booking-step-desc">Select the medical department you'd like to visit.</p>
-                <div class="form-group">
-                  <label for="appt-department">Department</label>
-                  <select name="department" id="appt-department" class="form-select" required>
-                    <option value="">Select a department</option>
-                  </select>
+        </div>
+        <div
+          style="
+            display: flex;
+            gap: var(--s3);
+            justify-content: flex-end;
+            margin-top: var(--s5);
+          "
+        >
+          <button
+            class="btn btn-outline"
+            onclick="AppointmentsPage.closeCancelModal()"
+          >
+            Keep Appointment
+          </button>
+          <button
+            class="btn btn-danger"
+            onclick="AppointmentsPage.confirmCancel()"
+          >
+            <i class="fas fa-ban" aria-hidden="true"></i> Yes, Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking Wizard Modal (handled by booking-wizard.js) -->
+    <div class="modal-overlay" id="book-appointment-modal">
+      <div class="modal booking-modal">
+        <div class="modal-header">
+          <h3>
+            <i class="fas fa-calendar-days" aria-hidden="true"></i> Book
+            Appointment
+          </h3>
+          <p class="modal-subtitle">
+            Quickly schedule your next visit with a specialist in four simple
+            steps.
+          </p>
+          <button class="close-btn" onclick="BookingWizard.close()">
+            &times;
+          </button>
+        </div>
+        <div class="booking-wizard">
+          <div class="modal-body">
+            <div class="booking-wizard-left">
+              <div
+                class="booking-steps"
+                role="progressbar"
+                aria-label="Booking progress"
+              >
+                <div
+                  class="booking-step-indicator active"
+                  data-step="1"
+                  id="step-indicator-1"
+                >
+                  <span class="step-num">1</span>
+                  <span class="step-label">Department</span>
                 </div>
-                <div id="department-card-grid" class="selection-card-grid"></div>
-                <div class="step-actions">
-                  <span></span>
-                  <button type="button" class="btn btn-primary" id="step-1-next" disabled onclick="goToStep(2)">Next <i class="fas fa-arrow-right"></i></button>
+                <div
+                  class="booking-step-indicator locked"
+                  data-step="2"
+                  id="step-indicator-2"
+                >
+                  <span class="step-num">2</span>
+                  <span class="step-label">Doctor</span>
+                </div>
+                <div
+                  class="booking-step-indicator locked"
+                  data-step="3"
+                  id="step-indicator-3"
+                >
+                  <span class="step-num">3</span>
+                  <span class="step-label">Date & Time</span>
+                </div>
+                <div
+                  class="booking-step-indicator locked"
+                  data-step="4"
+                  id="step-indicator-4"
+                >
+                  <span class="step-num">4</span>
+                  <span class="step-label">Confirmation</span>
                 </div>
               </div>
-            </div>
-            <div class="booking-step" data-step="2" id="booking-step-2">
-              <div class="step-card">
-                <div class="booking-step-title"><i class="fas fa-user-doctor"></i> Choose Doctor</div>
-                <p class="booking-step-desc">Pick a specialist from the selected department.</p>
-                <div class="form-group">
-                  <label for="appt-doctor">Doctor</label>
-                  <select name="doctor" id="appt-doctor" class="form-select" required>
-                    <option value="">Select a doctor</option>
-                  </select>
-                </div>
-                <div id="doctor-card-grid" class="doctor-card-grid"></div>
-                <div id="doctor-preview-container"></div>
-                <div class="step-actions">
-                  <button type="button" class="btn btn-outline" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Back</button>
-                  <button type="button" class="btn btn-primary" id="step-2-next" disabled onclick="goToStep(3)">Next <i class="fas fa-arrow-right"></i></button>
-                </div>
-              </div>
-            </div>
-            <div class="booking-step" data-step="3" id="booking-step-3">
-              <div class="step-card">
-                <div class="booking-step-title"><i class="fas fa-calendar"></i> Choose Date & Time</div>
-                <p class="booking-step-desc">Pick a date and available time slot.</p>
-                <div class="form-group">
-                  <label for="appt-date">Date</label>
-                  <div class="booking-date-wrapper">
-                    <input type="date" name="date" id="appt-date" required />
+              <form id="booking-form" novalidate>
+                <div
+                  class="booking-step active"
+                  data-step="1"
+                  id="booking-step-1"
+                >
+                  <div class="step-card">
+                    <div class="booking-step-title">
+                      <i class="fas fa-building"></i> Choose Department
+                    </div>
+                    <p class="booking-step-desc">
+                      Select the medical department you'd like to visit.
+                    </p>
+                    <div class="form-group">
+                      <label for="appt-department">Department</label>
+                      <select
+                        name="department"
+                        id="appt-department"
+                        class="form-select"
+                        required
+                      >
+                        <option value="">Select a department</option>
+                      </select>
+                    </div>
+                    <div
+                      id="department-card-grid"
+                      class="selection-card-grid"
+                    ></div>
+                    <div class="step-actions">
+                      <span></span>
+                      <button
+                        type="button"
+                        class="btn btn-primary"
+                        id="step-1-next"
+                        disabled
+                        onclick="goToStep(2)"
+                      >
+                        Next <i class="fas fa-arrow-right"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div id="slot-picker-message" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:var(--s3)">Select a date to see available slots.</div>
-                <div id="slot-picker-container">
-                  <p class="slot-placeholder">Select a doctor and date to see available slots.</p>
-                </div>
-                <div id="slot-summary-wrapper" class="slot-summary-wrapper">
-                  <div class="slot-summary-card">
-                    <div class="slot-summary-label">Selected Appointment</div>
-                    <h4 id="summary-doctor-name">-</h4>
-                    <p id="summary-date-text">-</p>
-                    <p id="summary-time-text">-</p>
+                <div class="booking-step" data-step="2" id="booking-step-2">
+                  <div class="step-card">
+                    <div class="booking-step-title">
+                      <i class="fas fa-user-doctor"></i> Choose Doctor
+                    </div>
+                    <p class="booking-step-desc">
+                      Pick a specialist from the selected department.
+                    </p>
+                    <div class="form-group">
+                      <label for="appt-doctor">Doctor</label>
+                      <select
+                        name="doctor"
+                        id="appt-doctor"
+                        class="form-select"
+                        required
+                      >
+                        <option value="">Select a doctor</option>
+                      </select>
+                    </div>
+                    <div id="doctor-card-grid" class="doctor-card-grid"></div>
+                    <div id="doctor-preview-container"></div>
+                    <div class="step-actions">
+                      <button
+                        type="button"
+                        class="btn btn-outline"
+                        onclick="goToStep(1)"
+                      >
+                        <i class="fas fa-arrow-left"></i> Back
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-primary"
+                        id="step-2-next"
+                        disabled
+                        onclick="goToStep(3)"
+                      >
+                        Next <i class="fas fa-arrow-right"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <input type="hidden" name="time" id="appt-time" value="" />
-                <div class="step-actions">
-                  <button type="button" class="btn btn-outline" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Back</button>
-                  <button type="button" class="btn btn-primary" id="step-3-next" disabled onclick="goToStep(4)">Next <i class="fas fa-arrow-right"></i></button>
+                <div class="booking-step" data-step="3" id="booking-step-3">
+                  <div class="step-card">
+                    <div class="booking-step-title">
+                      <i class="fas fa-calendar"></i> Choose Date & Time
+                    </div>
+                    <p class="booking-step-desc">
+                      Pick a date and available time slot.
+                    </p>
+                    <div class="form-group">
+                      <label for="appt-date">Date</label>
+                      <div class="booking-date-wrapper">
+                        <input
+                          type="date"
+                          name="date"
+                          id="appt-date"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div
+                      id="slot-picker-message"
+                      style="
+                        font-size: 0.85rem;
+                        color: var(--text-muted);
+                        margin-bottom: var(--s3);
+                      "
+                    >
+                      Select a date to see available slots.
+                    </div>
+                    <div id="slot-picker-container">
+                      <p class="slot-placeholder">
+                        Select a doctor and date to see available slots.
+                      </p>
+                    </div>
+                    <div id="slot-summary-wrapper" class="slot-summary-wrapper">
+                      <div class="slot-summary-card">
+                        <div class="slot-summary-label">
+                          Selected Appointment
+                        </div>
+                        <h4 id="summary-doctor-name">-</h4>
+                        <p id="summary-date-text">-</p>
+                        <p id="summary-time-text">-</p>
+                      </div>
+                    </div>
+                    <input type="hidden" name="time" id="appt-time" value="" />
+                    <div class="step-actions">
+                      <button
+                        type="button"
+                        class="btn btn-outline"
+                        onclick="goToStep(2)"
+                      >
+                        <i class="fas fa-arrow-left"></i> Back
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-primary"
+                        id="step-3-next"
+                        disabled
+                        onclick="goToStep(4)"
+                      >
+                        Next <i class="fas fa-arrow-right"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
+                <div class="booking-step" data-step="4" id="booking-step-4">
+                  <div class="step-card">
+                    <div class="booking-step-title">
+                      <i class="fas fa-check-circle"></i> Confirmation
+                    </div>
+                    <p class="booking-step-desc">
+                      Review your appointment details before confirming.
+                    </p>
+                    <div class="review-card">
+                      <div class="review-row">
+                        <span class="review-label">Department</span
+                        ><span class="review-value" id="review-department"
+                          >-</span
+                        >
+                      </div>
+                      <div class="review-row">
+                        <span class="review-label">Doctor</span
+                        ><span class="review-value" id="review-doctor">-</span>
+                      </div>
+                      <div class="review-row">
+                        <span class="review-label">Date</span
+                        ><span class="review-value" id="review-date">-</span>
+                      </div>
+                      <div class="review-row">
+                        <span class="review-label">Time</span
+                        ><span class="review-value" id="review-time">-</span>
+                      </div>
+                      <div class="review-row">
+                        <span class="review-label">Duration</span
+                        ><span class="review-value" id="review-duration"
+                          >30 Minutes</span
+                        >
+                      </div>
+                    </div>
+                    <div class="form-group" style="display: none">
+                      <label for="appt-patient">Patient Name</label>
+                      <input
+                        type="text"
+                        name="patientName"
+                        id="appt-patient"
+                        maxlength="100"
+                      />
+                    </div>
+                    <div class="form-group" style="display: none">
+                      <label for="appt-notes">Notes</label>
+                      <textarea
+                        name="notes"
+                        id="appt-notes"
+                        maxlength="1000"
+                      ></textarea>
+                    </div>
+                    <div class="step-actions">
+                      <button
+                        type="button"
+                        class="btn btn-outline"
+                        onclick="goToStep(3)"
+                      >
+                        <i class="fas fa-arrow-left"></i> Back
+                      </button>
+                      <button
+                        type="submit"
+                        class="btn btn-primary"
+                        id="booking-submit-btn"
+                      >
+                        Confirm Booking
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+              <div
+                class="booking-success"
+                id="booking-success"
+                style="text-align: center; padding: var(--s8)"
+              >
+                <i class="fas fa-check-circle booking-success-icon"></i>
+                <h3>Appointment Booked!</h3>
+                <p style="color: var(--text-secondary)">
+                  Your appointment has been scheduled successfully.
+                </p>
+                <p
+                  style="
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-top: var(--s2);
+                  "
+                >
+                  Reference: <strong id="booking-ref-number">-</strong>
+                </p>
+                <button
+                  class="btn btn-primary"
+                  onclick="BookingWizard.close()"
+                  style="margin-top: var(--s5)"
+                >
+                  Done
+                </button>
               </div>
             </div>
-            <div class="booking-step" data-step="4" id="booking-step-4">
-              <div class="step-card">
-                <div class="booking-step-title"><i class="fas fa-check-circle"></i> Confirmation</div>
-                <p class="booking-step-desc">Review your appointment details before confirming.</p>
-                <div class="review-card">
-                  <div class="review-row"><span class="review-label">Department</span><span class="review-value" id="review-department">-</span></div>
-                  <div class="review-row"><span class="review-label">Doctor</span><span class="review-value" id="review-doctor">-</span></div>
-                  <div class="review-row"><span class="review-label">Date</span><span class="review-value" id="review-date">-</span></div>
-                  <div class="review-row"><span class="review-label">Time</span><span class="review-value" id="review-time">-</span></div>
-                  <div class="review-row"><span class="review-label">Duration</span><span class="review-value" id="review-duration">30 Minutes</span></div>
+            <div class="booking-wizard-right">
+              <div class="booking-summary-card" id="booking-summary-card">
+                <div class="summary-empty" id="summary-empty-state">
+                  <i class="fas fa-calendar-plus"></i>
+                  <h4>No appointment selected</h4>
                 </div>
-                <div class="form-group" style="display:none">
-                  <label for="appt-patient">Patient Name</label>
-                  <input type="text" name="patientName" id="appt-patient" maxlength="100" />
-                </div>
-                <div class="form-group" style="display:none">
-                  <label for="appt-notes">Notes</label>
-                  <textarea name="notes" id="appt-notes" maxlength="1000"></textarea>
-                </div>
-                <div class="step-actions">
-                  <button type="button" class="btn btn-outline" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Back</button>
-                  <button type="submit" class="btn btn-primary" id="booking-submit-btn">Confirm Booking</button>
+                <div id="summary-content" style="display: none">
+                  <div class="summary-header">Appointment Summary</div>
+                  <div id="summary-details-container"></div>
+                  <button
+                    type="button"
+                    class="btn btn-primary booking-submit-btn"
+                    id="booking-summary-submit-btn"
+                    disabled
+                  >
+                    <i class="fas fa-check-circle"></i> Confirm Booking
+                  </button>
                 </div>
               </div>
-            </div>
-          </form>
-          <div class="booking-success" id="booking-success" style="text-align:center;padding:var(--s8)">
-            <i class="fas fa-check-circle booking-success-icon"></i>
-            <h3>Appointment Booked!</h3>
-            <p style="color:var(--text-secondary)">Your appointment has been scheduled successfully.</p>
-            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:var(--s2)">Reference: <strong id="booking-ref-number">-</strong></p>
-            <button class="btn btn-primary" onclick="BookingWizard.close()" style="margin-top:var(--s5)">Done</button>
-          </div>
-        </div>
-        <div class="booking-wizard-right">
-          <div class="booking-summary-card" id="booking-summary-card">
-            <div class="summary-empty" id="summary-empty-state">
-              <i class="fas fa-calendar-plus"></i>
-              <h4>No appointment selected</h4>
-            </div>
-            <div id="summary-content" style="display:none">
-              <div class="summary-header">Appointment Summary</div>
-              <div id="summary-details-container"></div>
-              <button type="button" class="btn btn-primary booking-submit-btn" id="booking-summary-submit-btn" disabled><i class="fas fa-check-circle"></i> Confirm Booking</button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <script src="../../assets/js/components/booking-wizard.js?v=1"></script>
-  <script src="../../assets/js/pages/patient/appointments.js?v=1"></script>
-  <script>
-    // ── Featured Next Appointment Panel ───────────────────────
-    // Displays the next confirmed (or upcoming pending) appointment
-    // as a compact summary card above the list. Shows nothing if there
-    // is no confirmed or pending appointment.
-    document.addEventListener('DOMContentLoaded', function() {
-      const origRender = AppointmentsPage.renderAppointments.bind(AppointmentsPage);
-      AppointmentsPage.renderAppointments = function() {
-        origRender();
-        const container = document.getElementById('featured-upcoming-container');
-        if (!container) return;
-        const apps = this.data?.appointments;
-        if (!apps || apps.length === 0) {
-          container.style.display = 'none';
-          return;
-        }
-        // Prefer a confirmed appointment; fall back to pending (upcoming)
-        const confirmed = apps.find(a => a.category === 'confirmed');
-        const pending = apps.find(a => a.category === 'upcoming');
-        const upcoming = confirmed || pending;
-        if (!upcoming) {
-          container.style.display = 'none';
-          return;
-        }
-        container.style.display = 'block';
-        const d = upcoming.date ? new Date(upcoming.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-        const t = upcoming.time_range || upcoming.time || '';
-        container.innerHTML = `
-          <div class="featured-upcoming-card">
-            <div class="featured-icon"><i class="fas fa-calendar-check"></i></div>
-            <div class="featured-body">
-              <div class="featured-label">Next Appointment</div>
-              <div class="featured-title">${escapeHTML(upcoming.doctor)}</div>
-              <div class="featured-meta">
-                <span><i class="fas fa-calendar"></i> ${escapeHTML(d)}</span>
-                <span><i class="fas fa-clock"></i> ${escapeHTML(t)}</span>
-                <span><i class="fas fa-building"></i> ${escapeHTML(upcoming.department)}</span>
-              </div>
-            </div>
-            <div class="featured-actions">
-              <button class="btn btn-outline btn-sm" onclick="AppointmentsPage.viewDetails(${upcoming.id})">View</button>
-              <button class="btn btn-primary btn-sm" onclick="AppointmentsPage.reschedule(${upcoming.id})">Reschedule</button>
+    <!-- Rating Modal (Phase 4 Redesign) -->
+    <div
+      class="modal-overlay"
+      id="rating-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rating-modal-title"
+    >
+      <div class="modal rating-modal-container" style="max-width: 500px">
+        <div class="modal-head-row">
+          <h3 id="rating-modal-title">
+            <i
+              class="fas fa-star"
+              aria-hidden="true"
+              style="color: var(--warning)"
+            ></i>
+            Rate Your Visit
+          </h3>
+          <button class="close-btn" data-rating-close aria-label="Close modal">
+            &times;
+          </button>
+        </div>
+        <div id="rating-modal-body">
+          <div class="rating-doctor-header">
+            <div class="rating-doctor-avatar" id="rating-doctor-avatar">DR</div>
+            <div>
+              <h4 id="rating-doctor-name">Rate your experience</h4>
+              <p style="font-size: 0.8rem; color: var(--text-muted)">
+                HealthBridge Healthcare Quality Care Feedback
+              </p>
             </div>
           </div>
-        `;
-      };
-      // Helper for escapeHTML (mirrors AppointmentsPage.escapeHTML)
-      function escapeHTML(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-      }
-    });
-  </script>
-</body>
+
+          <div class="rating-stars-wrapper">
+            <div class="star-rating" role="radiogroup" aria-label="Star rating">
+              <i
+                class="fas fa-star star-icon"
+                data-rating="1"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                aria-label="1 star"
+              ></i>
+              <i
+                class="fas fa-star star-icon"
+                data-rating="2"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                aria-label="2 stars"
+              ></i>
+              <i
+                class="fas fa-star star-icon"
+                data-rating="3"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                aria-label="3 stars"
+              ></i>
+              <i
+                class="fas fa-star star-icon"
+                data-rating="4"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                aria-label="4 stars"
+              ></i>
+              <i
+                class="fas fa-star star-icon"
+                data-rating="5"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                aria-label="5 stars"
+              ></i>
+            </div>
+            <div id="rating-value" class="rating-value-label">
+              Select a rating
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="rating-review"
+              >Write a review
+              <span style="color: var(--text-muted); font-weight: 400"
+                >(optional)</span
+              ></label
+            >
+            <textarea
+              id="rating-review"
+              class="form-input"
+              placeholder="Share details of your experience with the doctor..."
+              rows="3"
+              maxlength="500"
+            ></textarea>
+            <div
+              style="display: flex; justify-content: flex-end; margin-top: 4px"
+            >
+              <small style="color: var(--text-muted); font-size: 0.75rem"
+                ><span id="review-count">0</span>/500</small
+              >
+            </div>
+          </div>
+
+          <div id="rating-message" style="display: none" role="alert"></div>
+
+          <div class="modal-foot-actions">
+            <button class="btn btn-outline" data-rating-cancel>Cancel</button>
+            <button class="btn btn-primary" id="rating-modal-submit" disabled>
+              <i class="fas fa-star" aria-hidden="true"></i> Submit Rating
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../../assets/js/components/booking-wizard.js?v=4"></script>
+    <script src="../../assets/js/pages/patient/appointments.js?v=4"></script>
+  </body>
 </html>

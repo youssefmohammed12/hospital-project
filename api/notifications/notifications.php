@@ -14,7 +14,6 @@
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../includes/auth.php';
 
 // Require authentication
 $user = requireAuth();

@@ -79,6 +79,9 @@ withDB(function (PDO $db) use ($userId, $status, $search, $limit, $offset) {
     foreach ($timeline['missed'] as $appt) {
         $allAppointments[] = array_merge($appt, ['category' => 'missed']);
     }
+    foreach ($timeline['rescheduled'] as $appt) {
+        $allAppointments[] = array_merge($appt, ['category' => 'reschedule_requested']);
+    }
     
     // Apply status filter
     if ($status !== 'all') {

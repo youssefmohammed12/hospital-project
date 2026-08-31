@@ -100,7 +100,6 @@ const NotificationService = (() => {
    * @returns {Promise<object>} { notifications, unread_count, has_more, total }
    */
   async function getNotifications(page) {
-    if (_isLoading) return null;
     _isLoading = true;
 
     try {
@@ -110,7 +109,7 @@ const NotificationService = (() => {
         "Failed to load notifications.",
       );
 
-      if (result.data?.success) {
+      if (result && result.data && result.data.success) {
         _unreadCount = result.data.unread_count || 0;
         _hasMore = result.data.has_more || false;
         _currentPage = page || 1;
@@ -118,7 +117,9 @@ const NotificationService = (() => {
         if (_onUnreadChange) _onUnreadChange(_unreadCount);
         return result.data;
       }
-      return null;
+      return { notifications: [], unread_count: 0, has_more: false, total: 0 };
+    } catch (e) {
+      return { notifications: [], unread_count: 0, has_more: false, total: 0 };
     } finally {
       _isLoading = false;
     }
@@ -467,19 +468,43 @@ const NotificationService = (() => {
   }
 
   /**
-   * Navigate to a sidebar tab if on a dashboard page.
-   * Falls back to dashboard URL if not on a dashboard.
+   * Navigate to a tab/page from notifications.
    */
   function navigateToTab(tabId) {
-    const link = document.querySelector(`.sidebar-nav a[href="#${tabId}"]`);
+    if (!tabId) return;
+    if (tabId.startsWith("#")) tabId = tabId.substring(1);
+
+    const user = getUser();
+    const role = user ? user.role : "patient";
+
+    const pageMap = {
+      history: role === "patient" ? "pages/patient/history.html" : "pages/doctor/doctor-dashboard.html#history",
+      appointments: role === "patient" ? "pages/patient/appointments.html" : "pages/doctor/doctor-dashboard.html#appointments",
+      prescriptions: role === "patient" ? "pages/patient/prescriptions.html" : "pages/doctor/doctor-dashboard.html#prescriptions",
+      notifications: role === "patient" ? "pages/patient/notifications.html" : "pages/doctor/doctor-dashboard.html#notifications",
+      profile: role === "patient" ? "pages/patient/profile.html" : "pages/doctor/doctor-dashboard.html#profile",
+      settings: role === "patient" ? "pages/patient/settings.html" : "pages/doctor/doctor-dashboard.html#settings",
+      reviews: "pages/doctor/doctor-dashboard.html#reviews",
+      queue: "pages/doctor/doctor-dashboard.html#queue",
+      patients: "pages/admin/admin.html#patients",
+      doctors: "pages/admin/admin.html#doctors"
+    };
+
+    const relativePath = pageMap[tabId];
+    if (relativePath) {
+      const targetUrl = getBasePath() + relativePath;
+      const currentPath = window.location.pathname;
+      const targetPageName = relativePath.split("/").pop().split("#")[0];
+
+      if (!currentPath.endsWith(targetPageName)) {
+        window.location.href = targetUrl;
+      }
+      return;
+    }
+
+    const link = document.querySelector(`.sidebar-nav a[data-page="${tabId}"], .sidebar-nav a[href*="${tabId}"]`);
     if (link) {
       link.click();
-    } else {
-      // Not on a dashboard page — redirect to the appropriate dashboard
-      const user = getUser();
-      if (user) {
-        window.location.href = getDashboardUrl(user.role);
-      }
     }
   }
 
@@ -642,5 +667,8 @@ const NotificationService = (() => {
     getRelativeTime,
   };
 })();
+
+// Expose on window object for global module availability
+window.NotificationService = NotificationService;
 
 
