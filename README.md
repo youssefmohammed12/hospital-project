@@ -11,6 +11,8 @@
 
 **A modern, enterprise-grade healthcare management platform featuring a Patient Portal, Clinical Doctor Workspace, and Administrative Analytics Engine.**
 
+**🌐 Live Demo: https://youssefhealthbridge.freehosting.dev/**
+
 [Key Features](#-key-features) • [Visual Walkthrough](#-visual-walkthrough--feature-showcase) • [Architecture](#-system-architecture) • [Directory Structure](#-directory-structure) • [Installation Guide](#-installation--setup-guide) • [Demo Credentials](#-demo-accounts--quick-login) • [API Reference](#-api-endpoints-overview) • [License](#-license)
 
 </div>
