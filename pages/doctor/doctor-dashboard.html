@@ -8,10 +8,11 @@
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=14" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=2" />
-  <script src="../../assets/public-v2/js/core/site.js?v=4"></script>
-  <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=1"></script>
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=15" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=3" />
+  <script src="../../assets/public-v2/js/core/site.js?v=5"></script>
+  <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=2"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-overview.js?v=1"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -20,11 +21,63 @@
     <div id="sidebar-container"></div>
 
     <main class="main-content" id="doctor-main" aria-busy="true">
-      <div class="doctor-page">
-        <p class="doctor-page__eyebrow">Doctor workspace</p>
-        <h1>Overview</h1>
-        <p class="doctor-page__lede">Your day at a glance — today's appointments, who is waiting, and anything that needs your decision.</p>
-        <div class="doctor-phase-note"><strong>Being rebuilt — Phase 1.</strong> This section is moving to the Public V2 design in its own phase of the doctor panel plan. Nothing about your data changes; the previous layout is preserved in the project's version history.</div>
+      <div class="doctor-page doctor-overview">
+
+        <section class="doctor-intro">
+          <div class="doctor-intro__copy">
+            <p class="doctor-page__eyebrow" id="ov-date">Doctor workspace</p>
+            <h1 id="ov-greeting">Welcome</h1>
+            <p class="doctor-page__lede">Today's appointments, who is waiting, and anything that needs your decision.</p>
+          </div>
+          <div class="doctor-availability" id="ov-availability" hidden>
+            <span class="doctor-availability__dot" aria-hidden="true"></span>
+            <span id="ov-availability-text">Accepting appointments</span>
+          </div>
+        </section>
+
+        <section class="doctor-stats" aria-label="Your day in numbers">
+          <a class="doctor-stat" href="appointments.html">
+            <span class="doctor-stat__label">Today's appointments</span>
+            <strong class="doctor-stat__value" id="ov-stat-today">0</strong>
+            <span class="doctor-stat__hint">confirmed for today</span>
+          </a>
+          <a class="doctor-stat" href="queue.html">
+            <span class="doctor-stat__label">Waiting consultations</span>
+            <strong class="doctor-stat__value" id="ov-stat-waiting">0</strong>
+            <span class="doctor-stat__hint">visits not yet started</span>
+          </a>
+          <a class="doctor-stat" href="appointments.html">
+            <span class="doctor-stat__label">Pending decisions</span>
+            <strong class="doctor-stat__value" id="ov-stat-pending">0</strong>
+            <span class="doctor-stat__hint">bookings &amp; reschedule requests</span>
+          </a>
+          <a class="doctor-stat" href="reviews.html">
+            <span class="doctor-stat__label">Your rating</span>
+            <strong class="doctor-stat__value" id="ov-stat-rating">—</strong>
+            <span class="doctor-stat__hint" id="ov-stat-rating-hint">out of 5</span>
+          </a>
+        </section>
+
+        <div class="doctor-overview-grid">
+          <section class="doctor-panel" aria-labelledby="ov-queue-title">
+            <div class="doctor-panel__head">
+              <h2 id="ov-queue-title">Today &amp; up next</h2>
+              <a href="queue.html">Patient queue</a>
+            </div>
+            <div class="doctor-queue-list" id="ov-queue"><p class="doctor-empty">Loading your appointments…</p></div>
+          </section>
+
+          <section class="doctor-panel" aria-labelledby="ov-decisions-title">
+            <div class="doctor-panel__head">
+              <h2 id="ov-decisions-title">Needs your decision</h2>
+              <a href="appointments.html">All appointments</a>
+            </div>
+            <div id="ov-decisions"><p class="doctor-empty">Loading your requests…</p></div>
+          </section>
+        </div>
+
+        <p class="doctor-alert" id="ov-error" role="alert" hidden>Your overview could not be loaded completely. Check your connection and refresh the page.</p>
+
       </div>
     </main>
   </div>
