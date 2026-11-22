@@ -18,22 +18,36 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/ScheduleService.php';
 
 $user = requireAuth();
-$input = getJsonInput();
 
-$doctorId = (int)($input['doctor_id'] ?? 0);
-$date = trim($input['date'] ?? '');
-
-// Validate input
-if ($doctorId <= 0) {
-    http_response_code(400);
-    jsonResponse(false, ['message' => 'Doctor ID is required.']);
-    exit;
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+$input = getJsonInput();
+
+$doctorIdValue = $input['doctor_id'] ?? null;
+$doctorId = parsePositiveInt($doctorIdValue);
+$dateValue = $input['date'] ?? null;
+
+// Validate strict input types before parsing. In particular, never allow
+// partial numeric IDs to coerce to a different doctor or arrays to reach trim().
+if ($doctorId === null) {
     http_response_code(400);
-    jsonResponse(false, ['message' => 'Valid date (YYYY-MM-DD) is required.']);
-    exit;
+    jsonResponse(false, ['message' => 'Doctor ID must be a positive integer.']);
+}
+
+if (!is_string($dateValue)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Date must be submitted as text in YYYY-MM-DD format.']);
+}
+
+$date = trim($dateValue);
+$dateError = validateDate($date, 'Date');
+if ($dateError !== null) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $dateError]);
 }
 
 // Validate date is not in the past
@@ -47,7 +61,7 @@ if ($date < date('Y-m-d')) {
 
 try {
     $db = getDB();
-    $ss = new ScheduleService($db);
+    $ss = new ScheduleService($db, ScheduleService::schemaFromEnvironment());
 
     // Get available slots
     $slots = $ss->getAvailableSlots($doctorId, $date);

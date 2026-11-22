@@ -31,14 +31,30 @@ const ScheduleManager = (() => {
 
   const VALID_DURATIONS = [15, 20, 30, 45, 60];
 
+  function parseHospitalTime(value) {
+    if (typeof value !== "string") return null;
+
+    // MySQL TIME values may include :00 seconds; reject malformed/out-of-day values.
+    const match = value.trim().match(/^([01]\d|2[0-3]):([0-5]\d)(?::00)?$/);
+    if (!match) return null;
+
+    return Number(match[1]) * 60 + Number(match[2]);
+  }
+
   function generateTimeOptions(openTime, closeTime) {
     const options = [];
-    const openParts = (openTime || "08:00").split(":").map(Number);
-    const closeParts = (closeTime || "22:00").split(":").map(Number);
-    const openMin = openParts[0] * 60 + openParts[1];
-    const closeMin = closeParts[0] * 60 + closeParts[1];
+    let openMin = parseHospitalTime(openTime);
+    let closeMin = parseHospitalTime(closeTime);
 
-    for (let m = openMin; m <= closeMin; m += 30) {
+    // Fail closed to the documented defaults when the API returns invalid hours.
+    if (openMin === null || closeMin === null || closeMin < openMin) {
+      openMin = 8 * 60;
+      closeMin = 22 * 60;
+    }
+
+    // A full day at 30-minute intervals is at most 48 choices; the guard is
+    // defense in depth against future changes to parsing or interval size.
+    for (let m = openMin; m <= closeMin && options.length < 49; m += 30) {
       const h = Math.floor(m / 60);
       const min = m % 60;
       const value = `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
@@ -81,21 +97,70 @@ const ScheduleManager = (() => {
     // Render new UI layout skeleton
     container.innerHTML = buildScheduleHTML(role);
 
-    // Event listener to monitor changes and set dirty state
-    container.addEventListener("change", (e) => {
-      const isTargetInput =
-        e.target.classList.contains("schedule-time-input") ||
-        e.target.classList.contains("schedule-day-working-toggle") ||
-        e.target.id === "schedule-duration" ||
-        e.target.id === "schedule-max-appts" ||
-        e.target.id === "schedule-break-start" ||
-        e.target.id === "schedule-break-end" ||
-        e.target.id === "schedule-availability";
+    // Bind generated schedule controls with delegated listeners (CSP-compatible).
+    if (container.dataset.scheduleDelegatedActionsBound !== "true") {
+      container.dataset.scheduleDelegatedActionsBound = "true";
 
-      if (isTargetInput) {
-        onSettingChange();
-      }
-    });
+      container.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) return;
+
+        const dayHeader = target.closest("[data-schedule-day-toggle]");
+        if (dayHeader && container.contains(dayHeader)) {
+          const day = Number(dayHeader.dataset.scheduleDayToggle);
+          if (Number.isInteger(day) && day >= 1 && day <= 7) toggleDayExpansion(day);
+          return;
+        }
+
+        const action = target.closest("[data-schedule-action]");
+        if (!action || !container.contains(action)) return;
+
+        switch (action.dataset.scheduleAction) {
+          case "save":
+            ScheduleManager.saveSchedule();
+            break;
+          case "reset":
+            if (currentRole === "admin") ScheduleManager.resetSchedule();
+            break;
+          case "refresh":
+            ScheduleManager.refresh();
+            break;
+        }
+      });
+
+      container.addEventListener("keydown", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const dayHeader = target?.closest("[data-schedule-day-toggle]");
+        if (!dayHeader || !container.contains(dayHeader)) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        event.preventDefault();
+        const day = Number(dayHeader.dataset.scheduleDayToggle);
+        if (Number.isInteger(day) && day >= 1 && day <= 7) toggleDayExpansion(day);
+      });
+
+      container.addEventListener("change", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) return;
+
+        const workingToggle = target.closest("[data-schedule-day-toggle-working]");
+        if (workingToggle && container.contains(workingToggle)) {
+          const day = Number(workingToggle.dataset.day);
+          if (Number.isInteger(day) && day >= 1 && day <= 7) onDayToggle(day);
+          return;
+        }
+
+        const isTargetInput =
+          target.classList.contains("schedule-time-input") ||
+          target.id === "schedule-duration" ||
+          target.id === "schedule-max-appts" ||
+          target.id === "schedule-break-start" ||
+          target.id === "schedule-break-end" ||
+          target.id === "schedule-availability";
+
+        if (isTargetInput) onSettingChange();
+      });
+    }
 
     // Load schedule data
     loadSchedule();
@@ -112,13 +177,12 @@ const ScheduleManager = (() => {
   async function loadSchedule() {
     await loadHospitalHours();
 
+    const scheduleUrl = `${API.GET}?doctor_id=${encodeURIComponent(currentDoctorId)}`;
     const result = await apiFetch(
-      API.GET,
+      scheduleUrl,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "GET",
         credentials: "same-origin",
-        body: JSON.stringify({ doctor_id: currentDoctorId }),
       },
       "Failed to load schedule.",
     );
@@ -308,7 +372,7 @@ const ScheduleManager = (() => {
               
               <div class="sticky-panel-body">
                 <!-- Unsaved changes banner -->
-                <div class="schedule-unsaved-banner" id="schedule-unsaved-banner" style="display: none;">
+                <div class="schedule-unsaved-banner" id="schedule-unsaved-banner">
                   <i class="fas fa-triangle-exclamation"></i> Unsaved changes detected
                 </div>
 
@@ -365,32 +429,32 @@ const ScheduleManager = (() => {
 
                   <div class="form-group">
                     <label>Availability Status</label>
-                    <div class="switch-container" style="margin-top: 4px">
+                    <div class="switch-container schedule-availability-switch-container">
                       <label class="switch">
                         <input type="checkbox" id="schedule-availability" />
                         <span class="slider"></span>
                       </label>
-                      <span id="schedule-avail-label" style="font-size: 0.8rem; font-weight:600;">Available for bookings</span>
+                      <span id="schedule-avail-label" class="schedule-availability-label">Available for bookings</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Actions -->
                 <div class="sticky-actions-section">
-                  <button id="schedule-save-btn" class="btn btn-primary btn-block" onclick="ScheduleManager.saveSchedule()">
+                  <button id="schedule-save-btn" class="btn btn-primary btn-block" data-schedule-action="save">
                     <i class="fas fa-floppy-disk" aria-hidden="true"></i> Save Changes
                   </button>
                   <div class="sticky-secondary-actions">
                     ${
                       isAdmin
                         ? `
-                      <button class="btn btn-outline btn-sm" onclick="ScheduleManager.resetSchedule()">
+                      <button class="btn btn-outline btn-sm" data-schedule-action="reset">
                         <i class="fas fa-rotate-left" aria-hidden="true"></i> Reset
                       </button>
                     `
                         : ""
                     }
-                    <button class="btn btn-outline btn-sm" onclick="ScheduleManager.refresh()">
+                    <button class="btn btn-outline btn-sm" data-schedule-action="refresh">
                       <i class="fas fa-rotate" aria-hidden="true"></i> Refresh
                     </button>
                   </div>
@@ -414,7 +478,7 @@ const ScheduleManager = (() => {
       html += `
         <!-- Expandable day card -->
         <div class="schedule-day-card schedule-day-pill" data-day="${d}">
-          <div class="schedule-day-card-header" onclick="ScheduleManager.toggleDayExpansion(${d})">
+          <div class="schedule-day-card-header" data-schedule-day-toggle="${d}" role="button" tabindex="0" aria-expanded="false">
             <div class="schedule-day-card-info">
               <span class="schedule-day-card-name">${dayFull}</span>
               <span class="schedule-day-card-summary" id="schedule-day-summary-${d}">OFF DUTY</span>
@@ -425,7 +489,7 @@ const ScheduleManager = (() => {
             </div>
           </div>
           
-          <div class="schedule-day-card-body" id="schedule-pill-times-${d}" style="display: none;">
+          <div class="schedule-day-card-body" id="schedule-pill-times-${d}">
             <div class="schedule-day-editor-grid">
               
               <!-- Toggle Working Status -->
@@ -433,7 +497,7 @@ const ScheduleManager = (() => {
                 <label class="schedule-field-label">Working on this day?</label>
                 <div class="switch-container">
                   <label class="switch">
-                    <input type="checkbox" class="schedule-day-working-toggle" data-day="${d}" onchange="ScheduleManager.onDayToggle(${d})" />
+                    <input type="checkbox" class="schedule-day-working-toggle" data-day="${d}" data-schedule-day-toggle-working="true" />
                     <span class="slider"></span>
                   </label>
                 </div>
@@ -543,7 +607,6 @@ const ScheduleManager = (() => {
           `.schedule-end-time[data-day="${d}"]`,
         );
         const statusEl = document.getElementById(`schedule-pill-status-${d}`);
-        const timesEl = document.getElementById(`schedule-pill-times-${d}`);
         const toggleInput = document.querySelector(
           `.schedule-day-working-toggle[data-day="${d}"]`,
         );
@@ -561,12 +624,6 @@ const ScheduleManager = (() => {
         if (statusEl) {
           statusEl.textContent = isWorking ? "Working" : "Off Duty";
           statusEl.classList.toggle("active", isWorking);
-        }
-
-        if (timesEl) {
-          timesEl.style.display = card?.classList.contains("expanded")
-            ? "block"
-            : "none";
         }
 
         if (startInput) startInput.disabled = !isWorking;
@@ -626,7 +683,8 @@ const ScheduleManager = (() => {
       label.textContent = isAvail
         ? "Available for bookings"
         : "Not available for bookings";
-      label.style.color = isAvail ? "var(--primary)" : "var(--danger)";
+      label.classList.toggle("is-available", isAvail);
+      label.classList.toggle("is-unavailable", !isAvail);
     }
 
     if (dashboardStatusEl) {
@@ -646,7 +704,7 @@ const ScheduleManager = (() => {
     const indicator = document.getElementById("schedule-unsaved-banner");
 
     if (indicator) {
-      indicator.style.display = dirty ? "block" : "none";
+      indicator.classList.toggle("is-visible", dirty);
     }
   }
 
@@ -659,27 +717,24 @@ const ScheduleManager = (() => {
     if (!card) return;
 
     const isExpanded = card.classList.contains("expanded");
-    const timesEl = document.getElementById(`schedule-pill-times-${dayNum}`);
+    const header = card.querySelector("[data-schedule-day-toggle]");
 
     // If mobile view, close other open cards to follow accordion design
     if (window.innerWidth <= 768) {
       document.querySelectorAll(".schedule-day-card").forEach((c) => {
         if (parseInt(c.getAttribute("data-day")) !== dayNum) {
           c.classList.remove("expanded");
-          const cTimes = document.getElementById(
-            `schedule-pill-times-${c.getAttribute("data-day")}`,
-          );
-          if (cTimes) cTimes.style.display = "none";
+          c.querySelector("[data-schedule-day-toggle]")?.setAttribute("aria-expanded", "false");
         }
       });
     }
 
     if (isExpanded) {
       card.classList.remove("expanded");
-      if (timesEl) timesEl.style.display = "none";
+      header?.setAttribute("aria-expanded", "false");
     } else {
       card.classList.add("expanded");
-      if (timesEl) timesEl.style.display = "block";
+      header?.setAttribute("aria-expanded", "true");
     }
   }
 

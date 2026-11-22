@@ -1,65 +1,43 @@
 <?php
 /**
- * HealthBridge — Toggle Doctor Availability
- * Flips the doctor's availability status between available (1) and unavailable (0).
- *
- * Updated for Phase 2: Also syncs with doctor_schedule_settings.is_available
- * so the schedule engine and old availability system stay in sync.
+ * HealthBridge — Toggle Doctor Operational Availability
+ * V1 keeps legacy profile/schedule availability synchronized. V2 changes only
+ * the operational schedule flag and never changes accepts_new_patients.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/ScheduleService.php';
-require_once __DIR__ . '/../../services/AuditService.php';
+require_once __DIR__ . '/../../services/Repositories/DoctorSettingsRepository.php';
 
-$userId = requireRole('doctor')['id'];
+$user = requireRole('doctor');
+$userId = (int)$user['id'];
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 try {
     $db = getDB();
-
-    $check = $db->prepare('SELECT d.id, d.name, d.available, d.user_id FROM doctors d WHERE d.user_id = ? LIMIT 1');
-    $check->execute([$userId]);
-    $doctor = $check->fetch();
-
-    if (!$doctor) {
-        http_response_code(404);
-        jsonResponse(false, ['message' => 'Doctor profile not found.']);
-    }
-
-    $newAvailability = 1 - (int)$doctor['available'];
-    $oldAvailLabel = $doctor['available'] ? 'Available' : 'Unavailable';
-    $newAvailLabel = $newAvailability ? 'Available' : 'Unavailable';
-
-    // Update old doctors.available field
-    $db->prepare('UPDATE doctors SET available = ? WHERE user_id = ?')->execute([$newAvailability, $userId]);
-
-    // Update new doctor_schedule_settings.is_available field (Phase 1/2)
-    $ss = new ScheduleService($db);
-    $ss->setAvailability($userId, $newAvailability === 1);
-
-    // Log the availability toggle
-    try {
-        $audit = new AuditService($db, $userId, 'doctor');
-        $audit->log(
-            $newAvailability ? 'activate' : 'deactivate',
-            'doctor',
-            $userId,
-            $oldAvailLabel,
-            $newAvailLabel,
-            "Availability changed: {$oldAvailLabel} → {$newAvailLabel}",
-            null,
-            $userId
-        );
-    } catch (Exception $auditErr) {
-        error_log('Audit log error (toggle_doctor_availability): ' . $auditErr->getMessage());
-    }
+    $settings = new DoctorSettingsRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_SCHEDULE_SCHEMA'));
+    $result = $settings->toggleOperationalAvailability($userId, $userId);
+    $available = (int)$result['available'];
 
     jsonResponse(true, [
-        'message' => $newAvailability ? 'You are now marked as available.' : 'You are now marked as unavailable.',
-        'available' => $newAvailability,
-        'doctor_name' => $doctor['name']
+        'message' => $available === 1
+            ? 'You are now marked as available.'
+            : 'You are now marked as unavailable.',
+        'available' => $available,
+        'doctor_name' => (string)$result['doctor_name'],
     ]);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    http_response_code($message === 'Doctor profile not found.' ? 404 : 403);
+    jsonResponse(false, ['message' => $message]);
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
     error_log('Toggle Doctor Availability Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to update availability status.']);

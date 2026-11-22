@@ -1,55 +1,75 @@
 <?php
+declare(strict_types=1);
+
 /**
- * HealthBridge — Toggle Rating Visibility
- * Allows admin to hide or restore a rating.
- * Hidden ratings disappear from public doctor pages but remain visible in EMR.
- * Nothing is deleted from the database.
+ * Admin-only rating visibility change.
+ * The repository supports V1 and V2, but this HTTP route remains explicitly V1
+ * until a separately approved runtime cutover.
  *
  * POST: { id, is_hidden: 0|1 }
- *
- * Permissions: Admin only
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../services/Repositories/RatingRepository.php';
 
 header('Content-Type: application/json');
 
-$user = requireAuth();
-if ($user['role'] !== 'admin') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Admin access required.']);
+$user = requireRole('admin');
+$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_RATINGS_SCHEMA');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
 $input = getJsonInput();
-$id = (int)($input['id'] ?? 0);
-$isHidden = isset($input['is_hidden']) ? ($input['is_hidden'] ? 1 : 0) : -1;
+if (!is_array($input)) {
+    $input = [];
+}
 
-if (!$id || $isHidden === -1) {
+$id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+if ($id === false || $id === null || $id <= 0 || !array_key_exists('is_hidden', $input)) {
     http_response_code(400);
-    jsonResponse(false, ['message' => 'Rating ID and is_hidden value are required.']);
+    jsonResponse(false, ['message' => 'A valid rating ID and is_hidden value are required.']);
+}
+
+$rawHidden = $input['is_hidden'];
+if (is_bool($rawHidden)) {
+    $isHidden = $rawHidden ? 1 : 0;
+} elseif ((is_int($rawHidden) || is_string($rawHidden)) && in_array((string)$rawHidden, ['0', '1'], true)) {
+    $isHidden = (int)$rawHidden;
+} else {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'is_hidden must be 0 or 1.']);
 }
 
 try {
     $db = getDB();
-    
-    // Verify rating exists
-    $stmt = $db->prepare('SELECT id FROM ratings WHERE id = ? LIMIT 1');
-    $stmt->execute([$id]);
-    if (!$stmt->fetch()) {
-        http_response_code(404);
-        jsonResponse(false, ['message' => 'Rating not found.']);
-    }
-    
-    // Toggle visibility
-    $stmt = $db->prepare('UPDATE ratings SET is_hidden = ? WHERE id = ?');
-    $stmt->execute([$isHidden, $id]);
-    
+    $result = (new RatingRepository($db, $schema))->setPublicVisibility(
+        (int)$id,
+        $isHidden === 0,
+        (int)($user['id'] ?? 0)
+    );
+
     jsonResponse(true, [
-        'message' => $isHidden ? 'Rating hidden from public view.' : 'Rating restored to public view.',
-        'is_hidden' => $isHidden,
+        'message' => $result['is_hidden']
+            ? 'Rating hidden from public view.'
+            : 'Rating restored to public view.',
+        'is_hidden' => $result['is_hidden'] ? 1 : 0,
+        'is_public' => $result['is_public'] ? 1 : 0,
+        'changed' => $result['changed'],
     ]);
-    
-} catch (Exception $e) {
+} catch (OutOfBoundsException $e) {
+    http_response_code(404);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (DomainException $e) {
+    http_response_code(403);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
     error_log('Toggle Rating Visibility Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to toggle rating visibility.']);

@@ -10,29 +10,43 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../services/AuditService.php';
 require_once __DIR__ . '/../../services/PrescriptionService.php';
+require_once __DIR__ . '/../../services/Repositories/ClinicalEncounterRepository.php';
 
 header('Content-Type: application/json');
 
-$user = requireAuth();
+$user = requireRole('doctor');
 $currentUserId = (int)$user['id'];
-$currentRole   = $user['role'];
+$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA');
 $currentName   = $user['name'] ?? 'A doctor';
 
-// Only doctors can issue prescriptions
-if ($currentRole !== 'doctor') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Only doctors can issue prescriptions.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
 $input = getJsonInput();
-$appointmentId = (int)($input['appointment_id'] ?? 0);
-$notes         = trim($input['notes'] ?? '');
+$appointmentId = parsePositiveInt($input['appointment_id'] ?? null);
+$notesInput    = $input['notes'] ?? '';
 $items         = $input['items'] ?? [];
 
-if (!$appointmentId) {
+if (!is_string($notesInput)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Prescription notes must be text.']);
+}
+$notes = trim($notesInput);
+if (mb_strlen($notes) > 5000) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Prescription notes must not exceed 5000 characters.']);
+}
+
+if (!is_array($items)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Medication items must be provided as a list.']);
+}
+
+if ($appointmentId === null) {
     http_response_code(400);
     jsonResponse(false, ['message' => 'Appointment ID is required.']);
 }
@@ -47,40 +61,31 @@ if ($validationError) {
 try {
     $db = getDB();
 
-    // ── Get appointment details ──
-    $apptStmt = $db->prepare(
-        "SELECT a.*, u.name as patient_name FROM appointments a
-         LEFT JOIN users u ON a.user_id = u.id
-         WHERE a.id = ? LIMIT 1"
-    );
-    $apptStmt->execute([$appointmentId]);
-    $appt = $apptStmt->fetch();
+    // Resolve a schema-neutral preflight context. The service repeats
+    // assignment, eligibility and duplicate checks under row locks on create.
+    $appointments = new ClinicalEncounterRepository($db, $schema);
+    $appt = $appointments->getAppointmentContext($appointmentId);
 
     if (!$appt) {
         http_response_code(404);
         jsonResponse(false, ['message' => 'Appointment not found.']);
     }
-
-    // ── Authorization: Doctor can only prescribe for their own appointments ──
-    if ((int)$appt['doctor_id'] !== $currentUserId) {
+    if ((int)$appt['doctor_user_id'] !== $currentUserId) {
         http_response_code(403);
         jsonResponse(false, ['message' => 'You can only issue prescriptions for your own appointments.']);
     }
-
-    // Only allow prescriptions for Confirmed appointments
-    if ($appt['status'] !== 'Confirmed') {
+    if ($appt['status'] !== 'confirmed') {
         http_response_code(400);
         jsonResponse(false, ['message' => 'Prescriptions can only be issued for confirmed appointments.']);
     }
 
-    $patientId = (int)$appt['user_id'];
-    if (!$patientId) {
+    $patientId = (int)($appt['patient_user_id'] ?? 0);
+    if ($patientId <= 0) {
         http_response_code(400);
         jsonResponse(false, ['message' => 'Cannot issue prescription: patient is not a registered user.']);
     }
 
-    // ── Check if a prescription already exists for this appointment ──
-    $ps = new PrescriptionService($db);
+    $ps = new PrescriptionService($db, $schema);
     $existing = $ps->getByAppointment($appointmentId);
     if ($existing) {
         http_response_code(409);
@@ -99,29 +104,23 @@ try {
         $notes ?: null
     );
 
-    // ── Notify the patient ──
-    $ns = new NotificationService($db);
-    $ns->create(
-        $patientId,
-        NotificationService::TYPE_PRESCRIPTION_ISSUED,
-        'New Prescription Issued',
-        "Dr. {$appt['doctor']} has issued a new prescription for your recent appointment. You can now view it in your Prescriptions section.",
-        'prescription',
-        $prescriptionId
-    );
-
-    // Log to audit (doctor doing the prescribing)
-    $audit = new AuditService($db, (int)$user['id'], $user['role']);
-    $audit->log('create', 'prescription', $prescriptionId, null, 
-        ['patient_id' => $patientId, 'doctor_id' => $currentUserId],
-        "Prescription created for patient ID $patientId", $patientId, $currentUserId);
-
     jsonResponse(true, [
         'message'         => 'Prescription issued successfully.',
         'prescription_id' => $prescriptionId,
     ]);
 
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    http_response_code(409);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (PDOException $e) {
+    if ((string)$e->getCode() === '23000') {
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'A prescription already exists for this appointment or the appointment is no longer eligible.']);
+    }
+    error_log('Create Prescription Database Error: ' . $e->getMessage());
+    http_response_code(500);
+    jsonResponse(false, ['message' => 'Failed to issue prescription.']);
+} catch (Throwable $e) {
     error_log('Create Prescription Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to issue prescription.']);

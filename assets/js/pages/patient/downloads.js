@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
+      body: JSON.stringify({ sections: ["downloads"] })
     },
     "Failed to load document center."
   );
@@ -30,51 +30,130 @@ document.addEventListener("DOMContentLoaded", async () => {
   container.innerHTML = "";
 
   if (result.ok && result.data?.success) {
-    const data = result.data.data;
-    const downloads = data?.downloads || {};
-    const prescriptions = downloads.prescriptions || [];
-    const confirmations = downloads.confirmations || [];
-    const visitSummaries = downloads.visit_summaries || [];
+    const data = result.data?.data;
+    const dataRecord = data && typeof data === "object" && !Array.isArray(data)
+      ? data
+      : {};
+    const rawDownloads = dataRecord.downloads;
+    const downloads = rawDownloads && typeof rawDownloads === "object" && !Array.isArray(rawDownloads)
+      ? rawDownloads
+      : {};
 
-    const renderDocCard = (title, icon, doctor, date, url, btnText = "Download PDF") => `
-      <div class="card" style="padding:var(--s4) var(--s5);margin-bottom:var(--s3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--s3);border:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:var(--s4)">
-          <div style="width:44px;height:44px;border-radius:var(--r-md);background:var(--primary-subtle);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1.2rem">
-            <i class="fas ${icon}"></i>
+    const normalizeDocuments = (collection) => {
+      if (!Array.isArray(collection)) return [];
+      return collection
+        .filter((document) =>
+          document &&
+          typeof document === "object" &&
+          !Array.isArray(document)
+        )
+        .slice(0, 50)
+        .map((document) => ({
+          label: typeof document.label === "string" && document.label.trim() !== ""
+            ? document.label.trim().slice(0, 160)
+            : "Document",
+          doctor: typeof document.doctor === "string"
+            ? document.doctor.trim().slice(0, 120)
+            : "",
+          date: typeof document.date === "string" &&
+              document.date.trim().length <= 40 &&
+              !Number.isNaN(Date.parse(document.date.trim()))
+            ? document.date.trim()
+            : "",
+          url: typeof document.url === "string"
+            ? document.url.trim().slice(0, 500)
+            : "",
+        }));
+    };
+
+    const prescriptions = normalizeDocuments(downloads.prescriptions);
+    const confirmations = normalizeDocuments(downloads.confirmations);
+    const visitSummaries = normalizeDocuments(downloads.visit_summaries);
+
+    const appBasePath = new URL(getBasePath(), window.location.href).pathname;
+    const apiPathPrefix = `${appBasePath.replace(/\/+$/, "")}/api/`;
+
+    const getAllowedDownloadUrl = (value) => {
+      if (typeof value !== "string" || !value.trim() || value.length > 500) return "";
+
+      const candidateUrl = safeSameOriginUrl(getBasePath() + value.trim(), "");
+      if (!candidateUrl || !candidateUrl.startsWith(apiPathPrefix)) return "";
+
+      try {
+        const parsedUrl = new URL(candidateUrl, window.location.origin);
+        if (parsedUrl.hash) return "";
+
+        const routePath = parsedUrl.pathname.slice(apiPathPrefix.length);
+        const params = parsedUrl.searchParams;
+        const idValues = params.getAll("id");
+        if (idValues.length !== 1) return "";
+
+        const id = safePositiveId(idValues[0]);
+        if (!id || String(id) !== idValues[0]) return "";
+
+        const keys = Array.from(params.keys());
+        if (routePath === "prescriptions/print.php") {
+          if (keys.some(key => key !== "id")) return "";
+          return `${parsedUrl.pathname}?id=${id}`;
+        }
+
+        if (routePath === "appointments/print.php") {
+          if (keys.some(key => key !== "id" && key !== "type")) return "";
+          const types = params.getAll("type");
+          if (types.length > 1 || (types.length === 1 && types[0] !== "summary")) return "";
+          return `${parsedUrl.pathname}?id=${id}${types.length === 1 ? "&type=summary" : ""}`;
+        }
+      } catch {
+        return "";
+      }
+
+      return "";
+    };
+
+    const renderDocCard = (title, icon, doctor, date, url, btnText = "Download PDF") => {
+      const downloadUrl = getAllowedDownloadUrl(url);
+      const action = downloadUrl
+        ? `<a href="${escapeHTML(downloadUrl)}" class="btn btn-outline btn-sm" target="_blank" rel="noopener noreferrer"><i class="fas fa-download" aria-hidden="true"></i> ${escapeHTML(btnText)}</a>`
+        : `<button class="btn btn-outline btn-sm" type="button" disabled><i class="fas fa-lock" aria-hidden="true"></i> Unavailable</button>`;
+
+      return `
+      <article class="card patient-download-card">
+        <div class="patient-download-card__main">
+          <div class="patient-download-card__icon">
+            <i class="fas ${safeClassToken(icon, "fa-file-lines")}" aria-hidden="true"></i>
           </div>
           <div>
-            <h4 style="margin:0;font-size:0.95rem;color:var(--text-primary)">${escapeHTML(title)}</h4>
-            <p style="margin:0;font-size:0.8rem;color:var(--text-secondary)">
-              ${doctor ? `Dr. ${escapeHTML(doctor)} • ` : ""}${date ? formatDate(date) : ""}
+            <h4 class="patient-download-card__title">${escapeHTML(title)}</h4>
+            <p class="patient-download-card__meta">
+              ${doctor ? `Dr. ${escapeHTML(doctor)} • ` : ""}${date ? escapeHTML(formatDate(date)) : ""}
             </p>
           </div>
         </div>
-        <a href="${getBasePath()}${url}" class="btn btn-outline btn-sm" target="_blank">
-          <i class="fas fa-download" aria-hidden="true"></i> ${btnText}
-        </a>
-      </div>`;
+        ${action}
+      </article>`;
+    };
 
     const renderDisabledCard = (title, icon, reason) => `
-      <div class="card" style="padding:var(--s4) var(--s5);margin-bottom:var(--s3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--s3);border:1px dashed var(--border);opacity:0.7">
-        <div style="display:flex;align-items:center;gap:var(--s4)">
-          <div style="width:44px;height:44px;border-radius:var(--r-md);background:var(--bg-surface);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:1.2rem">
-            <i class="fas ${icon}"></i>
+      <article class="card patient-download-card patient-download-card--disabled">
+        <div class="patient-download-card__main">
+          <div class="patient-download-card__icon patient-download-card__icon--disabled">
+            <i class="fas ${safeClassToken(icon, "fa-file-lines")}" aria-hidden="true"></i>
           </div>
           <div>
-            <h4 style="margin:0;font-size:0.95rem;color:var(--text-secondary)">${escapeHTML(title)}</h4>
-            <p style="margin:0;font-size:0.8rem;color:var(--text-muted)">${escapeHTML(reason)}</p>
+            <h4 class="patient-download-card__title patient-download-card__title--disabled">${escapeHTML(title)}</h4>
+            <p class="patient-download-card__meta patient-download-card__meta--disabled">${escapeHTML(reason)}</p>
           </div>
         </div>
-        <button class="btn btn-outline btn-sm" disabled style="cursor:not-allowed">
+        <button class="btn btn-outline btn-sm patient-download-card__unavailable" disabled>
           <i class="fas fa-lock" aria-hidden="true"></i> Unavailable
         </button>
-      </div>`;
+      </article>`;
 
     container.innerHTML = `
       <!-- Prescriptions Section -->
-      <div style="margin-bottom:var(--s6)">
-        <h3 style="margin-bottom:var(--s4);font-size:1.1rem;display:flex;align-items:center;gap:var(--s2)">
-          <i class="fas fa-prescription" style="color:var(--primary)"></i> Prescriptions
+      <div class="patient-download-section">
+        <h3 class="patient-download-section__title">
+          <i class="fas fa-prescription patient-download-section__title-icon" aria-hidden="true"></i> Prescriptions
         </h3>
         ${
           prescriptions.length > 0
@@ -84,9 +163,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
 
       <!-- Visit Summaries Section -->
-      <div style="margin-bottom:var(--s6)">
-        <h3 style="margin-bottom:var(--s4);font-size:1.1rem;display:flex;align-items:center;gap:var(--s2)">
-          <i class="fas fa-notes-medical" style="color:var(--primary)"></i> Visit Summaries & Clinical Notes
+      <div class="patient-download-section">
+        <h3 class="patient-download-section__title">
+          <i class="fas fa-notes-medical patient-download-section__title-icon" aria-hidden="true"></i> Visit Summaries & Clinical Notes
         </h3>
         ${
           visitSummaries.length > 0
@@ -96,9 +175,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
 
       <!-- Appointment History & Confirmations Section -->
-      <div style="margin-bottom:var(--s6)">
-        <h3 style="margin-bottom:var(--s4);font-size:1.1rem;display:flex;align-items:center;gap:var(--s2)">
-          <i class="fas fa-calendar-check" style="color:var(--primary)"></i> Appointment Confirmations
+      <div class="patient-download-section">
+        <h3 class="patient-download-section__title">
+          <i class="fas fa-calendar-check patient-download-section__title-icon" aria-hidden="true"></i> Appointment Confirmations
         </h3>
         ${
           confirmations.length > 0
@@ -108,9 +187,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
 
       <!-- Other Medical Records & Billing (Future & Disabled Cards) -->
-      <div style="margin-bottom:var(--s6)">
-        <h3 style="margin-bottom:var(--s4);font-size:1.1rem;display:flex;align-items:center;gap:var(--s2)">
-          <i class="fas fa-vault" style="color:var(--primary)"></i> Special Documents & Records
+      <div class="patient-download-section">
+        <h3 class="patient-download-section__title">
+          <i class="fas fa-vault patient-download-section__title-icon" aria-hidden="true"></i> Special Documents & Records
         </h3>
         ${renderDisabledCard("Lab Results & Diagnostic Reports", "fa-vial", "Available once lab results are uploaded by your provider.")}
         ${renderDisabledCard("Vaccination & Immunization Record", "fa-syringe", "Available once immunization history is filed.")}
@@ -122,7 +201,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <div class="empty-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></div>
         <h4>Unable to Load Document Center</h4>
         <p>Please try again later.</p>
-        <button class="btn btn-outline btn-sm" onclick="location.reload()">Retry</button>
+        <button class="btn btn-outline btn-sm" data-page-action="retry">Retry</button>
       </div>`;
   }
 });

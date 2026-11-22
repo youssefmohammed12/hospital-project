@@ -1,0 +1,5 @@
+# Shared PHP bootstrap/helpers must not be requested directly.
+# Reusable HTML fragments remain accessible to the same-origin layout loader.
+<FilesMatch "\.php$">
+    Require all denied
+</FilesMatch>

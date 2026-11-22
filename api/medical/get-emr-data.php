@@ -11,19 +11,37 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/ClinicalAccessService.php';
+require_once __DIR__ . '/../../services/VisitWorkflowService.php';
+require_once __DIR__ . '/../../services/PrescriptionService.php';
+require_once __DIR__ . '/../../services/PatientPortalService.php';
+require_once __DIR__ . '/../../services/Repositories/ClinicalEncounterRepository.php';
+require_once __DIR__ . '/../../includes/AppointmentTime.php';
 
 $user = requireAuth();
+$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $currentUserId = (int)$user['id'];
 $currentRole   = $user['role'];
 
-$patientId = (int)($_GET['patient_id'] ?? 0);
+if (!in_array($currentRole, ['admin', 'doctor', 'patient'], true)) {
+    http_response_code(403);
+    jsonResponse(false, ['message' => 'You do not have permission to view patient records.']);
+}
+
+$patientId = parsePositiveInt($_GET['patient_id'] ?? null);
 
 if ($currentRole === 'patient') {
     $patientId = $currentUserId;
-} elseif (!$patientId) {
+} elseif ($patientId === null) {
     http_response_code(400);
-    jsonResponse(false, ['message' => 'Patient ID is required.']);
+    jsonResponse(false, ['message' => 'A valid patient ID is required.']);
 }
 
 try {
@@ -31,16 +49,10 @@ try {
 
     // ── Authorization ──
     if ($currentRole === 'doctor') {
-        $authStmt = $db->prepare(
-            "SELECT COUNT(*) as cnt FROM appointments
-             WHERE doctor_id = ? AND user_id = ? AND status IN ('Confirmed','Cancelled')
-             LIMIT 1"
-        );
-        $authStmt->execute([$currentUserId, $patientId]);
-        $authRow = $authStmt->fetch();
-        if ((int)$authRow['cnt'] === 0) {
+        $clinicalAccess = new ClinicalAccessService($db, $schema);
+        if (!$clinicalAccess->doctorCanAccessPatient($currentUserId, $patientId)) {
             http_response_code(403);
-            jsonResponse(false, ['message' => 'You can only view records of patients you have treated.']);
+            jsonResponse(false, ['message' => 'You can only view records of patients with a confirmed appointment or documented clinical encounter.']);
         }
     }
 
@@ -57,16 +69,39 @@ try {
         jsonResponse(false, ['message' => 'Patient not found.']);
     }
 
-    // ── 2. Medical Record (includes blood_type, gender, DOB, emergency contact, etc.) ──
-    $mrStmt = $db->prepare("SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1");
-    $mrStmt->execute([$patientId]);
-    $medicalRecord = $mrStmt->fetch();
+    // ── 2. Medical Record: V2 profile fields are split across profile tables. ──
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $mrStmt = $db->prepare("SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1");
+        $mrStmt->execute([$patientId]);
+        $medicalRecord = $mrStmt->fetch();
+    } else {
+        $profile = (new PatientPortalService($db, $schema))->getMedicalProfile($patientId);
+        $medicalRecord = [
+            'id' => null,
+            'patient_id' => $patientId,
+            'blood_type' => $profile['blood_type'] ?? null,
+            'height_cm' => $profile['height_cm'] ?? null,
+            'weight_kg' => $profile['weight_kg'] ?? null,
+            'date_of_birth' => $profile['date_of_birth'] ?? null,
+            'gender' => $profile['gender'] ?? null,
+            'allergies' => $profile['allergies'] ?? null,
+            'chronic_diseases' => $profile['chronic_diseases'] ?? null,
+            'current_medications' => $profile['current_medications'] ?? null,
+            'previous_surgeries' => $profile['previous_surgeries'] ?? null,
+            'family_history' => $profile['family_history'] ?? null,
+            'emergency_contact_name' => $profile['emergency_contact']['name'] ?? null,
+            'emergency_contact_rel' => $profile['emergency_contact']['relationship'] ?? null,
+            'emergency_contact_phone' => $profile['emergency_contact']['phone'] ?? null,
+            'medical_notes' => $profile['medical_notes'] ?? null,
+            'created_at' => null,
+            'updated_at' => null,
+        ];
+    }
 
     if (!$medicalRecord) {
-        $insertStmt = $db->prepare("INSERT INTO medical_records (patient_id) VALUES (?)");
-        $insertStmt->execute([$patientId]);
+        // A GET request must not create clinical records; return an empty view model.
         $medicalRecord = [
-            'id' => (int)$db->lastInsertId(),
+            'id' => null,
             'patient_id' => $patientId,
             'blood_type' => null, 'height_cm' => null, 'weight_kg' => null,
             'date_of_birth' => null, 'gender' => null,
@@ -76,7 +111,7 @@ try {
             'emergency_contact_name' => null, 'emergency_contact_rel' => null,
             'emergency_contact_phone' => null,
             'medical_notes' => null,
-            'created_at' => date('Y-m-d H:i:s'), 'updated_at' => null,
+            'created_at' => null, 'updated_at' => null,
         ];
     }
 
@@ -89,19 +124,90 @@ try {
     }
 
     // ── 3. Appointments ──
-    $apptStmt = $db->prepare(
-        "SELECT a.*, u.name as doctor_user_name
-         FROM appointments a
-         LEFT JOIN users u ON a.doctor_id = u.id
-         WHERE a.user_id = ?
-         ORDER BY a.date DESC, a.time DESC"
-    );
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $apptStmt = $db->prepare(
+            "SELECT a.*, u.name AS doctor_user_name
+             FROM appointments a
+             LEFT JOIN users u ON a.doctor_id = u.id
+             WHERE a.user_id = ?
+             ORDER BY a.date DESC, a.time DESC"
+        );
+    } else {
+        $apptStmt = $db->prepare(
+            "SELECT a.id,a.patient_user_id AS user_id,
+                    a.doctor_user_id AS doctor_id,
+                    a.doctor_name_snapshot AS doctor,
+                    a.department_id,a.department_name_snapshot AS department,
+                    DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
+                    TIME_FORMAT(a.starts_at,'%H:%i') AS time,
+                    a.source_time_snapshot,
+                    a.source_time_range_snapshot,
+                    a.source_time_range_snapshot AS appointment_time_range,
+                    a.duration_minutes,a.notes,a.created_at,
+                    ce.workflow_status,
+                    CASE
+                      WHEN rr.request_status IN ('requested','suggested') THEN 'Reschedule Requested'
+                      WHEN a.booking_status='pending' THEN 'Pending'
+                      WHEN a.booking_status='confirmed' THEN 'Confirmed'
+                      WHEN a.booking_status='cancelled' THEN 'Cancelled'
+                      ELSE 'Cancelled'
+                    END AS status,
+                    CASE
+                      WHEN rr.request_status IN ('requested','suggested') THEN 'pending'
+                      WHEN rr.request_status='approved' THEN 'approved'
+                      WHEN rr.request_status='rejected' THEN 'rejected'
+                      ELSE 'none'
+                    END AS reschedule_status,
+                    CASE
+                      WHEN rr.request_status='suggested' AND rr.proposed_starts_at IS NOT NULL
+                        THEN DATE_FORMAT(rr.proposed_starts_at,'%Y-%m-%d')
+                      WHEN rr.request_status IN ('requested','suggested')
+                        THEN DATE_FORMAT(rr.requested_starts_at,'%Y-%m-%d')
+                      ELSE NULL
+                    END AS pending_reschedule_date,
+                    CASE
+                      WHEN rr.request_status='suggested' AND rr.proposed_starts_at IS NOT NULL
+                        THEN TIME_FORMAT(rr.proposed_starts_at,'%H:%i')
+                      WHEN rr.request_status IN ('requested','suggested')
+                        THEN TIME_FORMAT(rr.requested_starts_at,'%H:%i')
+                      ELSE NULL
+                    END AS pending_reschedule_time,
+                    rr.reason AS reschedule_reason,
+                    rr.requested_at AS reschedule_requested_at,
+                    u.name AS doctor_user_name
+             FROM appointments a
+             LEFT JOIN users u ON a.doctor_user_id=u.id
+             LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
+             LEFT JOIN appointment_reschedule_requests rr
+               ON rr.id=(
+                 SELECT MAX(rr2.id) FROM appointment_reschedule_requests rr2
+                 WHERE rr2.appointment_id=a.id
+               )
+             WHERE a.patient_user_id=?
+             ORDER BY a.starts_at DESC"
+        );
+    }
     $apptStmt->execute([$patientId]);
     $appointments = $apptStmt->fetchAll();
 
-    // Add time range
+    // V2 preserves the source display time/range unless the appointment moved;
+    // moved appointments use their retained duration, not a legacy doctor row.
     foreach ($appointments as &$appt) {
-        if (empty($appt['appointment_time_range'])) {
+        if ($schema === PatientPortalService::SCHEMA_V2) {
+            $sourceTime = (string)($appt['source_time_snapshot'] ?? '');
+            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$appt['time'])) {
+                $appt['time'] = $sourceTime;
+                $rangeSnapshot = $appt['source_time_range_snapshot'] ?? null;
+                $appt['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                    ? $rangeSnapshot
+                    : AppointmentTime::range((string)$appt['time'], max(1, (int)($appt['duration_minutes'] ?? 30)));
+            } else {
+                $appt['appointment_time_range'] = AppointmentTime::range(
+                    (string)$appt['time'],
+                    max(1, (int)($appt['duration_minutes'] ?? 30))
+                );
+            }
+        } elseif (empty($appt['appointment_time_range'])) {
             $duration = getAppointmentDuration((int)$appt['doctor_id']);
             $appt['appointment_time_range'] = computeAppointmentTimeRange($appt['time'], $duration);
         }
@@ -109,51 +215,44 @@ try {
     unset($appt);
 
     // ── 4. Prescriptions ──
-    $rxStmt = $db->prepare(
-        "SELECT p.*, u.name as doctor_name, a.date as appt_date, a.department,
-                (SELECT COUNT(*) FROM prescription_items WHERE prescription_id = p.id) as item_count
-         FROM prescriptions p
-         JOIN users u ON p.doctor_id = u.id
-         JOIN appointments a ON p.appointment_id = a.id
-         WHERE p.patient_id = ?
-         ORDER BY p.created_at DESC"
+    $prescriptionService = new PrescriptionService($db, $schema);
+    $prescriptions = $prescriptionService->attachItems(
+        $prescriptionService->getByPatient($patientId),
+        'item_count'
     );
-    $rxStmt->execute([$patientId]);
-    $prescriptions = $rxStmt->fetchAll();
-
-    // Get items for each prescription
-    $rxItemStmt = $db->prepare(
-        "SELECT * FROM prescription_items WHERE prescription_id = ? ORDER BY sort_order"
-    );
-    foreach ($prescriptions as &$rx) {
-        $rxItemStmt->execute([$rx['id']]);
-        $rx['items'] = $rxItemStmt->fetchAll();
-    }
-    unset($rx);
 
     // ── 5. Visit Notes ──
-    $visitStmt = $db->prepare(
-        "SELECT vn.*, a.date as appt_date, a.time as appt_time, a.department,
-                u.name as doctor_name
-         FROM visit_notes vn
-         JOIN appointments a ON vn.appointment_id = a.id
-         LEFT JOIN users u ON vn.doctor_id = u.id
-         WHERE vn.patient_id = ?
-         ORDER BY vn.created_at DESC"
-    );
-    $visitStmt->execute([$patientId]);
-    $visitNotes = $visitStmt->fetchAll();
+    $workflowService = new VisitWorkflowService($db, $schema);
+    $visitNotes = $workflowService->getNotesForPatient($patientId);
 
     // ── 6. Ratings ──
-    $ratingStmt = $db->prepare(
-        "SELECT r.*, u.name as doctor_name, a.date as appt_date, a.time as appt_time,
-                a.doctor, a.department
-         FROM ratings r
-         JOIN users u ON r.doctor_id = u.id
-         JOIN appointments a ON r.appointment_id = a.id
-         WHERE r.user_id = ?
-         ORDER BY r.created_at DESC"
-    );
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $ratingStmt = $db->prepare(
+            "SELECT r.*, u.name AS doctor_name, a.date AS appt_date, a.time AS appt_time,
+                    a.doctor, a.department
+             FROM ratings r
+             JOIN users u ON r.doctor_id = u.id
+             JOIN appointments a ON r.appointment_id = a.id
+             WHERE r.user_id = ?
+             ORDER BY r.created_at DESC"
+        );
+    } else {
+        $ratingStmt = $db->prepare(
+            "SELECT r.id,r.appointment_id,
+                    r.patient_user_id AS user_id,r.doctor_user_id AS doctor_id,
+                    r.stars,r.review,r.is_public,(1-r.is_public) AS is_hidden,r.created_at,
+                    u.name AS doctor_name,
+                    DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS appt_date,
+                    TIME_FORMAT(a.starts_at,'%H:%i') AS appt_time,
+                    a.doctor_name_snapshot AS doctor,
+                    a.department_name_snapshot AS department
+             FROM ratings r
+             JOIN users u ON r.doctor_user_id=u.id
+             JOIN appointments a ON r.appointment_id=a.id
+             WHERE r.patient_user_id=?
+             ORDER BY r.created_at DESC"
+        );
+    }
     $ratingStmt->execute([$patientId]);
     $ratings = $ratingStmt->fetchAll();
 
@@ -173,18 +272,34 @@ try {
     $cancelledAppts = 0;
     $totalPrescriptions = count($prescriptions);
     $totalVisitNotes = count($visitNotes);
-    $totalMedicalRecords = $medicalRecord ? 1 : 0;
+    $totalMedicalRecords = !empty($medicalRecord['id']) ? 1 : 0;
+    if ($schema === PatientPortalService::SCHEMA_V2) {
+        $profileExistsStmt = $db->prepare(
+            'SELECT 1 FROM patient_medical_profiles WHERE patient_user_id=? LIMIT 1'
+        );
+        $profileExistsStmt->execute([$patientId]);
+        $totalMedicalRecords = $profileExistsStmt->fetchColumn() ? 1 : 0;
+    }
     $totalRatings = count($ratings);
     $avgRating = 0;
 
     foreach ($appointments as $a) {
         if ($a['status'] === 'Confirmed') {
-            // Check if date is in the past or future
-            $apptDate = $a['date'];
-            if ($apptDate >= date('Y-m-d')) {
+            if ($schema === PatientPortalService::SCHEMA_V2) {
+                if (($a['workflow_status'] ?? null) === 'completed') {
+                    $completedAppts++;
+                } elseif ($a['date'] >= date('Y-m-d')) {
+                    $upcomingAppts++;
+                }
+            } elseif ($a['date'] >= date('Y-m-d')) {
                 $upcomingAppts++;
             } else {
+                // Keep the current V1 dashboard contract unchanged.
                 $completedAppts++;
+            }
+        } elseif ($a['status'] === 'Reschedule Requested') {
+            if ($a['date'] >= date('Y-m-d')) {
+                $upcomingAppts++;
             }
         } elseif ($a['status'] === 'Cancelled') {
             $cancelledAppts++;
@@ -201,36 +316,58 @@ try {
     }
 
     // ── 9. Upcoming appointment ──
-    $upcomingStmt = $db->prepare(
-        "SELECT a.*, u.name as doctor_user_name
-         FROM appointments a
-         LEFT JOIN users u ON a.doctor_id = u.id
-         WHERE a.user_id = ? AND a.date >= CURDATE() AND a.status IN ('Confirmed','Pending')
-         ORDER BY a.date ASC, a.time ASC
-         LIMIT 1"
-    );
-    $upcomingStmt->execute([$patientId]);
-    $upcomingAppointment = $upcomingStmt->fetch();
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $upcomingStmt = $db->prepare(
+            "SELECT a.*, u.name AS doctor_user_name
+             FROM appointments a
+             LEFT JOIN users u ON a.doctor_id = u.id
+             WHERE a.user_id = ? AND a.date >= CURDATE() AND a.status IN ('Confirmed','Pending')
+             ORDER BY a.date ASC, a.time ASC
+             LIMIT 1"
+        );
+        $upcomingStmt->execute([$patientId]);
+        $upcomingAppointment = $upcomingStmt->fetch();
 
-    if ($upcomingAppointment && empty($upcomingAppointment['appointment_time_range'])) {
-        $duration = getAppointmentDuration((int)$upcomingAppointment['doctor_id']);
-        $upcomingAppointment['appointment_time_range'] = computeAppointmentTimeRange($upcomingAppointment['time'], $duration);
+        if ($upcomingAppointment && empty($upcomingAppointment['appointment_time_range'])) {
+            $duration = getAppointmentDuration((int)$upcomingAppointment['doctor_id']);
+            $upcomingAppointment['appointment_time_range'] = computeAppointmentTimeRange($upcomingAppointment['time'], $duration);
+        }
+    } else {
+        $upcomingAppointment = null;
+        // The V2 query is already ordered by starts_at DESC; reverse a copy
+        // so the first qualifying row is the earliest upcoming appointment.
+        $upcomingCandidates = array_reverse($appointments);
+        $today = date('Y-m-d');
+        foreach ($upcomingCandidates as $candidate) {
+            if (
+                $candidate['date'] >= $today
+                && in_array($candidate['status'], ['Confirmed', 'Pending', 'Reschedule Requested'], true)
+            ) {
+                $upcomingAppointment = $candidate;
+                break;
+            }
+        }
     }
 
     // ── 10. Latest appointment ──
-    $latestApptStmt = $db->prepare(
-        "SELECT a.*, u.name as doctor_user_name
-         FROM appointments a
-         LEFT JOIN users u ON a.doctor_id = u.id
-         WHERE a.user_id = ?
-         ORDER BY a.created_at DESC LIMIT 1"
-    );
-    $latestApptStmt->execute([$patientId]);
-    $latestAppointment = $latestApptStmt->fetch();
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $latestApptStmt = $db->prepare(
+            "SELECT a.*, u.name AS doctor_user_name
+             FROM appointments a
+             LEFT JOIN users u ON a.doctor_id = u.id
+             WHERE a.user_id = ?
+             ORDER BY a.created_at DESC LIMIT 1"
+        );
+        $latestApptStmt->execute([$patientId]);
+        $latestAppointment = $latestApptStmt->fetch();
 
-    if ($latestAppointment && empty($latestAppointment['appointment_time_range'])) {
-        $duration = getAppointmentDuration((int)$latestAppointment['doctor_id']);
-        $latestAppointment['appointment_time_range'] = computeAppointmentTimeRange($latestAppointment['time'], $duration);
+        if ($latestAppointment && empty($latestAppointment['appointment_time_range'])) {
+            $duration = getAppointmentDuration((int)$latestAppointment['doctor_id']);
+            $latestAppointment['appointment_time_range'] = computeAppointmentTimeRange($latestAppointment['time'], $duration);
+        }
+    } else {
+        // Appointment rows are already ordered by starts_at DESC in V2.
+        $latestAppointment = $appointments[0] ?? null;
     }
 
     // ── 11. Latest prescription ──
@@ -243,7 +380,7 @@ try {
     $doctorsVisited = [];
     $seenDoctors = [];
     foreach ($appointments as $a) {
-        if (in_array($a['status'], ['Confirmed','Pending']) && !in_array($a['doctor_id'], $seenDoctors)) {
+        if (in_array($a['status'], ['Confirmed','Pending','Reschedule Requested'], true) && !in_array($a['doctor_id'], $seenDoctors, true)) {
             $seenDoctors[] = $a['doctor_id'];
             $doctorsVisited[] = [
                 'id' => $a['doctor_id'],
@@ -256,36 +393,86 @@ try {
     // ── 14. Audit History (Admin only) ──
     $auditHistory = [];
     if ($currentRole === 'admin') {
-        $auditStmt = $db->prepare("
-            SELECT 
-                mra.id,
-                mra.field_name,
-                mra.old_value,
-                mra.new_value,
-                mra.reason,
-                mra.created_at,
-                u.name as admin_name
-            FROM medical_record_audit mra
-            JOIN users u ON mra.admin_id = u.id
-            WHERE mra.patient_id = ?
-            ORDER BY mra.created_at DESC
-        ");
-        $auditStmt->execute([$patientId]);
-        $auditHistory = $auditStmt->fetchAll();
+        if ($schema === PatientPortalService::SCHEMA_V1) {
+            $auditStmt = $db->prepare("
+                SELECT
+                    mra.id,mra.field_name,mra.old_value,mra.new_value,
+                    mra.reason,mra.created_at,u.name AS admin_name
+                FROM medical_record_audit mra
+                JOIN users u ON mra.admin_id=u.id
+                WHERE mra.patient_id=?
+                ORDER BY mra.created_at DESC
+            ");
+            $auditStmt->execute([$patientId]);
+            $auditHistory = $auditStmt->fetchAll();
+        } else {
+            $auditStmt = $db->prepare("
+                SELECT ae.id,ae.old_value,ae.new_value,ae.description,
+                       ae.occurred_at AS created_at,u.name AS admin_name
+                FROM audit_events ae
+                JOIN users u ON u.id=ae.actor_user_id
+                WHERE ae.patient_user_id=?
+                  AND ae.action_code='medical_record_admin_correction'
+                  AND ae.entity_type='patient'
+                ORDER BY ae.occurred_at DESC,ae.id DESC
+            ");
+            $auditStmt->execute([$patientId]);
+            foreach ($auditStmt->fetchAll(PDO::FETCH_ASSOC) as $event) {
+                $oldValues = json_decode((string)($event['old_value'] ?? ''), true);
+                $newValues = json_decode((string)($event['new_value'] ?? ''), true);
+                if (!is_array($oldValues)) {
+                    $oldValues = [];
+                }
+                if (!is_array($newValues)) {
+                    $newValues = [];
+                }
+                $fields = array_values(array_unique(array_merge(
+                    array_keys($oldValues),
+                    array_keys($newValues)
+                )));
+                $reason = preg_replace(
+                    '/^Administrative medical record correction\. Reason:\s*/',
+                    '',
+                    (string)($event['description'] ?? '')
+                );
+                foreach ($fields as $field) {
+                    $oldValue = $oldValues[$field] ?? null;
+                    $newValue = $newValues[$field] ?? null;
+                    $auditHistory[] = [
+                        'id' => (int)$event['id'],
+                        'field_name' => (string)$field,
+                        'old_value' => is_scalar($oldValue) || $oldValue === null ? (string)($oldValue ?? '') : json_encode($oldValue),
+                        'new_value' => is_scalar($newValue) || $newValue === null ? (string)($newValue ?? '') : json_encode($newValue),
+                        'reason' => $reason,
+                        'created_at' => $event['created_at'],
+                        'admin_name' => $event['admin_name'],
+                    ];
+                }
+            }
+        }
     }
 
     // ── 15. Last Clinical Update (Doctor who last updated clinical fields) ──
     $lastClinicalUpdate = null;
-    $clinicalUpdateStmt = $db->prepare("
-        SELECT 
-            u.name as doctor_name,
-            mhu.created_at
-        FROM medical_history_updates mhu
-        JOIN users u ON mhu.doctor_id = u.id
-        WHERE mhu.patient_id = ?
-        ORDER BY mhu.created_at DESC
-        LIMIT 1
-    ");
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $clinicalUpdateStmt = $db->prepare("
+            SELECT u.name AS doctor_name,mhu.created_at
+            FROM medical_history_updates mhu
+            JOIN users u ON mhu.doctor_id=u.id
+            WHERE mhu.patient_id=?
+            ORDER BY mhu.created_at DESC
+            LIMIT 1
+        ");
+    } else {
+        $clinicalUpdateStmt = $db->prepare("
+            SELECT u.name AS doctor_name,mhe.created_at
+            FROM medical_history_events mhe
+            JOIN users u ON mhe.doctor_user_id=u.id
+            WHERE mhe.patient_user_id=?
+            ORDER BY mhe.created_at DESC,mhe.id DESC
+            LIMIT 1
+        ");
+    }
     $clinicalUpdateStmt->execute([$patientId]);
     $lastClinicalUpdate = $clinicalUpdateStmt->fetch();
 
@@ -319,7 +506,7 @@ try {
         'can_edit'             => in_array($currentRole, ['admin', 'doctor']),
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get EMR Data Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to load patient EMR data.']);

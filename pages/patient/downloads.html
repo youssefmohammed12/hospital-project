@@ -6,15 +6,12 @@
   <meta name="description" content="Document Center & Downloads — HealthBridge" />
   <title>Document Center — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-  <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=7" />
-  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
-  <script src="../../assets/js/core/main.js?v=2"></script>
-  <script src="../../assets/js/components/layout.js?v=2"></script>
+    <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=9" />
+  <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
+  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=4"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -28,14 +25,13 @@
         </div>
         <div id="downloads-container">
           <div class="skeleton-loader">
-            <div class="skeleton skeleton-card" style="height: 120px; margin-bottom: var(--s4);"></div>
-            <div class="skeleton skeleton-card" style="height: 120px; margin-bottom: var(--s4);"></div>
-            <div class="skeleton skeleton-card" style="height: 120px;"></div>
+            <div class="skeleton skeleton-card patient-download-skeleton-card"></div>
+            <div class="skeleton skeleton-card patient-download-skeleton-card"></div>
+            <div class="skeleton skeleton-card patient-download-skeleton-card"></div>
           </div>
         </div>
       </div>
     </main>
   </div>
-  <script src="../../assets/js/pages/patient/downloads.js?v=2"></script>
-</body>
+  </body>
 </html>

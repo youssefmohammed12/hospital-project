@@ -20,6 +20,25 @@ function sanitizeString($input, int $maxLength = 255): string {
 }
 
 /**
+ * Parse a strictly positive integer from a JSON/form input value.
+ *
+ * Accepts native integers and digit-only strings within PHP's integer range.
+ * Rejects booleans, floats, arrays, signed/partial strings, zero and overflow.
+ */
+function parsePositiveInt($value): ?int {
+    if (is_int($value)) {
+        return $value > 0 ? $value : null;
+    }
+
+    if (!is_string($value) || $value === '' || !ctype_digit($value)) {
+        return null;
+    }
+
+    $parsed = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    return $parsed === false ? null : (int)$parsed;
+}
+
+/**
  * Validate email format
  * @param string $email
  * @return string|null Error message or null if valid
@@ -49,8 +68,8 @@ function validatePhone(string $phone): ?string {
     if ($phone === '') {
         return 'Phone number is required.';
     }
-    // Remove spaces, dashes, parentheses
-    $clean = preg_replace('/[\s\-\(\)]+/', '', $phone);
+    // Remove common display separators before validating the canonical number.
+    $clean = preg_replace('/[\s().-]+/', '', $phone) ?? '';
     // Egyptian mobile: +2010/11/12/15 followed by 8 digits
     if (preg_match('/^(\+20|0)(10|11|12|15)\d{8}$/', $clean)) {
         return null;
@@ -134,20 +153,21 @@ function validateNationalId(string $id, ?string $dateOfBirth = null): array {
     }
     
     // Egyptian National ID format:
-    // CC YY MM DD SS GGG XXX
-    // CC = Century (2 = 1900-1999, 3 = 2000-2099)
+    // C YY MM DD GG SSS G X
+    // C   = Century (2 = 1900-1999, 3 = 2000-2099)
     // YY = Year (within century)
     // MM = Month
     // DD = Day
-    // SS = Governorate code
-    // G = Gender (0-4 = Male, 5-9 = Female)
-    // XXX = Serial number
+    // GG  = Governorate code
+    // G   = Gender (13th digit: odd = Male, even = Female)
+    // SSS = Sequence number
+    // X   = Check digit
     
     $centuryDigit = (int)$id[0];
     $yearDigits = (int)substr($id, 1, 2);
     $monthDigits = (int)substr($id, 3, 2);
     $dayDigits = (int)substr($id, 5, 2);
-    $genderDigit = (int)$id[11];
+    $genderDigit = (int)$id[12];
     
     // Validate century
     if ($centuryDigit === 2) {
@@ -178,7 +198,7 @@ function validateNationalId(string $id, ?string $dateOfBirth = null): array {
     $result['birth_date'] = $extractedBirthDate;
     $result['century'] = $century;
     
-    // Validate gender digit (must be 0-9)
+    // Gender digit is the 13th digit: odd = Male, even = Female.
     if ($genderDigit < 0 || $genderDigit > 9) {
         $result['error'] = 'Invalid National ID: invalid gender code.';
         return $result;
@@ -194,7 +214,7 @@ function validateNationalId(string $id, ?string $dateOfBirth = null): array {
     
     // All validations passed
     $result['valid'] = true;
-    $result['gender'] = $genderDigit >= 5 ? 'Female' : 'Male';
+    $result['gender'] = $genderDigit % 2 === 1 ? 'Male' : 'Female';
     
     return $result;
 }
@@ -237,17 +257,36 @@ function isEmailTaken(PDO $db, string $email, ?int $excludeId = null): bool {
  * @param int|null $excludeId User ID to exclude (for updates)
  * @return bool
  */
+function normalizePhoneForComparison(string $phone): string {
+    $clean = preg_replace('/[\s().-]+/', '', trim($phone)) ?? '';
+
+    // Keep the PHP comparison key identical to users.phone_normalized in SQL.
+    return str_replace('+20', '0', $clean);
+}
+
+/**
+ * Check normalized phone uniqueness using the indexed generated column.
+ * The database unique key remains authoritative under concurrent writes.
+ */
 function isPhoneTaken(PDO $db, string $phone, ?int $excludeId = null): bool {
-    // Normalize phone for comparison
-    $clean = preg_replace('/[\s\-\(\)]+/', '', $phone);
-    if ($excludeId) {
-        $stmt = $db->prepare("SELECT id FROM users WHERE REPLACE(REPLACE(phone, ' ', ''), '-', '') = ? AND id != ?");
-        $stmt->execute([$clean, $excludeId]);
-    } else {
-        $stmt = $db->prepare("SELECT id FROM users WHERE REPLACE(REPLACE(phone, ' ', ''), '-', '') = ?");
-        $stmt->execute([$clean]);
+    $clean = normalizePhoneForComparison($phone);
+    if ($clean === '') {
+        return false;
     }
-    return (bool)$stmt->fetch();
+
+    $sql = 'SELECT id FROM users WHERE phone_normalized = ?';
+    $params = [$clean];
+
+    if ($excludeId !== null) {
+        $sql .= ' AND id <> ?';
+        $params[] = $excludeId;
+    }
+
+    $sql .= ' LIMIT 1';
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    return (bool)$stmt->fetchColumn();
 }
 
 /**

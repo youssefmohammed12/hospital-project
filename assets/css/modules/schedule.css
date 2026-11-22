@@ -341,6 +341,7 @@
 }
 
 .schedule-admin-card {
+  min-width: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: var(--r-lg);
@@ -359,6 +360,17 @@
   align-items: flex-start;
   margin-bottom: var(--s4);
   gap: var(--s3);
+}
+
+.schedule-admin-card-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-admin-card-name,
+.schedule-admin-card-email {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .schedule-admin-card-name {
@@ -2272,3 +2284,14 @@
 [data-theme="light"] .sticky-actions-section {
   border-top-color: rgba(0, 0, 0, 0.05);
 }
+
+
+/* CSP-safe shared Schedule module state and extracted template presentation. */
+.schedule-day-card-body { display: none; }
+.schedule-day-card.expanded .schedule-day-card-body { display: block; }
+.schedule-unsaved-banner:not(.is-visible) { display: none; }
+.schedule-unsaved-banner.is-visible { display: flex; }
+.schedule-availability-switch-container { margin-top: 4px; }
+.schedule-availability-label { font-size: 0.8rem; font-weight: 600; }
+.schedule-availability-label.is-available { color: var(--primary); }
+.schedule-availability-label.is-unavailable { color: var(--danger); }

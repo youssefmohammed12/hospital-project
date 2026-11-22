@@ -20,7 +20,11 @@ async function loadDepartmentsDropdown(selectId, includeEmptyOption = true) {
     const response = await fetch((getBasePath() + "api/departments/get.php"));
     const result = await response.json();
 
-    if (result.success && result.departments) {
+    if (result.success && Array.isArray(result.departments)) {
+      const departments = result.departments.filter((department) =>
+        department && typeof department === "object" && !Array.isArray(department)
+        && typeof department.name === "string" && department.name.trim()
+      );
       select.innerHTML = "";
       
       if (includeEmptyOption) {
@@ -30,10 +34,10 @@ async function loadDepartmentsDropdown(selectId, includeEmptyOption = true) {
         select.appendChild(emptyOption);
       }
 
-      result.departments.forEach((dept) => {
+      departments.forEach((department) => {
         const option = document.createElement("option");
-        option.value = dept.name;
-        option.textContent = dept.name;
+        option.value = department.name;
+        option.textContent = department.name;
         select.appendChild(option);
       });
     }

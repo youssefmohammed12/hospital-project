@@ -14,7 +14,7 @@
  * - Appointment actions (approve/decline/cancel)
  * - Notification actions (mark read, delete)
  * - Password reset
- * - Delete patient
+ * - Archive patient
  * - Account status management
  * - Rating moderation (hide/restore)
  *
@@ -37,7 +37,7 @@ const EMR_TABS = ['overview', 'appointments', 'medical-records', 'prescriptions'
 
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
-  patientId = parseInt(params.get('patient_id') || '0');
+  patientId = safePositiveId(params.get('patient_id'));
 
   const user = await requireServerRole('admin');
   if (!user) return;
@@ -48,13 +48,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!patientId) {
     showToast('No patient selected.', 'error');
     document.getElementById('emr-main-content').innerHTML =
-      '<div class="emr-empty-state"><i class="fas fa-user-slash"></i><h4>No Patient Selected</h4><p>Please select a patient from the admin panel.</p><a href=getBasePath() + "pages/admin/admin.html#patients" class="btn btn-primary">Go to Patients</a></div>';
+      `<div class="emr-empty-state"><i class="fas fa-user-slash"></i><h4>No Patient Selected</h4><p>Please select a patient from the admin panel.</p><a href="${getBasePath()}pages/admin/admin.html#patients" class="btn btn-primary">Go to Patients</a></div>`;
     return;
   }
 
+  bindEmrDelegatedActions();
   initTabSystem();
   initEditForm();
-  initModalSystem();
+  initEmrModalSystem();
   initPrescriptionModal();
   initAppointmentModal();
   initBookAppointmentModal();
@@ -69,6 +70,146 @@ document.addEventListener('DOMContentLoaded', async () => {
     switchTab(hash);
   }
 });
+
+/**
+ * Delegated Patient EMR action dispatcher. Bound only after the Admin role
+ * gate and positive patient ID check have completed.
+ */
+function bindEmrDelegatedActions() {
+  if (window._hbPatientEmrDelegatedActionsBound) return;
+
+  const findRecord = (records, id) => {
+    const safeId = safePositiveId(id);
+    if (!safeId || !Array.isArray(records)) return null;
+    return records.find(record =>
+      record && typeof record === "object" && !Array.isArray(record)
+      && safePositiveId(record.id) === safeId
+    ) || null;
+  };
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const notificationFilter = target.closest("[data-emr-notification-filter]");
+    if (notificationFilter) {
+      const filter = notificationFilter.dataset.emrNotificationFilter;
+      if (["all", "unread", "archived"].includes(filter)) setNotifFilter(filter);
+      return;
+    }
+
+    const slotPeriod = target.closest("[data-emr-slot-period]");
+    if (slotPeriod) {
+      const period = slotPeriod.dataset.emrSlotPeriod;
+      if (["morning", "afternoon", "evening"].includes(period)) emrSwitchSlotTab(period);
+      return;
+    }
+
+    const slot = target.closest("[data-emr-slot-select]");
+    if (slot && !slot.disabled) {
+      emrSelectSlot(slot);
+      return;
+    }
+
+    const control = target.closest("[data-emr-action]");
+    if (!control) return;
+    event.preventDefault();
+
+    const action = control.dataset.emrAction;
+    const recordId = safePositiveId(control.dataset.recordId);
+
+    switch (action) {
+      case "retry":
+        window.location.reload();
+        break;
+      case "edit-patient":
+        openEditModal();
+        break;
+      case "toggle-patient-status":
+        if (recordId && safePositiveId(emrData?.patient?.id) === recordId) {
+          toggleEmrPatientStatus(recordId);
+        }
+        break;
+      case "reset-password":
+        openResetPasswordModal();
+        break;
+      case "print-emr":
+        printEmrPage();
+        break;
+      case "refresh-emr":
+        refreshEmr();
+        break;
+      case "archive-patient":
+        openEmrArchivePatientModal();
+        break;
+      case "book-appointment":
+        openBookAppointmentModal();
+        break;
+      case "admin-correction":
+        openAdminCorrectionModal();
+        break;
+      case "switch-tab": {
+        const tab = control.dataset.emrTab;
+        if (["appointments", "prescriptions", "visit-notes", "timeline"].includes(tab)) switchTab(tab);
+        break;
+      }
+      case "view-appointment":
+      case "print-appointment":
+      case "approve-appointment":
+      case "decline-appointment":
+      case "cancel-appointment": {
+        const appointment = findRecord(emrData?.appointments, recordId);
+        if (!appointment) return;
+        const status = String(appointment.status || "").toLowerCase();
+        if (action === "approve-appointment" && status === "pending") emrApproveAppt(recordId);
+        else if (action === "decline-appointment" && status === "pending") emrDeclineAppt(recordId);
+        else if (action === "cancel-appointment" && status === "confirmed") emrCancelAppt(recordId);
+        else if (action === "view-appointment") openAppointmentModal(recordId);
+        else if (action === "print-appointment") printAppointment(recordId);
+        break;
+      }
+      case "clear-appointment-search":
+        clearApptSearch();
+        break;
+      case "refresh-appointments":
+        refreshAppointments();
+        break;
+      case "view-prescription":
+      case "print-prescription":
+        if (!findRecord(emrData?.prescriptions, recordId)) return;
+        if (action === "view-prescription") openPrescriptionModal(recordId);
+        else printPrescription(recordId);
+        break;
+      case "toggle-visit-note": {
+        const index = Number(control.dataset.visitNoteIndex);
+        const notes = Array.isArray(emrData?.visit_notes) ? emrData.visit_notes : [];
+        if (Number.isSafeInteger(index) && index >= 0 && index < notes.length) toggleVisitNote(index);
+        break;
+      }
+      case "restore-rating":
+      case "hide-rating":
+        if (!findRecord(emrData?.ratings, recordId)) return;
+        if (action === "restore-rating") emrRestoreRating(recordId);
+        else emrHideRating(recordId);
+        break;
+      case "mark-notification-read":
+      case "delete-notification":
+        if (!findRecord(emrData?.notifications, recordId)) return;
+        if (action === "mark-notification-read") emrMarkNotifRead(recordId);
+        else emrDeleteNotif(recordId);
+        break;
+    }
+  });
+
+  const filterAppointmentsFromInput = (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('[data-emr-filter="appointments"]')) filterAppointments();
+  };
+  document.addEventListener("input", filterAppointmentsFromInput);
+  document.addEventListener("change", filterAppointmentsFromInput);
+
+  window._hbPatientEmrDelegatedActionsBound = true;
+}
 
 function setText(id, text) {
   const el = document.getElementById(id);
@@ -152,8 +293,15 @@ async function loadEmrData({ refresh = false, preserveTab = false, preserveScrol
 
   showSkeletons();
 
+  const safePatientId = safePositiveId(patientId);
+  if (!safePatientId) {
+    hideSkeletons();
+    showToast('A valid patient ID is required to load the EMR.', 'error');
+    return;
+  }
+
   const result = await apiFetch(
-    `${getBasePath()}api/medical/get-emr-data.php?patient_id=${patientId}`,
+    `${getBasePath()}api/medical/get-emr-data.php?patient_id=${safePatientId}`,
     {},
     'Failed to load patient EMR data.'
   );
@@ -165,7 +313,7 @@ async function loadEmrData({ refresh = false, preserveTab = false, preserveScrol
         <i class="fas fa-exclamation-triangle"></i>
         <h4>Failed to Load Data</h4>
         <p>${escapeHTML(result.data?.message || 'Could not load patient data.')}</p>
-        <button class="btn btn-primary" onclick="location.reload()">Try Again</button>
+        <button class="btn btn-primary" data-emr-action="retry">Try Again</button>
       </div>`;
     isRefreshing = false;
     return;
@@ -202,9 +350,9 @@ function showSkeletons() {
     <div class="emr-header-top">
       <div class="emr-skeleton emr-skeleton-avatar"></div>
       <div class="emr-header-info">
-        <div class="emr-skeleton emr-skeleton-text short" style="height:28px;margin-bottom:var(--s3)"></div>
-        <div class="emr-skeleton emr-skeleton-text tiny" style="height:14px"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);margin-top:var(--s4)">
+        <div class="emr-skeleton emr-skeleton-text short emr-skeleton-title-line"></div>
+        <div class="emr-skeleton emr-skeleton-text tiny emr-skeleton-subtitle-line"></div>
+        <div class="emr-skeleton-meta-grid">
           <div class="emr-skeleton emr-skeleton-text"></div>
           <div class="emr-skeleton emr-skeleton-text"></div>
           <div class="emr-skeleton emr-skeleton-text short"></div>
@@ -255,8 +403,12 @@ function renderHeader() {
   const mr = emrData.medical_record;
   if (!p) return;
 
-  const initials = (p.name || '').split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2) || '?';
-  const statusClass = p.is_active ? 'confirmed' : 'cancelled';
+  const patientName = typeof p.name === 'string' ? p.name : '';
+  const initials = patientName.split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2) || '?';
+  const displayAge = emrData.age !== null && emrData.age !== undefined
+    ? safeCount(emrData.age, 0)
+    : '—';
+  const statusClass = safeClassToken(p.is_active ? 'confirmed' : 'cancelled');
   const statusText = p.is_active ? 'Active' : 'Disabled';
   const gender = mr?.gender || '—';
   const bloodType = mr?.blood_type || '—';
@@ -272,13 +424,13 @@ function renderHeader() {
             <h1 class="emr-header-name">
               ${escapeHTML(p.name)}
               <span class="emr-header-id">#${escapeHTML(String(p.id))}</span>
-              <span class="status status-${statusClass}" style="font-size:0.7rem;padding:2px 10px;border-radius:var(--r-full)">${statusText}</span>
+              <span class="status status-${statusClass} emr-status-compact">${statusText}</span>
             </h1>
             <div class="emr-header-meta">
               <span class="emr-meta-item"><i class="fas fa-venus-mars"></i><span class="meta-label">Gender:</span><span class="meta-value">${escapeHTML(gender)}</span></span>
-              <span class="emr-meta-item"><i class="fas fa-cake-candles"></i><span class="meta-label">Age:</span><span class="meta-value">${emrData.age !== null ? emrData.age : '—'}</span></span>
+              <span class="emr-meta-item"><i class="fas fa-cake-candles"></i><span class="meta-label">Age:</span><span class="meta-value">${emrData.age !== null && emrData.age !== undefined ? safeCount(emrData.age, 0) : '—'}</span></span>
               <span class="emr-meta-item"><i class="fas fa-droplet"></i><span class="meta-label">Blood Type:</span><span class="meta-value">${escapeHTML(bloodType)}</span></span>
-              <span class="emr-meta-item"><i class="fas fa-calendar-check"></i><span class="meta-label">Registered:</span><span class="meta-value">${formatDate(p.created_at)}</span></span>
+              <span class="emr-meta-item"><i class="fas fa-calendar-check"></i><span class="meta-label">Registered:</span><span class="meta-value">${escapeHTML(formatDate(p.created_at))}</span></span>
               <span class="emr-meta-item"><i class="fas fa-envelope"></i><span class="meta-label">Email:</span><span class="meta-value">${escapeHTML(p.email || '—')}</span></span>
               <span class="emr-meta-item"><i class="fas fa-phone"></i><span class="meta-label">Phone:</span><span class="meta-value">${escapeHTML(p.phone || '—')}</span></span>
               <span class="emr-meta-item"><i class="fas fa-user-shield"></i><span class="meta-label">Emergency:</span><span class="meta-value">${escapeHTML(emergencyName)}</span></span>
@@ -287,30 +439,31 @@ function renderHeader() {
           </div>
         </div>
         <div class="emr-header-actions" role="toolbar" aria-label="Patient actions">
-          <button class="btn btn-outline btn-sm" onclick="openEditModal()" title="Edit patient details"><i class="fas fa-pen"></i> Edit Patient</button>
-          <button class="btn ${p.is_active ? 'btn-outline' : 'btn-primary'} btn-sm" onclick="toggleEmrPatientStatus(${p.id}, '${escapeHTML(p.name)}')" title="${p.is_active ? 'Disable' : 'Activate'} account"><i class="fas fa-${p.is_active ? 'ban' : 'check'}"></i> ${p.is_active ? 'Disable' : 'Activate'}</button>
-          <button class="btn btn-outline btn-sm" onclick="openResetPasswordModal()" title="Reset Password"><i class="fas fa-lock"></i> Reset Password</button>
-          <button class="btn btn-outline btn-sm" onclick="printEmrPage()" title="Open printable EMR"><i class="fas fa-print"></i> Print EMR</button>
-          <button class="btn btn-outline btn-sm" onclick="refreshEmr()" title="Refresh data"><i class="fas fa-rotate"></i> Refresh</button>
-          <button class="btn btn-danger btn-sm" onclick="openDeleteModal()" title="Delete patient"><i class="fas fa-trash-can"></i> Delete</button>
+          <button class="btn btn-outline btn-sm" data-emr-action="edit-patient" title="Edit patient details"><i class="fas fa-pen"></i> Edit Patient</button>
+          ${safePositiveId(p.id) ? `<button class="btn ${p.is_active ? 'btn-outline' : 'btn-primary'} btn-sm" data-emr-action="toggle-patient-status" data-record-id="${safePositiveId(p.id)}" title="${p.is_active ? 'Disable' : 'Activate'} account"><i class="fas fa-${p.is_active ? 'ban' : 'check'}"></i> ${p.is_active ? 'Disable' : 'Activate'}</button>` : '<span class="text-muted">Status unavailable</span>'}
+          <button class="btn btn-outline btn-sm" data-emr-action="reset-password" title="Reset Password"><i class="fas fa-lock"></i> Reset Password</button>
+          <button class="btn btn-outline btn-sm" data-emr-action="print-emr" title="Open printable EMR"><i class="fas fa-print"></i> Print EMR</button>
+          <button class="btn btn-outline btn-sm" data-emr-action="refresh-emr" title="Refresh data"><i class="fas fa-rotate"></i> Refresh</button>
+          <button class="btn btn-outline btn-sm" data-emr-action="archive-patient" title="Archive patient"><i class="fas fa-box-archive"></i> Archive</button>
         </div>
       </div>
       <div class="emr-quick-actions-sidebar">
         <div class="emr-qa-card">
           <h4 class="emr-qa-title"><i class="fas fa-bolt"></i> Quick Actions</h4>
           <div class="emr-qa-list">
-            <button class="emr-qa-btn" onclick="openBookAppointmentModal()"><i class="fas fa-calendar-plus"></i> New Appointment</button>
-            <button class="emr-qa-btn" onclick="openAdminCorrectionModal()"><i class="fas fa-shield-halved"></i> Correct Administrative Data</button>
-            <button class="emr-qa-btn" onclick="switchTab('appointments')"><i class="fas fa-calendar-days"></i> View Appointments</button>
-            <button class="emr-qa-btn" onclick="switchTab('prescriptions')"><i class="fas fa-prescription"></i> View Prescriptions</button>
-            <button class="emr-qa-btn" onclick="switchTab('visit-notes')"><i class="fas fa-file-lines"></i> View Visit Notes</button>
-            <button class="emr-qa-btn" onclick="switchTab('timeline')"><i class="fas fa-timeline"></i> View Timeline</button>
-            <button class="emr-qa-btn" onclick="refreshEmr()"><i class="fas fa-rotate"></i> Refresh Data</button>
-            <button class="emr-qa-btn" onclick="printEmrPage()"><i class="fas fa-print"></i> Print EMR</button>
+            <button class="emr-qa-btn" data-emr-action="book-appointment"><i class="fas fa-calendar-plus"></i> New Appointment</button>
+            <button class="emr-qa-btn" data-emr-action="admin-correction"><i class="fas fa-shield-halved"></i> Correct Administrative Data</button>
+            <button class="emr-qa-btn" data-emr-action="switch-tab" data-emr-tab="appointments"><i class="fas fa-calendar-days"></i> View Appointments</button>
+            <button class="emr-qa-btn" data-emr-action="switch-tab" data-emr-tab="prescriptions"><i class="fas fa-prescription"></i> View Prescriptions</button>
+            <button class="emr-qa-btn" data-emr-action="switch-tab" data-emr-tab="visit-notes"><i class="fas fa-file-lines"></i> View Visit Notes</button>
+            <button class="emr-qa-btn" data-emr-action="switch-tab" data-emr-tab="timeline"><i class="fas fa-timeline"></i> View Timeline</button>
+            <button class="emr-qa-btn" data-emr-action="refresh-emr"><i class="fas fa-rotate"></i> Refresh Data</button>
+            <button class="emr-qa-btn" data-emr-action="print-emr"><i class="fas fa-print"></i> Print EMR</button>
           </div>
         </div>
       </div>
     </div>`;
+
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -320,15 +473,19 @@ function renderHeader() {
 function renderStats() {
   const s = emrData.stats;
   if (!s) return;
+  const averageRating = Number(s.average_rating);
+  const averageRatingLabel = Number.isFinite(averageRating) && averageRating >= 0 && averageRating <= 5
+    ? averageRating.toFixed(1)
+    : '—';
   document.getElementById('emr-stats').innerHTML = `
-    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-calendar-days"></i></div><div class="emr-stat-value">${s.total_appointments}</div><div class="emr-stat-label">Appointments</div></div>
-    <div class="emr-stat-card"><div class="emr-stat-icon" style="color:var(--warning)"><i class="fas fa-hourglass-half"></i></div><div class="emr-stat-value">${s.upcoming}</div><div class="emr-stat-label">Upcoming</div></div>
-    <div class="emr-stat-card"><div class="emr-stat-icon" style="color:var(--success)"><i class="fas fa-circle-check"></i></div><div class="emr-stat-value">${s.completed}</div><div class="emr-stat-label">Completed</div></div>
-    <div class="emr-stat-card"><div class="emr-stat-icon" style="color:var(--danger)"><i class="fas fa-ban"></i></div><div class="emr-stat-value">${s.cancelled}</div><div class="emr-stat-label">Cancelled</div></div>
-    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-prescription"></i></div><div class="emr-stat-value">${s.total_prescriptions}</div><div class="emr-stat-label">Prescriptions</div></div>
-    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-notes-medical"></i></div><div class="emr-stat-value">${s.total_medical_records}</div><div class="emr-stat-label">Medical Records</div></div>
-    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-file-lines"></i></div><div class="emr-stat-value">${s.total_visit_notes}</div><div class="emr-stat-label">Visit Notes</div></div>
-    <div class="emr-stat-card"><div class="emr-stat-icon" style="color:var(--warning)"><i class="fas fa-star"></i></div><div class="emr-stat-value">${s.average_rating}</div><div class="emr-stat-label">Avg Rating</div><div class="emr-stat-sub">${s.total_ratings} reviews</div></div>`;
+    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-calendar-days"></i></div><div class="emr-stat-value">${safeCount(s.total_appointments, 0)}</div><div class="emr-stat-label">Appointments</div></div>
+    <div class="emr-stat-card"><div class="emr-stat-icon emr-tone-warning"><i class="fas fa-hourglass-half"></i></div><div class="emr-stat-value">${safeCount(s.upcoming, 0)}</div><div class="emr-stat-label">Upcoming</div></div>
+    <div class="emr-stat-card"><div class="emr-stat-icon emr-tone-success"><i class="fas fa-circle-check"></i></div><div class="emr-stat-value">${safeCount(s.completed, 0)}</div><div class="emr-stat-label">Completed</div></div>
+    <div class="emr-stat-card"><div class="emr-stat-icon emr-tone-danger"><i class="fas fa-ban"></i></div><div class="emr-stat-value">${safeCount(s.cancelled, 0)}</div><div class="emr-stat-label">Cancelled</div></div>
+    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-prescription"></i></div><div class="emr-stat-value">${safeCount(s.total_prescriptions, 0)}</div><div class="emr-stat-label">Prescriptions</div></div>
+    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-notes-medical"></i></div><div class="emr-stat-value">${safeCount(s.total_medical_records, 0)}</div><div class="emr-stat-label">Medical Records</div></div>
+    <div class="emr-stat-card"><div class="emr-stat-icon"><i class="fas fa-file-lines"></i></div><div class="emr-stat-value">${safeCount(s.total_visit_notes, 0)}</div><div class="emr-stat-label">Visit Notes</div></div>
+    <div class="emr-stat-card"><div class="emr-stat-icon emr-tone-warning"><i class="fas fa-star"></i></div><div class="emr-stat-value">${averageRatingLabel}</div><div class="emr-stat-label">Avg Rating</div><div class="emr-stat-sub">${safeCount(s.total_ratings, 0)} reviews</div></div>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -342,39 +499,45 @@ function renderOverview() {
   const latestAppt = emrData.latest_appointment;
   const latestRx = emrData.latest_prescription;
   const latestVisit = emrData.latest_visit_note;
-  const doctors = emrData.doctors_visited || [];
-  const recentNotif = emrData.notifications?.[0] || null;
+  const doctors = Array.isArray(emrData.doctors_visited)
+    ? emrData.doctors_visited.filter((doctor) => doctor && typeof doctor === 'object' && !Array.isArray(doctor))
+    : [];
+  const recentNotif = Array.isArray(emrData.notifications)
+    ? emrData.notifications.find((notification) =>
+        notification && typeof notification === 'object' && !Array.isArray(notification)
+      ) || null
+    : null;
 
-  const noData = (icon, msg) => `<div class="emr-empty-state" style="padding:var(--s6)"><i class="fas ${icon}" style="font-size:1.5rem"></i><p>${msg}</p></div>`;
+  const noData = (icon, msg) => `<div class="emr-empty-state emr-empty-state--compact"><i class="fas ${icon} emr-empty-state-icon--compact"></i><p>${msg}</p></div>`;
 
   const doctorHtml = doctors.length > 0
-    ? doctors.map(d => `<span style="display:inline-block;background:var(--bg-surface);border:1px solid var(--border-light);padding:2px 10px;border-radius:var(--r-full);font-size:0.78rem;margin:2px">${escapeHTML(d.name)} <span style="color:var(--text-muted)">(${escapeHTML(d.department)})</span></span>`).join('')
-    : '<span style="color:var(--text-muted);font-size:0.83rem">No doctors visited yet.</span>';
+    ? doctors.map(d => `<span class="emr-doctor-chip">${escapeHTML(d.name)} <span class="emr-text-muted">(${escapeHTML(d.department)})</span></span>`).join('')
+    : '<span class="emr-text-muted--small">No doctors visited yet.</span>';
 
   const latestApptHtml = latestAppt
     ? `<div class="emr-info-row"><span class="emr-info-label">Doctor</span><span class="emr-info-value">${escapeHTML(latestAppt.doctor)}</span></div>
        <div class="emr-info-row"><span class="emr-info-label">Department</span><span class="emr-info-value">${escapeHTML(latestAppt.department)}</span></div>
        <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${escapeHTML(latestAppt.date)} ${escapeHTML(formatApptTime(latestAppt))}</span></div>
-       <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${(latestAppt.status||'Pending').toLowerCase()}">${escapeHTML(latestAppt.status)}</span></span></div>`
+       <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${safeClassToken(latestAppt.status || 'Pending')}">${escapeHTML(latestAppt.status)}</span></span></div>`
     : noData('fa-calendar-xmark', 'No appointments yet.');
 
   const latestRxHtml = latestRx
     ? `<div class="emr-info-row"><span class="emr-info-label">Doctor</span><span class="emr-info-value">${escapeHTML(latestRx.doctor_name)}</span></div>
-       <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${formatDate(latestRx.created_at)}</span></div>
-       <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${(latestRx.status||'Active').toLowerCase()}">${escapeHTML(latestRx.status)}</span></span></div>
-       <div class="emr-info-row"><span class="emr-info-label">Medications</span><span class="emr-info-value">${latestRx.item_count || 0} items</span></div>`
+       <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${escapeHTML(formatDate(latestRx.created_at))}</span></div>
+       <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${safeClassToken(latestRx.status || 'Active')}">${escapeHTML(latestRx.status)}</span></span></div>
+       <div class="emr-info-row"><span class="emr-info-label">Medications</span><span class="emr-info-value">${safeCount(latestRx.item_count, 0)} items</span></div>`
     : noData('fa-prescription-bottle', 'No prescriptions yet.');
 
   const latestVisitHtml = latestVisit
     ? `<div class="emr-info-row"><span class="emr-info-label">Doctor</span><span class="emr-info-value">${escapeHTML(latestVisit.doctor_name)}</span></div>
        <div class="emr-info-row"><span class="emr-info-label">Department</span><span class="emr-info-value">${escapeHTML(latestVisit.department)}</span></div>
-       <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${formatDate(latestVisit.appt_date)}</span></div>
+       <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${escapeHTML(formatDate(latestVisit.appt_date))}</span></div>
        <div class="emr-info-row"><span class="emr-info-label">Diagnosis</span><span class="emr-info-value">${escapeHTML(latestVisit.diagnosis ? (latestVisit.diagnosis.length > 60 ? latestVisit.diagnosis.substring(0,60)+'…' : latestVisit.diagnosis) : '—')}</span></div>`
     : noData('fa-file-pen', 'No visit notes yet.');
 
   const notifHtml = recentNotif
     ? `<div class="emr-info-row"><span class="emr-info-label">Title</span><span class="emr-info-value">${escapeHTML(recentNotif.title)}</span></div>
-       <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${formatDate(recentNotif.created_at)}</span></div>
+       <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${escapeHTML(formatDate(recentNotif.created_at))}</span></div>
        <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value">${recentNotif.is_read ? 'Read' : 'Unread'}</span></div>`
     : noData('fa-bell', 'No notifications yet.');
 
@@ -386,37 +549,37 @@ function renderOverview() {
           <div class="upcoming-title">${escapeHTML(upcoming.doctor)} — ${escapeHTML(upcoming.department)}</div>
           <div class="upcoming-meta">
             <i class="fas fa-calendar-day"></i> ${escapeHTML(upcoming.date)}
-            <span style="margin:0 var(--s1)">|</span>
+            <span class="emr-inline-separator">|</span>
             <i class="fas fa-clock"></i> ${escapeHTML(formatApptTime(upcoming))}
-            <span style="margin:0 var(--s1)">|</span>
-            <span class="status status-${(upcoming.status||'Pending').toLowerCase()}">${escapeHTML(upcoming.status)}</span>
+            <span class="emr-inline-separator">|</span>
+            <span class="status status-${safeClassToken(upcoming.status || 'Pending')}">${escapeHTML(upcoming.status)}</span>
           </div>
         </div>
       </div>`
-    : '<div class="emr-empty-state" style="padding:var(--s6)"><i class="fas fa-calendar-plus" style="font-size:1.5rem"></i><p>No upcoming appointments.</p></div>';
+    : '<div class="emr-empty-state emr-empty-state--compact"><i class="fas fa-calendar-plus emr-empty-state-icon--compact"></i><p>No upcoming appointments.</p></div>';
 
   document.getElementById('emr-overview').innerHTML = `
     <div class="emr-overview-grid">
       <div class="emr-info-card"><div class="emr-info-card-title"><i class="fas fa-user"></i> Basic Information</div>${basicInfoHtml()}</div>
-      <div class="emr-info-card"><div class="emr-info-card-title"><i class="fas fa-user-doctor"></i> Assigned Doctors</div><div style="display:flex;flex-wrap:wrap;gap:var(--s1)">${doctorHtml}</div></div>
+      <div class="emr-info-card"><div class="emr-info-card-title"><i class="fas fa-user-doctor"></i> Assigned Doctors</div><div class="emr-doctor-chip-list">${doctorHtml}</div></div>
       <div class="emr-info-card"><div class="emr-info-card-title"><i class="fas fa-calendar-days"></i> Latest Appointment</div>${latestApptHtml}</div>
       <div class="emr-info-card"><div class="emr-info-card-title"><i class="fas fa-prescription"></i> Latest Prescription</div>${latestRxHtml}</div>
       <div class="emr-info-card"><div class="emr-info-card-title"><i class="fas fa-file-pen"></i> Latest Visit Note</div>${latestVisitHtml}</div>
       <div class="emr-info-card"><div class="emr-info-card-title"><i class="fas fa-bell"></i> Recent Notification</div>${notifHtml}</div>
     </div>
-    <div style="margin-top:var(--s6)">
-      <h3 style="font-size:1rem;margin-bottom:var(--s4);color:var(--text-primary)"><i class="fas fa-calendar-alt"></i> Upcoming Appointment</h3>
+    <div class="emr-section-spaced">
+      <h3 class="emr-overview-section-heading"><i class="fas fa-calendar-alt"></i> Upcoming Appointment</h3>
       ${upcomingHtml}
     </div>
-    <div style="margin-top:var(--s4)">
-      <h3 style="font-size:1rem;margin-bottom:var(--s3);color:var(--text-primary)"><i class="fas fa-bolt"></i> Quick Actions</h3>
+    <div class="emr-section-gap-small">
+      <h3 class="emr-quick-actions-heading"><i class="fas fa-bolt"></i> Quick Actions</h3>
       <div class="emr-quick-actions">
-        <button class="btn btn-primary btn-sm" onclick="openBookAppointmentModal()"><i class="fas fa-calendar-plus"></i> Book Appointment</button>
-        <button class="btn btn-outline btn-sm" onclick="openAdminCorrectionModal()"><i class="fas fa-shield-halved"></i> Correct Administrative Data</button>
-        <button class="btn btn-outline btn-sm" onclick="switchTab('appointments')"><i class="fas fa-calendar-days"></i> View Appointments</button>
-        <button class="btn btn-outline btn-sm" onclick="switchTab('prescriptions')"><i class="fas fa-prescription"></i> View Prescriptions</button>
-        <button class="btn btn-outline btn-sm" onclick="switchTab('visit-notes')"><i class="fas fa-file-lines"></i> View Visit Notes</button>
-        <button class="btn btn-outline btn-sm" onclick="switchTab('timeline')"><i class="fas fa-timeline"></i> View Timeline</button>
+        <button class="btn btn-primary btn-sm" data-emr-action="book-appointment"><i class="fas fa-calendar-plus"></i> Book Appointment</button>
+        <button class="btn btn-outline btn-sm" data-emr-action="admin-correction"><i class="fas fa-shield-halved"></i> Correct Administrative Data</button>
+        <button class="btn btn-outline btn-sm" data-emr-action="switch-tab" data-emr-tab="appointments"><i class="fas fa-calendar-days"></i> View Appointments</button>
+        <button class="btn btn-outline btn-sm" data-emr-action="switch-tab" data-emr-tab="prescriptions"><i class="fas fa-prescription"></i> View Prescriptions</button>
+        <button class="btn btn-outline btn-sm" data-emr-action="switch-tab" data-emr-tab="visit-notes"><i class="fas fa-file-lines"></i> View Visit Notes</button>
+        <button class="btn btn-outline btn-sm" data-emr-action="switch-tab" data-emr-tab="timeline"><i class="fas fa-timeline"></i> View Timeline</button>
       </div>
     </div>`;
 }
@@ -426,12 +589,12 @@ function basicInfoHtml() {
   const mr = emrData.medical_record;
   return `
     <div class="emr-info-row"><span class="emr-info-label">Full Name</span><span class="emr-info-value">${escapeHTML(p.name)}</span></div>
-    <div class="emr-info-row"><span class="emr-info-label">Email</span><span class="emr-info-value" style="word-break:break-all">${escapeHTML(p.email || '—')}</span></div>
+    <div class="emr-info-row"><span class="emr-info-label">Email</span><span class="emr-info-value emr-break-all">${escapeHTML(p.email || '—')}</span></div>
     <div class="emr-info-row"><span class="emr-info-label">Phone</span><span class="emr-info-value">${escapeHTML(p.phone || '—')}</span></div>
     <div class="emr-info-row"><span class="emr-info-label">Gender</span><span class="emr-info-value">${escapeHTML(mr?.gender || '—')}</span></div>
-    <div class="emr-info-row"><span class="emr-info-label">Age</span><span class="emr-info-value">${emrData.age !== null ? emrData.age : '—'}</span></div>
+    <div class="emr-info-row"><span class="emr-info-label">Age</span><span class="emr-info-value">${emrData.age !== null && emrData.age !== undefined ? safeCount(emrData.age, 0) : '—'}</span></div>
     <div class="emr-info-row"><span class="emr-info-label">Blood Type</span><span class="emr-info-value">${escapeHTML(mr?.blood_type || '—')}</span></div>
-    <div class="emr-info-row"><span class="emr-info-label">Registration</span><span class="emr-info-value">${formatDate(p.created_at)}</span></div>
+    <div class="emr-info-row"><span class="emr-info-label">Registration</span><span class="emr-info-value">${escapeHTML(formatDate(p.created_at))}</span></div>
     <div class="emr-info-row"><span class="emr-info-label">Emergency Contact</span><span class="emr-info-value">${escapeHTML(mr?.emergency_contact_name || '—')}</span></div>
     <div class="emr-info-row"><span class="emr-info-label">Emergency Phone</span><span class="emr-info-value">${escapeHTML(mr?.emergency_contact_phone || '—')}</span></div>`;
 }
@@ -441,26 +604,33 @@ function basicInfoHtml() {
    ═══════════════════════════════════════════════════════════ */
 
 function renderAppointments() {
-  const appts = emrData.appointments || [];
+  const appts = Array.isArray(emrData.appointments)
+    ? emrData.appointments.filter((appointment) =>
+        appointment && typeof appointment === 'object' && !Array.isArray(appointment)
+      )
+    : [];
   const container = document.getElementById('emr-appointments');
 
   if (appts.length === 0) {
-    container.innerHTML = `<div class="emr-empty-state"><i class="fas fa-calendar-xmark"></i><h4>No Appointments Yet</h4><p>This patient has no appointments scheduled.</p><button class="btn btn-primary" onclick="openBookAppointmentModal()"><i class="fas fa-calendar-plus"></i> Book Appointment</button></div>`;
+    container.innerHTML = `<div class="emr-empty-state"><i class="fas fa-calendar-xmark"></i><h4>No Appointments Yet</h4><p>This patient has no appointments scheduled.</p><button class="btn btn-primary" data-emr-action="book-appointment"><i class="fas fa-calendar-plus"></i> Book Appointment</button></div>`;
     return;
   }
 
   const rows = appts.map(a => {
-    const status = (a.status || 'Pending').toLowerCase();
-    let actionBtns = `<button class="btn btn-outline btn-sm" onclick="openAppointmentModal(${a.id})" title="View details"><i class="fas fa-eye"></i></button>
-      <button class="btn btn-outline btn-sm" onclick="printAppointment(${a.id})" title="Print"><i class="fas fa-print"></i></button>`;
+    const status = safeClassToken(a.status || 'Pending');
+    const appointmentId = safePositiveId(a.id);
+    let actionBtns = appointmentId
+      ? `<button class="btn btn-outline btn-sm" data-emr-action="view-appointment" data-record-id="${appointmentId}" title="View details"><i class="fas fa-eye"></i></button>
+        <button class="btn btn-outline btn-sm" data-emr-action="print-appointment" data-record-id="${appointmentId}" title="Print"><i class="fas fa-print"></i></button>`
+      : '<span class="text-muted">Actions unavailable</span>';
     
-    if (a.status === 'Pending') {
+    if (appointmentId && a.status === 'Pending') {
       actionBtns += `
-        <button class="btn btn-outline btn-sm" style="color:var(--success)" onclick="emrApproveAppt(${a.id})" title="Approve"><i class="fas fa-circle-check"></i></button>
-        <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="emrDeclineAppt(${a.id})" title="Decline"><i class="fas fa-circle-xmark"></i></button>`;
-    } else if (a.status === 'Confirmed') {
+        <button class="btn btn-outline btn-sm emr-tone-success" data-emr-action="approve-appointment" data-record-id="${appointmentId}" title="Approve"><i class="fas fa-circle-check"></i></button>
+        <button class="btn btn-outline btn-sm emr-tone-danger" data-emr-action="decline-appointment" data-record-id="${appointmentId}" title="Decline"><i class="fas fa-circle-xmark"></i></button>`;
+    } else if (appointmentId && a.status === 'Confirmed') {
       actionBtns += `
-        <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="emrCancelAppt(${a.id})" title="Cancel"><i class="fas fa-ban"></i></button>`;
+        <button class="btn btn-outline btn-sm emr-tone-danger" data-emr-action="cancel-appointment" data-record-id="${appointmentId}" title="Cancel"><i class="fas fa-ban"></i></button>`;
     }
 
     return `<tr>
@@ -470,7 +640,7 @@ function renderAppointments() {
       <td>${escapeHTML(a.department)}</td>
       <td><span class="status status-${status}">${escapeHTML(a.status)}</span></td>
       <td>${escapeHTML(a.notes || a.department)}</td>
-      <td><div class="emr-quick-actions" style="gap:var(--s1)">${actionBtns}</div></td>
+      <td><div class="emr-quick-actions emr-actions-compact">${actionBtns}</div></td>
     </tr>`;
   }).join('');
 
@@ -478,17 +648,17 @@ function renderAppointments() {
     <div class="emr-appts-controls">
       <div class="emr-search-wrapper">
         <i class="fas fa-search search-icon" aria-hidden="true"></i>
-        <input type="text" class="emr-appt-search-input" id="emr-appt-search" placeholder="Search appointments..." onkeyup="filterAppointments()" aria-label="Search appointments" />
-        <button class="search-clear" id="emr-appt-clear" onclick="clearApptSearch()" aria-label="Clear search">&times;</button>
+        <input type="text" class="emr-appt-search-input" id="emr-appt-search" placeholder="Search appointments..." data-emr-filter="appointments" aria-label="Search appointments" />
+        <button class="search-clear" id="emr-appt-clear" data-emr-action="clear-appointment-search" aria-label="Clear search">&times;</button>
       </div>
-      <select id="emr-appt-status" onchange="filterAppointments()" aria-label="Filter by status">
+      <select id="emr-appt-status" data-emr-filter="appointments" aria-label="Filter by status">
         <option value="">All Statuses</option>
         <option value="Pending">Pending</option>
         <option value="Confirmed">Confirmed</option>
         <option value="Cancelled">Cancelled</option>
       </select>
-      <button class="btn btn-primary btn-sm" onclick="openBookAppointmentModal()"><i class="fas fa-calendar-plus"></i> Book</button>
-      <button class="emr-appts-refresh-btn" onclick="refreshAppointments()" title="Refresh appointments"><i class="fas fa-rotate"></i></button>
+      <button class="btn btn-primary btn-sm" data-emr-action="book-appointment"><i class="fas fa-calendar-plus"></i> Book</button>
+      <button class="emr-appts-refresh-btn" data-emr-action="refresh-appointments" title="Refresh appointments"><i class="fas fa-rotate"></i></button>
     </div>
     <div class="emr-table-wrap" role="region" aria-label="Appointments table">
       <table>
@@ -523,7 +693,7 @@ function filterAppointments() {
 
   tbody.innerHTML = filtered.length
     ? filtered.map(r => r.outerHTML).join('')
-    : '<tr><td colspan="7" class="text-center" style="padding:var(--s8);color:var(--text-muted)">No matching appointments found.</td></tr>';
+    : '<tr><td colspan="7" class="text-center emr-table-empty-cell">No matching appointments found.</td></tr>';
 }
 
 function clearApptSearch() {
@@ -546,6 +716,8 @@ function refreshAppointments() {
 /* ── Appointment Actions ── */
 
 async function emrApproveAppt(id) {
+  id = safePositiveId(id);
+  if (!id) return;
   if (!confirm('Approve this appointment?')) return;
   const result = await apiFetch((getBasePath() + "api/appointments/approve.php"), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
@@ -559,6 +731,8 @@ async function emrApproveAppt(id) {
 }
 
 async function emrDeclineAppt(id) {
+  id = safePositiveId(id);
+  if (!id) return;
   if (!confirm('Decline this appointment?')) return;
   const result = await apiFetch((getBasePath() + "api/appointments/decline.php"), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, reason: 'Appointment declined by admin.' })
@@ -572,6 +746,8 @@ async function emrDeclineAppt(id) {
 }
 
 async function emrCancelAppt(id) {
+  id = safePositiveId(id);
+  if (!id) return;
   if (!confirm('Cancel this confirmed appointment?')) return;
   const result = await apiFetch((getBasePath() + "api/appointments/decline.php"), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, reason: 'Appointment cancelled by admin.' })
@@ -599,68 +775,68 @@ function renderMedicalRecords() {
   // Last Clinical Update info
   const lastUpdate = emrData.last_clinical_update;
   const lastUpdateHtml = lastUpdate 
-    ? `<div style="margin-top:var(--s3);padding:var(--s3);background:rgba(34,211,238,0.05);border:1px solid rgba(34,211,238,0.15);border-radius:var(--r-md);font-size:0.78rem;color:var(--text-secondary)">
-        <i class="fas fa-user-doctor"></i> Last Clinical Update: <strong>${escapeHTML(lastUpdate.doctor_name)}</strong> — ${formatDate(lastUpdate.created_at)} ${formatTime(lastUpdate.created_at)}
+    ? `<div class="emr-last-clinical-update">
+        <i class="fas fa-user-doctor"></i> Last Clinical Update: <strong>${escapeHTML(lastUpdate.doctor_name)}</strong> — ${escapeHTML(formatDate(lastUpdate.created_at))} ${escapeHTML(formatTime(lastUpdate.created_at))}
        </div>`
     : '';
 
   container.innerHTML = `
     <!-- Administrative Medical Information (Editable by Admin) -->
     <div class="emr-section">
-      <div class="flex-between" style="margin-bottom:var(--s4)">
-        <h4 style="font-size:1rem;margin:0;color:var(--text-primary)"><i class="fas fa-shield-halved"></i> Administrative Information</h4>
-        <button class="btn btn-outline btn-sm" onclick="openAdminCorrectionModal()"><i class="fas fa-pen"></i> Correct Administrative Data</button>
+      <div class="flex-between emr-section-header-spacing">
+        <h4 class="emr-section-heading"><i class="fas fa-shield-halved"></i> Administrative Information</h4>
+        <button class="btn btn-outline btn-sm" data-emr-action="admin-correction"><i class="fas fa-pen"></i> Correct Administrative Data</button>
       </div>
       <div class="emr-records-grid">
         <div class="emr-record-card">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-droplet"></i> Blood Type</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.blood_type ? escapeHTML(mr.blood_type) : 'Not specified'}</p>
+          <p class="emr-record-value">${mr.blood_type ? escapeHTML(mr.blood_type) : 'Not specified'}</p>
         </div>
         <div class="emr-record-card">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-phone"></i> Emergency Contact</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.emergency_contact_name ? escapeHTML(mr.emergency_contact_name) : 'Not specified'}</p>
+          <p class="emr-record-value">${mr.emergency_contact_name ? escapeHTML(mr.emergency_contact_name) : 'Not specified'}</p>
         </div>
         <div class="emr-record-card">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-phone-alt"></i> Emergency Phone</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.emergency_contact_phone ? escapeHTML(mr.emergency_contact_phone) : 'Not specified'}</p>
+          <p class="emr-record-value">${mr.emergency_contact_phone ? escapeHTML(mr.emergency_contact_phone) : 'Not specified'}</p>
         </div>
       </div>
     </div>
 
     <!-- Clinical Information (Read-only for Admin) -->
-    <div class="emr-section" style="margin-top:var(--s6)">
-      <div class="flex-between" style="margin-bottom:var(--s4)">
-        <h4 style="font-size:1rem;margin:0;color:var(--text-primary)">
+    <div class="emr-section emr-section-spaced">
+      <div class="flex-between emr-section-header-spacing">
+        <h4 class="emr-section-heading">
           <i class="fas fa-stethoscope"></i> Clinical Information
-          <span class="badge" style="margin-left:var(--s2);font-size:0.7rem;background:rgba(250,204,21,0.1);color:var(--warning);border:1px solid rgba(250,204,21,0.25)">Managed by Doctors</span>
+          <span class="badge emr-managed-by-doctors">Managed by Doctors</span>
         </h4>
-        <span style="font-size:0.78rem;color:var(--text-muted)">View Only</span>
+        <span class="emr-view-only-label">View Only</span>
       </div>
       ${lastUpdateHtml}
       <div class="emr-records-grid">
-        <div class="emr-record-card" style="opacity:0.85">
+        <div class="emr-record-card emr-record-card--readonly">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-allergies"></i> Allergies</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.allergies ? escapeHTML(mr.allergies) : 'None recorded'}</p>
+          <p class="emr-record-value">${mr.allergies ? escapeHTML(mr.allergies) : 'None recorded'}</p>
         </div>
-        <div class="emr-record-card" style="opacity:0.85">
+        <div class="emr-record-card emr-record-card--readonly">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-heart-pulse"></i> Chronic Diseases</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.chronic_diseases ? escapeHTML(mr.chronic_diseases) : 'None recorded'}</p>
+          <p class="emr-record-value">${mr.chronic_diseases ? escapeHTML(mr.chronic_diseases) : 'None recorded'}</p>
         </div>
-        <div class="emr-record-card" style="opacity:0.85">
+        <div class="emr-record-card emr-record-card--readonly">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-pills"></i> Current Medications</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.current_medications ? escapeHTML(mr.current_medications) : 'None recorded'}</p>
+          <p class="emr-record-value">${mr.current_medications ? escapeHTML(mr.current_medications) : 'None recorded'}</p>
         </div>
-        <div class="emr-record-card" style="opacity:0.85">
+        <div class="emr-record-card emr-record-card--readonly">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-scalpel"></i> Previous Surgeries</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.previous_surgeries ? escapeHTML(mr.previous_surgeries) : 'None recorded'}</p>
+          <p class="emr-record-value">${mr.previous_surgeries ? escapeHTML(mr.previous_surgeries) : 'None recorded'}</p>
         </div>
-        <div class="emr-record-card" style="opacity:0.85">
+        <div class="emr-record-card emr-record-card--readonly">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-family"></i> Family History</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.family_history ? escapeHTML(mr.family_history) : 'None recorded'}</p>
+          <p class="emr-record-value">${mr.family_history ? escapeHTML(mr.family_history) : 'None recorded'}</p>
         </div>
-        <div class="emr-record-card" style="opacity:0.85">
+        <div class="emr-record-card emr-record-card--readonly">
           <div class="emr-record-header"><span class="emr-record-doctor"><i class="fas fa-stethoscope"></i> Medical Notes</span></div>
-          <p style="font-size:0.83rem;color:var(--text-secondary)">${mr.medical_notes ? escapeHTML(mr.medical_notes) : 'No notes'}</p>
+          <p class="emr-record-value">${mr.medical_notes ? escapeHTML(mr.medical_notes) : 'No notes'}</p>
         </div>
       </div>
     </div>
@@ -675,7 +851,11 @@ function renderMedicalRecords() {
    ═══════════════════════════════════════════════════════════ */
 
 function renderPrescriptions() {
-  const prescriptions = emrData.prescriptions || [];
+  const prescriptions = Array.isArray(emrData.prescriptions)
+    ? emrData.prescriptions.filter((prescription) =>
+        prescription && typeof prescription === 'object' && !Array.isArray(prescription)
+      )
+    : [];
   const container = document.getElementById('emr-prescriptions');
   if (prescriptions.length === 0) {
     container.innerHTML = `<div class="emr-empty-state"><i class="fas fa-prescription"></i><h4>No Prescriptions Yet</h4><p>This patient has not been prescribed any medications.</p></div>`;
@@ -683,26 +863,34 @@ function renderPrescriptions() {
   }
 
   const cards = prescriptions.map(rx => {
-    const items = (rx.items || []).map(item =>
+    const rxItems = Array.isArray(rx.items)
+      ? rx.items.filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+      : [];
+    const items = rxItems.map(item =>
       `<div class="emr-rx-item"><span class="emr-rx-item-name">${escapeHTML(item.medication_name)}</span><span class="emr-rx-item-detail">${escapeHTML(item.strength)} — ${escapeHTML(item.dosage)} — ${escapeHTML(item.frequency)} — ${escapeHTML(item.duration)}</span></div>`
-    ).join('') || '<p style="color:var(--text-muted);font-size:0.78rem">No medication details</p>';
+    ).join('') || '<p class="emr-text-muted--compact">No medication details</p>';
 
-    const statusLower = (rx.status || 'Active').toLowerCase();
+    const statusText = typeof rx.status === 'string' ? rx.status : 'Unknown';
+    const statusLower = safeClassToken(statusText || 'Active');
+    const prescriptionId = safePositiveId(rx.id);
+    const prescriptionActions = prescriptionId
+      ? `<button class="btn btn-outline btn-sm" data-emr-action="view-prescription" data-record-id="${prescriptionId}" title="View details"><i class="fas fa-eye"></i> View</button>
+        <button class="btn btn-outline btn-sm" data-emr-action="print-prescription" data-record-id="${prescriptionId}" title="Print"><i class="fas fa-print"></i> Print</button>`
+      : '<span class="text-muted">Actions unavailable</span>';
 
     return `<div class="emr-rx-card">
-      <div class="emr-rx-header"><div><div class="emr-rx-doctor">${escapeHTML(rx.doctor_name)}</div><div class="emr-rx-id">RX-${String(rx.id).padStart(5,'0')}</div></div><span class="status status-${statusLower}">${escapeHTML(rx.status)}</span></div>
-      <div class="emr-rx-meta"><span><i class="fas fa-calendar"></i> ${formatDate(rx.created_at)}</span><span><i class="fas fa-stethoscope"></i> ${escapeHTML(rx.department)}</span><span><i class="fas fa-pills"></i> ${rx.item_count || 0} medication(s)</span></div>
+      <div class="emr-rx-header"><div><div class="emr-rx-doctor">${escapeHTML(rx.doctor_name)}</div><div class="emr-rx-id">RX-${safePositiveId(rx.id) ? String(safePositiveId(rx.id)).padStart(5,'0') : '—'}</div></div><span class="status status-${statusLower}">${escapeHTML(statusText)}</span></div>
+      <div class="emr-rx-meta"><span><i class="fas fa-calendar"></i> ${escapeHTML(formatDate(rx.created_at))}</span><span><i class="fas fa-stethoscope"></i> ${escapeHTML(rx.department)}</span><span><i class="fas fa-pills"></i> ${safeCount(rx.item_count, 0)} medication(s)</span></div>
       <div class="emr-rx-items">${items}</div>
-      <div class="emr-quick-actions" style="margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--border-light)">
-        <button class="btn btn-outline btn-sm" onclick="openPrescriptionModal(${rx.id})" title="View details"><i class="fas fa-eye"></i> View</button>
-        <button class="btn btn-outline btn-sm" onclick="printPrescription(${rx.id})" title="Print"><i class="fas fa-print"></i> Print</button>
+      <div class="emr-quick-actions emr-related-actions-divider">
+        ${prescriptionActions}
       </div>
     </div>`;
   }).join('');
 
   container.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:var(--s4)">
-      <span style="font-size:0.78rem;color:var(--text-muted)"><i class="fas fa-eye"></i> View Only</span>
+    <div class="emr-view-only-row">
+      <span class="emr-view-only-label"><i class="fas fa-eye"></i> View Only</span>
     </div>
     <div class="emr-rx-grid">${cards}</div>
   `;
@@ -713,7 +901,9 @@ function renderPrescriptions() {
    ═══════════════════════════════════════════════════════════ */
 
 function renderVisitNotes() {
-  const notes = emrData.visit_notes || [];
+  const notes = Array.isArray(emrData.visit_notes)
+    ? emrData.visit_notes.filter((note) => note && typeof note === 'object' && !Array.isArray(note))
+    : [];
   const container = document.getElementById('emr-visit-notes');
   if (notes.length === 0) {
     container.innerHTML = `<div class="emr-empty-state"><i class="fas fa-file-lines"></i><h4>No Visit Notes Yet</h4><p>This patient has no visit notes recorded.</p></div>`;
@@ -726,27 +916,28 @@ function renderVisitNotes() {
     if (note.symptoms) bodyHtml += `<p><strong>Symptoms:</strong> ${escapeHTML(note.symptoms)}</p>`;
     if (note.treatment) bodyHtml += `<p><strong>Treatment:</strong> ${escapeHTML(note.treatment)}</p>`;
     if (note.doctor_notes) bodyHtml += `<p><strong>Doctor Notes:</strong> ${escapeHTML(note.doctor_notes)}</p>`;
+    if (note.follow_up_instructions) bodyHtml += `<p><strong>Follow-up Instructions:</strong> ${escapeHTML(note.follow_up_instructions)}</p>`;
 
     const hasDetails = !!bodyHtml;
     const expandable = hasDetails && bodyHtml.length > 200;
 
     const initialBody = expandable
       ? `<div class="emr-timeline-body">${bodyHtml.substring(0,200)}…</div>
-         <button class="emr-record-toggle" onclick="toggleVisitNote(${idx})" aria-expanded="false" aria-controls="visit-note-${idx}"><i class="fas fa-chevron-down"></i> Show More</button>
+         <button class="emr-record-toggle" data-emr-action="toggle-visit-note" data-visit-note-index="${idx}" aria-expanded="false" aria-controls="visit-note-${idx}"><i class="fas fa-chevron-down"></i> Show More</button>
          <div class="emr-record-expand" id="visit-note-${idx}">${bodyHtml}</div>`
       : `<div class="emr-timeline-body">${bodyHtml}</div>`;
 
     return `<div class="emr-timeline-card">
       <div class="emr-timeline-header">
-        <div><div class="emr-timeline-date"><i class="fas fa-calendar-day"></i> ${formatDate(note.appt_date || note.created_at)}</div><div class="emr-timeline-doctor">${escapeHTML(note.doctor_name)} — ${escapeHTML(note.department)}</div></div>
+        <div><div class="emr-timeline-date"><i class="fas fa-calendar-day"></i> ${escapeHTML(formatDate(note.appt_date || note.created_at))}</div><div class="emr-timeline-doctor">${escapeHTML(note.doctor_name)} — ${escapeHTML(note.department)}</div></div>
       </div>
-      ${hasDetails ? initialBody : '<p style="color:var(--text-muted);font-size:0.83rem">No detailed notes recorded for this visit.</p>'}
+      ${hasDetails ? initialBody : '<p class="emr-text-muted--small">No detailed notes recorded for this visit.</p>'}
     </div>`;
   }).join('');
 
   container.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:var(--s4)">
-      <span style="font-size:0.78rem;color:var(--text-muted)"><i class="fas fa-eye"></i> View Only</span>
+    <div class="emr-view-only-row">
+      <span class="emr-view-only-label"><i class="fas fa-eye"></i> View Only</span>
     </div>
     <div class="emr-timeline">${timeline}</div>
   `;
@@ -769,24 +960,34 @@ function toggleVisitNote(idx) {
    ═══════════════════════════════════════════════════════════ */
 
 function renderRatings() {
-  const ratings = emrData.ratings || [];
+  const ratings = Array.isArray(emrData.ratings) ? emrData.ratings : [];
   const container = document.getElementById('emr-ratings');
   if (ratings.length === 0) {
     container.innerHTML = `<div class="emr-empty-state"><i class="fas fa-star"></i><h4>No Ratings Yet</h4><p>This patient has not submitted any ratings.</p></div>`;
     return;
   }
-  const rows = ratings.map(r => {
-    const starsHtml = Array(5).fill('').map((_, i) => `<span class="${i < r.stars ? '' : 'star-empty'}"><i class="fas fa-star"></i></span>`).join('');
-    const hiddenBadge = r.is_hidden ? '<span class="status status-cancelled" style="margin-left:var(--s1);font-size:0.65rem">Hidden</span>' : '';
-    const modBtn = r.is_hidden
-      ? `<button class="btn btn-outline btn-sm" onclick="emrRestoreRating(${r.id})" style="font-size:0.7rem;padding:2px 8px;color:var(--success)"><i class="fas fa-eye"></i> Restore</button>`
-      : `<button class="btn btn-outline btn-sm" onclick="emrHideRating(${r.id})" style="font-size:0.7rem;padding:2px 8px;color:var(--warning)"><i class="fas fa-eye-slash"></i> Hide</button>`;
-    return `<tr><td>${escapeHTML(r.doctor_name)}</td><td><div class="emr-rating-stars" aria-label="${r.stars} out of 5 stars">${starsHtml}</div></td><td>${escapeHTML(r.review || '—')}</td><td>${escapeHTML(r.department)}</td><td>${formatDate(r.appt_date)}</td><td>${hiddenBadge} ${modBtn}</td></tr>`;
+  const rows = ratings.filter(r => r && typeof r === 'object' && !Array.isArray(r)).map(r => {
+    const parsedStars = safeCount(r.stars, 0);
+    const hasValidStars = parsedStars >= 1 && parsedStars <= 5;
+    const stars = hasValidStars ? parsedStars : 0;
+    const starsHtml = Array(5).fill('').map((_, i) =>
+      `<span class="${hasValidStars && i < stars ? '' : 'star-empty'}"><i class="fas fa-star" aria-hidden="true"></i></span>`
+    ).join('');
+    const ratingId = safePositiveId(r.id);
+    const hiddenBadge = r.is_hidden ? '<span class="status status-cancelled emr-hidden-status-badge">Hidden</span>' : '';
+    const modBtn = ratingId
+      ? (r.is_hidden
+        ? `<button class="btn btn-outline btn-sm emr-action-button emr-action-button--success" data-emr-action="restore-rating" data-record-id="${ratingId}"><i class="fas fa-eye"></i> Restore</button>`
+        : `<button class="btn btn-outline btn-sm emr-action-button emr-action-button--warning" data-emr-action="hide-rating" data-record-id="${ratingId}"><i class="fas fa-eye-slash"></i> Hide</button>`)
+      : '<span class="text-muted">Unavailable</span>';
+    return `<tr><td>${escapeHTML(r.doctor_name)}</td><td><div class="emr-rating-stars" aria-label="${hasValidStars ? `${stars} out of 5 stars` : 'Not rated'}">${starsHtml}</div></td><td>${escapeHTML(r.review || '—')}</td><td>${escapeHTML(r.department)}</td><td>${escapeHTML(formatDate(r.appt_date))}</td><td>${hiddenBadge} ${modBtn}${hasValidStars ? '' : '<span class="text-muted"> Not rated</span>'}</td></tr>`;
   }).join('');
   container.innerHTML = `<div class="emr-table-wrap" role="region" aria-label="Patient ratings table"><table><thead><tr><th>Doctor</th><th>Rating</th><th>Review</th><th>Appointment</th><th>Date</th><th>Moderation</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 async function emrHideRating(id) {
+  id = safePositiveId(id);
+  if (!id) return;
   if (!confirm('Hide this rating from public pages?')) return;
   const result = await apiFetch((getBasePath() + "api/doctors/toggle-rating-visibility.php"), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_hidden: 1 })
@@ -800,6 +1001,8 @@ async function emrHideRating(id) {
 }
 
 async function emrRestoreRating(id) {
+  id = safePositiveId(id);
+  if (!id) return;
   if (!confirm('Restore this rating to public view?')) return;
   const result = await apiFetch((getBasePath() + "api/doctors/toggle-rating-visibility.php"), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_hidden: 0 })
@@ -822,16 +1025,21 @@ function renderNotifications() {
 
 function renderNotifList(notifs) {
   const container = document.getElementById('emr-notifications');
-  const filter = currentNotifFilter;
-  let filtered = notifs;
-  if (filter === 'unread') filtered = notifs.filter(n => !n.is_read);
-  else if (filter === 'archived') filtered = notifs.filter(n => n.is_read);
+  const notifications = Array.isArray(notifs)
+    ? notifs.filter(n => n && typeof n === 'object' && !Array.isArray(n))
+    : [];
+  const filter = ['all', 'unread', 'archived'].includes(currentNotifFilter) ? currentNotifFilter : 'all';
+  let filtered = notifications;
+  if (filter === 'unread') filtered = notifications.filter(n => !n.is_read);
+  else if (filter === 'archived') filtered = notifications.filter(n => !!n.is_read);
 
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const readCount = notifications.length - unreadCount;
   const filterBar = `
     <div class="emr-notif-filters" role="tablist" aria-label="Notification filters">
-      <button class="${filter === 'all' ? 'active' : ''}" onclick="setNotifFilter('all')" role="tab" aria-selected="${filter === 'all'}">All (${notifs.length})</button>
-      <button class="${filter === 'unread' ? 'active' : ''}" onclick="setNotifFilter('unread')" role="tab" aria-selected="${filter === 'unread'}">Unread (${notifs.filter(n=>!n.is_read).length})</button>
-      <button class="${filter === 'archived' ? 'active' : ''}" onclick="setNotifFilter('archived')" role="tab" aria-selected="${filter === 'archived'}">Read (${notifs.filter(n=>n.is_read).length})</button>
+      <button class="${filter === 'all' ? 'active' : ''}" data-emr-notification-filter="all" role="tab" aria-selected="${filter === 'all'}">All (${notifications.length})</button>
+      <button class="${filter === 'unread' ? 'active' : ''}" data-emr-notification-filter="unread" role="tab" aria-selected="${filter === 'unread'}">Unread (${unreadCount})</button>
+      <button class="${filter === 'archived' ? 'active' : ''}" data-emr-notification-filter="archived" role="tab" aria-selected="${filter === 'archived'}">Read (${readCount})</button>
     </div>`;
 
   if (filtered.length === 0) {
@@ -839,7 +1047,7 @@ function renderNotifList(notifs) {
     return;
   }
 
-  const iconMap = {
+  const iconMap = Object.assign(Object.create(null), {
     appointment_confirmed: 'fa-calendar-check', appointment_declined: 'fa-calendar-xmark',
     appointment_request: 'fa-calendar-plus', appointment_cancelled: 'fa-ban',
     appointment_time_changed: 'fa-clock-rotate', rating_received: 'fa-star',
@@ -850,20 +1058,22 @@ function renderNotifList(notifs) {
     medical_record_updated: 'fa-notes-medical', visit_note_added: 'fa-file-pen',
     prescription_issued: 'fa-prescription', prescription_updated: 'fa-prescription',
     prescription_completed: 'fa-check-circle', prescription_cancelled: 'fa-ban',
-  };
+  });
 
   const items = filtered.map(n => {
-    const icon = iconMap[n.type] || 'fa-bell';
+    const notificationId = safePositiveId(n.id);
+    const notificationType = typeof n.type === 'string' ? n.type : '';
+    const icon = Object.prototype.hasOwnProperty.call(iconMap, notificationType) ? iconMap[notificationType] : 'fa-bell';
+    const actionButtons = notificationId
+      ? `${!n.is_read ? `<button class="btn btn-outline btn-sm emr-action-button" data-emr-action="mark-notification-read" data-record-id="${notificationId}"><i class="fas fa-check"></i> Mark Read</button>` : ''}<button class="btn btn-outline btn-sm emr-action-button emr-action-button--danger" data-emr-action="delete-notification" data-record-id="${notificationId}"><i class="fas fa-trash-can"></i> Delete</button>`
+      : '<span class="text-muted">Actions unavailable</span>';
     return `<div class="emr-notif-item ${n.is_read ? 'read' : 'unread'}">
       <div class="emr-notif-icon"><i class="fas ${icon}" aria-hidden="true"></i></div>
       <div class="emr-notif-content">
-        <div class="emr-notif-title">${escapeHTML(n.title)}</div>
-        <div class="emr-notif-message">${escapeHTML(n.message)}</div>
-        <div class="emr-notif-time">${formatDate(n.created_at)}</div>
-        <div class="emr-notif-actions" style="margin-top:var(--s1);display:flex;gap:var(--s1)">
-          ${!n.is_read ? `<button class="btn btn-outline btn-sm" onclick="emrMarkNotifRead(${n.id})" style="font-size:0.7rem;padding:2px 8px"><i class="fas fa-check"></i> Mark Read</button>` : ''}
-          <button class="btn btn-outline btn-sm" onclick="emrDeleteNotif(${n.id})" style="font-size:0.7rem;padding:2px 8px;color:var(--danger)"><i class="fas fa-trash-can"></i> Delete</button>
-        </div>
+        <div class="emr-notif-title">${escapeHTML(n.title || 'Notification')}</div>
+        <div class="emr-notif-message">${escapeHTML(n.message || '')}</div>
+        <div class="emr-notif-time">${escapeHTML(formatDate(n.created_at))}</div>
+        <div class="emr-notif-actions">${actionButtons}</div>
       </div>
     </div>`;
   }).join('');
@@ -872,11 +1082,13 @@ function renderNotifList(notifs) {
 }
 
 function setNotifFilter(filter) {
-  currentNotifFilter = filter;
+  currentNotifFilter = ['all', 'unread', 'archived'].includes(filter) ? filter : 'all';
   renderNotifications();
 }
 
 async function emrMarkNotifRead(id) {
+  id = safePositiveId(id);
+  if (!id) return;
   const result = await apiFetch((getBasePath() + "api/notifications/notifications.php"), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'mark_read', id, patient_id: patientId })
   }, 'Failed to mark notification as read.');
@@ -886,6 +1098,8 @@ async function emrMarkNotifRead(id) {
 }
 
 async function emrDeleteNotif(id) {
+  id = safePositiveId(id);
+  if (!id) return;
   if (!confirm('Delete this notification?')) return;
   const result = await apiFetch((getBasePath() + "api/notifications/notifications.php"), {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', id, patient_id: patientId })
@@ -903,15 +1117,51 @@ async function emrDeleteNotif(id) {
    ═══════════════════════════════════════════════════════════ */
 
 function renderTimeline() {
-  const appointments = emrData.appointments || [];
-  const visitNotes = emrData.visit_notes || [];
-  const prescriptions = emrData.prescriptions || [];
+  const appointments = Array.isArray(emrData.appointments)
+    ? emrData.appointments.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry))
+    : [];
+  const visitNotes = Array.isArray(emrData.visit_notes)
+    ? emrData.visit_notes.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry))
+    : [];
+  const prescriptions = Array.isArray(emrData.prescriptions)
+    ? emrData.prescriptions.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry))
+    : [];
   const container = document.getElementById('emr-timeline');
 
   const entries = [];
-  appointments.forEach(a => entries.push({ date: a.date + ' ' + (a.time || '00:00'), type: 'appointment', title: `Appointment: ${escapeHTML(a.department)}`, text: `Status: ${a.status} · ${escapeHTML(a.doctor_user_name || a.doctor)}`, detail: `${escapeHTML(a.date)} ${escapeHTML(formatApptTime(a))}` }));
-  visitNotes.forEach(v => entries.push({ date: v.appt_date + ' ' + (v.appt_time || '00:00'), type: 'visit-note', title: `Visit Note: ${escapeHTML(v.doctor_name)}`, text: v.diagnosis ? `Diagnosis: ${escapeHTML(v.diagnosis)}` : 'Visit documented', detail: escapeHTML(v.department) }));
-  prescriptions.forEach(r => entries.push({ date: r.created_at, type: 'prescription', title: `Prescription: ${escapeHTML(r.doctor_name)}`, text: `${r.item_count || 0} med(s) · ${r.status}`, detail: `RX-${String(r.id).padStart(5,'0')}` }));
+  appointments.filter(a => a && typeof a === 'object').forEach(a => {
+    const date = typeof a.date === 'string' ? a.date : '';
+    const time = typeof a.time === 'string' ? a.time : '00:00';
+    entries.push({
+      date: `${date} ${time}`,
+      type: 'appointment',
+      title: `Appointment: ${typeof a.department === 'string' ? a.department : ''}`,
+      text: `Status: ${typeof a.status === 'string' ? a.status : ''} · ${typeof (a.doctor_user_name || a.doctor) === 'string' ? (a.doctor_user_name || a.doctor) : ''}`,
+      detail: `${date} ${formatApptTime(a)}`
+    });
+  });
+  visitNotes.filter(v => v && typeof v === 'object').forEach(v => {
+    const diagnosis = typeof v.diagnosis === 'string' ? v.diagnosis : '';
+    const apptDate = typeof v.appt_date === 'string' ? v.appt_date : '';
+    const apptTime = typeof v.appt_time === 'string' ? v.appt_time : '00:00';
+    entries.push({
+      date: `${apptDate} ${apptTime}`,
+      type: 'visit-note',
+      title: `Visit Note: ${typeof v.doctor_name === 'string' ? v.doctor_name : ''}`,
+      text: diagnosis ? `Diagnosis: ${diagnosis}` : 'Visit documented',
+      detail: typeof v.department === 'string' ? v.department : ''
+    });
+  });
+  prescriptions.filter(r => r && typeof r === 'object').forEach(r => {
+    const prescriptionId = safePositiveId(r.id);
+    entries.push({
+      date: typeof r.created_at === 'string' ? r.created_at : '',
+      type: 'prescription',
+      title: `Prescription: ${typeof r.doctor_name === 'string' ? r.doctor_name : ''}`,
+      text: `${safeCount(r.item_count, 0)} med(s) · ${typeof r.status === 'string' ? r.status : ''}`,
+      detail: prescriptionId ? `RX-${String(prescriptionId).padStart(5, '0')}` : 'RX—'
+    });
+  });
 
   entries.sort((a, b) => b.date.localeCompare(a.date));
 
@@ -921,22 +1171,22 @@ function renderTimeline() {
   }
 
   const items = entries.map(e => `
-    <div class="emr-timeline-item" style="position:relative;padding-left:var(--s8);margin-bottom:var(--s5)">
-      <div style="position:absolute;left:calc(-1 * var(--s8) + 8px);top:4px;width:16px;height:16px;border-radius:50%;background:${e.type === 'appointment' ? 'var(--primary)' : e.type === 'visit-note' ? 'var(--success)' : 'var(--warning)'};border:3px solid var(--bg-surface);z-index:1;display:flex;align-items:center;justify-content:center">
-        <i class="fas ${e.type === 'appointment' ? 'fa-calendar-check' : e.type === 'visit-note' ? 'fa-file-pen' : 'fa-prescription'}" style="font-size:0.45rem;color:#fff"></i>
+    <div class="emr-timeline-item">
+      <div class="emr-timeline-marker ${e.type === 'appointment' ? 'emr-timeline-marker--appointment' : e.type === 'visit-note' ? 'emr-timeline-marker--visit-note' : 'emr-timeline-marker--prescription'}">
+        <i class="fas ${e.type === 'appointment' ? 'fa-calendar-check' : e.type === 'visit-note' ? 'fa-file-pen' : 'fa-prescription'} emr-timeline-marker-icon"></i>
       </div>
-      <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:var(--s1)">${e.detail}</div>
-      <div style="background:var(--bg-surface);border:1px solid var(--border-light);border-radius:var(--r-md);padding:var(--s3) var(--s4)">
-        <div style="font-weight:600;font-size:0.85rem;color:var(--text-primary);margin-bottom:2px">${e.title}</div>
-        <div style="font-size:0.8rem;color:var(--text-secondary)">${e.text}</div>
+      <div class="emr-timeline-detail">${escapeHTML(e.detail)}</div>
+      <div class="emr-timeline-entry-card">
+        <div class="emr-timeline-entry-title">${escapeHTML(e.title)}</div>
+        <div class="emr-timeline-entry-text">${escapeHTML(e.text)}</div>
       </div>
     </div>`).join('');
 
   container.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:var(--s4)">
-      <span style="font-size:0.78rem;color:var(--text-muted)"><i class="fas fa-eye"></i> View Only</span>
+    <div class="emr-view-only-row">
+      <span class="emr-view-only-label"><i class="fas fa-eye"></i> View Only</span>
     </div>
-    <div style="position:relative;padding-left:var(--s8)"><div style="content:'';position:absolute;left:15px;top:0;bottom:0;width:2px;background:var(--border-light)"></div>${items}</div>
+    <div class="emr-timeline">${items}</div>
   `;
 }
 
@@ -945,17 +1195,26 @@ function renderTimeline() {
    ═══════════════════════════════════════════════════════════ */
 
 function printEmrPage() {
-  const w = window.open(`${getBasePath()}api/medical/print-patient-emr.php?patient_id=${patientId}`, '_blank');
+  const safePatientId = safePositiveId(patientId);
+  if (!safePatientId) return;
+  const w = window.open(`${getBasePath()}api/medical/print-patient-emr.php?patient_id=${safePatientId}`, '_blank');
+  if (w) w.opener = null;
   if (!w || w.closed || typeof w.closed === 'undefined') showToast('Popup blocked. Please allow popups for this site.', 'error');
 }
 
 function printPrescription(id) {
-  const w = window.open(`${getBasePath()}api/prescriptions/print.php?id=${id}`, '_blank');
+  const safeId = safePositiveId(id);
+  if (!safeId) return;
+  const w = window.open(`${getBasePath()}api/prescriptions/print.php?id=${safeId}`, '_blank');
+  if (w) w.opener = null;
   if (!w || w.closed || typeof w.closed === 'undefined') showToast('Popup blocked. Please allow popups for this site.', 'error');
 }
 
 function printAppointment(id) {
-  const w = window.open(`${getBasePath()}api/appointments/print.php?id=${id}`, '_blank');
+  const safeId = safePositiveId(id);
+  if (!safeId) return;
+  const w = window.open(`${getBasePath()}api/appointments/print.php?id=${safeId}`, '_blank');
+  if (w) w.opener = null;
   if (!w || w.closed || typeof w.closed === 'undefined') showToast('Popup blocked. Please allow popups for this site.', 'error');
 }
 
@@ -963,13 +1222,16 @@ function printAppointment(id) {
    TOGGLE PATIENT STATUS
    ═══════════════════════════════════════════════════════════ */
 
-async function toggleEmrPatientStatus(id, name) {
+async function toggleEmrPatientStatus(id) {
+  const safeId = safePositiveId(id);
+  if (!safeId) return;
+  const name = emrData.patient?.name || "this patient";
   const isActive = document.querySelector('.emr-header-name .status.confirmed');
   const action = isActive ? 'disable' : 'enable';
   if (!confirm(`${action === 'disable' ? 'Disable' : 'Enable'} patient "${name}"?`)) return;
 
   const result = await apiFetch((getBasePath() + "api/patients/toggle-status.php"), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: safeId }),
   }, 'Status update failed.');
 
   if (result.data?.success) {
@@ -984,20 +1246,9 @@ async function toggleEmrPatientStatus(id, name) {
    STANDARDIZED MODAL SYSTEM
    ═══════════════════════════════════════════════════════════ */
 
-function initModalSystem() {
-  document.addEventListener('click', (e) => {
-    const overlay = e.target.closest('.modal-overlay.open');
-    if (!overlay) return;
-    if (e.target === overlay) closeModal(overlay.id);
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      const openModal = document.querySelector('.modal-overlay.open');
-      if (openModal) closeModal(openModal.id);
-    }
-  });
-
+function initEmrModalSystem() {
+  // Overlay-click and Escape dismissal are handled globally by main.js
+  // initModalSystem(); here we only wire this page's explicit close buttons.
   document.querySelectorAll('.modal-close-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const overlay = btn.closest('.modal-overlay');
@@ -1030,8 +1281,13 @@ function openEditModal() {
   if (!emrData) return;
   const p = emrData.patient;
   const mr = emrData.medical_record;
+  const safePatientId = safePositiveId(p?.id);
+  if (!safePatientId || safePatientId !== safePositiveId(patientId)) {
+    showToast('A valid patient ID is required before editing.', 'error');
+    return;
+  }
 
-  document.getElementById('edit-patient-id').value = p.id;
+  document.getElementById('edit-patient-id').value = String(safePatientId);
   document.getElementById('edit-name').value = p.name || '';
   document.getElementById('edit-email').value = p.email || '';
   document.getElementById('edit-phone').value = p.phone || '';
@@ -1050,7 +1306,11 @@ function initEditForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const id = parseInt(document.getElementById('edit-patient-id')?.value || '0');
+    const id = safePositiveId(document.getElementById('edit-patient-id')?.value);
+    if (!id || id !== safePositiveId(patientId)) {
+      showToast('A valid patient ID is required before saving.', 'error');
+      return;
+    }
     const name = document.getElementById('edit-name')?.value.trim();
     const email = document.getElementById('edit-email')?.value.trim();
     const phone = document.getElementById('edit-phone')?.value.trim();
@@ -1060,7 +1320,15 @@ function initEditForm() {
     const password = document.getElementById('edit-password')?.value;
 
     if (!name || !email) { showToast('Name and email are required.', 'error'); return; }
-    if (password && password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+    if (password) {
+      const errors = [];
+      if (password.length < 8) errors.push('at least 8 characters');
+      if (!/[A-Z]/.test(password)) errors.push('an uppercase letter');
+      if (!/[a-z]/.test(password)) errors.push('a lowercase letter');
+      if (!/[0-9]/.test(password)) errors.push('a number');
+      if (!/[^A-Za-z0-9]/.test(password)) errors.push('a special character');
+      if (errors.length) { showToast('Password must include ' + errors.join(', ') + '.', 'error'); return; }
+    }
 
     const submitBtn = form.querySelector('[type="submit"]');
     const origText = submitBtn?.textContent || 'Save Changes';
@@ -1093,33 +1361,39 @@ function initEditForm() {
 
 function initPrescriptionModal() {
   document.getElementById('modal-rx-print-btn')?.addEventListener('click', () => {
-    const rxId = document.getElementById('modal-rx-print-btn').getAttribute('data-rx-id');
-    if (rxId) printPrescription(parseInt(rxId));
+    const rxId = safePositiveId(document.getElementById('modal-rx-print-btn').getAttribute('data-rx-id'));
+    if (rxId) printPrescription(rxId);
   });
 }
 
 function openPrescriptionModal(rxId) {
-  const rx = (emrData.prescriptions || []).find(r => r.id === rxId);
+  const safeRxId = safePositiveId(rxId);
+  if (!safeRxId) { showToast('Prescription not found.', 'error'); return; }
+  const rx = (Array.isArray(emrData?.prescriptions) ? emrData.prescriptions : [])
+    .find((r) => r && typeof r === 'object' && !Array.isArray(r) && safePositiveId(r.id) === safeRxId);
   if (!rx) { showToast('Prescription not found.', 'error'); return; }
 
-  const items = (rx.items || []).map(item =>
+  const modalItems = Array.isArray(rx.items)
+    ? rx.items.filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+    : [];
+  const items = modalItems.map(item =>
     `<div class="emr-rx-item"><span class="emr-rx-item-name">${escapeHTML(item.medication_name)}</span><span class="emr-rx-item-detail">${escapeHTML(item.strength)} — ${escapeHTML(item.dosage)} — ${escapeHTML(item.frequency)} — ${escapeHTML(item.duration)}${item.instructions ? ' — ' + escapeHTML(item.instructions) : ''}</span></div>`
-  ).join('') || '<p style="color:var(--text-muted)">No medication details</p>';
+  ).join('') || '<p class="emr-text-muted">No medication details</p>';
 
   document.getElementById('modal-rx-content').innerHTML = `
     <div class="modal-info-card">
-      <div class="info-row"><span class="info-label">Prescription ID</span><span class="info-value">RX-${String(rx.id).padStart(5,'0')}</span></div>
+      <div class="info-row"><span class="info-label">Prescription ID</span><span class="info-value">RX-${String(safePositiveId(rx.id)).padStart(5,'0')}</span></div>
       <div class="info-row"><span class="info-label">Doctor</span><span class="info-value">${escapeHTML(rx.doctor_name)}</span></div>
       <div class="info-row"><span class="info-label">Patient</span><span class="info-value">${escapeHTML(emrData.patient.name)}</span></div>
-      <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="status status-${(rx.status||'Active').toLowerCase()}">${escapeHTML(rx.status)}</span></span></div>
-      <div class="info-row"><span class="info-label">Date</span><span class="info-value">${formatDate(rx.created_at)}</span></div>
+      <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="status status-${safeClassToken(rx.status || 'Active')}">${escapeHTML(rx.status)}</span></span></div>
+      <div class="info-row"><span class="info-label">Date</span><span class="info-value">${escapeHTML(formatDate(rx.created_at))}</span></div>
       <div class="info-row"><span class="info-label">Department</span><span class="info-value">${escapeHTML(rx.department)}</span></div>
       ${rx.notes ? `<div class="info-row"><span class="info-label">Notes</span><span class="info-value">${escapeHTML(rx.notes)}</span></div>` : ''}
     </div>
     <div class="modal-section-title">Medications</div>
     <div class="modal-medications">${items}</div>`;
 
-  document.getElementById('modal-rx-print-btn').setAttribute('data-rx-id', rxId);
+  document.getElementById('modal-rx-print-btn').setAttribute('data-rx-id', String(safeRxId));
   openModal('modal-prescription');
 }
 
@@ -1129,21 +1403,26 @@ function openPrescriptionModal(rxId) {
 
 function initAppointmentModal() {
   document.getElementById('modal-appt-print-btn')?.addEventListener('click', () => {
-    const apptId = document.getElementById('modal-appt-print-btn').getAttribute('data-appt-id');
-    if (apptId) printAppointment(parseInt(apptId));
+    const apptId = safePositiveId(document.getElementById('modal-appt-print-btn').getAttribute('data-appt-id'));
+    if (apptId) printAppointment(apptId);
   });
 }
 
 function openAppointmentModal(apptId) {
-  const appt = (emrData.appointments || []).find(a => a.id === apptId);
+  const safeAppointmentId = safePositiveId(apptId);
+  if (!safeAppointmentId) { showToast('Appointment not found.', 'error'); return; }
+  const appt = (Array.isArray(emrData?.appointments) ? emrData.appointments : [])
+    .find((a) => a && typeof a === 'object' && !Array.isArray(a) && safePositiveId(a.id) === safeAppointmentId);
   if (!appt) { showToast('Appointment not found.', 'error'); return; }
 
-  const visitNote = (emrData.visit_notes || []).find(vn => vn.appointment_id === apptId);
-  const rx = (emrData.prescriptions || []).find(r => r.appointment_id === apptId);
+  const visitNote = (Array.isArray(emrData.visit_notes) ? emrData.visit_notes : [])
+    .find((vn) => vn && typeof vn === 'object' && !Array.isArray(vn) && safePositiveId(vn.appointment_id) === safeAppointmentId);
+  const rx = (Array.isArray(emrData.prescriptions) ? emrData.prescriptions : [])
+    .find((r) => r && typeof r === 'object' && !Array.isArray(r) && safePositiveId(r.appointment_id) === safeAppointmentId);
 
   let relatedHtml = '';
   if (visitNote) {
-    relatedHtml += `<div class="emr-info-card" style="margin-top:var(--s3)">
+    relatedHtml += `<div class="emr-info-card emr-info-card--related">
       <div class="emr-info-card-title"><i class="fas fa-file-pen"></i> Visit Note</div>
       ${visitNote.diagnosis ? `<div class="emr-info-row"><span class="emr-info-label">Diagnosis</span><span class="emr-info-value">${escapeHTML(visitNote.diagnosis)}</span></div>` : ''}
       ${visitNote.symptoms ? `<div class="emr-info-row"><span class="emr-info-label">Symptoms</span><span class="emr-info-value">${escapeHTML(visitNote.symptoms)}</span></div>` : ''}
@@ -1151,27 +1430,27 @@ function openAppointmentModal(apptId) {
     </div>`;
   }
   if (rx) {
-    relatedHtml += `<div class="emr-info-card" style="margin-top:var(--s3)">
+    relatedHtml += `<div class="emr-info-card emr-info-card--related">
       <div class="emr-info-card-title"><i class="fas fa-prescription"></i> Prescription</div>
-      <div class="emr-info-row"><span class="emr-info-label">RX ID</span><span class="emr-info-value">RX-${String(rx.id).padStart(5,'0')}</span></div>
-      <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${(rx.status||'Active').toLowerCase()}">${escapeHTML(rx.status)}</span></span></div>
-      <div class="emr-info-row"><span class="emr-info-label">Medications</span><span class="emr-info-value">${rx.item_count || 0} items</span></div>
+      <div class="emr-info-row"><span class="emr-info-label">RX ID</span><span class="emr-info-value">RX-${String(safePositiveId(rx.id)).padStart(5,'0')}</span></div>
+      <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${safeClassToken(rx.status || 'Active')}">${escapeHTML(rx.status)}</span></span></div>
+      <div class="emr-info-row"><span class="emr-info-label">Medications</span><span class="emr-info-value">${safeCount(rx.item_count, 0)} items</span></div>
     </div>`;
   }
 
   document.getElementById('modal-appt-content').innerHTML = `
-    <div class="emr-info-card" style="margin-bottom:0">
-      <div class="emr-info-row"><span class="emr-info-label">Appointment ID</span><span class="emr-info-value">#${appt.id}</span></div>
+    <div class="emr-info-card emr-info-card--flush">
+      <div class="emr-info-row"><span class="emr-info-label">Appointment ID</span><span class="emr-info-value">#${safeAppointmentId}</span></div>
       <div class="emr-info-row"><span class="emr-info-label">Date</span><span class="emr-info-value">${escapeHTML(appt.date)}</span></div>
       <div class="emr-info-row"><span class="emr-info-label">Time</span><span class="emr-info-value">${escapeHTML(formatApptTime(appt))}</span></div>
       <div class="emr-info-row"><span class="emr-info-label">Doctor</span><span class="emr-info-value">${escapeHTML(appt.doctor_user_name || appt.doctor)}</span></div>
       <div class="emr-info-row"><span class="emr-info-label">Department</span><span class="emr-info-value">${escapeHTML(appt.department)}</span></div>
-      <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${(appt.status||'Pending').toLowerCase()}">${escapeHTML(appt.status)}</span></span></div>
+      <div class="emr-info-row"><span class="emr-info-label">Status</span><span class="emr-info-value"><span class="status status-${safeClassToken(appt.status || 'Pending')}">${escapeHTML(appt.status)}</span></span></div>
       ${appt.notes ? `<div class="emr-info-row"><span class="emr-info-label">Notes</span><span class="emr-info-value">${escapeHTML(appt.notes)}</span></div>` : ''}
     </div>
     ${relatedHtml}`;
 
-  document.getElementById('modal-appt-print-btn').setAttribute('data-appt-id', apptId);
+  document.getElementById('modal-appt-print-btn').setAttribute('data-appt-id', String(safeAppointmentId));
   openModal('modal-appointment');
 }
 
@@ -1182,14 +1461,19 @@ function openAppointmentModal(apptId) {
    ═══════════════════════════════════════════════════════════ */
 
 function openBookAppointmentModal() {
-  document.getElementById('emr-appt-patient-id').value = patientId;
+  const safePatientId = safePositiveId(patientId);
+  if (!safePatientId) {
+    showToast('A valid patient ID is required before booking.', 'error');
+    return;
+  }
+  document.getElementById('emr-appt-patient-id').value = String(safePatientId);
   const dateInput = document.getElementById('emr-appt-date');
   if (dateInput) dateInput.min = new Date().toISOString().split('T')[0];
   loadEmrDoctorDropdown();
   // Reset slot picker
   const slotContainer = document.getElementById('emr-slot-picker-container');
   if (slotContainer) {
-    slotContainer.innerHTML = '<p class="slot-placeholder" style="color:var(--text-muted);font-size:0.85rem">Select a doctor and date to see available slots.</p>';
+    slotContainer.innerHTML = '<p class="slot-placeholder emr-slot-placeholder">Select a doctor and date to see available slots.</p>';
   }
   const emrTimeInput = document.getElementById('emr-appt-time');
   if (emrTimeInput) emrTimeInput.value = '';
@@ -1211,7 +1495,10 @@ async function loadEmrDoctorDropdown() {
   try {
     const res = await fetch((getBasePath() + "api/doctors/get.php"));
     const result = await res.json();
-    emrDoctorsList = result.doctors || result || [];
+    emrDoctorsList = Array.isArray(result.doctors) ? result.doctors : [];
+    if (!Array.isArray(result.doctors)) {
+      throw new Error("The doctor directory returned an invalid response.");
+    }
   } catch {
     emrDoctorsList = [];
   }
@@ -1225,20 +1512,30 @@ async function loadEmrDoctorDropdown() {
 
 function renderEmrDoctorOptions() {
   const doctorSelect = document.getElementById('emr-appt-doctor');
-  const dept = document.getElementById('emr-appt-department')?.value || '';
+  const departmentName = document.getElementById('emr-appt-department')?.value?.trim() || '';
   if (!doctorSelect) return;
 
   doctorSelect.innerHTML = '<option value="">Select a doctor</option>';
-  const filtered = dept
-    ? emrDoctorsList.filter(d => d.specialty === dept)
-    : emrDoctorsList;
+  const doctorObjects = Array.isArray(emrDoctorsList)
+    ? emrDoctorsList.filter((doctor) => doctor && typeof doctor === 'object' && !Array.isArray(doctor))
+    : [];
+  const filtered = departmentName
+    ? doctorObjects.filter((doctor) => String(doctor.department_name || doctor.specialty || '').trim().toLowerCase() === departmentName.toLowerCase())
+    : doctorObjects;
 
-  filtered.forEach(d => {
-    const label = `${d.name} — ${d.specialty}${d.available == 0 ? ' (Not available)' : ''}`;
-    const opt = new Option(label, d.name);
-    opt.disabled = d.available == 0;
-    doctorSelect.add(opt);
+  const eligibleDoctors = filtered.filter((doctor) => safePositiveId(doctor.user_id));
+  eligibleDoctors.forEach((doctor) => {
+    const label = `${doctor.name} — ${doctor.specialty || doctor.department_name}${doctor.available == 0 ? ' (Not available)' : ''}`;
+    const option = new Option(label, String(doctor.user_id));
+    option.disabled = doctor.available == 0;
+    doctorSelect.add(option);
   });
+
+  if (eligibleDoctors.length === 0) {
+    const option = new Option('No bookable doctors found for this department', '');
+    option.disabled = true;
+    doctorSelect.add(option);
+  }
 }
 
 // Load available slots using the same API as patient dashboard
@@ -1248,16 +1545,19 @@ async function emrLoadSlots() {
   const slotContainer = document.getElementById('emr-slot-picker-container');
   const timeInput = document.getElementById('emr-appt-time');
 
-  const doctorName = doctorSelect?.value || '';
-  const date = dateInput?.value || '';
-  
-  // Find doctor ID
-  const doctor = emrDoctorsList.find(d => d.name === doctorName);
-  const doctorId = doctor?.user_id || doctor?.id || 0;
+  const selectedDoctorId = safePositiveId(doctorSelect?.value);
+  const date = dateInput?.value || "";
+
+  // The select value is the canonical doctors.user_id used by appointment ownership.
+  const doctor = Array.isArray(emrDoctorsList)
+    ? emrDoctorsList.find((item) => item && typeof item === 'object'
+        && safePositiveId(item.user_id) === selectedDoctorId)
+    : null;
+  const doctorId = doctor ? safePositiveId(doctor.user_id) : 0;
 
   if (!doctorId || !date) {
     if (slotContainer) {
-      slotContainer.innerHTML = '<p class="slot-placeholder" style="color:var(--text-muted);font-size:0.85rem">Select a doctor and date to see available slots.</p>';
+      slotContainer.innerHTML = '<p class="slot-placeholder emr-slot-placeholder">Select a doctor and date to see available slots.</p>';
     }
     return;
   }
@@ -1297,14 +1597,21 @@ async function emrLoadSlots() {
   if (requestId !== emrLastSlotRequestId) return;
   if (!result.ok || !result.data?.success) {
     if (slotContainer) {
-      slotContainer.innerHTML = '<p class="slot-placeholder" style="color:var(--danger);font-size:0.85rem">Failed to load slots.</p>';
+      slotContainer.innerHTML = '<p class="slot-placeholder emr-slot-placeholder--error">Failed to load slots.</p>';
     }
     return;
   }
 
-  const slots = result.data.slots || [];
-  const message = result.data.message || '';
-  const duration = result.data.duration || 30;
+  const slots = Array.isArray(result.data.slots)
+    ? result.data.slots.filter((slot) =>
+        slot && typeof slot === 'object' && !Array.isArray(slot)
+        && typeof slot.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(slot.time)
+        && typeof slot.label === 'string'
+      )
+    : [];
+  const message = typeof result.data.message === 'string' ? result.data.message : '';
+  const rawDuration = safeCount(result.data.duration, 30);
+  const duration = rawDuration >= 1 && rawDuration <= 240 ? rawDuration : 30;
 
   if (requestId !== emrLastSlotRequestId) return;
 
@@ -1342,13 +1649,13 @@ async function emrLoadSlots() {
   // Period tabs
   html += `
     <div class="slot-tabs" role="tablist">
-      <button type="button" class="slot-tab active" role="tab" aria-selected="true" onclick="emrSwitchSlotTab('morning')" tabindex="0">
+      <button type="button" class="slot-tab active" role="tab" aria-selected="true" data-emr-slot-period="morning" tabindex="0">
         <i class="fas fa-sun"></i> Morning <span class="slot-tab-count">${groups.Morning.length}</span>
       </button>
-      <button type="button" class="slot-tab" role="tab" aria-selected="false" onclick="emrSwitchSlotTab('afternoon')" tabindex="-1">
+      <button type="button" class="slot-tab" role="tab" aria-selected="false" data-emr-slot-period="afternoon" tabindex="-1">
         <i class="fas fa-cloud-sun"></i> Afternoon <span class="slot-tab-count">${groups.Afternoon.length}</span>
       </button>
-      <button type="button" class="slot-tab" role="tab" aria-selected="false" onclick="emrSwitchSlotTab('evening')" tabindex="-1">
+      <button type="button" class="slot-tab" role="tab" aria-selected="false" data-emr-slot-period="evening" tabindex="-1">
         <i class="fas fa-moon"></i> Evening <span class="slot-tab-count">${groups.Evening.length}</span>
       </button>
     </div>`;
@@ -1376,7 +1683,7 @@ async function emrLoadSlots() {
       html += `<div class="slot-grid" role="radiogroup" aria-label="${periodName} slots">`;
       for (const slot of periodSlots) {
         html += `
-          <button type="button" class="slot-chip" data-time="${escapeHTML(slot.time)}" data-label="${escapeHTML(slot.label)}" onclick="emrSelectSlot(this)" role="radio" aria-checked="false" tabindex="0">
+          <button type="button" class="slot-chip" data-time="${escapeHTML(slot.time)}" data-label="${escapeHTML(slot.label)}" data-emr-slot-select="true" role="radio" aria-checked="false" tabindex="0">
             <span class="slot-check"><i class="fas fa-check"></i></span>
             <span class="slot-label">${escapeHTML(slot.label)}</span>
           </button>`;
@@ -1416,7 +1723,7 @@ async function emrLoadSlots() {
 
 function emrSwitchSlotTab(tabId) {
   document.querySelectorAll('#emr-book-appointment-modal .slot-tab').forEach(tab => {
-    const isActive = tab.getAttribute('onclick')?.includes(tabId);
+    const isActive = tab.dataset.emrSlotPeriod === tabId;
     tab.classList.toggle('active', isActive);
     tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
     tab.setAttribute('tabindex', isActive ? '0' : '-1');
@@ -1442,7 +1749,12 @@ function emrSelectSlot(btn) {
   // Update summary
   const wrapper = document.getElementById('emr-slot-summary-wrapper');
   if (wrapper) {
-    const doctorName = document.getElementById('emr-appt-doctor')?.value || '';
+    const selectedDoctorId = safePositiveId(document.getElementById('emr-appt-doctor')?.value);
+    const selectedDoctor = Array.isArray(emrDoctorsList)
+      ? emrDoctorsList.find((doctor) => doctor && typeof doctor === 'object'
+          && safePositiveId(doctor.user_id) === selectedDoctorId)
+      : null;
+    const doctorName = typeof selectedDoctor?.name === 'string' ? selectedDoctor.name : "";
     const dateVal = document.getElementById('emr-appt-date')?.value || '';
     const slotLabel = btn.dataset.label || btn.querySelector('.slot-label')?.textContent || '';
 
@@ -1472,18 +1784,25 @@ function initBookAppointmentModal() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const patientName = emrData?.patient?.name || '';
+    const targetPatientId = safePositiveId(patientId);
+    const patientName = typeof emrData?.patient?.name === 'string' ? emrData.patient.name : '';
+    const selectedDoctorId = safePositiveId(document.getElementById('emr-appt-doctor')?.value);
+    const selectedDoctor = Array.isArray(emrDoctorsList)
+      ? emrDoctorsList.find((doctor) => doctor && typeof doctor === 'object'
+          && safePositiveId(doctor.user_id) === selectedDoctorId)
+      : null;
     const data = {
       department: document.getElementById('emr-appt-department')?.value.trim() || '',
-      doctor: document.getElementById('emr-appt-doctor')?.value.trim() || '',
+      doctor_id: selectedDoctorId,
+      doctor: typeof selectedDoctor?.name === 'string' ? selectedDoctor.name : '',
       date: document.getElementById('emr-appt-date')?.value.trim() || '',
       time: document.getElementById('emr-appt-time')?.value.trim() || '',
       patientName: patientName,
       notes: document.getElementById('emr-appt-notes')?.value.trim() || '',
-      patient_id: patientId,
+      patient_id: targetPatientId,
     };
 
-    if (!data.department || !data.doctor || !data.date || !data.time || !data.patientName) {
+    if (!targetPatientId || !data.department || !data.doctor_id || !data.doctor || !data.date || !data.time || !data.patientName) {
       showToast('Please fill in all required fields.', 'error');
       return;
     }
@@ -1512,10 +1831,14 @@ function initBookAppointmentModal() {
    ═══════════════════════════════════════════════════════════ */
 
 function openResetPasswordModal() {
-  document.getElementById('emr-reset-pw-patient-id').value = patientId;
+  const safePatientId = safePositiveId(patientId);
+  if (!safePatientId) {
+    showToast('A valid patient ID is required before resetting the password.', 'error');
+    return;
+  }
+  document.getElementById('emr-reset-pw-patient-id').value = String(safePatientId);
   document.getElementById('emr-reset-pw-new').value = '';
   document.getElementById('emr-reset-pw-confirm').value = '';
-  document.getElementById('emr-reset-pw-force').checked = false;
   openModal('emr-reset-pw-modal');
 }
 
@@ -1526,11 +1849,23 @@ function initResetPasswordForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const targetPatientId = safePositiveId(document.getElementById('emr-reset-pw-patient-id')?.value);
     const newPw = document.getElementById('emr-reset-pw-new')?.value;
     const confirmPw = document.getElementById('emr-reset-pw-confirm')?.value;
 
-    if (!newPw || newPw.length < 6) {
-      showToast('Password must be at least 6 characters.', 'error');
+    if (!targetPatientId) {
+      showToast('Select a valid patient before resetting the password.', 'error');
+      return;
+    }
+
+    const passwordErrors = [];
+    if (!newPw || newPw.length < 8) passwordErrors.push('at least 8 characters');
+    if (!/[A-Z]/.test(newPw || '')) passwordErrors.push('an uppercase letter');
+    if (!/[a-z]/.test(newPw || '')) passwordErrors.push('a lowercase letter');
+    if (!/[0-9]/.test(newPw || '')) passwordErrors.push('a number');
+    if (!/[^A-Za-z0-9]/.test(newPw || '')) passwordErrors.push('a special character');
+    if (passwordErrors.length > 0) {
+      showToast('Password must include ' + passwordErrors.join(', ') + '.', 'error');
       return;
     }
     if (newPw !== confirmPw) {
@@ -1544,11 +1879,11 @@ function initResetPasswordForm() {
 
     const result = await apiFetch((getBasePath() + "api/patients/update.php"), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patient_id: patientId, password: newPw }),
+      body: JSON.stringify({ patient_id: targetPatientId, password: newPw, confirm_password: confirmPw }),
     }, 'Failed to reset password.');
 
     if (result.data?.success) {
-      showToast('Password reset successfully!', 'success');
+      showToast('Password reset. Existing patient sessions were revoked.', 'success');
       closeModal('emr-reset-pw-modal');
     } else {
       showToast(result.data?.message || 'Failed to reset password.', 'error');
@@ -1558,12 +1893,24 @@ function initResetPasswordForm() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   DELETE PATIENT
+   ARCHIVE PATIENT
    ═══════════════════════════════════════════════════════════ */
 
-function openDeleteModal() {
-  if (!emrData) return;
-  document.getElementById('emr-delete-name').textContent = emrData.patient.name;
+function openEmrArchivePatientModal() {
+  // The EMR route was validated before data loading and the server performs
+  // the authoritative role, patient and active-account checks on confirmation.
+  const patient = emrData?.patient;
+  const nameElement = document.getElementById('emr-delete-name');
+  const modal = document.getElementById('emr-delete-modal');
+  if (!patient || !nameElement || !modal) {
+    showToast('The patient record is unavailable. Refresh and try again.', 'error');
+    return;
+  }
+
+  const name = typeof patient.name === 'string' && patient.name.trim()
+    ? patient.name.trim()
+    : 'this patient';
+  nameElement.textContent = name;
   openModal('emr-delete-modal');
 }
 
@@ -1572,18 +1919,24 @@ function initDeletePatient() {
   if (!confirmBtn) return;
 
   confirmBtn.addEventListener('click', async () => {
-    if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+    if (!confirm('Archive this patient account? Sign-in will be disabled and not-started appointments will be cancelled. Medical and audit history will be retained.')) return;
+
+    const safePatientId = safePositiveId(patientId);
+    if (!safePatientId) {
+      showToast('A valid patient ID is required before archiving.', 'error');
+      return;
+    }
 
     const result = await apiFetch((getBasePath() + "api/patients/delete.php"), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: patientId }),
-    }, 'Delete failed.');
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: safePatientId }),
+    }, 'Archive failed.');
 
     if (result.data?.success) {
-      showToast('Patient deleted.', 'success');
+      showToast('Patient archived. Medical and audit history was retained.', 'success');
       closeModal('emr-delete-modal');
       setTimeout(() => { window.location.href = getBasePath() + 'pages/admin/admin.html#patients'; }, 1000);
     } else {
-      showToast(result.data?.message || 'Delete failed.', 'error');
+      showToast(result.data?.message || 'Archive failed.', 'error');
     }
   });
 }
@@ -1602,51 +1955,58 @@ async function renderAudit() {
       {},
       'Failed to load audit log.'
     );
-    const entries = (result.ok && result.data?.entries) ? result.data.entries : [];
-    
+    const entries = result.ok && Array.isArray(result.data?.entries)
+      ? result.data.entries.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry))
+      : [];
+
     if (entries.length === 0) {
       container.innerHTML = '<div class="emr-empty-state"><i class="fas fa-clipboard-list"></i><h4>No Activity Recorded</h4><p>No administrative or clinical activity has been recorded for this patient yet.</p></div>';
       return;
     }
     
-    const actionIcons = {
+    const actionIcons = Object.assign(Object.create(null), {
       create: 'fa-plus-circle', update: 'fa-pen', delete: 'fa-trash',
       activate: 'fa-toggle-on', deactivate: 'fa-toggle-off',
       book: 'fa-calendar-plus', approve: 'fa-check', decline: 'fa-ban',
       cancel: 'fa-ban', complete: 'fa-check-circle'
-    };
+    });
     
     const roleBadge = (role) => {
-      if (role === 'doctor') return '<span style="font-size:0.7rem;padding:1px 8px;border-radius:var(--r-full);background:rgba(99,102,241,0.1);color:var(--primary);margin-left:var(--s1)">Doctor</span>';
-      if (role === 'admin') return '<span style="font-size:0.7rem;padding:1px 8px;border-radius:var(--r-full);background:rgba(34,197,94,0.1);color:var(--success);margin-left:var(--s1)">Admin</span>';
-      if (role === 'patient') return '<span style="font-size:0.7rem;padding:1px 8px;border-radius:var(--r-full);background:rgba(250,204,21,0.1);color:var(--warning);margin-left:var(--s1)">Patient</span>';
+      if (role === 'doctor') return '<span class="emr-audit-role-badge emr-audit-role-badge--doctor">Doctor</span>';
+      if (role === 'admin') return '<span class="emr-audit-role-badge emr-audit-role-badge--admin">Admin</span>';
+      if (role === 'patient') return '<span class="emr-audit-role-badge emr-audit-role-badge--patient">Patient</span>';
       return '';
     };
     
     const items = entries.map(e => {
-      const icon = actionIcons[e.action] || 'fa-circle';
-      const desc = e.description ? escapeHTML(e.description) : `${escapeHTML(e.action)} on ${escapeHTML(e.entity_type)}`;
+      const action = typeof e.action === 'string' ? e.action : '';
+      const icon = Object.prototype.hasOwnProperty.call(actionIcons, action)
+        ? actionIcons[action]
+        : 'fa-circle';
+      const desc = e.description
+        ? escapeHTML(e.description)
+        : `${escapeHTML(action)} on ${escapeHTML(e.entity_type)}`;
       return `
-        <div class="dp-audit-entry" style="display:flex;gap:var(--s3);padding:var(--s3) var(--s4);background:var(--bg-surface);border:1px solid var(--border-light);border-radius:var(--r-md);margin-bottom:var(--s2)">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--bg-subtle);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted)">
-            <i class="fas ${icon}" style="font-size:0.8rem"></i>
+        <div class="dp-audit-entry emr-audit-entry">
+          <div class="emr-audit-entry-icon">
+            <i class="fas ${icon} emr-audit-entry-icon-mark"></i>
           </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:0.85rem;color:var(--text-primary);display:flex;align-items:center;flex-wrap:wrap;gap:var(--s1)">
+          <div class="emr-audit-entry-content">
+            <div class="emr-audit-entry-heading">
               ${escapeHTML(e.actor_name || 'System')} ${roleBadge(e.actor_role)}
             </div>
-            <div style="font-size:0.82rem;color:var(--text-secondary);margin:var(--s1) 0">${desc}</div>
-            <div style="font-size:0.72rem;color:var(--text-muted)">${escapeHTML(formatDate(e.created_at))}</div>
+            <div class="emr-audit-entry-description">${desc}</div>
+            <div class="emr-audit-entry-time">${escapeHTML(formatDate(e.created_at))}</div>
           </div>
         </div>`;
     }).join('');
     
     container.innerHTML = `
-      <div style="margin-bottom:var(--s4)">
-        <h4 style="font-size:1rem;margin:0;color:var(--text-primary)"><i class="fas fa-clipboard-list"></i> Activity History</h4>
-        <p style="font-size:0.78rem;color:var(--text-muted);margin:var(--s1) 0 0 0">All meaningful changes related to this patient</p>
+      <div class="emr-section-header-spacing">
+        <h4 class="emr-section-heading"><i class="fas fa-clipboard-list"></i> Activity History</h4>
+        <p class="emr-audit-summary-text">All meaningful changes related to this patient</p>
       </div>
-      <div style="display:flex;flex-direction:column;gap:var(--s1)">${items}</div>`;
+      <div class="emr-audit-entry-list">${items}</div>`;
   } catch (e) {
     container.innerHTML = '<div class="emr-empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Failed to Load</h4><p>Could not load audit history.</p></div>';
   }
@@ -1657,16 +2017,18 @@ async function renderAudit() {
    ═══════════════════════════════════════════════════════════ */
 
 function renderAuditHistory() {
-  const audit = emrData.audit_history || [];
+  const audit = Array.isArray(emrData.audit_history)
+    ? emrData.audit_history.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry))
+    : [];
   if (audit.length === 0) {
     return `
-      <div class="emr-section" style="margin-top:var(--s6)">
-        <div class="flex-between" style="margin-bottom:var(--s4)">
-          <h4 style="font-size:1rem;margin:0;color:var(--text-primary)"><i class="fas fa-clipboard-list"></i> Administrative Corrections</h4>
+      <div class="emr-section emr-section-spaced">
+        <div class="flex-between emr-section-header-spacing">
+          <h4 class="emr-section-heading"><i class="fas fa-clipboard-list"></i> Administrative Corrections</h4>
         </div>
-        <div class="emr-empty-state" style="padding:var(--s4);background:var(--bg-surface);border:1px solid var(--border-light);border-radius:var(--r-md)">
-          <i class="fas fa-clipboard-check" style="font-size:1.2rem;color:var(--text-muted)"></i>
-          <p style="font-size:0.83rem;color:var(--text-muted);margin:var(--s2) 0 0 0">No administrative corrections have been recorded.</p>
+        <div class="emr-empty-state emr-audit-history-empty">
+          <i class="fas fa-clipboard-check emr-audit-history-empty-icon"></i>
+          <p class="emr-audit-history-empty-text">No administrative corrections have been recorded.</p>
         </div>
       </div>`;
   }
@@ -1683,17 +2045,17 @@ function renderAuditHistory() {
         <td>${escapeHTML(entry.old_value || '—')}</td>
         <td>${escapeHTML(entry.new_value || '—')}</td>
         <td>${escapeHTML(entry.reason)}</td>
-        <td>${formatDate(entry.created_at)} ${formatTime(entry.created_at)}</td>
+        <td>${escapeHTML(formatDate(entry.created_at))} ${escapeHTML(formatTime(entry.created_at))}</td>
       </tr>`;
   }).join('');
 
   return `
-    <div class="emr-section" style="margin-top:var(--s6)">
-      <div class="flex-between" style="margin-bottom:var(--s4)">
-        <h4 style="font-size:1rem;margin:0;color:var(--text-primary)"><i class="fas fa-clipboard-list"></i> Administrative Corrections</h4>
-        <span style="font-size:0.78rem;color:var(--text-muted)">${audit.length} correction${audit.length !== 1 ? 's' : ''}</span>
+    <div class="emr-section emr-section-spaced">
+      <div class="flex-between emr-section-header-spacing">
+        <h4 class="emr-section-heading"><i class="fas fa-clipboard-list"></i> Administrative Corrections</h4>
+        <span class="emr-view-only-label">${audit.length} correction${audit.length !== 1 ? 's' : ''}</span>
       </div>
-      <div class="emr-table-wrap" style="max-height:300px;overflow-y:auto">
+      <div class="emr-table-wrap emr-audit-table-scroll">
         <table>
           <thead>
             <tr>
@@ -1813,7 +2175,7 @@ window.openPrescriptionModal = openPrescriptionModal;
 window.openAppointmentModal = openAppointmentModal;
 window.openBookAppointmentModal = openBookAppointmentModal;
 window.openResetPasswordModal = openResetPasswordModal;
-window.openDeleteModal = openDeleteModal;
+window.openEmrArchivePatientModal = openEmrArchivePatientModal;
 window.emrApproveAppt = emrApproveAppt;
 window.emrDeclineAppt = emrDeclineAppt;
 window.emrCancelAppt = emrCancelAppt;

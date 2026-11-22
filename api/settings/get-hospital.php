@@ -9,10 +9,22 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/HospitalSettingsService.php';
 
-$role = $_SESSION['role'] ?? null;
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
+// Keep public reads available, but never trust a stored admin role without
+// revalidating the account, active status, and session version.
+$role = '';
+if (getCurrentUserId() !== null) {
+    $role = requireAuth()['role'];
+}
 
 try {
-    $hs = new HospitalSettingsService(getDB());
+    $hospitalSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_HOSPITAL_SCHEMA');
+    $hs = new HospitalSettingsService(getDB(), $hospitalSchema);
     $settings = $hs->getSettings();
     
     // For admin: return full settings including all fields

@@ -22,11 +22,13 @@
 const NotificationService = (() => {
   // ── Private State ────────────────────────────────────────
   let _pollInterval = null;
+  let _serviceInitialized = false;
   let _unreadCount = 0;
   let _currentPage = 1;
   let _hasMore = false;
   let _isLoading = false;
   let _onUnreadChange = null; // Callback for badge updates
+  let _dropdownAbortController = null;
 
   // ── Font Awesome Icons by Notification Type ──────────────
   const TYPE_ICONS = {
@@ -53,6 +55,26 @@ const NotificationService = (() => {
   };
 
   const DEFAULT_ICON = "fa-bell";
+  const MAX_NOTIFICATIONS_PER_PAGE = 50;
+
+  function normalizeNotification(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const notificationId = safePositiveId(value.id);
+    const type = typeof value.type === "string" ? value.type.slice(0, 80) : "";
+    const title = typeof value.title === "string" && value.title.trim()
+      ? value.title.slice(0, 200)
+      : "Notification";
+    return {
+      id: notificationId,
+      type,
+      title,
+      message: typeof value.message === "string" ? value.message.slice(0, 1000) : "",
+      created_at: typeof value.created_at === "string" ? value.created_at.slice(0, 40) : "—",
+      is_read: value.is_read === true || value.is_read === 1 || value.is_read === "1",
+      ref_type: typeof value.ref_type === "string" ? value.ref_type.slice(0, 40) : "",
+      ref_id: safePositiveId(value.ref_id) || 0,
+    };
+  }
 
   // ── Public API ───────────────────────────────────────────
 
@@ -63,7 +85,16 @@ const NotificationService = (() => {
    * @param {Function} [onUnreadChange] — Optional callback(count) for badge updates
    */
   function init(onUnreadChange) {
-    _onUnreadChange = onUnreadChange || null;
+    if (typeof onUnreadChange === "function") {
+      _onUnreadChange = onUnreadChange;
+    } else if (!_serviceInitialized) {
+      _onUnreadChange = null;
+    }
+
+    // Several page entry points can request initialization. Update the callback
+    // above, but create only one initial fetch, timer and visibility listener.
+    if (_serviceInitialized) return;
+    _serviceInitialized = true;
 
     // Load initial count
     refreshUnreadCount();
@@ -101,18 +132,19 @@ const NotificationService = (() => {
    */
   async function getNotifications(page) {
     _isLoading = true;
+    const requestedPage = Math.max(1, Math.min(10000, safeCount(page, 1)));
 
     try {
       const result = await apiFetch(
-        `${getBasePath()}api/notifications/notifications.php?page=${page || 1}`,
+        `${getBasePath()}api/notifications/notifications.php?page=${requestedPage}`,
         {},
         "Failed to load notifications.",
       );
 
       if (result && result.data && result.data.success) {
-        _unreadCount = result.data.unread_count || 0;
-        _hasMore = result.data.has_more || false;
-        _currentPage = page || 1;
+        _unreadCount = safeCount(result.data.unread_count, 0);
+        _hasMore = result.data.has_more === true;
+        _currentPage = Math.max(1, Math.min(10000, safeCount(page, 1)));
         updateBadge(_unreadCount);
         if (_onUnreadChange) _onUnreadChange(_unreadCount);
         return result.data;
@@ -131,14 +163,17 @@ const NotificationService = (() => {
    * @returns {Promise<number>} Updated unread count
    */
   async function markAsRead(id) {
+    const notificationId = safePositiveId(id);
+    if (!notificationId) return _unreadCount;
+
     const result = await apiFetch((getBasePath() + "api/notifications/notifications.php"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "mark_read", id }),
+      body: JSON.stringify({ action: "mark_read", id: notificationId }),
     });
 
     if (result.data?.success) {
-      _unreadCount = result.data.unread_count || 0;
+      _unreadCount = safeCount(result.data.unread_count, 0);
       updateBadge(_unreadCount);
       if (_onUnreadChange) _onUnreadChange(_unreadCount);
     }
@@ -170,14 +205,17 @@ const NotificationService = (() => {
    * @returns {Promise<number>} Updated unread count
    */
   async function deleteNotification(id) {
+    const notificationId = safePositiveId(id);
+    if (!notificationId) return _unreadCount;
+
     const result = await apiFetch((getBasePath() + "api/notifications/notifications.php"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete", id }),
+      body: JSON.stringify({ action: "delete", id: notificationId }),
     });
 
     if (result.data?.success) {
-      _unreadCount = result.data.unread_count || 0;
+      _unreadCount = safeCount(result.data.unread_count, 0);
       updateBadge(_unreadCount);
       if (_onUnreadChange) _onUnreadChange(_unreadCount);
     }
@@ -211,6 +249,20 @@ const NotificationService = (() => {
       clearInterval(_pollInterval);
       _pollInterval = null;
     }
+
+    document.removeEventListener("visibilitychange", _onVisibilityChange);
+    _serviceInitialized = false;
+
+    if (_dropdownAbortController) {
+      _dropdownAbortController.abort();
+      _dropdownAbortController = null;
+    }
+
+    // Remove the dropdown so its item-level listeners and detached state are released.
+    const dropdown = document.getElementById("notif-dropdown");
+    if (dropdown) dropdown.remove();
+
+    _onUnreadChange = null;
   }
 
   // ── Private Helpers ──────────────────────────────────────
@@ -224,7 +276,7 @@ const NotificationService = (() => {
         "",
       );
       if (result.data?.success) {
-        _unreadCount = result.data.unread_count || 0;
+        _unreadCount = safeCount(result.data.unread_count, 0);
         updateBadge(_unreadCount);
         if (_onUnreadChange) _onUnreadChange(_unreadCount);
       }
@@ -239,9 +291,9 @@ const NotificationService = (() => {
     if (!badge) return;
     if (count > 0) {
       badge.textContent = count > 99 ? "99+" : count;
-      badge.style.display = "";
+      badge.hidden = false;
     } else {
-      badge.style.display = "none";
+      badge.hidden = true;
     }
   }
 
@@ -274,7 +326,7 @@ const NotificationService = (() => {
       <div class="notif-list" id="notif-list">
         <div class="notif-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
       </div>
-      <div class="notif-footer" id="notif-footer" style="display:none">
+      <div class="notif-footer" id="notif-footer" hidden>
         <button class="notif-load-more" id="notif-load-more">Load More</button>
       </div>
     `;
@@ -296,7 +348,11 @@ const NotificationService = (() => {
       list.innerHTML = "";
     }
 
-    if (!notifications || notifications.length === 0) {
+    const safeNotifications = Array.isArray(notifications)
+      ? notifications.map(normalizeNotification).filter(Boolean).slice(0, MAX_NOTIFICATIONS_PER_PAGE)
+      : [];
+
+    if (safeNotifications.length === 0) {
       if (!append) {
         list.innerHTML = `
           <div class="notif-empty">
@@ -306,19 +362,26 @@ const NotificationService = (() => {
           </div>
         `;
       }
-      document.getElementById("notif-footer").style.display = "none";
+      const footer = document.getElementById("notif-footer");
+      if (footer) footer.hidden = true;
       return;
     }
 
-    notifications.forEach((notif) => {
+    safeNotifications.forEach((notif) => {
+      const notificationId = safePositiveId(notif.id);
+      const notificationType = typeof notif.type === "string" ? notif.type : "";
       const item = document.createElement("div");
-      item.className = `notif-item${notif.is_read ? "" : " unread"}`;
-      item.dataset.id = notif.id;
-      item.dataset.type = notif.type || "";
-      item.dataset.refType = notif.ref_type || "";
-      item.dataset.refId = notif.ref_id || "";
+      item.className = `notif-item${notif.is_read === true ? "" : " unread"}`;
+      item.dataset.id = notificationId ? String(notificationId) : "";
+      item.dataset.type = notificationType;
+      item.dataset.refType = typeof notif.ref_type === "string" ? notif.ref_type : "";
+      item.dataset.refId = typeof notif.ref_id === "string" || typeof notif.ref_id === "number"
+        ? String(notif.ref_id)
+        : "";
 
-      const icon = TYPE_ICONS[notif.type] || DEFAULT_ICON;
+      const icon = Object.prototype.hasOwnProperty.call(TYPE_ICONS, notificationType)
+        ? TYPE_ICONS[notificationType]
+        : DEFAULT_ICON;
 
       item.innerHTML = `
         <div class="notif-item-icon">
@@ -330,8 +393,8 @@ const NotificationService = (() => {
           <div class="notif-item-time">${getRelativeTime(notif.created_at)}</div>
         </div>
         <div class="notif-item-actions">
-          ${notif.is_read ? "" : '<button class="notif-mark-read" title="Mark as read"><i class="fas fa-check"></i></button>'}
-          <button class="notif-delete" title="Delete"><i class="fas fa-times"></i></button>
+          ${!notif.is_read && notificationId ? '<button class="notif-mark-read" title="Mark as read"><i class="fas fa-check"></i></button>' : ""}
+          ${notificationId ? '<button class="notif-delete" title="Delete"><i class="fas fa-times"></i></button>' : ""}
         </div>
       `;
 
@@ -347,25 +410,28 @@ const NotificationService = (() => {
       if (markBtn) {
         markBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          markAsRead(notif.id).then(() => {
+          markAsRead(notificationId).then(() => {
             item.classList.remove("unread");
             markBtn.remove();
           });
         });
       }
 
-      // Delete button
-      item.querySelector(".notif-delete").addEventListener("click", (e) => {
-        e.stopPropagation();
-        deleteNotification(notif.id).then(() => {
-          item.style.animation = "notifSlideOut 0.25s ease forwards";
-          setTimeout(() => item.remove(), 250);
-          // If list is now empty, show empty state
-          if (list.children.length === 0) {
-            renderNotifications([]);
-          }
+      // Delete action exists only for a strictly validated notification ID.
+      const deleteBtn = item.querySelector(".notif-delete");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          deleteNotification(notificationId).then(() => {
+            item.classList.add("is-deleting");
+            setTimeout(() => item.remove(), 250);
+            // If list is now empty, show empty state
+            if (list.children.length === 0) {
+              renderNotifications([]);
+            }
+          });
         });
-      });
+      }
 
       list.appendChild(item);
     });
@@ -373,7 +439,7 @@ const NotificationService = (() => {
     // Show/hide load more
     const footer = document.getElementById("notif-footer");
     if (footer) {
-      footer.style.display = _hasMore ? "" : "none";
+      footer.hidden = !_hasMore;
     }
   }
 
@@ -386,9 +452,8 @@ const NotificationService = (() => {
       markAsRead(notif.id);
     }
 
-    const type = notif.type || "";
-    const refType = notif.ref_type || "";
-    const refId = notif.ref_id;
+    const type = typeof notif.type === "string" ? notif.type : "";
+    const refType = typeof notif.ref_type === "string" ? notif.ref_type : "";
 
     // Determine navigation based on type + ref
     switch (type) {
@@ -502,10 +567,15 @@ const NotificationService = (() => {
       return;
     }
 
-    const link = document.querySelector(`.sidebar-nav a[data-page="${tabId}"], .sidebar-nav a[href*="${tabId}"]`);
-    if (link) {
-      link.click();
-    }
+    const safeTabId = String(tabId).trim();
+    if (!/^[a-z0-9_-]{1,40}$/i.test(safeTabId)) return;
+
+    const link = Array.from(document.querySelectorAll(".sidebar-nav a")).find((anchor) => {
+      const dataPage = anchor.getAttribute("data-page") || "";
+      const href = anchor.getAttribute("href") || "";
+      return dataPage === safeTabId || href.includes(safeTabId);
+    });
+    if (link) link.click();
   }
 
   /**
@@ -513,9 +583,10 @@ const NotificationService = (() => {
    * Examples: "Just now", "2 min ago", "1 hour ago", "Yesterday", "3 days ago"
    */
   function getRelativeTime(dateStr) {
-    if (!dateStr) return "";
+    if (typeof dateStr !== "string" || !dateStr) return "";
     const now = new Date();
     const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return "—";
     const diffMs = now - date;
     const diffSec = Math.floor(diffMs / 1000);
     const diffMin = Math.floor(diffSec / 60);
@@ -550,8 +621,15 @@ const NotificationService = (() => {
    * Called from initNavbar() in main.js.
    */
   function initDropdown() {
+    // main.js and individual dashboards can both request initialization.
+    // Bind once per active lifecycle so a click can never toggle twice.
+    if (_dropdownAbortController) return;
+
     const bellBtn = document.getElementById("notif-bell-btn");
     if (!bellBtn) return;
+
+    _dropdownAbortController = new AbortController();
+    const signal = _dropdownAbortController.signal;
 
     // Build dropdown on first click
     let dropdownBuilt = false;
@@ -577,7 +655,7 @@ const NotificationService = (() => {
       // Open and load notifications
       dropdown.classList.add("open");
       loadNotifications(1);
-    });
+    }, { signal });
 
     // Close dropdown when clicking outside
     document.addEventListener("click", (e) => {
@@ -590,12 +668,12 @@ const NotificationService = (() => {
       ) {
         dropdown.classList.remove("open");
       }
-    });
+    }, { signal });
 
     // Close on Escape
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeDropdown();
-    });
+    }, { signal });
   }
 
   /**

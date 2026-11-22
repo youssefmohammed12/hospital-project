@@ -3,287 +3,290 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Browse and book appointments with top medical specialists at HealthBridge. Filter by specialty, rating, and availability."
-    />
+    <meta name="description" content="Explore the HealthBridge demonstration doctor directory. Search synthetic profiles, browse departments and review sample appointment availability." />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#102B2B" />
     <title>Find a Doctor — HealthBridge</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="assets/css/style.css?v=2" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
-    />
-    <link rel="stylesheet" href="assets/css/pages/doctors.css?v=2" />
-    <link rel="stylesheet" href="assets/css/pages/settings.css?v=2" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+    <script src="assets/public-v2/js/core/site.js?v=2"></script>
+    <link rel="stylesheet" href="assets/public-v2/css/tokens.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/base.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/components.css?v=11" />
+    <link rel="stylesheet" href="assets/public-v2/css/pages/doctors.css?v=10" />
+    <link rel="stylesheet" href="assets/public-v2/css/footer.css?v=4" />
+    <script defer src="assets/public-v2/js/core/footer.js?v=3"></script>
   </head>
-  <body>
-    <!-- Navbar -->
-    <nav class="navbar" id="navbar">
-      <div class="nav-container">
-        <a href="index.html" class="logo">
-          <div class="logo-icon">
-            <i class="fas fa-hospital" aria-hidden="true"></i>
-          </div>
-          <span>HealthBridge</span>
+  <body class="doctors-page">
+    <a class="doctors-skip-link" href="#main-content">Skip to main content</a>
+    <nav class="navbar" id="navbar" aria-label="Main navigation">
+      <div class="nav-container doctors-container">
+        <a href="index.html" class="logo home-brand" aria-label="HealthBridge home">
+          <span class="home-brand-mark" aria-hidden="true"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h16v17M8 8h2m4 0h2M8 12h2m4 0h2M9 21v-4h6v4M12 1v5m-3-3h6"></path></svg></span>
+          <span class="home-brand-name hb-wordmark"><span class="hb-wordmark__letter" data-letter="H">H</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__letter" data-letter="a">a</span><span class="hb-wordmark__letter" data-letter="l">l</span><span class="hb-wordmark__letter" data-letter="t">t</span><span class="hb-wordmark__letter" data-letter="h">h</span><span class="hb-wordmark__letter" data-letter="B">B</span><span class="hb-wordmark__letter" data-letter="r">r</span><span class="hb-wordmark__letter" data-letter="i">i</span><span class="hb-wordmark__letter" data-letter="d">d</span><span class="hb-wordmark__letter" data-letter="g">g</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__shimmer" aria-hidden="true">HealthBridge</span></span>
         </a>
-        <div class="nav-row">
+        <div class="nav-row" id="nav-menu">
           <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
-            <li><a href="doctors.html" class="active">Doctors</a></li>
+            <li><a href="doctors.html" class="active" aria-current="page">Doctors</a></li>
             <li><a href="services.html">Services</a></li>
             <li><a href="about.html">About</a></li>
             <li><a href="contact.html">Contact</a></li>
           </ul>
           <div class="nav-actions" id="auth-links">
-            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
-            <a href="pages/auth/login.html#signup" class="btn btn-primary btn-sm"
-              >Sign Up</a
-            >
+            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Log in</a>
+            <a href="pages/auth/register.html" class="btn btn-primary btn-sm">Create account</a>
           </div>
         </div>
       </div>
     </nav>
 
-    <!-- Hero -->
-    <section
-      class="hero hero-sm has-bg"
-      style="
-        background-image: url(&quot;https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=1600&q=80&quot;);
-      "
-    >
-      <div class="hero-content fade-in">
-        <h1>Our Medical <span>Specialists</span></h1>
-        <p>
-          Verified, board-certified physicians across every specialty. Find
-          yours and book in seconds.
-        </p>
-      </div>
-    </section>
-
-    <!-- Trust Metrics Bar -->
-    <div class="trust-bar fade-in-stagger" style="padding-top: var(--s8)">
-      <div class="trust-item">
-        <div class="trust-icon">
-          <i class="fas fa-user-doctor" aria-hidden="true"></i>
-        </div>
-        <div>
-          <div class="trust-value">120+</div>
-          <div class="trust-label">Verified Doctors</div>
-        </div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">
-          <i class="fas fa-star" aria-hidden="true"></i>
-        </div>
-        <div>
-          <div class="trust-value">4.8 / 5.0</div>
-          <div class="trust-label">Avg. Patient Rating</div>
-        </div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">
-          <i class="fas fa-hospital" aria-hidden="true"></i>
-        </div>
-        <div>
-          <div class="trust-value">24 Specialties</div>
-          <div class="trust-label">Departments Covered</div>
-        </div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">
-          <i class="fas fa-calendar-days" aria-hidden="true"></i>
-        </div>
-        <div>
-          <div class="trust-value">Same-Day</div>
-          <div class="trust-label">Booking Available</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Section -->
-    <section
-      style="max-width: 1200px; margin: 0 auto; padding: 0 var(--s8) var(--s16)"
-    >
-      <!-- Specialty Chips (dynamically loaded from departments API) -->
-      <div class="specialty-chips" id="specialty-chips-container">
-        <button class="chip active" data-specialty="all">
-          <i class="fas fa-stethoscope" aria-hidden="true"></i> All Doctors
-        </button>
-      </div>
-
-      <!-- Search & Sort Bar -->
-      <div class="search-filter-bar">
-        <span class="search-icon"
-          ><i class="fas fa-magnifying-glass" aria-hidden="true"></i
-        ></span>
-        <input
-          type="text"
-          id="search-input"
-          placeholder="Search doctors by name or specialty…"
-        />
-        <div class="search-filter-divider"></div>
-        <select id="sort-filter">
-          <option value="default">Default Order</option>
-          <option value="available">Available Today</option>
-          <option value="rating-high">Highest Rated</option>
-          <option value="rating-low">Lowest Rated</option>
-          <option value="exp">Most Experienced</option>
-          <option value="alpha">Alphabetical</option>
-        </select>
-      </div>
-
-      <!-- Results count -->
-      <p class="results-count" id="results-count"></p>
-
-      <!-- Doctors Grid -->
-      <div id="doctors-list" class="doctor-grid">
-        <div class="spinner"></div>
-      </div>
-
-      <!-- How It Works -->
-      <section style="margin-top: var(--s16)">
-        <h2 class="section-title">How It <span>Works</span></h2>
-        <p class="section-subtitle">
-          Booking an appointment is simple, fast, and free.
-        </p>
-        <div class="how-steps fade-in-stagger">
-          <div class="step-card">
-            <div class="step-number">1</div>
-            <h4>Search &amp; Filter</h4>
-            <p>
-              Use specialty chips or the search bar to find doctors that match
-              your health needs.
+    <main id="main-content">
+      <section class="doctors-hero" aria-labelledby="doctors-title">
+        <div class="doctors-container doctors-hero__grid">
+          <div class="doctors-hero__copy">
+            <p class="doctors-eyebrow"><span aria-hidden="true"></span> THE DOCTOR DIRECTORY</p>
+            <div class="doctors-demo-badge">
+              <span class="doctors-demo-badge__mark" aria-hidden="true"></span>
+              <span>Student project · Synthetic records only · Not a live healthcare service</span>
+            </div>
+            <h1 id="doctors-title">Find the right<br /><em>doctor.</em></h1>
+            <p class="doctors-hero__intro">
+              Explore sample specialist profiles, compare the information available,
+              and see how department discovery connects to the existing demo booking journey.
             </p>
+            <div class="doctors-hero__actions">
+              <a href="#doctor-directory" class="btn btn-primary doctors-button">
+                Browse specialists <span aria-hidden="true">↓</span>
+              </a>
+              <a href="services.html" class="doctors-text-link">
+                Explore the experience <span aria-hidden="true">→</span>
+              </a>
+            </div>
           </div>
-          <div class="step-card">
-            <div class="step-number">2</div>
-            <h4>Review Profile</h4>
-            <p>
-              Check their specialty, experience, rating, and real-time
-              availability.
-            </p>
-          </div>
-          <div class="step-card">
-            <div class="step-number">3</div>
-            <h4>Book a Slot</h4>
-            <p>
-              Select your preferred date and time — no phone calls, no waiting
-              on hold.
-            </p>
-          </div>
-          <div class="step-card">
-            <div class="step-number">4</div>
-            <h4>Get Confirmation</h4>
-            <p>
-              Receive an instant confirmation and reminder notification for your
-              visit.
-            </p>
+
+          <div class="doctors-hero__visual" aria-label="Illustration of the doctor directory interface">
+            <div class="directory-preview">
+              <div class="directory-preview__top">
+                <div class="directory-preview__brand">
+                  <span class="directory-preview__mark" aria-hidden="true"></span>
+                  <span>HEALTHBRIDGE</span>
+                </div>
+                <span class="directory-preview__status"><i aria-hidden="true"></i> DIRECTORY</span>
+              </div>
+              <div class="directory-preview__heading">
+                <span class="directory-preview__eyebrow">A CLEARER WAY TO EXPLORE</span>
+                <p>Specialist<br /><em>discovery.</em></p>
+              </div>
+              <div class="directory-preview__counts" aria-label="32 sample doctors across 9 departments">
+                <span class="directory-preview__counts-mark" aria-hidden="true"></span>
+                <span>32 sample doctors <span aria-hidden="true">·</span> 9 departments</span>
+              </div>
+              <div class="directory-preview__departments" aria-hidden="true">
+                <span class="is-active">Cardiology</span>
+                <span>Dentistry</span>
+                <span>Dermatology</span>
+              </div>
+              <div
+                class="directory-preview__profile-stack"
+                role="group"
+                tabindex="0"
+                aria-label="Featured sample doctor profiles. Hover or focus to pause the five-second rotation."
+              >
+                <article class="directory-preview__profile-slide" aria-label="Dr. Ahmed Hassan, Cardiology, 12 years experience. Next: Tomorrow at 9:30 AM.">
+                  <span class="directory-preview__avatar" aria-hidden="true">AH</span>
+                  <span class="directory-preview__profile-copy">
+                    <strong>Dr. Ahmed Hassan</strong>
+                    <small>Cardiology · 12 years experience</small>
+                    <small class="directory-preview__availability">Next: Tomorrow • 9:30 AM</small>
+                  </span>
+                </article>
+                <article class="directory-preview__profile-slide" aria-label="Dr. Yasmin Mansour, Dentistry, 15 years experience. Next: Wednesday, November 25 at 10:45 AM.">
+                  <span class="directory-preview__avatar" aria-hidden="true">YM</span>
+                  <span class="directory-preview__profile-copy">
+                    <strong>Dr. Yasmin Mansour</strong>
+                    <small>Dentistry · 15 years experience</small>
+                    <small class="directory-preview__availability">Next: Wed, Nov 25 • 10:45 AM</small>
+                  </span>
+                </article>
+                <article class="directory-preview__profile-slide" aria-label="Dr. Tarek Mansour, Dermatology, 8 years experience. Next: Monday, November 23 at 9:00 AM.">
+                  <span class="directory-preview__avatar" aria-hidden="true">TM</span>
+                  <span class="directory-preview__profile-copy">
+                    <strong>Dr. Tarek Mansour</strong>
+                    <small>Dermatology · 8 years experience</small>
+                    <small class="directory-preview__availability">Next: Mon, Nov 23 • 9:00 AM</small>
+                  </span>
+                </article>
+              </div>
+              <p class="directory-preview__caption">Samples from the directory below · Synthetic records</p>
+            </div>
+            <div class="doctors-hero__note">
+              <span class="doctors-hero__note-mark" aria-hidden="true">+</span>
+              <p>Thoughtful discovery, with the details kept close at hand.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Booking CTA -->
-      <div class="booking-cta-strip fade-in">
-        <h2>Can't Find the Right Doctor?</h2>
-        <p>
-          Let our support team help match you with the most suitable specialist
-          for your condition.
-        </p>
-        <div class="hero-actions">
-          <a href="contact.html" class="btn btn-primary">Contact Support</a>
-          <a href="services.html" class="btn btn-outline">Browse Services</a>
+      <section class="public-signal-strip" aria-label="What you can explore">
+        <div class="doctors-container public-signal-strip__grid">
+          <article class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">01</span>
+            <div class="public-signal__copy">
+              <h2 class="public-signal__title">Department discovery</h2>
+              <p class="public-signal__detail">Browse the specialties represented in this project.</p>
+            </div>
+          </article>
+          <article class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">02</span>
+            <div class="public-signal__copy">
+              <h2 class="public-signal__title">Sample profiles</h2>
+              <p class="public-signal__detail">Review profile details, experience and available ratings.</p>
+            </div>
+          </article>
+          <article class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">03</span>
+            <div class="public-signal__copy">
+              <h2 class="public-signal__title">Listed availability</h2>
+              <p class="public-signal__detail">Explore the schedule information shown by the demo.</p>
+            </div>
+          </article>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="footer-inner">
-        <!-- Brand -->
-        <div class="footer-brand">
-          <a href="index.html" class="footer-logo">
-            <span style="font-size: 1.3rem"
-              ><i class="fas fa-hospital" aria-hidden="true"></i
-            ></span>
-            <span>HealthBridge</span>
-          </a>
-          <p>
-            Modern healthcare at your fingertips. Book appointments, track your
-            health, and connect with certified medical professionals — anytime,
-            anywhere.
-          </p>
-        </div>
-
-        <!-- Navigation -->
-        <div class="footer-nav-cols">
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Company</div>
-            <ul class="footer-nav-list">
-              <li><a href="index.html">Home</a></li>
-              <li><a href="about.html">About Us</a></li>
-              <li><a href="contact.html">Contact Us</a></li>
-            </ul>
+      <section class="doctors-directory-section" id="doctor-directory" aria-labelledby="directory-title">
+        <div class="doctors-container">
+          <div class="doctors-section-heading">
+            <div>
+              <p class="doctors-eyebrow"><span aria-hidden="true"></span> EXPLORE THE DIRECTORY</p>
+              <h2 id="directory-title">Browse by <em>specialty.</em></h2>
+            </div>
+            <p>
+              Search by name or department, refine the list, and open a profile
+              to explore the information connected to each sample record.
+            </p>
           </div>
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Services</div>
-            <ul class="footer-nav-list">
-              <li><a href="doctors.html">Find a Doctor</a></li>
-              <li><a href="services.html">Our Services</a></li>
-              <li><a href="pages/auth/login.html#signup">Get Started</a></li>
-            </ul>
+
+          <div class="directory-panel">
+            <div class="directory-panel__top">
+              <div>
+                <h3>Find a specialist</h3>
+                <p>Choose a department or start with a name.</p>
+              </div>
+              <span class="directory-panel__scope">SYNTHETIC DEMO DATA</span>
+            </div>
+
+            <div class="directory-filter-heading">
+              <span>Departments</span>
+              <span>Choose one to filter the list</span>
+            </div>
+            <div class="specialty-chips" id="specialty-chips-container" role="group" aria-label="Filter doctors by department">
+              <button class="chip active" type="button" data-specialty="all" aria-pressed="true">
+                <span class="chip-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v5a4 4 0 0 0 8 0V4M6 4h4M14 4h4M12 13v2a4 4 0 0 0 8 0v-1"/><circle cx="20" cy="12" r="1.5"/></svg>
+                </span>
+                All departments
+              </button>
+            </div>
+
+            <div class="directory-controls">
+              <label class="directory-search" for="search-input">
+                <span class="directory-search__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.4 15.4 4.6 4.6"></path></svg></span>
+                <input
+                  type="search"
+                  id="search-input"
+                  aria-label="Search doctors or departments"
+                  placeholder="Search doctors or departments"
+                  autocomplete="off"
+                />
+              </label>
+              <div class="directory-sort">
+                <label for="sort-filter">Sort by</label>
+                <select id="sort-filter" aria-label="Sort doctors">
+                  <option value="default">Default order</option>
+                  <option value="available">Available today</option>
+                  <option value="rating-high">Highest rated</option>
+                  <option value="rating-low">Lowest rated</option>
+                  <option value="exp">Most experienced</option>
+                  <option value="alpha">Alphabetical</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="directory-results-heading">
+            <div>
+              <h3>Specialist profiles</h3>
+              <p id="results-count" aria-live="polite" role="status">Loading sample profiles…</p>
+            </div>
+            <span class="directory-results-note">Profile information is illustrative</span>
+          </div>
+
+          <div id="doctors-list" class="doctor-grid" aria-live="polite" aria-busy="true">
+            <div class="directory-loading" role="status">
+              <span class="directory-loading__spinner" aria-hidden="true"></span>
+              <span>Loading sample profiles…</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="doctors-scope-strip" aria-label="About this directory">
+        <div class="doctors-container doctors-scope-strip__inner">
+          <p class="doctors-scope-strip__label">ABOUT THIS DIRECTORY</p>
+          <p class="doctors-scope-strip__copy">HealthBridge is a student-built software demonstration. All profiles and records are synthetic; this directory does not provide medical advice or access to real healthcare services.</p>
+        </div>
+      </section>
+
+      <section class="doctors-how-it-works" aria-labelledby="doctors-process-title">
+        <div class="doctors-container">
+          <div class="doctors-section-heading doctors-section-heading--compact">
+            <div>
+              <p class="doctors-eyebrow"><span aria-hidden="true"></span> THE JOURNEY</p>
+              <h2 id="doctors-process-title">A clearer path to <em>discovery.</em></h2>
+            </div>
+            <p>Explore how the directory connects profile discovery with the existing patient demo workflow.</p>
+          </div>
+          <div class="doctors-process-grid">
+            <article class="doctors-process-card">
+              <span class="doctors-process-card__number">01</span>
+              <h3>Explore departments</h3>
+              <p>Use the filters or search to narrow the sample directory.</p>
+            </article>
+            <article class="doctors-process-card">
+              <span class="doctors-process-card__number">02</span>
+              <h3>Review a profile</h3>
+              <p>Open a profile to see the information available in the demo.</p>
+            </article>
+            <article class="doctors-process-card">
+              <span class="doctors-process-card__number">03</span>
+              <h3>Explore the workflow</h3>
+              <p>Eligible demo users can continue to the existing patient booking journey.</p>
+            </article>
           </div>
         </div>
+      </section>
 
-        <!-- Contact -->
-        <div class="footer-contact">
-          <div class="footer-contact-label">Get in Touch</div>
-          <div class="footer-contact-items">
-            <a href="tel:+12345678900">
-              <span>+1 (234) 567-890</span>
-              <span class="contact-icon"
-                ><i class="fas fa-phone" aria-hidden="true"></i
-              ></span>
-            </a>
-            <a href="mailto:support@healthbridge.com">
-              <span>support@healthbridge.com</span>
-              <span class="contact-icon"
-                ><i class="fas fa-envelope" aria-hidden="true"></i
-              ></span>
-            </a>
-            <span>
-              <span>El-Nabawy El-Mohandes St, Faiyum, Egypt</span>
-              <span class="contact-icon"
-                ><i class="fas fa-location-dot" aria-hidden="true"></i
-              ></span>
-            </span>
+      <section class="doctors-cta" aria-labelledby="doctors-cta-title">
+        <div class="doctors-container doctors-cta__inner">
+          <div class="doctors-cta__copy">
+            <p class="doctors-eyebrow"><span aria-hidden="true"></span> EXPLORE THE PROJECT</p>
+            <h2 id="doctors-cta-title">See how the pieces<br /><em>fit together.</em></h2>
+          </div>
+          <div class="doctors-cta__actions">
+            <p>Discover the connected patient, doctor and administrator experiences built for this portfolio project.</p>
+            <div class="doctors-cta__links">
+              <a href="pages/auth/login.html" class="btn btn-primary doctors-button">Explore the demo <span aria-hidden="true">↗</span></a>
+              <a href="services.html" class="doctors-text-link">View capabilities <span aria-hidden="true">→</span></a>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+    </main>
 
-      <!-- Bottom bar -->
-      <div class="footer-bottom">
-        <p>
-          &copy; 2026 HealthBridge. All rights reserved. Built for better
-          healthcare.
-        </p>
-        <div class="footer-socials">
-          <a href="#" aria-label="Twitter" title="Twitter">𝕏</a>
-          <a href="#" aria-label="Facebook" title="Facebook">f</a>
-          <a href="#" aria-label="Instagram" title="Instagram">◎</a>
-          <a href="#" aria-label="LinkedIn" title="LinkedIn">in</a>
-        </div>
-      </div>
-    </footer>
+    <div data-shared-footer aria-busy="true"></div>
 
-    <script src="assets/js/core/main.js?v=2"></script>
-    <script src="assets/js/pages/doctors.js?v=2"></script>
+    <script defer src="assets/public-v2/js/pages/doctors.js?v=2"></script>
   </body>
 </html>
-
-
-

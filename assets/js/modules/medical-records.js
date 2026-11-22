@@ -34,31 +34,33 @@ const MedicalRecords = {
    * @param {string} containerId - ID of the container element
    */
   async init(patientId, role, containerId = "medical-record-container") {
-    this.patientId = patientId;
-    this.role = role;
+    this.patientId = safePositiveId(patientId);
+    if (!this.patientId) return;
+    this.role = ["patient", "doctor", "admin"].includes(role) ? role : "";
     this.containerId = containerId;
 
     const container = document.getElementById(containerId);
     if (!container) return;
 
     container.innerHTML =
-      '<p style="color:var(--text-muted);text-align:center;padding:var(--s8)">Loading medical record...</p>';
+      '<p class="mr-state-message mr-state-message--loading">Loading medical record...</p>';
 
     const result = await apiFetch(
-      `${getBasePath()}api/medical/get-record.php?patient_id=${patientId}`,
+      `${getBasePath()}api/medical/get-record.php?patient_id=${this.patientId}`,
       {},
       "Failed to load medical record.",
     );
 
     if (!result.ok || !result.data?.success) {
-      container.innerHTML = `<p style="color:var(--danger);text-align:center;padding:var(--s8)">${
-        result.data?.message || "Failed to load medical record."
+      container.innerHTML = `<p class="mr-state-message mr-state-message--error">${
+        escapeHTML(result.data?.message || "Failed to load medical record.")
       }</p>`;
       return;
     }
 
     this.data = result.data;
-    this.canEdit = result.data.can_edit;
+    this.canEdit = result.data.can_edit === true
+      && ["doctor", "admin"].includes(this.role);
     this.render();
   },
 
@@ -69,10 +71,13 @@ const MedicalRecords = {
     const container = document.getElementById(this.containerId);
     if (!container || !this.data) return;
 
-    const mr = this.data.medical_record || {};
-    const patient = this.data.patient || {};
-    const visits = this.data.visit_history || [];
-    const pendingNotes = this.data.pending_for_notes || [];
+    const mr = this.data.medical_record && typeof this.data.medical_record === "object" && !Array.isArray(this.data.medical_record)
+      ? this.data.medical_record : {};
+    const patient = this.data.patient && typeof this.data.patient === "object" && !Array.isArray(this.data.patient)
+      ? this.data.patient : {};
+    const visits = Array.isArray(this.data.visit_history)
+      ? this.data.visit_history.filter((visit) => visit && typeof visit === "object" && !Array.isArray(visit))
+      : [];
 
     container.innerHTML = `
       <div class="medical-record-container">
@@ -107,8 +112,8 @@ const MedicalRecords = {
    * Render the header with patient name and action buttons.
    */
   renderHeader(patient) {
-    const editBtn = this.canEdit
-      ? `<button class="btn btn-outline btn-sm" onclick="MedicalRecords.openEditModal()">
+    const editBtn = this.canEdit === true && ["doctor", "admin"].includes(this.role)
+      ? `<button class="btn btn-outline btn-sm" data-mr-action="open-edit">
            <i class="fas fa-pen" aria-hidden="true"></i> Edit Record
          </button>`
       : "";
@@ -145,8 +150,7 @@ const MedicalRecords = {
           .map(
             (t) => `
           <button class="mr-tab ${t.id === this.activeTab ? "active" : ""}"
-                  data-mr-tab="${t.id}"
-                  onclick="MedicalRecords.switchTab('${t.id}')">
+                  data-mr-tab="${t.id}">
             <i class="fas ${t.icon}" aria-hidden="true"></i> ${t.label}
           </button>
         `,
@@ -177,14 +181,55 @@ const MedicalRecords = {
    * Bind tab click events (fallback for dynamically created tabs).
    */
   bindTabEvents() {
-    // Tabs use onclick, so no additional binding needed
+    this.bindDelegatedActions();
   },
 
   /**
    * Bind edit button events.
    */
   bindEditButtons() {
-    // Edit buttons use onclick, so no additional binding needed
+    this.bindDelegatedActions();
+  },
+
+  /**
+   * Delegated listener covers the record container and dynamic modal dialogs.
+   * Existing action methods continue to enforce role and capability checks.
+   */
+  bindDelegatedActions() {
+    if (window._hbMedicalRecordsDelegatedActionsBound) return;
+
+    document.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
+
+      const tab = target.closest(".mr-tab[data-mr-tab]");
+      if (tab) {
+        event.preventDefault();
+        const tabId = tab.dataset.mrTab;
+        if (["overview", "history", "allergies", "medications", "visits", "emergency"].includes(tabId)) {
+          MedicalRecords.switchTab(tabId);
+        }
+        return;
+      }
+
+      const action = target.closest("[data-mr-action]");
+      if (!action) return;
+      event.preventDefault();
+
+      switch (action.dataset.mrAction) {
+        case "open-edit":
+          MedicalRecords.openEditModal();
+          break;
+        case "close-edit":
+          MedicalRecords.closeEditModal();
+          break;
+        case "close-visit-note":
+          MedicalRecords.closeVisitNoteModal();
+          break;
+      }
+    });
+
+    window._hbMedicalRecordsDelegatedActionsBound = true;
   },
 
   /**
@@ -207,7 +252,7 @@ const MedicalRecords = {
     ];
 
     return `
-      <h4 style="margin-bottom:var(--s4);color:var(--text-primary)">
+      <h4 class="mr-section-heading">
         <i class="fas fa-heart-pulse" aria-hidden="true"></i> Basic Information
       </h4>
       <div class="mr-info-grid">
@@ -225,9 +270,9 @@ const MedicalRecords = {
       ${
         mr.medical_notes
           ? `
-        <div class="mr-info-card" style="margin-top:var(--s4);grid-column:1/-1">
+        <div class="mr-info-card mr-info-card--wide mr-info-card--spaced">
           <div class="label">Medical Notes</div>
-          <div class="value" style="white-space:pre-wrap">${escapeHTML(mr.medical_notes)}</div>
+          <div class="value mr-pre-wrap">${escapeHTML(mr.medical_notes)}</div>
         </div>
       `
           : ""
@@ -258,14 +303,14 @@ const MedicalRecords = {
     }
 
     return `
-      <h4 style="margin-bottom:var(--s4);color:var(--text-primary)">
+      <h4 class="mr-section-heading">
         <i class="fas fa-notes-medical" aria-hidden="true"></i> Medical History
       </h4>
       <div class="mr-info-grid">
         ${items
           .map(
             (item) => `
-          <div class="mr-info-card" style="${item.label === "Family History" ? "grid-column:1/-1" : ""}">
+          <div class="mr-info-card${item.label === "Family History" ? " mr-info-card--wide" : ""}">
             <div class="label">${item.label}</div>
             <div class="value${item.value ? "" : " empty"}">${item.value ? escapeHTML(item.value) : "None recorded"}</div>
           </div>
@@ -290,20 +335,20 @@ const MedicalRecords = {
       `;
     }
 
-    const allergies = mr.allergies
+    const allergies = (typeof mr.allergies === "string" ? mr.allergies : "")
       .split(",")
       .map((a) => a.trim())
       .filter(Boolean);
 
     return `
-      <h4 style="margin-bottom:var(--s4);color:var(--text-primary)">
+      <h4 class="mr-section-heading">
         <i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Known Allergies
       </h4>
-      <div style="display:flex;flex-wrap:wrap;gap:var(--s3)">
+      <div class="mr-chip-list">
         ${allergies
           .map(
             (a) => `
-          <span class="badge" style="background:rgba(252,165,165,0.1);border:1px solid rgba(252,165,165,0.25);color:var(--danger);padding:var(--s2) var(--s4);font-size:0.85rem">
+          <span class="badge mr-chip mr-chip--allergy">
             <i class="fas fa-ban" aria-hidden="true"></i> ${escapeHTML(a)}
           </span>
         `,
@@ -327,20 +372,20 @@ const MedicalRecords = {
       `;
     }
 
-    const meds = mr.current_medications
+    const meds = (typeof mr.current_medications === "string" ? mr.current_medications : "")
       .split(",")
       .map((m) => m.trim())
       .filter(Boolean);
 
     return `
-      <h4 style="margin-bottom:var(--s4);color:var(--text-primary)">
+      <h4 class="mr-section-heading">
         <i class="fas fa-capsules" aria-hidden="true"></i> Current Medications
       </h4>
-      <div style="display:flex;flex-wrap:wrap;gap:var(--s3)">
+      <div class="mr-chip-list">
         ${meds
           .map(
             (m) => `
-          <span class="badge" style="background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.25);color:var(--success);padding:var(--s2) var(--s4);font-size:0.85rem">
+          <span class="badge mr-chip mr-chip--medication">
             <i class="fas fa-prescription" aria-hidden="true"></i> ${escapeHTML(m)}
           </span>
         `,
@@ -365,9 +410,9 @@ const MedicalRecords = {
     }
 
     return `
-      <h4 style="margin-bottom:var(--s4);color:var(--text-primary)">
+      <h4 class="mr-section-heading">
         <i class="fas fa-calendar-check" aria-hidden="true"></i> Visit History
-        <span style="font-weight:400;font-size:0.8rem;color:var(--text-muted)">(${visits.length} visit${visits.length !== 1 ? "s" : ""})</span>
+        <span class="mr-visit-count">(${visits.length} visit${visits.length !== 1 ? "s" : ""})</span>
       </h4>
       <div class="visit-timeline">
         ${visits
@@ -399,6 +444,10 @@ const MedicalRecords = {
               <div class="visit-field">
                 <div class="field-label">Doctor's Notes</div>
                 <div class="field-value${v.doctor_notes ? "" : " empty"}">${v.doctor_notes ? escapeHTML(v.doctor_notes) : "No additional notes"}</div>
+              </div>
+              <div class="visit-field">
+                <div class="field-label">Follow-up Instructions</div>
+                <div class="field-value${v.follow_up_instructions ? "" : " empty"}">${v.follow_up_instructions ? escapeHTML(v.follow_up_instructions) : "None provided"}</div>
               </div>
             </div>
           </div>
@@ -432,7 +481,7 @@ const MedicalRecords = {
     ];
 
     return `
-      <h4 style="margin-bottom:var(--s4);color:var(--text-primary)">
+      <h4 class="mr-section-heading">
         <i class="fas fa-truck-medical" aria-hidden="true"></i> Emergency Contact
       </h4>
       <div class="mr-info-grid">
@@ -455,7 +504,7 @@ const MedicalRecords = {
    * Only available for doctors and admins.
    */
   openEditModal() {
-    if (!this.canEdit || !this.data) return;
+    if (this.canEdit !== true || !["doctor", "admin"].includes(this.role) || !this.data) return;
 
     const mr = this.data.medical_record || {};
 
@@ -466,10 +515,10 @@ const MedicalRecords = {
       modal.id = "mr-edit-modal";
       modal.className = "modal-overlay";
       modal.innerHTML = `
-        <div class="modal" style="max-width:700px;width:min(700px,100%);max-height:90vh;overflow-y:auto">
-          <div class="flex-between" style="margin-bottom:var(--s6)">
+        <div class="modal mr-medical-record-modal">
+          <div class="flex-between mr-modal-header">
             <h3><i class="fas fa-notes-medical" aria-hidden="true"></i> Edit Medical Record</h3>
-            <button class="btn btn-outline btn-sm" type="button" onclick="MedicalRecords.closeEditModal()">Close</button>
+            <button class="btn btn-outline btn-sm" type="button" data-mr-action="close-edit">Close</button>
           </div>
           <form id="mr-edit-form" class="mr-edit-form" novalidate>
             <div class="form-group">
@@ -541,11 +590,11 @@ const MedicalRecords = {
             </div>
             <div class="form-group full-width">
               <label for="mr-notes">Medical Notes</label>
-              <textarea id="mr-notes" placeholder="General medical notes..." maxlength="5000" style="min-height:100px"></textarea>
+              <textarea id="mr-notes" class="mr-textarea--large" placeholder="General medical notes..." maxlength="5000"></textarea>
             </div>
-            <div class="full-width" style="display:flex;gap:var(--s3);margin-top:var(--s2)">
+            <div class="full-width mr-modal-actions">
               <button type="submit" class="btn btn-primary">Save Changes</button>
-              <button type="button" class="btn btn-outline" onclick="MedicalRecords.closeEditModal()">Cancel</button>
+              <button type="button" class="btn btn-outline" data-mr-action="close-edit">Cancel</button>
             </div>
           </form>
         </div>
@@ -596,8 +645,13 @@ const MedicalRecords = {
    * Save the edited medical record.
    */
   async saveEdit() {
+    const patientId = safePositiveId(this.patientId);
+    if (!patientId || this.canEdit !== true || !["doctor", "admin"].includes(this.role)) {
+      showToast("You are not allowed to edit this medical record.", "error");
+      return;
+    }
     const data = {
-      patient_id: this.patientId,
+      patient_id: patientId,
       blood_type: document.getElementById("mr-blood-type")?.value || "",
       height_cm: document.getElementById("mr-height")?.value || "",
       weight_kg: document.getElementById("mr-weight")?.value || "",
@@ -650,6 +704,8 @@ const MedicalRecords = {
    * @param {string} apptDate
    */
   openVisitNoteModal(appointmentId, doctorName, apptDate) {
+    const safeAppointmentId = safePositiveId(appointmentId);
+    if (!safeAppointmentId || this.role !== "doctor" || this.canEdit !== true) return;
     // Create modal if it doesn't exist
     let modal = document.getElementById("vn-modal");
     if (!modal) {
@@ -657,15 +713,15 @@ const MedicalRecords = {
       modal.id = "vn-modal";
       modal.className = "modal-overlay";
       modal.innerHTML = `
-        <div class="modal" style="max-width:600px;width:min(600px,100%)">
-          <div class="flex-between" style="margin-bottom:var(--s6)">
+        <div class="modal mr-visit-note-modal">
+          <div class="flex-between mr-modal-header">
             <h3><i class="fas fa-notes-medical" aria-hidden="true"></i> Add Visit Note</h3>
-            <button class="btn btn-outline btn-sm" type="button" onclick="MedicalRecords.closeVisitNoteModal()">Close</button>
+            <button class="btn btn-outline btn-sm" type="button" data-mr-action="close-visit-note">Close</button>
           </div>
           <form id="vn-form" class="visit-note-form" novalidate>
             <input type="hidden" id="vn-appointment-id" />
-            <div style="background:var(--bg-surface);padding:var(--s4);border-radius:var(--r-md);border:1px solid var(--border-light)">
-              <p style="margin:0;font-size:0.88rem">
+            <div class="mr-visit-context">
+              <p class="mr-visit-context-text">
                 <strong>Appointment:</strong> <span id="vn-doctor-name"></span>
                 &middot; <span id="vn-appt-date"></span>
               </p>
@@ -684,11 +740,11 @@ const MedicalRecords = {
             </div>
             <div class="form-group">
               <label for="vn-notes">Doctor's Notes</label>
-              <textarea id="vn-notes" placeholder="Additional notes..." maxlength="5000" style="min-height:100px"></textarea>
+              <textarea id="vn-notes" class="mr-textarea--large" placeholder="Additional notes..." maxlength="5000"></textarea>
             </div>
-            <div style="display:flex;gap:var(--s3);margin-top:var(--s2)">
+            <div class="mr-modal-actions">
               <button type="submit" class="btn btn-primary">Save Visit Note</button>
-              <button type="button" class="btn btn-outline" onclick="MedicalRecords.closeVisitNoteModal()">Cancel</button>
+              <button type="button" class="btn btn-outline" data-mr-action="close-visit-note">Cancel</button>
             </div>
           </form>
         </div>
@@ -703,10 +759,11 @@ const MedicalRecords = {
         });
     }
 
-    document.getElementById("vn-appointment-id").value = appointmentId;
+    document.getElementById("vn-appointment-id").value = String(safeAppointmentId);
     document.getElementById("vn-doctor-name").textContent =
-      doctorName || "Doctor";
-    document.getElementById("vn-appt-date").textContent = apptDate || "";
+      typeof doctorName === "string" ? doctorName : "Doctor";
+    document.getElementById("vn-appt-date").textContent =
+      typeof apptDate === "string" ? apptDate : "";
     document.getElementById("vn-diagnosis").value = "";
     document.getElementById("vn-symptoms").value = "";
     document.getElementById("vn-treatment").value = "";
@@ -727,7 +784,7 @@ const MedicalRecords = {
    * Save a visit note.
    */
   async saveVisitNote() {
-    const appointmentId = document.getElementById("vn-appointment-id")?.value;
+    const appointmentId = safePositiveId(document.getElementById("vn-appointment-id")?.value);
     const diagnosis =
       document.getElementById("vn-diagnosis")?.value.trim() || "";
     const symptoms = document.getElementById("vn-symptoms")?.value.trim() || "";
@@ -735,7 +792,7 @@ const MedicalRecords = {
       document.getElementById("vn-treatment")?.value.trim() || "";
     const doctorNotes = document.getElementById("vn-notes")?.value.trim() || "";
 
-    if (!appointmentId || !diagnosis) {
+    if (!appointmentId || this.role !== "doctor" || this.canEdit !== true || !diagnosis) {
       showToast("Diagnosis is required.", "error");
       return;
     }
@@ -750,7 +807,7 @@ const MedicalRecords = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          appointment_id: parseInt(appointmentId),
+          appointment_id: appointmentId,
           diagnosis,
           symptoms,
           treatment,

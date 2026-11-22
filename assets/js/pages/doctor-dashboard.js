@@ -43,13 +43,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function initDoctorHeader(user) {
-  setText("doctor-sidebar-name", user.name || "Doctor");
-  setText("doctor-sidebar-email", user.email || "doctor@healthbridge.com");
-  setText("doctor-sidebar-dept", user.department || user.specialty || "Medical Specialist");
-  setText("doctor-profile-email-val", user.email || "-");
-  setText("doctor-profile-phone-val", user.phone || "-");
+  const doctorName = typeof user?.name === "string" && user.name.trim() ? user.name : "Doctor";
+  const doctorEmail = typeof user?.email === "string" && user.email.trim() ? user.email : "doctor@healthbridge.com";
+  const doctorDepartment = typeof user?.department === "string" && user.department.trim()
+    ? user.department
+    : "";
+  const doctorSpecialty = typeof user?.specialty === "string" && user.specialty.trim()
+    ? user.specialty
+    : "Senior Specialist";
+  const doctorPhone = typeof user?.phone === "string" && user.phone.trim() ? user.phone : "-";
 
-  const avatarText = getInitials(user.name || "Doctor");
+  setText("doctor-sidebar-name", doctorName);
+  setText("doctor-sidebar-email", doctorEmail);
+  setText("doctor-sidebar-dept", doctorDepartment || doctorSpecialty || "Medical Specialist");
+  setText("doctor-profile-email-val", doctorEmail);
+  setText("doctor-profile-phone-val", doctorPhone);
+
+  const avatarText = getInitials(doctorName);
   const sidebarAvatar = document.getElementById("doctor-sidebar-avatar");
   if (sidebarAvatar) sidebarAvatar.textContent = avatarText;
 
@@ -58,15 +68,18 @@ function initDoctorHeader(user) {
 
   const welcome = document.getElementById("doctor-welcome-name");
   if (welcome) {
-    welcome.innerHTML = `<i class="fas fa-stethoscope" aria-hidden="true"></i> Welcome, ${escapeHTML(user.name || "Doctor")}`;
+    const icon = document.createElement("i");
+    icon.className = "fas fa-stethoscope";
+    icon.setAttribute("aria-hidden", "true");
+    welcome.replaceChildren(icon, document.createTextNode(` Welcome, ${doctorName}`));
   }
 
   const profileName = document.getElementById("doctor-profile-fullname");
-  if (profileName) profileName.textContent = user.name || "Doctor";
+  if (profileName) profileName.textContent = doctorName;
 
   const profileDept = document.getElementById("doctor-profile-dept-spec");
   if (profileDept) {
-    profileDept.textContent = `${user.department || "General Practice"} • ${user.specialty || "Senior Specialist"}`;
+    profileDept.textContent = `${doctorDepartment || "General Practice"} • ${doctorSpecialty}`;
   }
 
   const dateEl = document.getElementById("doctor-hero-date");
@@ -77,12 +90,15 @@ function initDoctorHeader(user) {
       month: "long",
       day: "numeric"
     });
-    dateEl.innerHTML = `<i class="far fa-calendar-alt" aria-hidden="true"></i> ${todayStr}`;
+    const icon = document.createElement("i");
+    icon.className = "far fa-calendar-alt";
+    icon.setAttribute("aria-hidden", "true");
+    dateEl.replaceChildren(icon, document.createTextNode(` ${todayStr}`));
   }
 }
 
 function getInitials(name) {
-  if (!name) return "DR";
+  if (typeof name !== "string" || !name.trim()) return "DR";
   const parts = name.replace(/^Dr\.\s*/i, "").trim().split(/\s+/);
   if (parts.length >= 2) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -93,6 +109,18 @@ function getInitials(name) {
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
+}
+
+function getDoctorWorkspaceUrl(appointment) {
+  const patientId = safePositiveId(appointment?.user_id);
+  const appointmentId = safePositiveId(appointment?.id);
+  if (!patientId || !appointmentId) return "#";
+
+  const params = new URLSearchParams({
+    patient_id: String(patientId),
+    appointment_id: String(appointmentId),
+  });
+  return `${getBasePath()}pages/doctor/doctor-workspace.html?${params.toString()}`;
 }
 
 /* ============================================================
@@ -210,7 +238,11 @@ async function loadDoctorAppointments() {
     return;
   }
 
-  allAppointments = result.data.appointments || [];
+  allAppointments = Array.isArray(result.data.appointments)
+    ? result.data.appointments.filter((appointment) =>
+        appointment && typeof appointment === "object" && !Array.isArray(appointment)
+      )
+    : [];
 
   // Update KPI Cards
   const pendingCount = allAppointments.filter(a => a.status === "Pending").length;
@@ -239,7 +271,9 @@ function filterDoctorAppointments() {
   const status = document.getElementById("doctor-status-filter")?.value || "";
   let filtered = allAppointments;
   filtered = filterData(filtered, query, ["patient_name", "notes", "department"]);
-  if (status) filtered = filtered.filter(a => (a.status || "").toLowerCase() === status.toLowerCase());
+  if (status) filtered = filtered.filter(a =>
+    (typeof a.status === "string" ? a.status : "").toLowerCase() === status.toLowerCase()
+  );
   renderDoctorAppointments(filtered);
 }
 
@@ -248,68 +282,73 @@ function renderDoctorAppointments(appointments) {
   if (!container) return;
 
   if (appointments.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:var(--s8)">No matching appointments found.</p>';
+    container.innerHTML = '<p class="doctor-dashboard-empty--secondary">No matching appointments found.</p>';
     return;
   }
 
   const rows = appointments.map((appt) => {
-    const sc = (appt.status || "pending").toLowerCase();
-    const isPending = appt.status === "Pending";
-    const isConfirmed = appt.status === "Confirmed";
-    const workspaceUrl = `${getBasePath()}pages/doctor/doctor-workspace.html?patient_id=${appt.user_id}&appointment_id=${appt.id}`;
+    const statusText = typeof appt.status === "string" ? appt.status : "Unknown";
+    const sc = safeClassToken(statusText || "pending");
+    const isPending = statusText === "Pending";
+    const isConfirmed = statusText === "Confirmed";
+    const workspaceUrl = getDoctorWorkspaceUrl(appt);
+    const safeAppointmentId = safePositiveId(appt.id);
 
-    const wf = appt.visit_workflow;
-    const wfStatus = wf ? wf.status : null;
-    const wfClass = wfStatus ? wfStatus.toLowerCase().replace(/\s+/g, '_') : '';
+    const wf = appt.visit_workflow && typeof appt.visit_workflow === "object"
+      && !Array.isArray(appt.visit_workflow)
+      ? appt.visit_workflow
+      : null;
+    const wfStatus = typeof wf?.status === "string" ? wf.status : null;
+    const wfClass = wfStatus ? safeClassToken(wfStatus.replace(/\s+/g, '_')) : '';
 
-    const bookingStatusBadge = `<span class="status status-${sc}">${escapeHTML(appt.status)}</span>`;
+    const bookingStatusBadge = `<span class="status status-${sc}">${escapeHTML(statusText)}</span>`;
 
-    let clinicalStatusBadge = '<span style="color:var(--text-muted)">-</span>';
+    let clinicalStatusBadge = '<span class="doctor-dashboard-muted">-</span>';
     if (isConfirmed && wfStatus) {
       clinicalStatusBadge = `<span class="status status-${wfClass}">${escapeHTML(wfStatus)}</span>`;
     }
 
     const hasReschedule = appt.reschedule_status === "pending";
     const rescheduleInfo = hasReschedule ?
-      `<div style="font-size:0.78rem;color:#f59e0b;margin-top:2px;">
-        <i class="fas fa-clock"></i> Reschedule Request: ${appt.pending_reschedule_date || ''} ${appt.pending_reschedule_time || ''}
+      `<div class="doctor-dashboard-rating-note">
+        <i class="fas fa-clock"></i> Reschedule Request: ${escapeHTML(appt.pending_reschedule_date || '')} ${escapeHTML(appt.pending_reschedule_time || '')}
       </div>` : '';
 
     let actions = "";
-    if (isPending) {
+    if (safeAppointmentId && isPending) {
       actions = `
-        <button type="button" class="btn btn-success btn-xs" data-action="accept" data-id="${appt.id}"><i class="fas fa-check"></i> Accept</button>
-        <button type="button" class="btn btn-outline btn-xs" data-action="reject" data-id="${appt.id}" style="color:var(--danger)"><i class="fas fa-times"></i> Decline</button>
+        <button type="button" class="btn btn-success btn-xs" data-action="accept" data-id="${safeAppointmentId}"><i class="fas fa-check"></i> Accept</button>
+        <button type="button" class="btn btn-outline btn-xs doctor-dashboard-danger" data-action="reject" data-id="${safeAppointmentId}"><i class="fas fa-times"></i> Decline</button>
       `;
-    } else if (isConfirmed) {
+    } else if (safeAppointmentId && isConfirmed) {
       actions = `
-        <a href="${workspaceUrl}" class="btn btn-primary btn-xs"><i class="fas fa-folder-open"></i> Open EMR</a>
-        <button type="button" class="btn btn-outline btn-xs" data-action="suggest-reschedule" data-id="${appt.id}"><i class="fas fa-calendar-plus"></i> Reschedule</button>
+        ${workspaceUrl !== "#" ? `<a href="${workspaceUrl}" class="btn btn-primary btn-xs"><i class="fas fa-folder-open"></i> Open EMR</a>` : ""}
+        <button type="button" class="btn btn-outline btn-xs" data-action="suggest-reschedule" data-id="${safeAppointmentId}"><i class="fas fa-calendar-plus"></i> Reschedule</button>
       `;
     }
 
-    if (hasReschedule) {
+    if (safeAppointmentId && hasReschedule) {
       actions += `
-        <button type="button" class="btn btn-success btn-xs" data-action="approve-reschedule" data-id="${appt.id}"><i class="fas fa-check"></i> Approve Time</button>
-        <button type="button" class="btn btn-outline btn-xs" data-action="reject-reschedule" data-id="${appt.id}"><i class="fas fa-times"></i> Reject</button>
+        <button type="button" class="btn btn-success btn-xs" data-action="approve-reschedule" data-id="${safeAppointmentId}"><i class="fas fa-check"></i> Approve Time</button>
+        <button type="button" class="btn btn-outline btn-xs" data-action="reject-reschedule" data-id="${safeAppointmentId}"><i class="fas fa-times"></i> Reject</button>
       `;
     }
 
     return `<tr>
-      <td style="font-weight:600">${escapeHTML(appt.patient_name || "Patient")} ${rescheduleInfo}</td>
+      <td class="doctor-dashboard-font-semibold">${escapeHTML(appt.patient_name || "Patient")} ${rescheduleInfo}</td>
       <td>${escapeHTML(formatDate(appt.date))}</td>
       <td>${escapeHTML(formatApptTime(appt))}</td>
       <td>${escapeHTML(appt.department || "-")}</td>
       <td>${bookingStatusBadge}</td>
       <td>${clinicalStatusBadge}</td>
-      <td style="color:var(--text-secondary);font-size:0.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHTML(appt.notes || "")}">${escapeHTML(appt.notes || "-")}</td>
-      <td><div style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center">${actions}</div></td>
+      <td title="${escapeHTML(appt.notes || "")}" class="doctor-dashboard-notes-cell">${escapeHTML(appt.notes || "-")}</td>
+      <td><div class="doctor-dashboard-inline-actions">${actions}</div></td>
     </tr>`;
   }).join("");
 
   container.innerHTML = `
-    <div class="table-wrap" style="border:none;border-radius:0">
-      <table style="width:100%">
+    <div class="table-wrap doctor-table-wrap--flush">
+      <table class="doctor-dashboard-table--full-width">
         <thead><tr><th>Patient</th><th>Date</th><th>Time</th><th>Department</th><th>Booking Status</th><th>Clinical Workflow</th><th>Notes</th><th>Actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -321,7 +360,7 @@ function handleApptTableActions(e) {
   if (!btn) return;
 
   const action = btn.getAttribute("data-action");
-  const id = parseInt(btn.getAttribute("data-id") || "0");
+  const id = safePositiveId(btn.getAttribute("data-id"));
   if (!id) return;
 
   if (action === "accept") doctorUpdateAppointment(id, "accept");
@@ -342,7 +381,7 @@ function renderPatientQueue() {
   const pendingAndConfirmed = allAppointments.filter(a => a.status === "Pending" || a.status === "Confirmed");
 
   if (pendingAndConfirmed.length === 0) {
-    const emptyHtml = '<p class="text-muted text-center" style="padding:var(--s6)">No patients currently waiting in queue.</p>';
+    const emptyHtml = '<p class="text-muted text-center doctor-dashboard-empty--large">No patients currently waiting in queue.</p>';
     if (dashboardContainer) dashboardContainer.innerHTML = emptyHtml;
     if (fullContainer) fullContainer.innerHTML = emptyHtml;
     return;
@@ -350,21 +389,31 @@ function renderPatientQueue() {
 
   const renderQueueItem = (appt) => {
     const isPending = appt.status === "Pending";
-    const wfStatus = appt.visit_workflow?.status || (isPending ? "Waiting" : "Confirmed");
-    const workspaceUrl = `${getBasePath()}pages/doctor/doctor-workspace.html?patient_id=${appt.user_id}&appointment_id=${appt.id}`;
-    const initials = getInitials(appt.patient_name);
-    const hasAllergy = (appt.notes || "").toLowerCase().includes("allerg");
+    const workflowStatus = appt.visit_workflow && typeof appt.visit_workflow === "object"
+      && typeof appt.visit_workflow.status === "string"
+      ? appt.visit_workflow.status
+      : "";
+    const wfStatus = workflowStatus || (isPending ? "Waiting" : "Confirmed");
+    const workspaceUrl = getDoctorWorkspaceUrl(appt);
+    const safePatientId = safePositiveId(appt.user_id);
+    const patientName = typeof appt.patient_name === "string" ? appt.patient_name : "Patient";
+    const initials = getInitials(patientName);
+    const notesText = typeof appt.notes === "string" ? appt.notes : "";
+    const hasAllergy = notesText.toLowerCase().includes("allerg");
+    const consultAction = workspaceUrl !== "#"
+      ? `<a href="${workspaceUrl}" class="btn btn-primary btn-xs doctor-dashboard-open-link"><i class="fas fa-stethoscope"></i> Consult</a>`
+      : '<span class="text-muted">Unavailable</span>';
 
     return `
       <div class="queue-card-item">
-        <div class="queue-card-avatar">${initials}</div>
+        <div class="queue-card-avatar">${escapeHTML(initials)}</div>
         <div class="queue-card-info">
-          <div class="queue-card-name">${escapeHTML(appt.patient_name || "Patient")} <span class="ws-sticky-id">#MRN-${appt.user_id || '00'}</span></div>
+          <div class="queue-card-name">${escapeHTML(patientName)} <span class="ws-sticky-id">#MRN-${safePatientId || '00'}</span></div>
           <div class="queue-card-meta">
             <span><i class="far fa-clock"></i> ${escapeHTML(formatApptTime(appt))}</span>
             <span><i class="fas fa-hospital-user"></i> ${escapeHTML(appt.department || "General")}</span>
           </div>
-          ${appt.notes ? `<div class="queue-card-reason"><i class="fas fa-comment-medical"></i> ${escapeHTML(appt.notes)}</div>` : ''}
+          ${notesText ? `<div class="queue-card-reason"><i class="fas fa-comment-medical"></i> ${escapeHTML(notesText)}</div>` : ''}
           <div class="queue-card-badge-row">
             ${hasAllergy ? '<span class="queue-chip-danger"><i class="fas fa-allergies"></i> Allergy Alert</span>' : ''}
             ${isPending ? '<span class="queue-chip-warning"><i class="fas fa-hourglass-half"></i> Pending Review</span>' : ''}
@@ -372,7 +421,7 @@ function renderPatientQueue() {
         </div>
         <div class="queue-card-status">
           <span class="badge ${isPending ? 'badge-warning' : 'badge-primary'}">${escapeHTML(wfStatus)}</span>
-          <a href="${workspaceUrl}" class="btn btn-primary btn-xs" style="margin-top:6px;"><i class="fas fa-stethoscope"></i> Consult</a>
+          ${consultAction}
         </div>
       </div>
     `;
@@ -397,12 +446,12 @@ function renderTodayTimeline() {
   if (countBadge) countBadge.textContent = `${todayAppts.length} Today`;
 
   if (todayAppts.length === 0) {
-    container.innerHTML = '<p class="text-muted text-center" style="padding:var(--s4)">No appointments scheduled for today.</p>';
+    container.innerHTML = '<p class="text-muted text-center doctor-dashboard-empty--medium">No appointments scheduled for today.</p>';
     return;
   }
 
   container.innerHTML = todayAppts.map(appt => {
-    const workspaceUrl = `${getBasePath()}pages/doctor/doctor-workspace.html?patient_id=${appt.user_id}&appointment_id=${appt.id}`;
+    const workspaceUrl = getDoctorWorkspaceUrl(appt);
     return `
       <div class="timeline-session-item">
         <div class="timeline-time">${escapeHTML(formatApptTime(appt))}</div>
@@ -410,7 +459,7 @@ function renderTodayTimeline() {
           <div class="timeline-title">${escapeHTML(appt.patient_name)}</div>
           <div class="timeline-sub">${escapeHTML(appt.department || "Consultation")} • Status: ${escapeHTML(appt.status)}</div>
         </div>
-        <a href="${workspaceUrl}" class="btn btn-outline btn-xs"><i class="fas fa-external-link-alt"></i></a>
+        ${workspaceUrl !== "#" ? `<a href="${workspaceUrl}" class="btn btn-outline btn-xs" aria-label="Open clinical workspace"><i class="fas fa-external-link-alt"></i></a>` : '<span class="text-muted">Unavailable</span>'}
       </div>
     `;
   }).join("");
@@ -422,13 +471,13 @@ function renderRecentActivity() {
 
   const recent = allAppointments.slice(0, 5);
   if (recent.length === 0) {
-    container.innerHTML = '<p class="text-muted text-center" style="padding:var(--s4)">No recent activity recorded.</p>';
+    container.innerHTML = '<p class="text-muted text-center doctor-dashboard-empty--medium">No recent activity recorded.</p>';
     return;
   }
 
   container.innerHTML = recent.map(appt => `
     <div class="activity-feed-item">
-      <div class="activity-icon"><i class="fas fa-check-circle" style="color:var(--primary)"></i></div>
+      <div class="activity-icon"><i class="fas fa-check-circle doctor-dashboard-icon--primary"></i></div>
       <div class="activity-content">
         <div class="activity-title">Appointment for ${escapeHTML(appt.patient_name)}</div>
         <div class="activity-time">${escapeHTML(formatDate(appt.date))} at ${escapeHTML(formatApptTime(appt))}</div>
@@ -570,17 +619,19 @@ async function loadDoctorNotifications() {
     return;
   }
 
-  let notifications = res.notifications || [];
-  updateNotificationBadge(res.unread_count || 0);
+  let notifications = Array.isArray(res.notifications)
+    ? res.notifications.filter(n => n && typeof n === "object" && !Array.isArray(n))
+    : [];
+  updateNotificationBadge(safeCount(res.unread_count, 0));
 
   // Apply Filter
   const filterVal = document.getElementById("doctor-notif-filter")?.value || "all";
   if (filterVal === "unread") {
     notifications = notifications.filter(n => !n.is_read);
   } else if (filterVal === "appointments") {
-    notifications = notifications.filter(n => (n.type || "").startsWith("appointment"));
+    notifications = notifications.filter(n => (typeof n.type === "string" ? n.type : "").startsWith("appointment"));
   } else if (filterVal === "system") {
-    notifications = notifications.filter(n => !(n.type || "").startsWith("appointment"));
+    notifications = notifications.filter(n => !(typeof n.type === "string" ? n.type : "").startsWith("appointment"));
   }
 
   if (notifications.length === 0) {
@@ -594,7 +645,8 @@ async function loadDoctorNotifications() {
 
   const groups = { Today: [], Yesterday: [], Earlier: [] };
   notifications.forEach(n => {
-    const dStr = new Date(n.created_at).toDateString();
+    const timestamp = typeof n.created_at === "string" ? Date.parse(n.created_at) : NaN;
+    const dStr = Number.isFinite(timestamp) ? new Date(timestamp).toDateString() : "";
     if (dStr === todayStr) groups.Today.push(n);
     else if (dStr === yesterdayStr) groups.Yesterday.push(n);
     else groups.Earlier.push(n);
@@ -605,21 +657,26 @@ async function loadDoctorNotifications() {
     if (groups[groupName].length === 0) return;
     html += `<div class="notif-group-header"><i class="far fa-clock"></i> ${groupName}</div>`;
     html += groups[groupName].map(n => {
-      const isUrgent = (n.type || "").includes("request") || (n.type || "").includes("cancelled");
-      const iconClass = isUrgent ? "icon-warning" : ((n.type || "").includes("confirmed") ? "icon-success" : "icon-primary");
+      const notificationId = safePositiveId(n.id);
+      const notificationType = typeof n.type === "string" ? n.type : "";
+      const createdAt = typeof n.created_at === "string" && Number.isFinite(Date.parse(n.created_at))
+        ? n.created_at
+        : null;
+      const isUrgent = notificationType.includes("request") || notificationType.includes("cancelled");
+      const iconClass = isUrgent ? "icon-warning" : (notificationType.includes("confirmed") ? "icon-success" : "icon-primary");
       return `
-        <div class="notif-panel-card ${n.is_read ? '' : 'unread'}" data-id="${n.id}">
+        <div class="notif-panel-card ${n.is_read ? '' : 'unread'}" data-id="${notificationId || ""}">
           <div class="notif-panel-icon ${iconClass}">
             <i class="fas ${isUrgent ? 'fa-exclamation-circle' : 'fa-bell'}"></i>
           </div>
           <div class="notif-panel-body">
             <div class="notif-panel-title-row">
               <div class="notif-panel-title">${escapeHTML(n.title || "Notification")}</div>
-              <div class="notif-panel-time">${escapeHTML(NotificationService.getRelativeTime(n.created_at))}</div>
+              <div class="notif-panel-time">${escapeHTML(createdAt ? NotificationService.getRelativeTime(createdAt) : "—")}</div>
             </div>
             <div class="notif-panel-message">${escapeHTML(n.message || "")}</div>
             <div class="notif-panel-actions">
-              ${!n.is_read ? `<button type="button" class="btn btn-xs btn-outline notif-mark-btn" data-id="${n.id}"><i class="fas fa-check"></i> Mark Read</button>` : ''}
+              ${!n.is_read && notificationId ? `<button type="button" class="btn btn-xs btn-outline notif-mark-btn" data-id="${notificationId}"><i class="fas fa-check"></i> Mark Read</button>` : ''}
             </div>
           </div>
         </div>
@@ -633,7 +690,7 @@ async function loadDoctorNotifications() {
   container.querySelectorAll(".notif-mark-btn").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      const notifId = parseInt(btn.getAttribute("data-id"));
+      const notifId = safePositiveId(btn.getAttribute("data-id"));
       if (notifId && window.NotificationService) {
         await NotificationService.markAsRead(notifId);
         loadDoctorNotifications();
@@ -646,31 +703,54 @@ function updateNotificationBadge(unreadCount) {
   const badge = document.getElementById("doctor-notif-badge");
   if (badge) {
     badge.textContent = unreadCount;
-    badge.style.display = unreadCount > 0 ? "inline-block" : "none";
+    badge.classList.toggle("is-visible", Number(unreadCount) > 0);
   }
 }
 
 async function loadDoctorRatings() {
   const result = await apiFetch(getBasePath() + "api/doctors/get-doctor-ratings.php", {}, "Failed to load reviews.");
-  const ratings = result.data?.ratings || [];
+  const sourceRatings = Array.isArray(result.data?.ratings)
+    ? result.data.ratings.filter(rating => rating && typeof rating === "object" && !Array.isArray(rating))
+    : [];
+  const ratings = sourceRatings
+    .map(rating => ({
+      stars: safeCount(rating.stars, 0),
+      review: typeof rating.review === "string" ? rating.review : "",
+      review_date: typeof rating.review_date === "string" ? rating.review_date : "",
+      appt_date: typeof rating.appt_date === "string" ? rating.appt_date : "",
+    }))
+    .filter(rating => rating.stars >= 1 && rating.stars <= 5);
 
-  let avgRating = "5.0";
+  let avgRating = ratings.length
+    ? (ratings.reduce((sum, r) => sum + r.stars, 0) / ratings.length).toFixed(1)
+    : "No ratings yet";
   const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
-  if (ratings.length > 0) {
-    let sum = 0;
-    ratings.forEach(r => {
-      const s = Math.min(5, Math.max(1, parseInt(r.stars) || 5));
-      counts[s] = (counts[s] || 0) + 1;
-      sum += s;
-    });
-    avgRating = (sum / ratings.length).toFixed(1);
-  }
+  ratings.forEach(r => {
+    counts[r.stars] = (counts[r.stars] || 0) + 1;
+  });
 
   setText("doctor-avg-rating", avgRating);
   setText("doctor-profile-rating-score", avgRating);
   setText("doctor-reviews-avg-num", avgRating);
-  setText("doctor-reviews-total-text", `Based on ${ratings.length} patient reviews`);
+  setText("doctor-reviews-total-text", ratings.length ? `Based on ${ratings.length} patient reviews` : "No patient ratings yet");
+
+  const averageStarsEl = document.getElementById("doctor-reviews-avg-stars");
+  if (averageStarsEl) {
+    const filledStars = ratings.length ? Math.round(Number(avgRating)) : 0;
+    const stars = document.createDocumentFragment();
+    for (let index = 0; index < 5; index += 1) {
+      const star = document.createElement("i");
+      star.className = index < filledStars ? "fas fa-star" : "far fa-star";
+      star.setAttribute("aria-hidden", "true");
+      stars.appendChild(star);
+    }
+    averageStarsEl.replaceChildren(stars);
+    averageStarsEl.setAttribute(
+      "aria-label",
+      ratings.length ? `Average rating ${avgRating} out of 5` : "No patient ratings yet"
+    );
+  }
 
   // Update Rating Breakdown Progress Bars
   const total = ratings.length || 1;
@@ -683,7 +763,10 @@ async function loadDoctorRatings() {
       const row = countEl.closest(".rating-bar-row");
       if (row) {
         const fill = row.querySelector(".rating-bar-fill");
-        if (fill) fill.style.width = `${pct}%`;
+        if (fill) {
+          fill.classList.remove(...Array.from(fill.classList).filter(name => /^rating-bar-fill--\d+$/.test(name)));
+          fill.classList.add(`rating-bar-fill--${pct}`);
+        }
       }
     }
   });
@@ -693,15 +776,18 @@ async function loadDoctorRatings() {
   if (!gridContainer) return;
 
   if (ratings.length === 0) {
-    gridContainer.innerHTML = '<p class="text-muted text-center" style="grid-column:1/-1; padding:var(--s8)">No patient reviews submitted yet.</p>';
+    gridContainer.innerHTML = '<p class="text-muted text-center doctor-dashboard-empty--full-row">No patient reviews submitted yet.</p>';
     return;
   }
 
   gridContainer.innerHTML = ratings.map(r => {
-    const starsVal = parseInt(r.stars) || 5;
+    const starsVal = Math.min(5, Math.max(0, safeCount(r.stars, 0)));
     const starDisplay = Array(starsVal).fill('<i class="fas fa-star"></i>').join("") + Array(5 - starsVal).fill('<i class="far fa-star"></i>').join("");
-    const comment = r.review ? escapeHTML(r.review) : `<span style="color:var(--text-muted);font-style:italic">No written comment left.</span>`;
+    const comment = r.review ? escapeHTML(r.review) : `<span class="doctor-dashboard-muted--italic">No written comment left.</span>`;
     const initials = "PT";
+    const visibilityBadge = r.is_hidden
+      ? '<span class="status status-cancelled">Hidden from public</span>'
+      : "";
 
     return `
       <div class="review-card-item">
@@ -709,8 +795,9 @@ async function loadDoctorRatings() {
           <div class="review-card-user">
             <div class="review-card-avatar">${initials}</div>
             <div>
-              <div style="font-weight:600; font-size:0.9rem;">Verified Patient</div>
+              <div class="doctor-dashboard-meta--strong">Verified Patient</div>
               <div class="review-card-stars">${starDisplay} (${starsVal}/5)</div>
+              ${visibilityBadge}
             </div>
           </div>
         </div>

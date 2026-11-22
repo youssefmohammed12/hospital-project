@@ -13,6 +13,42 @@
 "use strict";
 
 let settingsInitialized = false;
+let currentWeeklySchedule = null;
+bindSettingsDelegatedActions();
+
+/**
+ * Shared Settings actions use delegated listeners so both the standalone
+ * Settings page and dynamically injected Settings modal work without
+ * executable event attributes.
+ */
+function bindSettingsDelegatedActions() {
+  if (window._hbSettingsDelegatedActionsBound) return;
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const action = target.closest("[data-settings-action]");
+    if (action) {
+      event.preventDefault();
+      switch (action.dataset.settingsAction) {
+        case "open-delete":
+          openDeleteModal();
+          break;
+        case "close-delete":
+          closeDeleteModal();
+          break;
+        case "close-settings":
+          closeSettings(event);
+          break;
+      }
+      return;
+    }
+
+  });
+
+  window._hbSettingsDelegatedActionsBound = true;
+}
 
 /* ============================================================
    OPEN / CLOSE SETTINGS MODAL
@@ -25,7 +61,7 @@ function openSettings() {
     buildSettingsModal();
   }
   document.getElementById("settings-modal")?.classList.add("open");
-  document.body.style.overflow = "hidden";
+  document.body.classList.add("settings-modal-open");
 
   // Load data if not yet loaded
   if (!settingsInitialized) {
@@ -41,7 +77,7 @@ function closeSettings(e) {
   }
   const modal = document.getElementById("settings-modal");
   if (modal) modal.classList.remove("open");
-  document.body.style.overflow = "";
+  document.body.classList.remove("settings-modal-open");
 }
 
 /* ============================================================
@@ -53,26 +89,20 @@ function buildSettingsModal() {
   if (!document.querySelector('link[href*="settings.css"]')) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = getBasePath() + "assets/css/pages/settings.css?v=3";
+    link.href = getBasePath() + "assets/css/pages/settings.css?v=4";
     document.head.appendChild(link);
   }
 
   const modal = document.createElement("div");
-  modal.className = "modal-overlay";
+  modal.className = "modal-overlay settings-modal-overlay settings-modal-overlay--top-aligned";
   modal.id = "settings-modal";
-  // Use individual properties so modal-overlay background, opacity, pointer-events
-  // from the CSS class are NOT overridden by cssText assignment.
-  modal.style.zIndex = "3000";
-  modal.style.alignItems = "flex-start";
-  modal.style.paddingTop = "60px";
-  modal.style.overflowY = "auto";
 
   modal.innerHTML = `
     <div class="settings-modal-content">
       <!-- Header -->
       <div class="settings-modal-header">
         <h2><i class="fas fa-gear" aria-hidden="true"></i> Settings</h2>
-        <button class="btn btn-outline btn-sm" onclick="closeSettings()" aria-label="Close settings">&times;</button>
+        <button class="btn btn-outline btn-sm" data-settings-action="close-settings" aria-label="Close settings">&times;</button>
       </div>
 
       <!-- Tabs -->
@@ -81,8 +111,8 @@ function buildSettingsModal() {
         <button class="settings-tab" data-section="password"><i class="fas fa-lock" aria-hidden="true"></i> Password</button>
         <button class="settings-tab" data-section="appearance"><i class="fas fa-palette" aria-hidden="true"></i> Appearance</button>
         <button class="settings-tab" data-section="notifications"><i class="fas fa-bell" aria-hidden="true"></i> Notifications</button>
-        <button class="settings-tab" data-section="doctor" id="settings-tab-doctor" style="display:none"><i class="fas fa-stethoscope" aria-hidden="true"></i> Practice</button>
-        <button class="settings-tab" data-section="admin" id="settings-tab-admin" style="display:none"><i class="fas fa-user-tie" aria-hidden="true"></i> Admin</button>
+        <button class="settings-tab" data-section="doctor" id="settings-tab-doctor" hidden><i class="fas fa-stethoscope" aria-hidden="true"></i> Practice</button>
+        <button class="settings-tab" data-section="admin" id="settings-tab-admin" hidden><i class="fas fa-user-tie" aria-hidden="true"></i> Admin</button>
       </div>
 
       <!-- Panels -->
@@ -113,17 +143,17 @@ function buildSettingsModal() {
                 </div>
                 <div class="form-group">
                   <label>Account Type</label>
-                  <input type="text" id="settings-role" disabled style="opacity:0.7;cursor:not-allowed" />
+                  <input type="text" id="settings-role" disabled class="settings-readonly-field" />
                 </div>
               </div>
               <div class="settings-form-row">
                 <div class="form-group">
                   <label>Member Since</label>
-                  <input type="text" id="settings-created" disabled style="opacity:0.7;cursor:not-allowed" />
+                  <input type="text" id="settings-created" disabled class="settings-readonly-field" />
                 </div>
                 <div class="form-group">
                   <label>Account Status</label>
-                  <input type="text" id="settings-status" disabled style="opacity:0.7;cursor:not-allowed" />
+                  <input type="text" id="settings-status" disabled class="settings-readonly-field" />
                 </div>
               </div>
               <div class="settings-form-actions">
@@ -134,13 +164,13 @@ function buildSettingsModal() {
 
           <div class="settings-card settings-card-danger">
             <div class="settings-card-header">
-              <span class="settings-card-icon" style="color:var(--danger)"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span>
-              <div><h3>Danger Zone</h3><p>Permanently delete your account and all associated data.</p></div>
+              <span class="settings-card-icon settings-danger-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span>
+              <div><h3>Account Deactivation</h3><p>Disable sign-in while preserving your clinical and appointment history.</p></div>
             </div>
-            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:var(--s4)">
-              This action cannot be undone. All your appointments, ratings, and messages will be permanently removed.
+            <p class="settings-danger-note">
+              Sign-in will be disabled and appointments that have not started will be cancelled. Your clinical, appointment, and audit history will be retained.
             </p>
-            <button class="btn btn-danger" onclick="openDeleteModal()">Delete My Account</button>
+            <button class="btn btn-outline" data-settings-action="open-delete">Deactivate My Account</button>
           </div>
         </div>
 
@@ -156,7 +186,7 @@ function buildSettingsModal() {
                 <label for="settings-current-pw">Current Password</label>
                 <div class="pw-field">
                   <input type="password" id="settings-current-pw" placeholder="Enter current password" required minlength="6" />
-                  <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password" title="Show password">
+                  <button type="button" class="pw-toggle" data-password-toggle="true" aria-label="Show password" title="Show password">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   </button>
                 </div>
@@ -166,11 +196,11 @@ function buildSettingsModal() {
                   <label for="settings-new-pw">New Password</label>
                   <div class="pw-field">
                     <input type="password" id="settings-new-pw" placeholder="Min. 6 characters" required minlength="6" />
-                    <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password" title="Show password">
+                    <button type="button" class="pw-toggle" data-password-toggle="true" aria-label="Show password" title="Show password">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                   </div>
-                  <div class="pw-strength-wrap" style="margin-top:var(--s1)">
+                  <div class="pw-strength-wrap settings-password-strength">
                     <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-strength-fill"></div></div>
                     <span class="pw-strength-label" id="pw-strength-label"></span>
                   </div>
@@ -179,7 +209,7 @@ function buildSettingsModal() {
                   <label for="settings-confirm-pw">Confirm New Password</label>
                   <div class="pw-field">
                     <input type="password" id="settings-confirm-pw" placeholder="Re-enter new password" required minlength="6" />
-                    <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password" title="Show password">
+                    <button type="button" class="pw-toggle" data-password-toggle="true" aria-label="Show password" title="Show password">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                   </div>
@@ -255,19 +285,29 @@ function buildSettingsModal() {
                   <input type="number" id="settings-consult-duration" min="15" max="120" step="5" value="30" />
                 </div>
                 <div class="form-group">
-                  <label for="settings-work-start">Working Hours Start</label>
-                  <input type="time" id="settings-work-start" value="09:00" />
+                  <label>&nbsp;</label>
+                  <p class="settings-help-text">Choose how long each appointment should take.</p>
                 </div>
               </div>
-              <div class="settings-form-row">
-                <div class="form-group">
-                  <label for="settings-work-end">Working Hours End</label>
-                  <input type="time" id="settings-work-end" value="17:00" />
+              <div id="settings-global-hours">
+                <div class="settings-form-row">
+                  <div class="form-group">
+                    <label for="settings-work-start">Working Hours Start</label>
+                    <input type="time" id="settings-work-start" value="09:00" />
+                  </div>
+                  <div class="form-group">
+                    <label for="settings-work-end">Working Hours End</label>
+                    <input type="time" id="settings-work-end" value="17:00" />
+                  </div>
                 </div>
-                <div class="form-group">
-                  <label>&nbsp;</label>
-                  <p style="font-size:0.8rem;color:var(--text-muted);padding-top:var(--s2)">Set your typical working hours for patient scheduling.</p>
+                <p class="settings-help-text">Set your typical working hours for patient scheduling.</p>
+              </div>
+              <div id="settings-weekly-schedule" class="weekly-schedule-editor" hidden>
+                <div class="weekly-schedule-heading">
+                  <h4>Weekly working hours</h4>
+                  <p class="settings-help-text">Set your working days and hours individually. Times must fit within hospital operating hours.</p>
                 </div>
+                <div id="settings-weekly-days" class="weekly-schedule-days"></div>
               </div>
               <div class="settings-form-actions">
                 <button type="submit" class="btn btn-primary">Save Practice Settings</button>
@@ -304,27 +344,27 @@ function buildSettingsModal() {
       </div>
     </div>
 
-    <!-- Delete Account Modal (nested - NOT a modal-overlay to prevent double overlay stacking) -->
-    <div id="settings-delete-modal" style="position:fixed;inset:0;z-index:3100;display:flex;align-items:center;justify-content:center;padding:var(--s6);opacity:0;pointer-events:none;transition:opacity var(--t);background:rgba(0,0,0,0.5)">
-      <div class="modal" style="max-width:440px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s6)">
-          <h3 style="margin:0;color:var(--danger)"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Delete Account</h3>
-          <button class="close-btn" onclick="closeDeleteModal()">&times;</button>
+    <!-- Deactivate Account Modal (nested - NOT a modal-overlay to prevent double overlay stacking) -->
+    <div id="settings-delete-modal" class="modal-overlay settings-modal-overlay settings-modal-overlay--top-aligned" hidden>
+      <div class="modal settings-delete-modal-content">
+        <div class="settings-delete-modal-header">
+          <h3 class="settings-delete-modal-title"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Deactivate Account</h3>
+          <button class="close-btn" data-settings-action="close-delete">&times;</button>
         </div>
-        <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:var(--s6);line-height:1.6">
-          This will permanently delete your account and all associated data including appointments, ratings, and messages. <strong>This cannot be undone.</strong>
+        <p class="settings-delete-modal-description">
+          This disables sign-in and cancels appointments that have not started. Your medical, appointment, and audit history will be retained. Active clinical visits must be completed before a doctor's account can be deactivated.
         </p>
         <form id="delete-account-form">
           <div class="form-group">
             <label for="delete-confirm-pw">Enter your password to confirm</label>
             <div class="pw-field">
               <input type="password" id="delete-confirm-pw" placeholder="Your password" required />
-              <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password" title="Show password">
+              <button type="button" class="pw-toggle" data-password-toggle="true" aria-label="Show password" title="Show password">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </button>
             </div>
           </div>
-          <button type="submit" class="btn btn-danger btn-block">Permanently Delete My Account</button>
+          <button type="submit" class="btn btn-danger btn-block">Deactivate My Account</button>
         </form>
       </div>
     </div>
@@ -443,25 +483,41 @@ async function loadSettingsData() {
   const panelAdmin = document.getElementById("panel-admin");
 
   if (profile.role === "doctor" && prefs) {
-    if (tabDoctor) tabDoctor.style.display = "";
-    if (panelDoctor) panelDoctor.style.display = "";
+    if (tabDoctor) tabDoctor.hidden = false;
+    if (panelDoctor) panelDoctor.hidden = false;
     setChecked("accept_new_patients", prefs.accept_new_patients == 1);
     setChecked("profile_visible", prefs.profile_visible == 1);
     setVal("settings-consult-duration", prefs.consultation_duration || 30);
-    setVal("settings-work-start", prefs.working_hours_start || "09:00");
-    setVal("settings-work-end", prefs.working_hours_end || "17:00");
+
+    const weeklySchedule = result.data.weekly_schedule;
+    currentWeeklySchedule =
+      Array.isArray(weeklySchedule) && weeklySchedule.length === 7
+        ? weeklySchedule
+        : null;
+    const weeklyEditor = document.getElementById("settings-weekly-schedule");
+    const globalHours = document.getElementById("settings-global-hours");
+    if (Array.isArray(weeklySchedule) && weeklySchedule.length === 7) {
+      if (weeklyEditor) weeklyEditor.hidden = false;
+      if (globalHours) globalHours.hidden = true;
+      renderWeeklySchedule(weeklySchedule);
+    } else {
+      if (weeklyEditor) weeklyEditor.hidden = true;
+      if (globalHours) globalHours.hidden = false;
+      setVal("settings-work-start", prefs.working_hours_start || "09:00");
+      setVal("settings-work-end", prefs.working_hours_end || "17:00");
+    }
   } else {
-    if (tabDoctor) tabDoctor.style.display = "none";
-    if (panelDoctor) panelDoctor.style.display = "none";
+    if (tabDoctor) tabDoctor.hidden = true;
+    if (panelDoctor) panelDoctor.hidden = true;
   }
 
   if (profile.role === "admin" && prefs) {
-    if (tabAdmin) tabAdmin.style.display = "";
-    if (panelAdmin) panelAdmin.style.display = "";
+    if (tabAdmin) tabAdmin.hidden = false;
+    if (panelAdmin) panelAdmin.hidden = false;
     setVal("settings-admin-tab", prefs.admin_default_tab || "overview");
   } else {
-    if (tabAdmin) tabAdmin.style.display = "none";
-    if (panelAdmin) panelAdmin.style.display = "none";
+    if (tabAdmin) tabAdmin.hidden = true;
+    if (panelAdmin) panelAdmin.hidden = true;
   }
 }
 
@@ -477,6 +533,75 @@ function setVal(id, val) {
 function setChecked(name, checked) {
   const el = document.querySelector(`#settings-modal [name="${name}"], [name="${name}"]`);
   if (el) el.checked = checked;
+}
+
+function renderWeeklySchedule(schedule) {
+  const root = document.getElementById("settings-weekly-days");
+  if (!root) return;
+
+  const dayNames = {
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday",
+    6: "Saturday",
+    7: "Sunday",
+  };
+  const byDay = new Map(
+    schedule.map((day) => [Number(day.day_of_week), day]),
+  );
+  root.replaceChildren();
+
+  for (let dayNumber = 1; dayNumber <= 7; dayNumber += 1) {
+    const saved = byDay.get(dayNumber) || {};
+    const row = document.createElement("div");
+    row.className = "weekly-schedule-row";
+
+    const dayTitle = document.createElement("strong");
+    dayTitle.className = "weekly-schedule-day";
+    dayTitle.textContent = dayNames[dayNumber];
+
+    const workingLabel = document.createElement("label");
+    workingLabel.className = "weekly-schedule-working";
+    const workingInput = document.createElement("input");
+    workingInput.type = "checkbox";
+    workingInput.checked = Number(saved.is_working) === 1;
+    workingInput.dataset.weeklyWorking = String(dayNumber);
+    const workingText = document.createElement("span");
+    workingText.textContent = "Working";
+    workingLabel.append(workingInput, workingText);
+
+    const timeFields = document.createElement("div");
+    timeFields.className = "weekly-schedule-times";
+
+    const startLabel = document.createElement("label");
+    startLabel.textContent = "Start";
+    const startInput = document.createElement("input");
+    startInput.type = "time";
+    startInput.value = saved.start_time || "09:00";
+    startInput.dataset.weeklyStart = String(dayNumber);
+    startLabel.append(startInput);
+
+    const endLabel = document.createElement("label");
+    endLabel.textContent = "End";
+    const endInput = document.createElement("input");
+    endInput.type = "time";
+    endInput.value = saved.end_time || "17:00";
+    endInput.dataset.weeklyEnd = String(dayNumber);
+    endLabel.append(endInput);
+
+    const updateDisabledState = () => {
+      startInput.disabled = !workingInput.checked;
+      endInput.disabled = !workingInput.checked;
+    };
+    workingInput.addEventListener("change", updateDisabledState);
+    updateDisabledState();
+
+    timeFields.append(startLabel, endLabel);
+    row.append(dayTitle, workingLabel, timeFields);
+    root.append(row);
+  }
 }
 
 function capitalize(str) {
@@ -510,10 +635,10 @@ function initSettingsTabs() {
       if (pageSections.length) {
         pageSections.forEach((s) => {
           if (s.id === section) {
-            s.style.display = "block";
+            s.hidden = false;
             s.classList.add("active");
           } else {
-            s.style.display = "none";
+            s.hidden = true;
             s.classList.remove("active");
           }
         });
@@ -522,7 +647,7 @@ function initSettingsTabs() {
   });
 
   // Activate first visible tab
-  const firstVisible = Array.from(tabs).find((t) => t.style.display !== "none");
+  const firstVisible = Array.from(tabs).find((t) => !t.hidden);
   if (firstVisible) firstVisible.click();
 }
 
@@ -597,8 +722,14 @@ function initPasswordForm() {
       showToast("All password fields are required.", "error");
       return;
     }
-    if (newPass.length < 6) {
-      showToast("New password must be at least 6 characters.", "error");
+    const passwordErrors = [];
+    if (newPass.length < 8) passwordErrors.push("at least 8 characters");
+    if (!/[A-Z]/.test(newPass)) passwordErrors.push("an uppercase letter");
+    if (!/[a-z]/.test(newPass)) passwordErrors.push("a lowercase letter");
+    if (!/[0-9]/.test(newPass)) passwordErrors.push("a number");
+    if (!/[^A-Za-z0-9]/.test(newPass)) passwordErrors.push("a special character");
+    if (passwordErrors.length > 0) {
+      showToast("New password must include " + passwordErrors.join(", ") + ".", "error");
       return;
     }
     if (newPass !== confirm) {
@@ -629,8 +760,11 @@ function initPasswordForm() {
       newForm.reset();
       const fill = document.getElementById("pw-strength-fill");
       const label = document.getElementById("pw-strength-label");
-      if (fill) fill.style.width = "0%";
-      if (label) label.textContent = "";
+      if (fill) fill.className = "pw-strength-fill pw-strength-fill--level-0";
+      if (label) {
+        label.className = "pw-strength-label pw-strength-label--level-0";
+        label.textContent = "";
+      }
     } else {
       showToast(result.data?.message || "Failed to update password.", "error");
     }
@@ -653,9 +787,10 @@ function initPasswordStrength() {
     if (!fill || !label) return;
 
     let score = 0;
-    if (val.length >= 6) score += 1;
+    if (val.length >= 8) score += 1;
     if (val.length >= 10) score += 1;
     if (/[A-Z]/.test(val)) score += 1;
+    if (/[a-z]/.test(val)) score += 1;
     if (/[0-9]/.test(val)) score += 1;
     if (/[^A-Za-z0-9]/.test(val)) score += 1;
 
@@ -668,11 +803,11 @@ function initPasswordStrength() {
       { pct: 100, color: "var(--success)", text: "Very Strong" },
     ];
 
-    const level = levels[Math.min(score, levels.length - 1)];
-    fill.style.width = level.pct + "%";
-    fill.style.background = level.color;
+    const levelIndex = Math.min(score, levels.length - 1);
+    const level = levels[levelIndex];
+    fill.className = `pw-strength-fill pw-strength-fill--level-${levelIndex}`;
+    label.className = `pw-strength-label pw-strength-label--level-${levelIndex}`;
     label.textContent = level.text;
-    label.style.color = level.color;
   });
 }
 
@@ -795,6 +930,9 @@ function initDoctorForm() {
   if (!form) return;
   const newForm = form.cloneNode(true);
   form.parentNode.replaceChild(newForm, form);
+  if (currentWeeklySchedule) {
+    renderWeeklySchedule(currentWeeklySchedule);
+  }
 
   newForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -811,11 +949,29 @@ function initDoctorForm() {
       consultation_duration: parseInt(
         document.getElementById("settings-consult-duration")?.value || "30",
       ),
-      working_hours_start:
-        document.getElementById("settings-work-start")?.value || "09:00",
-      working_hours_end:
-        document.getElementById("settings-work-end")?.value || "17:00",
     };
+
+    const weeklyEditor = newForm.querySelector("#settings-weekly-schedule");
+    if (weeklyEditor && !weeklyEditor.hidden) {
+      data.weekly_schedule = Array.from(
+        weeklyEditor.querySelectorAll(".weekly-schedule-row"),
+      ).map((row) => {
+        const working = row.querySelector("[data-weekly-working]");
+        const start = row.querySelector("[data-weekly-start]");
+        const end = row.querySelector("[data-weekly-end]");
+        return {
+          day_of_week: Number(working?.dataset.weeklyWorking),
+          start_time: start?.value || "09:00",
+          end_time: end?.value || "17:00",
+          is_working: working?.checked ? 1 : 0,
+        };
+      });
+    } else {
+      data.working_hours_start =
+        document.getElementById("settings-work-start")?.value || "09:00";
+      data.working_hours_end =
+        document.getElementById("settings-work-end")?.value || "17:00";
+    }
 
     const submitBtn = newForm.querySelector('[type="submit"]');
     setLoading(submitBtn, true, "Saving...");
@@ -884,16 +1040,18 @@ function initAdminForm() {
 }
 
 /* ============================================================
-   DELETE ACCOUNT
+   DEACTIVATE ACCOUNT
    ============================================================ */
 
 function openDeleteModal() {
-  const modal = document.getElementById("settings-delete-modal");
+  const modal = document.getElementById("settings-delete-modal")
+    || document.getElementById("delete-modal");
   if (modal) modal.classList.add("open");
 }
 
 function closeDeleteModal() {
-  const modal = document.getElementById("settings-delete-modal");
+  const modal = document.getElementById("settings-delete-modal")
+    || document.getElementById("delete-modal");
   if (modal) modal.classList.remove("open");
   document.getElementById("delete-account-form")?.reset();
 }
@@ -913,13 +1071,13 @@ function initDeleteAccountForm() {
     }
     if (
       !confirm(
-        "Are you absolutely sure? This will permanently delete your account and all associated data.",
+        "Deactivate your account? Sign-in will be disabled and not-started appointments will be cancelled. Medical and audit history will be retained.",
       )
     )
       return;
 
     const submitBtn = newForm.querySelector('[type="submit"]');
-    setLoading(submitBtn, true, "Deleting...");
+    setLoading(submitBtn, true, "Deactivating...");
 
     const result = await apiFetch(
       (getBasePath() + "api/settings/update.php"),
@@ -931,19 +1089,19 @@ function initDeleteAccountForm() {
           confirm_password: password,
         }),
       },
-      "Failed to delete account.",
+      "Failed to deactivate account",
     );
 
-    if (result.data?.success && result.data.message === "account_deleted") {
-      showToast("Your account has been deleted. Redirecting...", "info");
+    if (result.data?.success && result.data.message === "account_deactivated") {
+      showToast("Your account has been deactivated. Redirecting...", "info");
       setTimeout(() => {
         localStorage.removeItem("hb_user");
         window.location.href = getBasePath() + "index.html";
       }, 1500);
     } else {
-      showToast(result.data?.message || "Failed to delete account.", "error");
+      showToast(result.data?.message || "Failed to deactivate account.", "error");
     }
-    setLoading(submitBtn, false, "Permanently Delete My Account");
+    setLoading(submitBtn, false, "Deactivate My Account");
   });
 }
 

@@ -271,3 +271,44 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Section 218: CSP-safe generated Medical Records presentation. */
+.mr-state-message { text-align: center; padding: var(--s8); }
+.mr-state-message--loading { color: var(--text-muted); }
+.mr-state-message--error { color: var(--danger); }
+.mr-section-heading { margin-bottom: var(--s4); color: var(--text-primary); }
+.mr-info-card--wide { grid-column: 1 / -1; }
+.mr-info-card--spaced { margin-top: var(--s4); }
+.mr-pre-wrap { white-space: pre-wrap; }
+.mr-chip-list { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.mr-chip { padding: var(--s2) var(--s4); font-size: 0.85rem; }
+.mr-chip--allergy {
+  background: rgba(252, 165, 165, 0.1);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+  color: var(--danger);
+}
+.mr-chip--medication {
+  background: rgba(134, 239, 172, 0.1);
+  border: 1px solid rgba(134, 239, 172, 0.25);
+  color: var(--success);
+}
+.mr-visit-count { font-weight: 400; font-size: 0.8rem; color: var(--text-muted); }
+.mr-medical-record-modal {
+  max-width: 700px;
+  width: min(700px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.mr-visit-note-modal { max-width: 600px; width: min(600px, 100%); }
+.mr-modal-header { margin-bottom: var(--s6); }
+.mr-edit-form textarea.mr-textarea--large,
+.visit-note-form textarea.mr-textarea--large { min-height: 100px; }
+.mr-modal-actions { display: flex; gap: var(--s3); margin-top: var(--s2); }
+.mr-visit-context {
+  background: var(--bg-surface);
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-light);
+}
+.mr-visit-context-text { margin: 0; font-size: 0.88rem; }

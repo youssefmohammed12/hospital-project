@@ -1,95 +1,88 @@
 <?php
 /**
  * HealthBridge — Submit Rating
- * Allows a patient to rate a doctor after an appointment.
- * Notifies the doctor and admin.
+ * Patients may rate one completed appointment exactly once.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/Repositories/RatingRepository.php';
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
-$user = requireAuth();
-$userId = (int)$user['id'];
+$patient = requireRole('patient');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $input = getJsonInput();
+$appointmentId = parsePositiveInt($input['appointment_id'] ?? null);
+$starsRaw = $input['stars'] ?? null;
+$reviewRaw = $input['review'] ?? '';
 
-$appointmentId = (int)($input['appointment_id'] ?? 0);
-$stars = (int)($input['stars'] ?? 0);
-$review = trim($input['review'] ?? '');
-
-if ($appointmentId <= 0 || $stars < 1 || $stars > 5) {
+if ($appointmentId === null || $appointmentId <= 0) {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Invalid rating data.']);
 }
+if (!(is_int($starsRaw) || (is_string($starsRaw) && ctype_digit($starsRaw)))) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Rating must be between one and five stars.']);
+}
+$stars = (int)$starsRaw;
+if ($stars < 1 || $stars > 5) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Rating must be between one and five stars.']);
+}
+if (!is_string($reviewRaw)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Review must be text.']);
+}
+$review = trim($reviewRaw);
 
 try {
     $db = getDB();
-
-    // Check if already rated
-    $stmt = $db->prepare("SELECT id FROM ratings WHERE appointment_id = ?");
-    $stmt->execute([$appointmentId]);
-    if ($stmt->fetch()) {
-        jsonResponse(false, ['message' => 'You have already rated this appointment.']);
-    }
-
-    // Get appointment details with doctor info
-    $stmt = $db->prepare(
-        "SELECT a.doctor_id, u.name AS doctor_name FROM appointments a 
-         LEFT JOIN users u ON a.doctor_id = u.id 
-         WHERE a.id = ? AND a.user_id = ?"
-    );
-    $stmt->execute([$appointmentId, $userId]);
-    $appt = $stmt->fetch();
-
-    if (!$appt) {
-        jsonResponse(false, ['message' => 'Appointment not found.']);
-    }
-
-    $doctorId = (int)$appt['doctor_id'];
-    $doctorName = $appt['doctor_name'] ?? 'the doctor';
-
-    // Insert rating
-    $stmt = $db->prepare("INSERT INTO ratings (appointment_id, user_id, doctor_id, stars, review, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $stmt->execute([$appointmentId, $userId, $doctorId, $stars, $review]);
-
-    // Update doctor's average rating
-    $stmt = $db->prepare("SELECT AVG(stars) as avg_rating FROM ratings WHERE doctor_id = ?");
-    $stmt->execute([$doctorId]);
-    $avg = $stmt->fetch()['avg_rating'];
-    $stmt = $db->prepare("UPDATE doctors SET rating = ? WHERE user_id = ?");
-    $stmt->execute([round($avg, 1), $doctorId]);
-
-    // Notify doctor
-    $ns = new NotificationService($db);
-    $patientName = $user['name'] ?? 'a patient';
-
-    $ns->create(
-        $doctorId,
-        NotificationService::TYPE_RATING_RECEIVED,
-        'New Rating Received',
-        "You received a {$stars}-star rating from {$patientName}." . ($review ? " Review: {$review}" : ""),
-        'rating',
-        $appointmentId
+    $ratings = new RatingRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_RATINGS_SCHEMA'));
+    $ratings->submitForCompletedAppointment(
+        $appointmentId,
+        (int)$patient['id'],
+        $stars,
+        $review
     );
 
-    // Notify admin
-    $stmt = $db->prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-    $stmt->execute();
-    $admin = $stmt->fetch();
-    if ($admin) {
-        $ns->create(
-            (int)$admin['id'],
-            NotificationService::TYPE_RATING_RECEIVED,
-            'New Doctor Rating',
-            "{$patientName} rated {$doctorName} {$stars} stars.",
-            'rating',
-            $appointmentId
-        );
+    $notifications = new NotificationService($db);
+    try {
+        $notifications->processOutbox(50);
+    } catch (Throwable $notificationError) {
+        error_log('Submit Rating Outbox Dispatch Error: ' . get_class($notificationError));
     }
 
     jsonResponse(true, ['message' => 'Rating submitted successfully.']);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    if ($message === 'Appointment not found.') {
+        http_response_code(404);
+    } elseif (str_contains($message, 'completed visit')) {
+        http_response_code(409);
+    } elseif (str_contains($message, 'already rated')) {
+        http_response_code(409);
+    } else {
+        http_response_code(403);
+    }
+    jsonResponse(false, ['message' => $message]);
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    if (isset($db) && $db instanceof PDO && $db->inTransaction()) {
+        $db->rollBack();
+    }
+    if (isDuplicateKeyViolation($e)) {
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'You have already rated this appointment.']);
+    }
     error_log('Submit Rating Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to submit rating.']);

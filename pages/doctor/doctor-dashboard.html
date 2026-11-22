@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
   <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g" crossorigin="anonymous" />
   <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=3" />
   <link rel="stylesheet" href="../../assets/css/pages/admin.css?v=3" />
   <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
@@ -32,9 +32,9 @@
           <li><a href="../../contact.html">Contact</a></li>
         </ul>
         <div class="nav-actions" id="auth-links">
-          <button type="button" class="btn btn-icon btn-outline" id="doctor-notif-bell" aria-label="Notifications" title="Notifications" style="position: relative;">
+          <button type="button" class="btn btn-icon btn-outline doctor-notification-trigger" id="doctor-notif-bell" aria-label="Notifications" title="Notifications">
             <i class="fas fa-bell" aria-hidden="true"></i>
-            <span class="badge badge-danger" id="doctor-notif-badge" style="display: none; position: absolute; top: -4px; right: -4px; font-size: 0.65rem; padding: 2px 5px; border-radius: 10px;">0</span>
+            <span class="badge badge-danger doctor-notification-badge" id="doctor-notif-badge">0</span>
           </button>
           <div class="doctor-nav-user" id="doctor-nav-user-info">
             <span class="doctor-badge-online"><i class="fas fa-circle"></i> EMR Online</span>
@@ -49,7 +49,7 @@
       <div>
         <div class="sidebar-user">
           <div class="sidebar-avatar-container">
-            <div class="sidebar-avatar" id="doctor-sidebar-avatar" style="background: var(--primary-glow); border-color: var(--border)">DR</div>
+            <div class="sidebar-avatar doctor-sidebar-avatar" id="doctor-sidebar-avatar">DR</div>
             <div class="status-dot" id="doctor-sidebar-status-dot" title="System Status: Online"></div>
           </div>
           <h3 id="doctor-sidebar-name">Doctor Panel</h3>
@@ -201,7 +201,7 @@
               <i class="fas fa-toggle-on" aria-hidden="true"></i>
             </div>
             <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="avail-status-text" style="font-size: 1.1rem;">Available</div>
+              <div class="doctor-stat-value doctor-availability-value" id="avail-status-text">Available</div>
               <div class="doctor-stat-label" id="avail-switch-label">Booking Status</div>
             </div>
             <label class="switch" title="Toggle Booking Availability">
@@ -224,7 +224,7 @@
               <a href="#queue" class="btn btn-link btn-sm" id="view-all-queue-btn">View Full Queue &rarr;</a>
             </div>
             <div class="widget-body" id="dashboard-queue-container">
-              <p class="text-muted text-center" style="padding: var(--s6);">Loading queue...</p>
+              <p class="text-muted text-center doctor-empty-state--large">Loading queue...</p>
             </div>
           </div>
 
@@ -241,7 +241,7 @@
                 <span class="badge badge-info" id="today-timeline-count">0 Sessions</span>
               </div>
               <div class="widget-body" id="dashboard-timeline-container">
-                <p class="text-muted text-center" style="padding: var(--s4);">No appointments scheduled for today.</p>
+                <p class="text-muted text-center doctor-padding--medium">No appointments scheduled for today.</p>
               </div>
             </div>
 
@@ -254,7 +254,7 @@
                 </div>
               </div>
               <div class="widget-body" id="dashboard-activity-container">
-                <p class="text-muted text-center" style="padding: var(--s4);">Loading recent activity...</p>
+                <p class="text-muted text-center doctor-padding--medium">Loading recent activity...</p>
               </div>
             </div>
 
@@ -267,7 +267,7 @@
            PATIENT QUEUE TAB
            ============================================================ -->
       <section id="queue" role="tabpanel" aria-labelledby="nav-tab-queue">
-        <div class="card" style="padding: 0; overflow: hidden">
+        <div class="card doctor-card--flush">
           <div class="doctor-section-header">
             <div class="doctor-section-header-left">
               <h2 class="doctor-section-title">
@@ -278,7 +278,7 @@
             </div>
           </div>
           <div class="queue-full-list" id="queue-full-container">
-            <p class="text-muted text-center" style="padding: var(--s8);">Loading queue...</p>
+            <p class="text-muted text-center doctor-empty-state--spacious">Loading queue...</p>
           </div>
         </div>
       </section>
@@ -287,7 +287,7 @@
            APPOINTMENTS TAB
            ============================================================ -->
       <section id="appointments" role="tabpanel" aria-labelledby="nav-tab-appointments">
-        <div class="card" style="padding: 0; overflow: hidden">
+        <div class="card doctor-card--flush">
           <div class="doctor-section-header">
             <div class="doctor-section-header-left">
               <h2 class="doctor-section-title">
@@ -302,7 +302,7 @@
               <input type="text" id="doctor-appt-search" placeholder="Search by patient name, department, or notes..." />
             </div>
             <div class="filter-group">
-              <label for="doctor-status-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Status Filter:</label>
+              <label for="doctor-status-filter" class="label-muted-sm">Status Filter:</label>
               <select id="doctor-status-filter">
                 <option value="">All Statuses</option>
                 <option value="pending">Pending Requests</option>
@@ -311,9 +311,9 @@
               </select>
             </div>
           </div>
-          <div class="table-wrap" style="border: none; border-radius: 0">
+          <div class="table-wrap doctor-table-wrap--flush">
             <div id="appointments-container">
-              <p style="color: var(--text-secondary); text-align: center; padding: var(--s8)">Loading appointments...</p>
+              <p class="doctor-empty-state--secondary">Loading appointments...</p>
             </div>
           </div>
         </div>
@@ -350,8 +350,8 @@
            NOTIFICATIONS TAB
            ============================================================ -->
       <section id="notifications" role="tabpanel" aria-labelledby="nav-tab-notifications">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="doctor-section-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="card doctor-card--flush">
+          <div class="doctor-section-header doctor-section-header--toolbar">
             <div class="doctor-section-header-left">
               <h2 class="doctor-section-title">
                 <i class="fas fa-bell" aria-hidden="true"></i>
@@ -365,7 +365,7 @@
           </div>
           <div class="table-controls">
             <div class="filter-group">
-              <label for="doctor-notif-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Filter:</label>
+              <label for="doctor-notif-filter" class="label-muted-sm">Filter:</label>
               <select id="doctor-notif-filter">
                 <option value="all">All Notifications</option>
                 <option value="unread">Unread Only</option>
@@ -374,8 +374,8 @@
               </select>
             </div>
           </div>
-          <div class="doctor-notifications-list" id="doctor-notifications-container" style="padding: var(--s4);">
-            <p class="text-muted text-center" style="padding: var(--s8);">Loading notifications...</p>
+          <div class="doctor-notifications-list doctor-padding--medium" id="doctor-notifications-container">
+            <p class="text-muted text-center doctor-empty-state--spacious">Loading notifications...</p>
           </div>
         </div>
       </section>
@@ -384,7 +384,7 @@
            REVIEWS TAB
            ============================================================ -->
       <section id="reviews" role="tabpanel" aria-labelledby="nav-tab-reviews">
-        <div class="card" style="padding: 0; overflow: hidden">
+        <div class="card doctor-card--flush">
           <div class="doctor-section-header">
             <div class="doctor-section-header-left">
               <h2 class="doctor-section-title">
@@ -405,17 +405,17 @@
               <div class="rating-score-total" id="doctor-reviews-total-text">Based on 0 reviews</div>
             </div>
             <div class="rating-bars-wrap" id="doctor-reviews-bars">
-              <div class="rating-bar-row"><span>5 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-5-count">0</span></div>
-              <div class="rating-bar-row"><span>4 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-4-count">0</span></div>
-              <div class="rating-bar-row"><span>3 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-3-count">0</span></div>
-              <div class="rating-bar-row"><span>2 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-2-count">0</span></div>
-              <div class="rating-bar-row"><span>1 Star</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-1-count">0</span></div>
+              <div class="rating-bar-row"><span>5 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill doctor-rating-bar--empty"></div></div><span id="star-5-count">0</span></div>
+              <div class="rating-bar-row"><span>4 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill doctor-rating-bar--empty"></div></div><span id="star-4-count">0</span></div>
+              <div class="rating-bar-row"><span>3 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill doctor-rating-bar--empty"></div></div><span id="star-3-count">0</span></div>
+              <div class="rating-bar-row"><span>2 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill doctor-rating-bar--empty"></div></div><span id="star-2-count">0</span></div>
+              <div class="rating-bar-row"><span>1 Star</span><div class="rating-bar-track"><div class="rating-bar-fill doctor-rating-bar--empty"></div></div><span id="star-1-count">0</span></div>
             </div>
           </div>
 
           <!-- Reviews Grid -->
           <div class="reviews-cards-grid" id="doctor-reviews-grid">
-            <p class="text-muted text-center" style="grid-column: 1 / -1; padding: var(--s8);">Loading patient reviews...</p>
+            <p class="text-muted text-center doctor-empty-state--full-row">Loading patient reviews...</p>
           </div>
         </div>
       </section>
@@ -437,7 +437,7 @@
               </div>
             </div>
           </div>
-          <div class="doctor-profile-grid" style="margin-top: var(--s6);">
+          <div class="doctor-profile-grid doctor-profile-grid--spaced">
             <div class="doctor-profile-stat-box">
               <i class="fas fa-stethoscope"></i>
               <div class="number" id="doctor-profile-total-visits">0</div>
@@ -462,13 +462,13 @@
            ============================================================ -->
       <section id="settings" role="tabpanel" aria-labelledby="nav-tab-settings">
         <div class="card doctor-card-padded">
-          <div class="doctor-section-header" style="margin-bottom: var(--s6); border-radius: var(--r-md);">
+          <div class="doctor-section-header doctor-section-header--settings">
             <div class="doctor-section-header-left">
               <h2 class="doctor-section-title"><i class="fas fa-gear"></i> Doctor Portal Settings</h2>
               <p class="doctor-section-subtitle">Customize workspace preferences, notification rules, and EMR autosave intervals.</p>
             </div>
           </div>
-          <form id="doctor-settings-form" class="form-grid" novalidate style="padding: 0 var(--s2);">
+          <form id="doctor-settings-form" class="form-grid doctor-settings-form" novalidate>
             <div class="form-group">
               <label for="pref-visit-duration">Default Consultation Duration (Minutes)</label>
               <select id="pref-visit-duration" class="form-control">
@@ -486,13 +486,13 @@
                 <option value="30000">30 Seconds</option>
               </select>
             </div>
-            <div class="form-group" style="grid-column: 1 / -1; margin-top: var(--s2);">
-              <label class="checkbox-label" style="display:inline-flex; align-items:center; gap: var(--s3); cursor:pointer;">
-                <input type="checkbox" id="pref-notif-email" checked style="width:18px; height:18px; accent-color:var(--primary);" />
-                <span style="font-size:0.9rem; color:var(--text-primary);">Receive email notifications for urgent patient appointment requests</span>
+            <div class="form-group doctor-settings-form__full-row">
+              <label class="checkbox-label doctor-settings-checkbox">
+                <input type="checkbox" id="pref-notif-email" checked / class="doctor-settings-checkbox__input">
+                <span class="doctor-settings-checkbox__label">Receive email notifications for urgent patient appointment requests</span>
               </label>
             </div>
-            <div class="form-actions" style="grid-column: 1 / -1; margin-top: var(--s4);">
+            <div class="form-actions doctor-settings-actions">
               <button type="submit" class="btn btn-primary" id="doctor-save-settings-btn">
                 <i class="fas fa-save"></i> Save Settings
               </button>
@@ -504,10 +504,10 @@
     </main>
   </div>
 
-  <script src="../../assets/js/core/main.js?v=3"></script>
-  <script src="../../assets/js/modules/schedule.js?v=3"></script>
-  <script src="../../assets/js/modules/notifications.js?v=3"></script>
+  <script src="../../assets/js/core/main.js?v=7"></script>
+  <script src="../../assets/js/modules/schedule.js?v=4"></script>
+  <script src="../../assets/js/modules/notifications.js?v=5"></script>
   <script src="../../assets/js/pages/settings.js?v=3"></script>
-  <script src="../../assets/js/pages/doctor-dashboard.js?v=3"></script>
+  <script src="../../assets/js/pages/doctor-dashboard.js?v=4"></script>
 </body>
 </html>

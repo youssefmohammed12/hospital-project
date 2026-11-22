@@ -1,193 +1,293 @@
 /**
- * HealthBridge — Home Page JavaScript
- * Handles: hero search redirect, stat counter animation, dynamic department cards.
- * Scroll animations are handled globally by main.js (initScrollAnimations).
- *
- * Phase 6.1: Clinical Departments section now loads dynamically from the
- * centralized departments API. Only active departments are shown.
- *
- * Used by: index.html
+ * Homepage controller.
+ * Preserves the doctor-directory query contract and the read-only departments API.
+ * Owns the homepage entrance and scroll-reveal choreography; shared page behavior
+ * remains in core/main.js.
  */
-
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Hero search — Enter key redirects to doctors page with query
-  const heroSearch = document.getElementById("hero-search");
-  if (heroSearch) {
-    heroSearch.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const query = encodeURIComponent(heroSearch.value.trim());
-        window.location.href = query ? `doctors.html?q=${query}` : getBasePath() + "doctors.html";
-      }
-    });
+  const searchInput = document.getElementById("hero-search");
+  const searchSubmit = document.getElementById("hero-search-submit");
+
+  const goToDoctors = () => {
+    const query = searchInput?.value?.trim() || "";
+    const destination = new URL(getBasePath() + "doctors.html", window.location.href);
+    if (query) destination.searchParams.set("q", query);
+    window.location.assign(destination.href);
+  };
+
+  searchInput?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    goToDoctors();
+  });
+
+  searchSubmit?.addEventListener("click", (event) => {
+    event.preventDefault();
+    goToDoctors();
+  });
+
+  const navMenu = document.getElementById("nav-menu");
+  const navToggle = document.querySelector(".nav-toggle");
+  if (navMenu && navToggle) {
+    const syncNavState = () => {
+      const expanded = navMenu.classList.contains("open");
+      navToggle.setAttribute("aria-controls", "nav-menu");
+      navToggle.setAttribute("aria-expanded", String(expanded));
+      navToggle.setAttribute("aria-label", expanded ? "Close navigation menu" : "Open navigation menu");
+    };
+
+    syncNavState();
+    navToggle.addEventListener("click", syncNavState);
+    navMenu.querySelectorAll("a").forEach((link) => link.addEventListener("click", syncNavState));
   }
 
-  // Stat counter animation — counts up when scrolled into view
-  const statCards = document.querySelectorAll(".stat-card h4");
-  const countObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          animateCounter(entry.target);
-          countObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.5 },
-  );
-
-  statCards.forEach((card) => countObserver.observe(card));
-
-  // ── Load department cards dynamically ──────────────
   loadDepartmentCards();
-
-  // ── Load hospital working hours dynamically ────────
-  loadHospitalWorkingHours();
 });
 
-/**
- * Load active departments from the API and render them as clickable cards
- * in the Clinical Departments section of the home page.
- */
 async function loadDepartmentCards() {
   const grid = document.getElementById("home-departments-grid");
   if (!grid) return;
 
+  grid.setAttribute("aria-busy", "true");
+
   try {
-    const res = await fetch((getBasePath() + "api/departments/get.php"), {
+    const response = await fetch(getBasePath() + "api/departments/get.php", {
       credentials: "same-origin",
     });
-    const result = await res.json();
+    if (!response.ok) throw new Error("Department request failed.");
 
-    if (result.success && Array.isArray(result.departments)) {
-      const departments = result.departments;
+    const result = await response.json();
+    const departments = Array.isArray(result?.departments)
+      ? result.departments
+          .filter((department) =>
+            department &&
+            typeof department === "object" &&
+            !Array.isArray(department) &&
+            typeof department.name === "string" &&
+            department.name.trim() !== ""
+          )
+          .map((department) => ({
+            name: department.name.trim().slice(0, 100),
+            description: typeof department.description === "string" && department.description.trim()
+              ? department.description.trim().slice(0, 160)
+              : "Explore listed doctors",
+          }))
+      : [];
 
-      if (departments.length === 0) {
-        grid.innerHTML = '<p style="color:var(--text-muted);text-align:center;grid-column:1/-1">No departments available at this time.</p>';
-        return;
+    if (!result?.success || departments.length === 0) {
+      grid.innerHTML = '<p class="dept-empty-state" role="status">Department examples are currently unavailable.</p>';
+      return;
+    }
+
+    grid.innerHTML = departments.map((department, index) => {
+      const query = new URLSearchParams({ q: department.name }).toString();
+      const href = getBasePath() + "doctors.html?" + query;
+      const number = String(index + 1).padStart(2, "0");
+
+      return '<a class="dept-card fade-in-stagger-item" href="' + escapeHTML(href) + '">' +
+        '<span class="dept-number" aria-hidden="true">' + number + '</span>' +
+        '<span class="dept-copy"><strong>' + escapeHTML(department.name) + '</strong>' +
+        '<small>' + escapeHTML(department.description) + '</small></span>' +
+        '<span class="dept-arrow" aria-hidden="true">↗</span></a>';
+    }).join("");
+  } catch (error) {
+    console.warn("Could not load department cards:", error);
+    grid.innerHTML = '<p class="dept-empty-state" role="status">Department examples are currently unavailable.</p>';
+  } finally {
+    grid.setAttribute("aria-busy", "false");
+  }
+}
+
+/**
+ * Homepage-only, fail-open scroll reveal.
+ * Hidden state is applied by JavaScript; CSS keeps content visible if this
+ * controller does not run. Each staggered child is observed independently.
+ */
+function initHomepageReveal() {
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (reducedMotion) return;
+
+  const pendingElements = new Set();
+  let observer = null;
+  let checkQueued = false;
+
+  const isInViewport = (element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 &&
+      rect.height > 0 &&
+      rect.bottom >= 0 &&
+      rect.top <= window.innerHeight &&
+      rect.right >= 0 &&
+      rect.left <= window.innerWidth;
+  };
+
+  const reveal = (element) => {
+    if (!element.isConnected || !element.classList.contains("home-reveal-pending")) {
+      observer?.unobserve(element);
+      return;
+    }
+
+    observer?.unobserve(element);
+    element.classList.remove("home-reveal-pending");
+    element.classList.add("home-reveal-enter");
+
+    const finish = (event) => {
+      // Directional variants use different keyframe names; all are one-shot.
+      if (event.target !== element) return;
+      element.classList.remove("home-reveal-enter");
+      element.removeEventListener("animationend", finish);
+    };
+    element.addEventListener("animationend", finish);
+  };
+
+  if ("IntersectionObserver" in window) {
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) reveal(entry.target);
+      });
+    }, {
+      root: null,
+      // Trigger near the reading area, not at the very bottom edge.
+      // This prevents lower sections from completing while the visitor is
+      // still reading the hero on a tall display.
+      rootMargin: "0px 0px -96px 0px",
+      threshold: 0,
+    });
+  }
+
+  const watch = (element) => {
+    if (!(element instanceof HTMLElement) || pendingElements.has(element)) return;
+
+    // Without an observer, fail open: keep the content visible and skip motion.
+    if (!observer) return;
+
+    pendingElements.add(element);
+    element.classList.add("home-reveal-pending");
+
+    // A restored mid-page position is handled immediately. On a first visit
+    // at the top, the observer's inset bottom edge waits for a natural scroll.
+    if (window.scrollY > 80 && isInViewport(element)) {
+      reveal(element);
+    } else {
+      observer.observe(element);
+    }
+  };
+
+  const forget = (element) => {
+    if (!(element instanceof HTMLElement)) return;
+    observer?.unobserve(element);
+    pendingElements.delete(element);
+    element.classList.remove("home-reveal-pending", "home-reveal-enter");
+  };
+
+  const isInRevealZone = (element) => {
+    const rect = element.getBoundingClientRect();
+    const revealBoundary = Math.max(0, window.innerHeight - 96);
+    return rect.width > 0 &&
+      rect.height > 0 &&
+      rect.bottom > 0 &&
+      rect.top < revealBoundary &&
+      rect.right >= 0 &&
+      rect.left <= window.innerWidth;
+  };
+
+  const checkPending = (forceVisible = false) => {
+    pendingElements.forEach((element) => {
+      if (!element.isConnected) {
+        forget(element);
+      } else if (
+        element.classList.contains("home-reveal-pending") &&
+        (forceVisible ? isInViewport(element) : isInRevealZone(element))
+      ) {
+        reveal(element);
       }
+    });
+  };
 
-      // Map department names to icon classes
-      const iconMap = {
-        "cardiology": "fa-heart-pulse",
-        "neurology": "fa-brain",
-        "pediatrics": "fa-baby",
-        "orthopedics": "fa-bone",
-        "ophthalmology": "fa-eye",
-        "dentistry": "fa-tooth",
-        "dermatology": "fa-microscope",
-        "gynecology": "fa-stethoscope",
-        "general": "fa-stethoscope",
-        "emergency": "fa-truck-medical",
-        "radiology": "fa-x-ray",
-        "pathology": "fa-vial",
-        "psychiatry": "fa-comments",
-        "surgery": "fa-scalpel",
-        "oncology": "fa-ribbon",
-        "urology": "fa-kidneys",
-        "gastroenterology": "fa-stomach",
-        "endocrinology": "fa-droplet",
-        "pulmonology": "fa-lungs",
-        "nephrology": "fa-filter",
-        "hematology": "fa-droplet",
-        "rheumatology": "fa-bone",
-        "infectious": "fa-virus",
-        "allergy": "fa-allergies",
-        "nutrition": "fa-apple-alt",
-        "physical therapy": "fa-person-walking",
-        "occupational therapy": "fa-hands",
-        "speech therapy": "fa-language",
+  let forceCheckQueued = false;
+  const scheduleCheck = (forceVisible = false) => {
+    forceCheckQueued = forceCheckQueued || forceVisible;
+    if (checkQueued) return;
+
+    checkQueued = true;
+    requestAnimationFrame(() => {
+      checkQueued = false;
+      const shouldForce = forceCheckQueued;
+      forceCheckQueued = false;
+      checkPending(shouldForce);
+    });
+  };
+
+  document.querySelectorAll(".home-page .fade-in").forEach((element) => {
+    // The hero has a dedicated, ordered entrance and must not receive a second reveal.
+    if (!element.closest(".home-hero")) watch(element);
+  });
+
+  document.querySelectorAll(".home-page .fade-in-stagger").forEach((container) => {
+    if (container.closest(".home-hero")) return;
+    Array.from(container.children).forEach(watch);
+  });
+
+  // Department cards are injected after the page loads; include new cards too.
+  const departmentGrid = document.getElementById("home-departments-grid");
+  if (departmentGrid && "MutationObserver" in window) {
+    const gridObserver = new MutationObserver((records) => {
+      records.forEach((record) => {
+        record.removedNodes.forEach(forget);
+        record.addedNodes.forEach(watch);
+      });
+      if (window.scrollY > 80) scheduleCheck(true);
+    });
+    gridObserver.observe(departmentGrid, { childList: true });
+  }
+
+  // Re-check restored positions only when the browser actually restored
+  // a mid-page scroll. A first load at the top must not pre-play lower sections.
+  const checkRestoredViewport = () => {
+    if (window.scrollY > 80) scheduleCheck(true);
+  };
+
+  window.addEventListener("pageshow", checkRestoredViewport, { once: true });
+  window.addEventListener("load", checkRestoredViewport, { once: true });
+  window.addEventListener("scroll", () => scheduleCheck(), { passive: true });
+  window.addEventListener("resize", () => scheduleCheck(true), { passive: true });
+}
+
+/**
+ * Plays the hero introduction once, after the browser has restored its scroll
+ * position. A reload or history restore in the middle of the page skips it.
+ */
+function initHomepageHeroEntrance() {
+  const hero = document.querySelector(".home-hero");
+  const imageNote = hero?.querySelector(".home-hero__image-note");
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+
+  if (!hero || !imageNote || reducedMotion?.matches) return;
+
+  const startEntrance = () => {
+    window.requestAnimationFrame(() => {
+      if (window.scrollY > 80 || reducedMotion?.matches) return;
+
+      const finishEntrance = (event) => {
+        if (event.target !== imageNote || event.animationName !== "homeHeroRevealIn") return;
+        hero.classList.remove("home-hero--enter");
+        imageNote.removeEventListener("animationend", finishEntrance);
       };
 
-      // Get the base icon for a department name
-      function getIcon(name) {
-        const key = (name || "").toLowerCase().trim();
-        return iconMap[key] || "fa-stethoscope";
-      }
-
-      grid.innerHTML = departments
-        .map((dep) => {
-          const icon = getIcon(dep.name);
-          const query = encodeURIComponent(dep.name);
-          return `
-            <div class="dept-card" onclick="window.location.href = 'doctors.html?q=${query}'" style="cursor:pointer">
-              <span class="dept-icon"><i class="fas ${icon}" aria-hidden="true"></i></span>
-              <h4>${escapeHTML(dep.name)}</h4>
-              <span>${escapeHTML(dep.description || "Specialist Care")}</span>
-            </div>`;
-        })
-        .join("");
-    }
-  } catch (e) {
-    console.warn("Could not load department cards:", e);
-    // Keep the grid empty — it will show nothing if API fails
-  }
-}
-
-/**
- * Load hospital working hours from the centralized settings API
- * and display them in a formatted 12-hour string.
- * Reuses the existing ${getBasePath()}api/settings/get-hospital.php endpoint.
- */
-async function loadHospitalWorkingHours() {
-  const hoursText = document.getElementById("hospital-hours-text");
-  if (!hoursText) return;
-
-  try {
-    const res = await fetch((getBasePath() + "api/settings/get-hospital.php"), {
-      credentials: "same-origin",
+      imageNote.addEventListener("animationend", finishEntrance);
+      hero.classList.add("home-hero--enter");
     });
-    const result = await res.json();
+  };
 
-    if (result.success && result.settings) {
-      const openTime = result.settings.appointment_open_time || "08:00";
-      const closeTime = result.settings.appointment_close_time || "22:00";
+  // pageshow fires after the browser has restored its scroll position.
+  window.addEventListener("pageshow", startEntrance, { once: true });
 
-      // Use formatTime() from main.js to convert 24h to 12h format
-      const openFormatted = formatTime(openTime);
-      const closeFormatted = formatTime(closeTime);
-
-      hoursText.textContent = `${openFormatted} – ${closeFormatted}`;
-    } else {
-      hoursText.textContent = "Hours unavailable";
-    }
-  } catch (e) {
-    console.warn("Could not load hospital working hours:", e);
-    hoursText.textContent = "Hours unavailable";
-  }
+  reducedMotion?.addEventListener?.("change", (event) => {
+    if (event.matches) hero.classList.remove("home-hero--enter");
+  });
 }
 
-/**
- * Animate a number counter from 0 to target value.
- * Supports decimal numbers and suffixes (e.g., "4.8", "120+").
- */
-function animateCounter(element) {
-  const text = element.textContent || "";
-  const match = text.match(/([\d.]+)/);
-  if (!match) return;
-
-  const target = parseFloat(match[1]);
-  const suffix = text.replace(match[1], "");
-  const duration = 1200;
-  const start = performance.now();
-  const isDecimal = target % 1 !== 0;
-
-  function update(now) {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
-    const current = target * eased;
-
-    element.textContent = isDecimal
-      ? current.toFixed(1) + suffix
-      : Math.round(current) + suffix;
-
-    if (progress < 1) requestAnimationFrame(update);
-  }
-
-  requestAnimationFrame(update);
-}
-
-
-
+initHomepageHeroEntrance();
+initHomepageReveal();

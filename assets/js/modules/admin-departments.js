@@ -33,6 +33,42 @@ function initDepartmentsTab() {
 
   initAddDepartmentForm();
   initEditDepartmentForm();
+  bindDepartmentRowActions();
+}
+
+/**
+ * Fixed delegated dispatcher for department-row actions.
+ */
+function bindDepartmentRowActions() {
+  const tbody = document.getElementById("admin-departments");
+  if (!tbody || tbody.dataset.delegatedActionsBound === "true") return;
+
+  tbody.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const control = target?.closest("[data-department-action]");
+    if (!control || !tbody.contains(control)) return;
+
+    const departmentId = safePositiveId(control.dataset.departmentId);
+    if (!departmentId) return;
+    event.preventDefault();
+
+    switch (control.dataset.departmentAction) {
+      case "edit":
+        openEditDepartmentModal(departmentId);
+        break;
+      case "deactivate":
+        deactivateDepartment(departmentId);
+        break;
+      case "activate":
+        activateDepartment(departmentId);
+        break;
+      case "delete":
+        deleteDepartment(departmentId);
+        break;
+    }
+  });
+
+  tbody.dataset.delegatedActionsBound = "true";
 }
 
 async function loadDepartments() {
@@ -43,7 +79,11 @@ async function loadDepartments() {
   );
 
   if (result.ok && result.data?.success) {
-    allDepartments = result.data.departments || [];
+    allDepartments = Array.isArray(result.data.departments)
+      ? result.data.departments.filter((department) =>
+          department && typeof department === "object" && !Array.isArray(department)
+        )
+      : [];
     renderDepartmentsTable(allDepartments);
   } else {
     showToast(result.data?.message || "Failed to load departments", "error");
@@ -53,33 +93,52 @@ async function loadDepartments() {
 function renderDepartmentsTable(departments) {
   const tbody = document.getElementById("admin-departments");
   if (!tbody) return;
+  bindDepartmentRowActions();
 
-  if (departments.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: var(--s8); color: var(--text-muted)">No departments found.</td></tr>`;
+  const rows = Array.isArray(departments)
+    ? departments.filter((department) =>
+        department && typeof department === "object" && !Array.isArray(department)
+      )
+    : [];
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center admin-departments-empty-cell">No departments found.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = departments
+  tbody.innerHTML = rows
     .map((dept) => {
-      const statusClass = dept.status === "active" ? "status-active" : "status-inactive";
-      const statusLabel = dept.status === "active" ? "Active" : "Inactive";
-      const doctorCount = dept.doctor_count || 0;
-      const apptCount = dept.appointment_count || 0;
+      const departmentId = safePositiveId(dept.id);
+      if (!departmentId) return "";
+      const statusValue = typeof dept.status === "string" ? dept.status : "";
+      const hasValidStatus = statusValue === "active" || statusValue === "inactive";
+      const isActive = statusValue === "active";
+      const statusClass = isActive ? "status-active" : "status-inactive";
+      const statusLabel = hasValidStatus ? (isActive ? "Active" : "Inactive") : "Unknown";
+      const doctorCount = safeCount(dept.doctor_count, 0);
+      const apptCount = safeCount(dept.appointment_count, 0);
+      const hasValidCounts = [dept.doctor_count, dept.appointment_count].every((value) => {
+        if (typeof value !== "number" && typeof value !== "string") return false;
+        const count = Number(value);
+        return Number.isSafeInteger(count) && count >= 0;
+      });
+      const name = typeof dept.name === "string" && dept.name.trim()
+        ? dept.name : "Unnamed department";
+      const description = typeof dept.description === "string" ? dept.description : "—";
 
       const actions = `
-        <button class="btn btn-outline btn-sm" onclick="openEditDepartmentModal(${dept.id})" title="Edit">
+        <button class="btn btn-outline btn-sm" data-department-action="edit" data-department-id="${departmentId}" title="Edit">
           <i class="fas fa-edit" aria-hidden="true"></i>
         </button>
-        ${dept.status === "active" 
-          ? `<button class="btn btn-outline btn-sm" onclick="deactivateDepartment(${dept.id})" title="Deactivate">
+        ${hasValidStatus ? (isActive
+          ? `<button class="btn btn-outline btn-sm" data-department-action="deactivate" data-department-id="${departmentId}" title="Deactivate">
                <i class="fas fa-ban" aria-hidden="true"></i>
              </button>`
-          : `<button class="btn btn-outline btn-sm" onclick="activateDepartment(${dept.id})" title="Activate">
+          : `<button class="btn btn-outline btn-sm" data-department-action="activate" data-department-id="${departmentId}" title="Activate">
                <i class="fas fa-check" aria-hidden="true"></i>
-             </button>`
-        }
-        ${doctorCount === 0 && apptCount === 0
-          ? `<button class="btn btn-danger btn-sm" onclick="deleteDepartment(${dept.id})" title="Delete">
+             </button>`)
+          : ""}
+        ${hasValidCounts && doctorCount === 0 && apptCount === 0
+          ? `<button class="btn btn-danger btn-sm" data-department-action="delete" data-department-id="${departmentId}" title="Delete">
                <i class="fas fa-trash" aria-hidden="true"></i>
              </button>`
           : ""
@@ -88,12 +147,12 @@ function renderDepartmentsTable(departments) {
 
       return `
         <tr>
-          <td><strong>${escapeHTML(dept.name)}</strong></td>
-          <td>${escapeHTML(dept.description || "—")}</td>
+          <td><strong>${escapeHTML(name)}</strong></td>
+          <td>${escapeHTML(description)}</td>
           <td>${doctorCount}</td>
           <td>${apptCount}</td>
           <td><span class="status ${statusClass}">${statusLabel}</span></td>
-          <td><div style="display:flex;gap:4px">${actions}</div></td>
+          <td><div class="admin-department-actions">${actions}</div></td>
         </tr>
       `;
     })
@@ -102,12 +161,24 @@ function renderDepartmentsTable(departments) {
 
 function filterDepartments() {
   const query = document.getElementById("department-search")?.value || "";
+  const normalizedQuery = typeof query === "string" ? query.trim().toLowerCase() : "";
   const status = document.getElementById("department-status-filter")?.value || "";
 
-  let filtered = allDepartments;
-  filtered = filterData(filtered, query, ["name", "description"]);
+  let filtered = allDepartments.filter((department) =>
+    department && typeof department === "object" && !Array.isArray(department)
+  );
+
+  if (normalizedQuery) {
+    filtered = filtered.filter((department) => {
+      const name = typeof department.name === "string" ? department.name : "";
+      const description = typeof department.description === "string" ? department.description : "";
+      return name.toLowerCase().includes(normalizedQuery)
+        || description.toLowerCase().includes(normalizedQuery);
+    });
+  }
+
   if (status) {
-    filtered = filtered.filter((d) => d.status === status);
+    filtered = filtered.filter((department) => department.status === status);
   }
 
   renderDepartmentsTable(filtered);
@@ -173,22 +244,26 @@ function initEditDepartmentForm() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const id = document.getElementById("edit-department-id").value;
+    const id = safePositiveId(document.getElementById("edit-department-id")?.value);
     const name = document.getElementById("edit-department-name").value.trim();
     const description = document.getElementById("edit-department-description").value.trim();
     const status = document.getElementById("edit-department-status").value;
 
+    if (!id) {
+      showToast("A valid department ID is required", "error");
+      return;
+    }
     if (!name) {
       showToast("Department name is required", "error");
       return;
     }
 
     const result = await apiFetch(
-      `${getBasePath()}api/departments/update.php?id=${id}`,
+      `${getBasePath()}api/departments/update.php`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, status }),
+        body: JSON.stringify({ id, name, description, status }),
       },
       "Failed to update department"
     );
@@ -204,28 +279,45 @@ function initEditDepartmentForm() {
 }
 
 async function openEditDepartmentModal(id) {
-  const dept = allDepartments.find((d) => d.id === id);
+  const departmentId = safePositiveId(id);
+  if (!departmentId) {
+    showToast("A valid department ID is required", "error");
+    return;
+  }
+  const dept = allDepartments.find((department) =>
+    department && typeof department === "object" && !Array.isArray(department)
+    && safePositiveId(department.id) === departmentId
+  );
   if (!dept) {
     showToast("Department not found", "error");
     return;
   }
 
-  document.getElementById("edit-department-id").value = dept.id;
-  document.getElementById("edit-department-name").value = dept.name;
-  document.getElementById("edit-department-description").value = dept.description || "";
-  document.getElementById("edit-department-status").value = dept.status;
+  document.getElementById("edit-department-id").value = String(departmentId);
+  document.getElementById("edit-department-name").value =
+    typeof dept.name === "string" ? dept.name : "";
+  document.getElementById("edit-department-description").value =
+    typeof dept.description === "string" ? dept.description : "";
+  document.getElementById("edit-department-status").value =
+    typeof dept.status === "string" ? dept.status : "inactive";
 
   toggleEditDepartmentModal();
 }
 
 async function deactivateDepartment(id) {
+  const departmentId = safePositiveId(id);
+  if (!departmentId) return;
   if (!confirm("Are you sure you want to deactivate this department? It will not be available for new bookings.")) {
     return;
   }
 
   const result = await apiFetch(
-    `${getBasePath()}api/departments/deactivate.php?id=${id}`,
-    {},
+    `${getBasePath()}api/departments/deactivate.php`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: departmentId }),
+    },
     "Failed to deactivate department"
   );
 
@@ -238,9 +330,15 @@ async function deactivateDepartment(id) {
 }
 
 async function activateDepartment(id) {
+  const departmentId = safePositiveId(id);
+  if (!departmentId) return;
   const result = await apiFetch(
-    `${getBasePath()}api/departments/activate.php?id=${id}`,
-    {},
+    `${getBasePath()}api/departments/activate.php`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: departmentId }),
+    },
     "Failed to activate department"
   );
 
@@ -253,13 +351,19 @@ async function activateDepartment(id) {
 }
 
 async function deleteDepartment(id) {
+  const departmentId = safePositiveId(id);
+  if (!departmentId) return;
   if (!confirm("Are you sure you want to permanently delete this department? This action cannot be undone.")) {
     return;
   }
 
   const result = await apiFetch(
-    `${getBasePath()}api/departments/delete.php?id=${id}`,
-    {},
+    `${getBasePath()}api/departments/delete.php`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: departmentId }),
+    },
     "Failed to delete department"
   );
 

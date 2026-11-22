@@ -3,362 +3,232 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Your HealthBridge patient dashboard — view appointments, prescriptions, and manage your health." />
-  <title>Dashboard — HealthBridge</title>
+  <meta name="description" content="Your HealthBridge patient overview — appointments, important updates and care activity." />
+  <title>Patient Overview — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-  <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="../../assets/css/pages/patient-portal.css?v=5" />
-  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=2" />
-  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
-  <script src="../../assets/js/core/main.js?v=2"></script>
-  <script src="../../assets/js/components/layout.js?v=2"></script>
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=9" />
+  <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
+  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/pages/patient-dashboard.js?v=3"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
+
   <div class="dashboard">
     <div id="sidebar-container"></div>
-    <main class="main-content" id="dashboard-main">
-      <div class="portal-content">
 
-        <!-- ══════════════════════════════════════
-             HERO — Skeleton / Error / Content
-             ══════════════════════════════════════ -->
-        <div id="hero-skeleton" class="hero-skeleton-wrap" aria-hidden="true">
-          <div class="skeleton" style="height:220px;border-radius:var(--r-xl)"></div>
-        </div>
+    <main class="main-content" id="dashboard-main" aria-busy="true">
+      <div class="portal-content patient-overview">
 
-        <div id="hero-error" style="display:none" role="alert">
-          <div class="card dashboard-error-card">
-            <div class="dashboard-error-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
-            <h3>Failed to Load Dashboard</h3>
-            <p>Please refresh or try again later.</p>
-            <button class="btn btn-primary" onclick="Dashboard.refresh()">
-              <i class="fas fa-rotate-right"></i> Retry
-            </button>
+        <div id="dashboard-loading" class="dashboard-loading" aria-label="Loading your patient overview">
+          <div class="dashboard-loading__intro">
+            <span class="skeleton dashboard-loading__eyebrow"></span>
+            <span class="skeleton dashboard-loading__title"></span>
+            <span class="skeleton dashboard-loading__copy"></span>
           </div>
-        </div>
-
-        <div id="hero-content" style="display:none">
-          <div class="welcome-hero" role="banner">
-            <div class="hero-bg-orb hero-orb-1" aria-hidden="true"></div>
-            <div class="hero-bg-orb hero-orb-2" aria-hidden="true"></div>
-
-            <div class="hero-top">
-              <!-- Avatar + Greeting -->
-              <div class="hero-identity">
-                <div class="hero-avatar" id="hero-avatar-initials" aria-label="Patient avatar">PT</div>
-                <div class="hero-text">
-                  <h1 class="hero-greeting" id="welcome-greeting">Welcome back</h1>
-                  <p class="hero-subtitle" id="hero-subtitle"></p>
-                  <p class="hero-datetime" id="current-datetime"></p>
-                </div>
-              </div>
-
-              <!-- Meta chips + CTA -->
-              <div class="hero-right">
-                <div class="hero-meta-chips">
-                  <div class="hero-chip">
-                    <span class="chip-label">Patient #</span>
-                    <span class="chip-value" id="patient-number">—</span>
-                  </div>
-                  <div class="hero-chip">
-                    <span class="chip-label">Member Since</span>
-                    <span class="chip-value" id="member-since">—</span>
-                  </div>
-                  <div class="hero-chip" id="hospital-chip">
-                    <span class="chip-label">Hospital</span>
-                    <span class="chip-value" id="hospital-status">—</span>
-                  </div>
-                </div>
-                <button class="btn btn-primary hero-book-btn" onclick="Dashboard.openBookModal()" aria-label="Book an appointment">
-                  <i class="fas fa-calendar-plus" aria-hidden="true"></i> Book Appointment
-                </button>
-              </div>
-            </div>
-
-            <!-- Next Appt + Primary Doctor row -->
-            <div class="hero-bottom">
-              <!-- Next Appointment -->
-              <div id="next-appt-hero" style="display:none">
-                <div class="next-appointment-hero" role="region" aria-label="Next appointment">
-                  <div class="next-appt-header">
-                    <h3 id="next-appt-title"><i class="fas fa-calendar-days" aria-hidden="true"></i> Next Appointment</h3>
-                    <span class="next-appt-countdown" id="next-appt-countdown"></span>
-                  </div>
-                  <div class="next-appt-body">
-                    <div class="next-appt-avatar" id="next-appt-avatar" aria-hidden="true">DR</div>
-                    <div class="next-appt-info">
-                      <h4 id="next-appt-doctor">—</h4>
-                      <span class="department-tag" id="next-appt-dept">—</span>
-                      <div class="appt-time-detail">
-                        <i class="fas fa-calendar" aria-hidden="true"></i>
-                        <span id="next-appt-date"></span>
-                        <span class="time-sep">at</span>
-                        <span id="next-appt-time"></span>
-                      </div>
-                    </div>
-                    <div class="next-appt-cta">
-                      <button class="btn btn-outline btn-sm" id="view-appointment-btn" aria-label="View appointment details">
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div id="next-appt-empty" style="display:none">
-                <div class="next-appointment-hero next-appt-empty-card">
-                  <div class="next-appt-empty-inner">
-                    <div class="next-appt-empty-icon"><i class="fas fa-calendar-plus" aria-hidden="true"></i></div>
-                    <div>
-                      <h4>No Upcoming Appointments</h4>
-                      <p>Schedule your next visit in seconds.</p>
-                    </div>
-                    <button class="btn btn-primary btn-sm" onclick="Dashboard.openBookModal()">
-                      Book Now
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Primary Doctor -->
-              <div id="primary-doctor-row" style="display:none">
-                <div class="primary-doctor-card" role="region" aria-label="Primary doctor">
-                  <div class="primary-doc-label"><i class="fas fa-user-doctor" aria-hidden="true"></i> Primary Doctor</div>
-                  <div class="primary-doctor-body">
-                    <div class="primary-doc-avatar" id="primary-doc-avatar" aria-hidden="true">DR</div>
-                    <div class="primary-doc-info">
-                      <h4 id="primary-doctor-name">—</h4>
-                      <p id="primary-doctor-specialty">—</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div class="skeleton dashboard-loading__appointment"></div>
+          <div class="dashboard-loading__stats">
+            <span class="skeleton"></span>
+            <span class="skeleton"></span>
+            <span class="skeleton"></span>
           </div>
+          <div class="skeleton dashboard-loading__activity"></div>
         </div>
 
-        <!-- ══════════════════════════════════════
-             HEALTH ALERTS
-             ══════════════════════════════════════ -->
-        <div id="health-alerts-container" style="display:none" role="region" aria-label="Health alerts">
-          <div class="section-header">
-            <h2><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Health Alerts</h2>
+        <section id="dashboard-error" class="dashboard-error" hidden role="alert" aria-labelledby="dashboard-error-title">
+          <div class="dashboard-error__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 7v5M12 16h.01"></path>
+            </svg>
           </div>
-          <div id="health-alerts" class="health-alerts"></div>
-        </div>
-
-        <!-- ══════════════════════════════════════
-             HEALTH SNAPSHOT — KPI CARDS
-             ══════════════════════════════════════ -->
-        <div class="section-header" role="heading" aria-level="2">
-          <h2><i class="fas fa-heart-pulse" aria-hidden="true"></i> Health Snapshot</h2>
-        </div>
-        <div id="kpi-skeleton" aria-hidden="true">
-          <div class="kpi-grid">
-            <div class="skeleton kpi-skeleton-card"></div>
-            <div class="skeleton kpi-skeleton-card"></div>
-            <div class="skeleton kpi-skeleton-card"></div>
-            <div class="skeleton kpi-skeleton-card"></div>
-            <div class="skeleton kpi-skeleton-card"></div>
-            <div class="skeleton kpi-skeleton-card"></div>
+          <div>
+            <h2 id="dashboard-error-title">Your overview couldn’t load</h2>
+            <p>Check your connection and try again. Your account and records have not been changed.</p>
           </div>
+          <button type="button" class="btn btn-outline" data-dashboard-action="refresh">
+            Try again
+          </button>
+        </section>
+
+        <div id="dashboard-content" hidden>
+
+          <section class="dashboard-intro" aria-labelledby="welcome-greeting">
+            <div class="dashboard-intro__copy">
+              <p class="dashboard-eyebrow">PATIENT OVERVIEW</p>
+              <h1 id="welcome-greeting">Welcome back</h1>
+              <p id="hero-subtitle" class="dashboard-intro__subtitle">Here’s what’s coming up in your care.</p>
+              <time id="dashboard-current-date" class="dashboard-intro__date"></time>
+            </div>
+
+            <div class="dashboard-intro__actions">
+              <div id="hospital-status" class="hospital-status" hidden role="status" aria-live="polite">
+                <span class="hospital-status__dot" aria-hidden="true"></span>
+                <span class="hospital-status__copy">
+                  <strong id="hospital-status-label">Appointment booking status</strong>
+                  <span id="hospital-status-hours"></span>
+                </span>
+              </div>
+              <a href="appointments.html" id="book" class="btn btn-primary dashboard-book-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                  <path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path>
+                </svg>
+                Book an appointment
+              </a>
+            </div>
+          </section>
+
+          <section class="dashboard-section dashboard-next-section" aria-labelledby="next-appointment-heading">
+            <div class="dashboard-section__heading">
+              <div>
+                <p class="dashboard-section__eyebrow">YOUR SCHEDULE</p>
+                <h2 id="next-appointment-heading">Next appointment</h2>
+              </div>
+              <a href="appointments.html" class="dashboard-text-link">All appointments <span aria-hidden="true">→</span></a>
+            </div>
+
+            <article id="next-appointment-card" class="next-appointment-card" hidden>
+              <div class="next-appointment-card__date">
+                <span class="next-appointment-card__date-label">DATE &amp; TIME</span>
+                <strong id="next-appointment-date">—</strong>
+                <span id="next-appointment-time" class="next-appointment-card__time">—</span>
+              </div>
+              <div class="next-appointment-card__details">
+                <span id="next-appointment-status" class="appointment-state-badge">Upcoming</span>
+                <h3 id="next-appointment-doctor">Your doctor</h3>
+                <p id="next-appointment-department"></p>
+                <p id="next-appointment-change" class="next-appointment-card__note" hidden></p>
+              </div>
+              <div class="next-appointment-card__action">
+                <a href="appointments.html" class="btn btn-outline">View appointment</a>
+              </div>
+            </article>
+
+            <div id="next-appointment-empty" class="next-appointment-empty" hidden>
+              <div class="next-appointment-empty__symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                  <path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path>
+                </svg>
+              </div>
+              <div class="next-appointment-empty__copy">
+                <h3>No upcoming appointments</h3>
+                <p>When you’re ready, book a visit with a specialist.</p>
+              </div>
+              <a href="appointments.html" class="btn btn-primary">Find an appointment</a>
+            </div>
+          </section>
+
+          <section id="health-alerts-section" class="dashboard-section dashboard-alerts-section" aria-labelledby="health-alerts-heading" hidden>
+            <div class="dashboard-section__heading">
+              <div>
+                <p class="dashboard-section__eyebrow">A FEW THINGS TO CHECK</p>
+                <h2 id="health-alerts-heading">Updates to review</h2>
+              </div>
+              <a href="notifications.html" class="dashboard-text-link">Notifications <span aria-hidden="true">→</span></a>
+            </div>
+            <div id="health-alerts-list" class="dashboard-alert-list"></div>
+          </section>
+
+          <section class="dashboard-section" aria-labelledby="snapshot-heading">
+            <div class="dashboard-section__heading">
+              <div>
+                <p class="dashboard-section__eyebrow">AT A GLANCE</p>
+                <h2 id="snapshot-heading">Your care snapshot</h2>
+              </div>
+            </div>
+            <div id="snapshot-grid" class="snapshot-grid" role="list" aria-label="Patient account summary">
+              <article class="snapshot-card" role="listitem">
+                <span class="snapshot-card__label">Visits completed</span>
+                <strong id="snapshot-completed" class="snapshot-card__value">—</strong>
+                <span class="snapshot-card__detail">Appointments marked complete</span>
+              </article>
+              <article class="snapshot-card" role="listitem">
+                <span class="snapshot-card__label">Active prescriptions</span>
+                <strong id="snapshot-prescriptions" class="snapshot-card__value">—</strong>
+                <span class="snapshot-card__detail">Currently active in your records</span>
+              </article>
+              <article class="snapshot-card" role="listitem">
+                <span class="snapshot-card__label">Profile details</span>
+                <strong id="snapshot-profile" class="snapshot-card__value">—</strong>
+                <span class="snapshot-card__detail">Personal and care information on file</span>
+              </article>
+            </div>
+            <p class="snapshot-disclaimer">These are account-record summaries, not a medical assessment.</p>
+          </section>
+
+          <section class="dashboard-section" aria-labelledby="quick-actions-heading">
+            <div class="dashboard-section__heading">
+              <div>
+                <p class="dashboard-section__eyebrow">COMMON TASKS</p>
+                <h2 id="quick-actions-heading">Quick actions</h2>
+              </div>
+            </div>
+            <nav class="quick-actions-grid" aria-label="Quick actions">
+              <a href="appointments.html" class="quick-action-card">
+                <span class="quick-action-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                    <path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path>
+                  </svg>
+                </span>
+                <span class="quick-action-card__copy">
+                  <strong>Appointments</strong>
+                  <span>Book or manage a visit</span>
+                </span>
+                <span class="quick-action-card__arrow" aria-hidden="true">→</span>
+              </a>
+              <a href="history.html" class="quick-action-card">
+                <span class="quick-action-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12a8 8 0 1 0 2.4-5.7L4 8"></path>
+                    <path d="M4 3v5h5M12 7v5l3 2"></path>
+                  </svg>
+                </span>
+                <span class="quick-action-card__copy">
+                  <strong>Medical history</strong>
+                  <span>Review your health record</span>
+                </span>
+                <span class="quick-action-card__arrow" aria-hidden="true">→</span>
+              </a>
+              <a href="prescriptions.html" class="quick-action-card">
+                <span class="quick-action-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3h8a2 2 0 0 1 2 2v2H6V5a2 2 0 0 1 2-2Z"></path>
+                    <path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Z"></path>
+                    <path d="M12 10v6M9 13h6"></path>
+                  </svg>
+                </span>
+                <span class="quick-action-card__copy">
+                  <strong>Prescriptions</strong>
+                  <span>Review current instructions</span>
+                </span>
+                <span class="quick-action-card__arrow" aria-hidden="true">→</span>
+              </a>
+            </nav>
+          </section>
+
+          <section class="dashboard-section dashboard-activity-section" aria-labelledby="recent-activity-heading">
+            <div class="dashboard-section__heading">
+              <div>
+                <p class="dashboard-section__eyebrow">YOUR LATEST UPDATES</p>
+                <h2 id="recent-activity-heading">Recent activity</h2>
+              </div>
+              <a href="history.html" class="dashboard-text-link">Medical history <span aria-hidden="true">→</span></a>
+            </div>
+            <ol id="recent-activity-list" class="recent-activity-list" aria-label="Recent patient activity"></ol>
+            <div id="recent-activity-empty" class="recent-activity-empty" hidden>
+              <p>Your recent appointments and care updates will appear here.</p>
+            </div>
+          </section>
+
         </div>
-        <div id="kpi-error" style="display:none">
-          <div class="card" style="text-align:center;padding:var(--s4)">
-            <p style="color:var(--text-muted)">Unable to load health snapshot.</p>
-          </div>
-        </div>
-        <div id="kpi-content" class="kpi-grid" style="display:none" role="list" aria-label="Health statistics"></div>
-
-        <!-- ══════════════════════════════════════
-             QUICK ACTIONS
-             ══════════════════════════════════════ -->
-        <div class="section-header">
-          <h2><i class="fas fa-bolt" aria-hidden="true"></i> Quick Actions</h2>
-        </div>
-        <nav class="quick-actions-grid" aria-label="Quick actions">
-          <a href="appointments.html" class="quick-action-card" aria-label="Book an appointment">
-            <div class="qa-icon qa-icon-blue"><i class="fas fa-calendar-plus" aria-hidden="true"></i></div>
-            <div class="qa-text">
-              <div class="qa-title">Book Appointment</div>
-              <div class="qa-desc">Schedule a visit with a specialist</div>
-            </div>
-            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
-          </a>
-          <a href="prescriptions.html" class="quick-action-card" aria-label="View prescriptions">
-            <div class="qa-icon qa-icon-purple"><i class="fas fa-prescription-bottle-medical" aria-hidden="true"></i></div>
-            <div class="qa-text">
-              <div class="qa-title">My Prescriptions</div>
-              <div class="qa-desc">Review your medications</div>
-            </div>
-            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
-          </a>
-          <a href="downloads.html" class="quick-action-card" aria-label="Download medical records">
-            <div class="qa-icon qa-icon-teal"><i class="fas fa-file-medical" aria-hidden="true"></i></div>
-            <div class="qa-text">
-              <div class="qa-title">Medical Records</div>
-              <div class="qa-desc">Download & view your documents</div>
-            </div>
-            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
-          </a>
-          <a href="profile.html" class="quick-action-card" aria-label="Update profile">
-            <div class="qa-icon qa-icon-green"><i class="fas fa-user-pen" aria-hidden="true"></i></div>
-            <div class="qa-text">
-              <div class="qa-title">Update Profile</div>
-              <div class="qa-desc">Manage your personal information</div>
-            </div>
-            <i class="fas fa-arrow-right qa-arrow" aria-hidden="true"></i>
-          </a>
-        </nav>
-
-        <!-- ══════════════════════════════════════
-             PATIENT CARE WIDGETS
-             ══════════════════════════════════════ -->
-        <div class="section-header">
-          <h2><i class="fas fa-user-doctor" aria-hidden="true"></i> Patient Care</h2>
-        </div>
-        <div class="dashboard-widget-grid">
-
-          <!-- My Care Team -->
-          <article class="dashboard-widget" aria-label="My care team">
-            <div class="widget-header">
-              <h3><i class="fas fa-user-nurse" aria-hidden="true"></i> My Care Team</h3>
-              <a href="../../doctors.html" class="view-all-link" aria-label="View all doctors">
-                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </div>
-            <div class="skeleton skeleton-card" id="care-team-skeleton" style="height:120px" aria-hidden="true"></div>
-            <div id="care-team-empty" style="display:none">
-              <div class="widget-empty-state">
-                <div class="widget-empty-icon"><i class="fas fa-user-doctor" aria-hidden="true"></i></div>
-                <p>Your care team will appear here once you've had appointments.</p>
-                <a href="appointments.html" class="btn btn-outline btn-sm">Book First Appointment</a>
-              </div>
-            </div>
-            <div id="care-team-content" style="display:none">
-              <div id="care-team-list" role="list"></div>
-            </div>
-          </article>
-
-          <!-- Recent Activity -->
-          <article class="dashboard-widget" aria-label="Recent activity">
-            <div class="widget-header">
-              <h3><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Recent Activity</h3>
-              <a href="history.html" class="view-all-link" aria-label="View all activity">
-                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </div>
-            <div class="skeleton skeleton-card" id="recent-activity-skeleton" style="height:120px" aria-hidden="true"></div>
-            <div id="recent-activity-empty" style="display:none">
-              <div class="widget-empty-state">
-                <div class="widget-empty-icon"><i class="fas fa-clock" aria-hidden="true"></i></div>
-                <p>Your recent appointments and medical updates will appear here.</p>
-              </div>
-            </div>
-            <div id="recent-activity-content" style="display:none">
-              <div id="dashboard-timeline-items" class="activity-timeline" role="list"></div>
-            </div>
-          </article>
-
-          <!-- Latest Prescription -->
-          <article class="dashboard-widget" aria-label="Latest prescription">
-            <div class="widget-header">
-              <h3><i class="fas fa-prescription" aria-hidden="true"></i> Latest Prescription</h3>
-              <a href="prescriptions.html" class="view-all-link" aria-label="View all prescriptions">
-                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </div>
-            <div class="skeleton skeleton-card" id="latest-rx-skeleton" style="height:120px" aria-hidden="true"></div>
-            <div id="latest-rx-empty" style="display:none">
-              <div class="widget-empty-state">
-                <div class="widget-empty-icon"><i class="fas fa-prescription-bottle" aria-hidden="true"></i></div>
-                <p>No active prescriptions found.</p>
-              </div>
-            </div>
-            <div id="latest-rx-content" style="display:none">
-              <div id="latest-rx-card"></div>
-            </div>
-          </article>
-
-          <!-- Notifications -->
-          <article class="dashboard-widget" aria-label="Recent notifications">
-            <div class="widget-header">
-              <h3><i class="fas fa-bell" aria-hidden="true"></i> Notifications</h3>
-              <a href="notifications.html" class="view-all-link" aria-label="View all notifications">
-                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </div>
-            <div class="skeleton skeleton-card" id="recent-notif-skeleton" style="height:120px" aria-hidden="true"></div>
-            <div id="recent-notif-empty" style="display:none">
-              <div class="widget-empty-state">
-                <div class="widget-empty-icon"><i class="fas fa-bell-slash" aria-hidden="true"></i></div>
-                <p>No new notifications.</p>
-              </div>
-            </div>
-            <div id="recent-notif-content" style="display:none">
-              <div id="recent-notif-list" role="list"></div>
-            </div>
-          </article>
-
-          <!-- Downloads -->
-          <article class="dashboard-widget" aria-label="Recent downloads">
-            <div class="widget-header">
-              <h3><i class="fas fa-file-arrow-down" aria-hidden="true"></i> Downloads</h3>
-              <a href="downloads.html" class="view-all-link" aria-label="View all downloads">
-                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </div>
-            <div class="skeleton skeleton-card" id="recent-dl-skeleton" style="height:120px" aria-hidden="true"></div>
-            <div id="recent-dl-empty" style="display:none">
-              <div class="widget-empty-state">
-                <div class="widget-empty-icon"><i class="fas fa-folder-open" aria-hidden="true"></i></div>
-                <p>No downloadable documents yet.</p>
-              </div>
-            </div>
-            <div id="recent-dl-content" style="display:none">
-              <div id="recent-dl-list" role="list"></div>
-            </div>
-          </article>
-
-          <!-- Health Insights -->
-          <article class="dashboard-widget" aria-label="Health insights preview">
-            <div class="widget-header">
-              <h3><i class="fas fa-chart-line" aria-hidden="true"></i> Health Insights</h3>
-              <a href="insights.html" class="view-all-link" aria-label="View full insights">
-                View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </div>
-            <div class="skeleton skeleton-card" id="insights-preview-skeleton" style="height:120px" aria-hidden="true"></div>
-            <div id="insights-preview-empty" style="display:none">
-              <div class="widget-empty-state">
-                <div class="widget-empty-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></div>
-                <p>Visit more appointments to see your health trends.</p>
-              </div>
-            </div>
-            <div id="insights-preview-content" style="display:none"></div>
-          </article>
-
-        </div><!-- /.dashboard-widget-grid -->
-
-      </div><!-- /.portal-content -->
-    </main>
-  </div><!-- /.dashboard -->
-
-  <!-- Appointment Details Modal -->
-  <div class="modal-overlay" id="appointment-modal" role="dialog" aria-modal="true" aria-labelledby="appt-modal-title">
-    <div class="modal" style="max-width:560px">
-      <div class="modal-head-row">
-        <h3 id="appt-modal-title"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointment Details</h3>
-        <button class="close-btn" onclick="Dashboard.closeApptModal()" aria-label="Close modal">&times;</button>
       </div>
-      <div id="appointment-modal-body"></div>
-    </div>
+    </main>
   </div>
-
-  <script src="../../assets/js/pages/patient/dashboard.js?v=3"></script>
 </body>
 </html>

@@ -1,93 +1,59 @@
 <?php
 /**
  * HealthBridge — Patient Cancel Appointment
- * Allows a patient to cancel their own appointment with confirmation.
+ * Allows a patient to cancel their own future Pending or Confirmed appointment.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/AuditService.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/Repositories/PatientManagementRepository.php';
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
-$user = requireAuth();
+$user = requireRole('patient');
 $userId = (int)$user['id'];
-$role = $user['role'] ?? '';
 
-// Only patients can cancel their own appointments
-if ($role !== 'patient') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Patient access required.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
 $input = getJsonInput();
-$appointmentId = (int)($input['id'] ?? 0);
-
-if ($appointmentId <= 0) {
-    jsonResponse(false, ['message' => 'Invalid appointment ID.']);
+$appointmentId = parsePositiveInt($input['id'] ?? null);
+if ($appointmentId === null) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'A valid appointment ID is required.']);
 }
 
 try {
     $db = getDB();
 
-    // Verify appointment belongs to this patient
-    $stmt = $db->prepare("SELECT a.*, u.id AS patient_user_id, d.user_id AS doctor_user_id 
-                          FROM appointments a 
-                          LEFT JOIN users u ON a.user_id = u.id
-                          LEFT JOIN doctors d ON a.doctor_id = d.user_id
-                          WHERE a.id = ?");
-    $stmt->execute([$appointmentId]);
-    $appt = $stmt->fetch();
+    // Repository applies doctor-first lock ordering and schema-specific status rules.
+    // Runtime stays on v1 until the explicit v2 cutover decision.
+    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $management->cancelAppointmentByPatient($appointmentId, $userId);
 
-    if (!$appt) {
-        jsonResponse(false, ['message' => 'Appointment not found.']);
+    // The cancellation and durable doctor notice are committed together.
+    $notifications = new NotificationService($db);
+    try {
+        $notifications->processOutbox(50);
+    } catch (Throwable $notificationError) {
+        error_log('Patient Cancel Appointment Outbox Dispatch Error: ' . get_class($notificationError));
     }
-
-    if ((int)$appt['user_id'] !== $userId) {
-        http_response_code(403);
-        jsonResponse(false, ['message' => 'You can only cancel your own appointments.']);
-    }
-
-    // Check if appointment can be cancelled (not already cancelled or completed)
-    if ($appt['status'] === 'Cancelled') {
-        jsonResponse(false, ['message' => 'This appointment is already cancelled.']);
-    }
-
-    if ($appt['status'] === 'Completed') {
-        jsonResponse(false, ['message' => 'Cannot cancel completed appointments.']);
-    }
-
-    // Check if appointment is in the past
-    $appointmentDate = new DateTime($appt['date'] . ' ' . $appt['time']);
-    $now = new DateTime();
-    if ($appointmentDate < $now) {
-        jsonResponse(false, ['message' => 'Cannot cancel past appointments.']);
-    }
-
-    // Update appointment status
-    $stmt = $db->prepare("UPDATE appointments SET status = 'Cancelled' WHERE id = ?");
-    $stmt->execute([$appointmentId]);
-
-    // Notify doctor
-    if (!empty($appt['doctor_user_id'])) {
-        $ns = new NotificationService($db);
-        $ns->create(
-            (int)$appt['doctor_user_id'],
-            NotificationService::TYPE_APPOINTMENT_CANCELLED,
-            'Appointment Cancelled',
-            "Patient {$appt['patient_name']} has cancelled their appointment on {$appt['date']} at {$appt['time']}.",
-            'appointment',
-            $appointmentId
-        );
-    }
-
-    // Log to audit
-    $audit = new AuditService($db, $userId, $role);
-    $audit->log('cancel', 'appointment', $appointmentId, null, $appt, "Appointment cancelled by patient", $userId, $appt['doctor_id']);
 
     jsonResponse(true, ['message' => 'Appointment cancelled successfully.']);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    if ($message === 'Appointment not found.') {
+        http_response_code(404);
+    } elseif ($message === 'The authenticated account is not active.') {
+        http_response_code(403);
+    } else {
+        http_response_code(409);
+    }
+    jsonResponse(false, ['message' => $message]);
+} catch (Throwable $e) {
     error_log('Patient Cancel Appointment Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to cancel appointment.']);

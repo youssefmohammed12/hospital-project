@@ -37,18 +37,19 @@ const TABS = ['overview', 'medical-history', 'visit', 'prescriptions', 'timeline
 
 document.addEventListener('DOMContentLoaded', async () => {
   const p = new URLSearchParams(window.location.search);
-  patientId = parseInt(p.get('patient_id') || '0');
-  appointmentId = parseInt(p.get('appointment_id') || '0');
+  patientId = safePositiveId(p.get('patient_id'));
+  appointmentId = safePositiveId(p.get('appointment_id'));
 
   wsUser = await requireServerRole('doctor');
   if (!wsUser) return;
 
+  bindWorkspaceDelegatedActions();
   setText('ws-sb-name', wsUser.name || 'Doctor');
   setText('ws-sb-email', wsUser.email || '');
 
   if (!patientId) {
     document.getElementById('ws-main').innerHTML =
-      '<div class="ws-empty" style="padding:var(--s10)"><i class="fas fa-user-slash"></i><h4>No Patient Selected</h4><p>Please select a patient from your appointments.</p><a href="' + getBasePath() + 'pages/doctor/doctor-dashboard.html#appointments" class="btn btn-primary">Go to Appointments</a></div>';
+      '<div class="ws-empty ws-inline-padding-65981b11"><i class="fas fa-user-slash"></i><h4>No Patient Selected</h4><p>Please select a patient from your appointments.</p><a href="' + getBasePath() + 'pages/doctor/doctor-dashboard.html#appointments" class="btn btn-primary">Go to Appointments</a></div>';
     return;
   }
 
@@ -73,6 +74,102 @@ document.addEventListener('DOMContentLoaded', async () => {
   const hash = window.location.hash.substring(1);
   if (hash && TABS.includes(hash)) switchTab(hash);
 });
+
+/**
+ * Bind generated Doctor Workspace actions after the authenticated doctor gate.
+ * Action names and tab IDs are fixed allowlists; record IDs and timeline indices
+ * are parsed again when clicked.
+ */
+function bindWorkspaceDelegatedActions() {
+  if (window._hbDoctorWorkspaceActionsBound) return;
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const tab = target.closest("[data-workspace-tab]");
+    if (tab) {
+      event.preventDefault();
+      const tabId = tab.dataset.workspaceTab;
+      if (TABS.includes(tabId)) switchTab(tabId);
+      return;
+    }
+
+    const control = target.closest("[data-workspace-action]");
+    if (!control) return;
+
+    event.preventDefault();
+    const prescriptionId = safePositiveId(control.dataset.prescriptionId);
+    switch (control.dataset.workspaceAction) {
+      case "retry":
+        window.location.reload();
+        break;
+      case "start-visit":
+        startVisit();
+        break;
+      case "open-prescription":
+        openRxModal();
+        break;
+      case "refresh":
+        refreshWS();
+        break;
+      case "open-review":
+        openReviewModal();
+        break;
+      case "open-blood-type":
+        openBloodTypeModal();
+        break;
+      case "open-allergies":
+        openAllergiesModal();
+        break;
+      case "open-chronic":
+        openChronicModal();
+        break;
+      case "open-medications":
+        openMedicationsModal();
+        break;
+      case "open-surgeries":
+        openSurgeriesModal();
+        break;
+      case "open-family":
+        openFamilyModal();
+        break;
+      case "open-notes":
+        openNotesModal();
+        break;
+      case "view-rx":
+        if (prescriptionId) openRxView(prescriptionId);
+        break;
+      case "print-rx":
+        if (prescriptionId) printRx(prescriptionId);
+        break;
+      case "edit-rx":
+        if (prescriptionId) editRx(prescriptionId);
+        break;
+      case "toggle-timeline": {
+        const index = Number(control.dataset.timelineIndex);
+        const entries = [
+          ws?.appointments,
+          ws?.visit_notes,
+          ws?.prescriptions,
+          ws?.medical_history_updates,
+        ].reduce((count, records) => count + (Array.isArray(records) ? records.length : 0), 0);
+        if (Number.isSafeInteger(index) && index >= 0 && index < 500 && index < entries) {
+          toggleTimelineView(index);
+        }
+        break;
+      }
+      case "remove-rx-row": {
+        const row = control.closest(".ws-rx-row");
+        const container = row?.parentElement;
+        if (row && container?.id === "ws-rx-items") row.remove();
+        break;
+      }
+    }
+  });
+
+  window._hbDoctorWorkspaceActionsBound = true;
+}
 
 function setText(id, t) { const e = document.getElementById(id); if (e) e.textContent = t; }
 
@@ -128,7 +225,7 @@ async function loadData() {
   if (!r.ok || !r.data?.success) {
     hideSkeletons();
     document.getElementById('ws-main').innerHTML =
-      `<div class="ws-empty" style="padding:var(--s10)"><i class="fas fa-exclamation-triangle"></i><h4>Failed to Load Data</h4><p>${escapeHTML(r.data?.message || 'Could not load patient data.')}</p><button class="btn btn-primary" onclick="location.reload()">Try Again</button></div>`;
+      `<div class="ws-empty ws-inline-padding-65981b11"><i class="fas fa-exclamation-triangle"></i><h4>Failed to Load Data</h4><p>${escapeHTML(r.data?.message || 'Could not load patient data.')}</p><button class="btn btn-primary" data-workspace-action="retry">Try Again</button></div>`;
     return;
   }
 
@@ -140,9 +237,9 @@ async function loadData() {
   restoreDraft();
 }
 
-function refreshWS() {
+async function refreshWS() {
   showToast('Refreshing...', 'info', 1000);
-  loadData();
+  await loadData();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -183,7 +280,7 @@ function renderSummaryCard() {
   const cv = ws.current_visit;
   if (!p) return;
 
-  const age = ws.age !== null ? ws.age + 'y' : '—';
+  const age = ws.age !== null && ws.age !== undefined ? `${safeCount(ws.age, 0)}y` : '—';
   const gender = mr?.gender || '—';
   const blood = mr?.blood_type || '—';
   const allergies = ws.allergies || 'None';
@@ -194,7 +291,8 @@ function renderSummaryCard() {
   // Phase 5.4: Use workflow status only
   const wf = cv?.visit_workflow;
   const statusLabel = getVisitStatusLabel(cv);
-  const statusClass = wf ? (wf.status || '').toLowerCase().replace(/\s+/g, '_') : 'pending';
+  const workflowStatus = wf && typeof wf.status === 'string' ? wf.status : '';
+  const statusClass = workflowStatus ? safeClassToken(workflowStatus.replace(/\s+/g, '_')) : 'pending';
 
   document.getElementById('ws-summary-inner').innerHTML = `
     <div class="ws-summary-item" title="Patient Name">
@@ -256,14 +354,14 @@ function renderSummaryCard() {
 
   let actionsHtml = '';
   if (isWaiting) {
-    actionsHtml = `<button class="btn btn-primary btn-sm" onclick="startVisit()" title="Start the visit"><i class="fas fa-play"></i> Start Visit</button>`;
+    actionsHtml = `<button class="btn btn-primary btn-sm" data-workspace-action="start-visit" title="Start the visit"><i class="fas fa-play"></i> Start Visit</button>`;
   } else if (isInProgress || isReady) {
-    actionsHtml = `<button class="btn btn-primary btn-sm" onclick="switchTab('visit')" title="Continue visit"><i class="fas fa-stethoscope"></i> Visit</button>`;
+    actionsHtml = `<button class="btn btn-primary btn-sm" data-workspace-tab="visit" title="Continue visit"><i class="fas fa-stethoscope"></i> Visit</button>`;
   } else if (isCompleted) {
     actionsHtml = `<button class="btn btn-outline btn-sm" disabled title="Visit completed"><i class="fas fa-check-circle"></i> Completed</button>`;
   }
-  actionsHtml += `<button class="btn btn-outline btn-sm" onclick="openRxModal()" title="Issue prescription"><i class="fas fa-prescription"></i> Rx</button>`;
-  actionsHtml += `<button class="btn btn-outline btn-sm" onclick="refreshWS()" title="Refresh"><i class="fas fa-rotate"></i></button>`;
+  actionsHtml += `<button class="btn btn-outline btn-sm" data-workspace-action="open-prescription" title="Issue prescription"><i class="fas fa-prescription"></i> Rx</button>`;
+  actionsHtml += `<button class="btn btn-outline btn-sm" data-workspace-action="refresh" title="Refresh"><i class="fas fa-rotate"></i></button>`;
 
   document.getElementById('ws-summary-actions').innerHTML = actionsHtml;
 }
@@ -272,11 +370,12 @@ function getVisitStatusLabel(cv) {
   if (!cv) return 'No Visit';
   // Phase 5.4: Only use visit_workflow status - no legacy fallback
   const wf = cv.visit_workflow;
-  if (wf && wf.status) return wf.status;
+  if (wf && typeof wf.status === 'string' && wf.status.trim()) return wf.status;
   // If no workflow exists yet, return based on appointment status
-  const s = (cv.status || '').toLowerCase();
+  const appointmentStatus = typeof cv.status === 'string' ? cv.status : '';
+  const s = appointmentStatus.toLowerCase();
   if (s === 'confirmed') return 'Waiting';
-  return cv.status;
+  return appointmentStatus || 'Unknown';
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -290,7 +389,8 @@ function updateProgressBar() {
   
   // Phase 5.4: Use workflow status only
   const wf = cv?.visit_workflow;
-  const status = wf ? (wf.status || '').toLowerCase().replace(/\s+/g, '_') : 'waiting';
+  const workflowStatus = wf && typeof wf.status === 'string' ? wf.status : '';
+  const status = workflowStatus ? safeClassToken(workflowStatus.replace(/\s+/g, '_')) : 'waiting';
 
   // Determine which step is active based on workflow status
   let activeStep = 1; // Waiting (default)
@@ -397,14 +497,14 @@ function renderOverview() {
   let visitHtml = '';
   if (cv) {
     const statusLabel = getVisitStatusLabel(cv);
-    const statusClass = (cv.status || 'pending').toLowerCase();
+    const statusClass = safeClassToken(cv.status || 'pending');
     visitHtml = `<div class="ws-card">
       <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-stethoscope"></i> Current Visit</h3><span class="status status-${statusClass}">${escapeHTML(statusLabel)}</span></div>
       <div class="ws-info-grid">
         <div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${escapeHTML(cv.date)}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Time</div><div class="ws-info-value">${escapeHTML(formatApptTime(cv))}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Department</div><div class="ws-info-value">${escapeHTML(cv.department)}</div></div>
-        <div class="ws-info-item"><div class="ws-info-label">Visit Note</div><div class="ws-info-value">${cvn ? '<span style="color:var(--success)">Recorded</span>' : '<span style="color:var(--warning)">Pending</span>'}</div></div>
+        <div class="ws-info-item"><div class="ws-info-label">Visit Note</div><div class="ws-info-value">${cvn ? '<span class="ws-inline-color-5a452988">Recorded</span>' : '<span class="ws-inline-color-52df2b00">Pending</span>'}</div></div>
       </div>
     </div>`;
   }
@@ -413,11 +513,11 @@ function renderOverview() {
     ${alerts}
     ${visitHtml}
     <div class="ws-card">
-      <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-user"></i> Patient Information <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400;margin-left:auto">Administrative — Read Only</span></h3></div>
+      <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-user"></i> Patient Information <span class="ws-inline-font-size-color-font-weight-9e38a87d">Administrative — Read Only</span></h3></div>
       <div class="ws-info-grid">
         <div class="ws-info-item"><div class="ws-info-label">Full Name</div><div class="ws-info-value">${escapeHTML(p.name)}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Gender</div><div class="ws-info-value">${escapeHTML(mr?.gender || 'Not specified')}</div></div>
-        <div class="ws-info-item"><div class="ws-info-label">Age</div><div class="ws-info-value">${ws.age !== null ? ws.age : '—'}</div></div>
+        <div class="ws-info-item"><div class="ws-info-label">Age</div><div class="ws-info-value">${ws.age !== null && ws.age !== undefined ? safeCount(ws.age, 0) : '—'}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Blood Type</div><div class="ws-info-value">${escapeHTML(mr?.blood_type || 'Not recorded')}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Email</div><div class="ws-info-value">${escapeHTML(p.email || '—')}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Phone</div><div class="ws-info-value">${escapeHTML(p.phone || '—')}</div></div>
@@ -425,25 +525,25 @@ function renderOverview() {
         <div class="ws-info-item"><div class="ws-info-label">Emergency Phone</div><div class="ws-info-value">${escapeHTML(mr?.emergency_contact_phone || 'None')}</div></div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--s4)">
+    <div class="ws-inline-display-grid-template-columns-gap-aea87f04">
       <div class="ws-card">
         <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-calendar-days"></i> Latest Appointment</h3></div>
-        ${latestAppt ? `<div class="ws-info-grid"><div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${escapeHTML(latestAppt.date)}</div></div><div class="ws-info-item"><div class="ws-info-label">Department</div><div class="ws-info-value">${escapeHTML(latestAppt.department)}</div></div><div class="ws-info-item"><div class="ws-info-label">Status</div><div class="ws-info-value"><span class="status status-${latestAppt.status.toLowerCase()}">${escapeHTML(latestAppt.status)}</span></div></div></div>` : `<div class="ws-empty" style="padding:var(--s4)"><p>No appointments.</p></div>`}
+        ${latestAppt ? `<div class="ws-info-grid"><div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${escapeHTML(latestAppt.date)}</div></div><div class="ws-info-item"><div class="ws-info-label">Department</div><div class="ws-info-value">${escapeHTML(latestAppt.department)}</div></div><div class="ws-info-item"><div class="ws-info-label">Status</div><div class="ws-info-value"><span class="status status-${safeClassToken(latestAppt.status)}">${escapeHTML(latestAppt.status)}</span></div></div></div>` : `<div class="ws-empty ws-inline-padding-44ffb81a"><p>No appointments.</p></div>`}
       </div>
       <div class="ws-card">
         <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-prescription"></i> Latest Prescription</h3></div>
-        ${latestRx ? `<div class="ws-info-grid"><div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${formatDate(latestRx.created_at)}</div></div><div class="ws-info-item"><div class="ws-info-label">Items</div><div class="ws-info-value">${latestRx.item_count || 0} meds</div></div><div class="ws-info-item"><div class="ws-info-label">Status</div><div class="ws-info-value"><span class="status status-${(latestRx.status||'Active').toLowerCase()}">${escapeHTML(latestRx.status)}</span></div></div></div>` : `<div class="ws-empty" style="padding:var(--s4)"><p>No prescriptions.</p></div>`}
+        ${latestRx ? `<div class="ws-info-grid"><div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${escapeHTML(formatDate(latestRx.created_at))}</div></div><div class="ws-info-item"><div class="ws-info-label">Items</div><div class="ws-info-value">${safeCount(latestRx.item_count, 0)} meds</div></div><div class="ws-info-item"><div class="ws-info-label">Status</div><div class="ws-info-value"><span class="status status-${safeClassToken(latestRx.status || 'Active')}">${escapeHTML(latestRx.status)}</span></div></div></div>` : `<div class="ws-empty ws-inline-padding-44ffb81a"><p>No prescriptions.</p></div>`}
       </div>
       <div class="ws-card">
         <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-file-lines"></i> Latest Visit Note</h3></div>
-        ${latestNote ? `<div class="ws-info-grid"><div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${formatDate(latestNote.appt_date)}</div></div><div class="ws-info-item"><div class="ws-info-label">Doctor</div><div class="ws-info-value">${escapeHTML(latestNote.doctor_name)}</div></div><div class="ws-info-item" style="grid-column:1/-1"><div class="ws-info-label">Diagnosis</div><div class="ws-info-value">${escapeHTML(latestNote.diagnosis || '—')}</div></div></div>` : `<div class="ws-empty" style="padding:var(--s4)"><p>No visit notes.</p></div>`}
+        ${latestNote ? `<div class="ws-info-grid"><div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${escapeHTML(formatDate(latestNote.appt_date))}</div></div><div class="ws-info-item"><div class="ws-info-label">Doctor</div><div class="ws-info-value">${escapeHTML(latestNote.doctor_name)}</div></div><div class="ws-info-item ws-inline-grid-column-068a8ddc"><div class="ws-info-label">Diagnosis</div><div class="ws-info-value">${escapeHTML(latestNote.diagnosis || '—')}</div></div></div>` : `<div class="ws-empty ws-inline-padding-44ffb81a"><p>No visit notes.</p></div>`}
       </div>
     </div>
-    <div style="display:flex;gap:var(--s2);margin-top:var(--s4);flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="switchTab('visit')"><i class="fas fa-stethoscope"></i> Start Visit</button>
-      <button class="btn btn-outline" onclick="switchTab('medical-history')"><i class="fas fa-notes-medical"></i> Medical History Management</button>
-      <button class="btn btn-outline" onclick="switchTab('prescriptions')"><i class="fas fa-prescription"></i> Prescriptions</button>
-      <button class="btn btn-outline" onclick="switchTab('timeline')"><i class="fas fa-clock-rotate"></i> Timeline</button>
+    <div class="ws-inline-display-gap-margin-top-f9fdc963">
+      <button class="btn btn-primary" data-workspace-tab="visit"><i class="fas fa-stethoscope"></i> Start Visit</button>
+      <button class="btn btn-outline" data-workspace-tab="medical-history"><i class="fas fa-notes-medical"></i> Medical History Management</button>
+      <button class="btn btn-outline" data-workspace-tab="prescriptions"><i class="fas fa-prescription"></i> Prescriptions</button>
+      <button class="btn btn-outline" data-workspace-tab="timeline"><i class="fas fa-clock-rotate"></i> Timeline</button>
     </div>`;
 }
 
@@ -463,13 +563,13 @@ function renderMedicalHistory() {
         <div class="ws-mh-header">
           <i class="fas fa-droplet"></i>
           Blood Type
-          ${hasBloodType ? '<span class="ws-mh-badge" style="background:rgba(16,185,129,0.1);color:#10b981;font-size:0.65rem;padding:2px 6px;border-radius:10px;margin-left:auto">Verified</span>' : ''}
+          ${hasBloodType ? '<span class="ws-mh-badge ws-inline-background-color-font-size-980e5c38">Verified</span>' : ''}
         </div>
         <div class="ws-mh-body">
           ${hasBloodType ? escapeHTML(bloodType) : 'Not recorded'}
         </div>
         <div class="ws-mh-actions">
-          ${!hasBloodType ? `<button class="btn btn-outline btn-sm" onclick="openBloodTypeModal()"><i class="fas fa-plus"></i> Set Blood Type</button>` : ''}
+          ${!hasBloodType ? `<button class="btn btn-outline btn-sm" data-workspace-action="open-blood-type"><i class="fas fa-plus"></i> Set Blood Type</button>` : ''}
         </div>
       </div>
       
@@ -478,7 +578,7 @@ function renderMedicalHistory() {
         <div class="ws-mh-header"><i class="fas fa-allergies"></i> Allergies</div>
         <div class="ws-mh-body">${ws.allergies ? escapeHTML(ws.allergies) : 'None recorded'}</div>
         <div class="ws-mh-actions">
-          <button class="btn btn-outline btn-sm" onclick="openAllergiesModal()"><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-outline btn-sm" data-workspace-action="open-allergies"><i class="fas fa-pen"></i> Edit</button>
         </div>
       </div>
       
@@ -487,7 +587,7 @@ function renderMedicalHistory() {
         <div class="ws-mh-header"><i class="fas fa-heart-pulse"></i> Chronic Conditions</div>
         <div class="ws-mh-body">${ws.chronic_diseases ? escapeHTML(ws.chronic_diseases) : 'None recorded'}</div>
         <div class="ws-mh-actions">
-          <button class="btn btn-outline btn-sm" onclick="openChronicModal()"><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-outline btn-sm" data-workspace-action="open-chronic"><i class="fas fa-pen"></i> Edit</button>
         </div>
       </div>
       
@@ -496,7 +596,7 @@ function renderMedicalHistory() {
         <div class="ws-mh-header"><i class="fas fa-pills"></i> Current Medications</div>
         <div class="ws-mh-body">${ws.current_medications ? escapeHTML(ws.current_medications) : 'None recorded'}</div>
         <div class="ws-mh-actions">
-          <button class="btn btn-outline btn-sm" onclick="openMedicationsModal()"><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-outline btn-sm" data-workspace-action="open-medications"><i class="fas fa-pen"></i> Edit</button>
         </div>
       </div>
       
@@ -505,7 +605,7 @@ function renderMedicalHistory() {
         <div class="ws-mh-header"><i class="fas fa-scalpel"></i> Previous Surgeries</div>
         <div class="ws-mh-body">${mr?.previous_surgeries ? escapeHTML(mr.previous_surgeries) : 'None recorded'}</div>
         <div class="ws-mh-actions">
-          <button class="btn btn-outline btn-sm" onclick="openSurgeriesModal()"><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-outline btn-sm" data-workspace-action="open-surgeries"><i class="fas fa-pen"></i> Edit</button>
         </div>
       </div>
       
@@ -514,16 +614,16 @@ function renderMedicalHistory() {
         <div class="ws-mh-header"><i class="fas fa-family"></i> Family History</div>
         <div class="ws-mh-body">${mr?.family_history ? escapeHTML(mr.family_history) : 'None recorded'}</div>
         <div class="ws-mh-actions">
-          <button class="btn btn-outline btn-sm" onclick="openFamilyModal()"><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-outline btn-sm" data-workspace-action="open-family"><i class="fas fa-pen"></i> Edit</button>
         </div>
       </div>
       
       <!-- Medical Notes -->
-      <div class="ws-mh-card" style="grid-column:1/-1">
+      <div class="ws-mh-card ws-inline-grid-column-068a8ddc">
         <div class="ws-mh-header"><i class="fas fa-stethoscope"></i> Medical Notes</div>
         <div class="ws-mh-body">${mr?.medical_notes ? escapeHTML(mr.medical_notes) : 'No notes'}</div>
         <div class="ws-mh-actions">
-          <button class="btn btn-outline btn-sm" onclick="openNotesModal()"><i class="fas fa-pen"></i> Edit Notes</button>
+          <button class="btn btn-outline btn-sm" data-workspace-action="open-notes"><i class="fas fa-pen"></i> Edit Notes</button>
         </div>
       </div>
     </div>
@@ -532,7 +632,7 @@ function renderMedicalHistory() {
     <div class="ws-mh-audit">
       <div class="ws-mh-audit-label">Last Updated</div>
       <div class="ws-mh-audit-value">
-        ${mr?.updated_at ? `<i class="fas fa-user-md"></i> ${wsUser?.name || 'Doctor'} · ${formatDate(mr.updated_at)}` : 'Not yet updated'}
+        ${mr?.updated_at ? `<i class="fas fa-user-md"></i> ${escapeHTML(wsUser?.name || 'Doctor')} · ${escapeHTML(formatDate(mr.updated_at))}` : 'Not yet updated'}
       </div>
     </div>`;
 }
@@ -549,14 +649,22 @@ function renderVisit() {
     document.getElementById('ws-visit').innerHTML = `
       <div class="ws-card">
         <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-stethoscope"></i> Current Visit</h3></div>
-        <div class="ws-empty"><i class="fas fa-calendar-xmark"></i><h4>No Active Visit</h4><p>There is no confirmed appointment for this patient. Select a confirmed appointment to begin a visit.</p><a href="\${getBasePath()}pages/doctor/doctor-dashboard.html#appointments" class="btn btn-primary"><i class="fas fa-calendar-days"></i> Appointments</a></div>
+        <div class="ws-empty"><i class="fas fa-calendar-xmark"></i><h4>No Active Visit</h4><p>There is no confirmed appointment for this patient. Select a confirmed appointment to begin a visit.</p><a href="${getBasePath()}pages/doctor/doctor-dashboard.html#appointments" class="btn btn-primary"><i class="fas fa-calendar-days"></i> Appointments</a></div>
       </div>`;
     return;
   }
 
   // Phase 5.4: Use workflow status only
   const wf = cv.visit_workflow;
-  const status = wf ? (wf.status || '').toLowerCase().replace(/\s+/g, '_') : 'waiting';
+  const workflowStatus = wf && typeof wf.status === 'string' ? wf.status : '';
+  const status = workflowStatus ? safeClassToken(workflowStatus.replace(/\s+/g, '_')) : 'waiting';
+  const currentAppointmentId = safePositiveId(cv.id);
+  if (!currentAppointmentId) {
+    document.getElementById('ws-visit').innerHTML =
+      '<div class="ws-card"><div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-stethoscope"></i> Current Visit</h3></div><div class="ws-empty"><i class="fas fa-triangle-exclamation"></i><h4>Invalid Appointment Reference</h4><p>The appointment reference could not be validated. Return to the appointment list and reopen the patient workspace.</p></div></div>';
+    return;
+  }
+
   const statusClass = status;
   const isWaiting = status === 'waiting';
   const isInProgress = status === 'in_progress';
@@ -574,11 +682,11 @@ function renderVisit() {
           <h3 class="ws-card-title"><i class="fas fa-stethoscope"></i> Current Visit</h3>
           <span class="status status-${statusClass}">${escapeHTML(statusLabel)}</span>
         </div>
-        <div class="ws-empty" style="padding:var(--s6)">
-          <i class="fas fa-play-circle" style="font-size:2.5rem;opacity:0.5;color:var(--primary)"></i>
+        <div class="ws-empty ws-inline-padding-9a4e8e5d">
+          <i class="fas fa-play-circle ws-inline-font-size-opacity-color-f4675154"></i>
           <h4>Ready to Start</h4>
           <p>This appointment is confirmed and waiting for you to begin.</p>
-          <button class="btn btn-primary" onclick="startVisit()" style="margin-top:var(--s3);padding:var(--s3) var(--s8);font-size:1rem">
+          <button class="btn btn-primary ws-inline-margin-top-padding-font-size-4b00a4aa" data-workspace-action="start-visit">
             <i class="fas fa-play"></i> Start Visit
           </button>
         </div>
@@ -595,7 +703,7 @@ function renderVisit() {
           <span class="status status-completed">Completed</span>
         </div>
         <div class="ws-info-grid">
-          <div class="ws-info-item"><div class="ws-info-label">Appointment ID</div><div class="ws-info-value">#${cv.id}</div></div>
+          <div class="ws-info-item"><div class="ws-info-label">Appointment ID</div><div class="ws-info-value">#${safePositiveId(cv.id)}</div></div>
           <div class="ws-info-item"><div class="ws-info-label">Department</div><div class="ws-info-value">${escapeHTML(cv.department)}</div></div>
           <div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${escapeHTML(cv.date)}</div></div>
           <div class="ws-info-item"><div class="ws-info-label">Time</div><div class="ws-info-value">${escapeHTML(formatApptTime(cv))}</div></div>
@@ -603,18 +711,18 @@ function renderVisit() {
       </div>
       ${cvn ? `
       <div class="ws-card">
-        <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-file-pen"></i> Visit Note</h3><span class="status status-completed" style="font-size:0.7rem">Completed</span></div>
+        <div class="ws-card-header"><h3 class="ws-card-title"><i class="fas fa-file-pen"></i> Visit Note</h3><span class="status status-completed ws-inline-font-size-8e87b753">Completed</span></div>
         <div class="ws-info-grid">
-          <div class="ws-info-item" style="grid-column:1/-1"><div class="ws-info-label">Diagnosis</div><div class="ws-info-value">${escapeHTML(cvn.diagnosis || '—')}</div></div>
-          <div class="ws-info-item" style="grid-column:1/-1"><div class="ws-info-label">Symptoms</div><div class="ws-info-value">${escapeHTML(cvn.symptoms || '—')}</div></div>
-          <div class="ws-info-item" style="grid-column:1/-1"><div class="ws-info-label">Treatment Plan</div><div class="ws-info-value">${escapeHTML(cvn.treatment || '—')}</div></div>
-          ${cvn.doctor_notes ? `<div class="ws-info-item" style="grid-column:1/-1"><div class="ws-info-label">Doctor's Notes</div><div class="ws-info-value">${escapeHTML(cvn.doctor_notes)}</div></div>` : ''}
+          <div class="ws-info-item ws-inline-grid-column-068a8ddc"><div class="ws-info-label">Diagnosis</div><div class="ws-info-value">${escapeHTML(cvn.diagnosis || '—')}</div></div>
+          <div class="ws-info-item ws-inline-grid-column-068a8ddc"><div class="ws-info-label">Symptoms</div><div class="ws-info-value">${escapeHTML(cvn.symptoms || '—')}</div></div>
+          <div class="ws-info-item ws-inline-grid-column-068a8ddc"><div class="ws-info-label">Treatment Plan</div><div class="ws-info-value">${escapeHTML(cvn.treatment || '—')}</div></div>
+          ${cvn.doctor_notes ? `<div class="ws-info-item ws-inline-grid-column-068a8ddc"><div class="ws-info-label">Doctor's Notes</div><div class="ws-info-value">${escapeHTML(cvn.doctor_notes)}</div></div>` : ''}
         </div>
       </div>` : ''}
-      <div class="ws-card" style="text-align:center;padding:var(--s6)">
-        <i class="fas fa-check-circle" style="font-size:2rem;color:var(--success);opacity:0.5"></i>
-        <h4 style="margin:var(--s2) 0 0;color:var(--text-secondary)">Visit Completed</h4>
-        <p style="color:var(--text-muted);font-size:0.82rem">This visit has been completed and the patient record has been updated.</p>
+      <div class="ws-card ws-inline-text-align-padding-563fb2e7">
+        <i class="fas fa-check-circle ws-inline-font-size-color-opacity-af2c4f80"></i>
+        <h4 class="ws-inline-margin-color-b25fc562">Visit Completed</h4>
+        <p class="ws-inline-color-font-size-ea9bdc51">This visit has been completed and the patient record has been updated.</p>
       </div>`;
     return;
   }
@@ -624,51 +732,51 @@ function renderVisit() {
     <div class="ws-card">
       <div class="ws-card-header">
         <h3 class="ws-card-title"><i class="fas fa-stethoscope"></i> Current Visit</h3>
-        <div><span class="status status-${statusClass}">${escapeHTML(statusLabel)}</span><span style="margin-left:var(--s2);color:var(--text-muted);font-size:0.8rem">#${cv.id} · ${escapeHTML(cv.date)} ${escapeHTML(formatApptTime(cv))}</span></div>
+        <div><span class="status status-${statusClass}">${escapeHTML(statusLabel)}</span><span class="ws-inline-margin-left-color-font-size-f4414a0c">#${safePositiveId(cv.id)} · ${escapeHTML(cv.date)} ${escapeHTML(formatApptTime(cv))}</span></div>
       </div>
       <div class="ws-info-grid">
-        <div class="ws-info-item"><div class="ws-info-label">Appointment ID</div><div class="ws-info-value">#${cv.id}</div></div>
+        <div class="ws-info-item"><div class="ws-info-label">Appointment ID</div><div class="ws-info-value">#${safePositiveId(cv.id)}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Department</div><div class="ws-info-value">${escapeHTML(cv.department)}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Date</div><div class="ws-info-value">${escapeHTML(cv.date)}</div></div>
         <div class="ws-info-item"><div class="ws-info-label">Time</div><div class="ws-info-value">${escapeHTML(formatApptTime(cv))}</div></div>
-        ${cv.notes ? `<div class="ws-info-item" style="grid-column:1/-1"><div class="ws-info-label">Patient Notes</div><div class="ws-info-value">${escapeHTML(cv.notes)}</div></div>` : ''}
+        ${cv.notes ? `<div class="ws-info-item ws-inline-grid-column-068a8ddc"><div class="ws-info-label">Patient Notes</div><div class="ws-info-value">${escapeHTML(cv.notes)}</div></div>` : ''}
       </div>
     </div>
 
     <div class="ws-card">
       <div class="ws-card-header">
         <h3 class="ws-card-title"><i class="fas fa-file-pen"></i> ${isNew ? 'Add Visit Note' : 'Edit Visit Note'}</h3>
-        <div style="display:flex;align-items:center;gap:var(--s2)">
-          ${!isNew ? '<span class="status status-confirmed" style="font-size:0.7rem">Saved</span>' : ''}
+        <div class="ws-inline-display-align-items-gap-1fcdcde9">
+          ${!isNew ? '<span class="status status-confirmed ws-inline-font-size-8e87b753">Saved</span>' : ''}
           <span class="ws-kbd-hint"><kbd>Ctrl</kbd>+<kbd>S</kbd> save</span>
         </div>
       </div>
       <form id="ws-vf" class="ws-visit-form" novalidate>
-        <input type="hidden" id="ws-vf-appt" value="${cv.id}" />
+        <input type="hidden" id="ws-vf-appt" value="${currentAppointmentId}" />
         <div class="form-group full-w">
-          <label for="ws-vf-dx">Diagnosis <span style="color:var(--text-muted);font-weight:400">(primary diagnosis or impression) <span style="color:var(--danger)">*</span></span></label>
+          <label for="ws-vf-dx">Diagnosis <span class="ws-inline-color-font-weight-5d8d6460">(primary diagnosis or impression) <span class="ws-inline-color-497726e8">*</span></span></label>
           <input type="text" id="ws-vf-dx" placeholder="e.g. Acute bronchitis, Hypertension stage 1" value="${escapeHTML(note.diagnosis || '')}" maxlength="500" />
         </div>
         <div class="form-group full-w">
-          <label for="ws-vf-sx">Symptoms <span style="color:var(--text-muted);font-weight:400">(patient-reported complaints) <span style="color:var(--danger)">*</span></span></label>
+          <label for="ws-vf-sx">Symptoms <span class="ws-inline-color-font-weight-5d8d6460">(patient-reported complaints) <span class="ws-inline-color-497726e8">*</span></span></label>
           <textarea id="ws-vf-sx" placeholder="e.g. Cough with sputum, fever 38.5°C for 3 days" maxlength="2000">${escapeHTML(note.symptoms || '')}</textarea>
         </div>
         <div class="form-group full-w">
-          <label for="ws-vf-tx">Treatment Plan <span style="color:var(--text-muted);font-weight:400">(procedures, referrals, follow-up) <span style="color:var(--danger)">*</span></span></label>
+          <label for="ws-vf-tx">Treatment Plan <span class="ws-inline-color-font-weight-5d8d6460">(procedures, referrals, follow-up) <span class="ws-inline-color-497726e8">*</span></span></label>
           <textarea id="ws-vf-tx" placeholder="e.g. Prescribed antibiotics, follow-up in 7 days" maxlength="2000">${escapeHTML(note.treatment || '')}</textarea>
         </div>
         <div class="form-group full-w">
-          <label for="ws-vf-notes">Doctor's Notes <span style="color:var(--text-muted);font-weight:400">(clinical observations, assessment — optional)</span></label>
-          <textarea id="ws-vf-notes" placeholder="Clinical observations and assessment..." maxlength="5000" style="min-height:90px">${escapeHTML(note.doctor_notes || '')}</textarea>
+          <label for="ws-vf-notes">Doctor's Notes <span class="ws-inline-color-font-weight-5d8d6460">(clinical observations, assessment — optional)</span></label>
+          <textarea id="ws-vf-notes" placeholder="Clinical observations and assessment..." maxlength="5000" class="ws-inline-min-height-92e99af1">${escapeHTML(note.doctor_notes || '')}</textarea>
         </div>
         <div class="form-group full-w">
-          <label for="ws-vf-followup">Follow-up Instructions <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
-          <textarea id="ws-vf-followup" placeholder="e.g. Return in 2 weeks for blood work, call if symptoms worsen" maxlength="1000" style="min-height:50px">${escapeHTML(note.follow_up_instructions || '')}</textarea>
+          <label for="ws-vf-followup">Follow-up Instructions <span class="ws-inline-color-font-weight-5d8d6460">(optional)</span></label>
+          <textarea id="ws-vf-followup" placeholder="e.g. Return in 2 weeks for blood work, call if symptoms worsen" maxlength="1000" class="ws-inline-min-height-b7406c0f">${escapeHTML(note.follow_up_instructions || '')}</textarea>
         </div>
         <div class="ws-visit-actions">
-          <button type="submit" class="btn btn-primary" style="padding:var(--s3) var(--s6);font-weight:600"><i class="fas fa-floppy-disk"></i> ${isNew ? 'Save Visit Note' : 'Update Visit Note'}</button>
-          <button type="button" class="btn btn-outline" onclick="openRxModal()"><i class="fas fa-prescription"></i> Issue Prescription</button>
-          ${isInProgress || isReady ? `<button type="button" class="btn btn-success" onclick="openReviewModal()" style="margin-left:auto"><i class="fas fa-check-circle"></i> Review & Complete</button>` : ''}
+          <button type="submit" class="btn btn-primary ws-inline-padding-font-weight-30f3acea"><i class="fas fa-floppy-disk"></i> ${isNew ? 'Save Visit Note' : 'Update Visit Note'}</button>
+          <button type="button" class="btn btn-outline" data-workspace-action="open-prescription"><i class="fas fa-prescription"></i> Issue Prescription</button>
+          ${isInProgress || isReady ? `<button type="button" class="btn btn-success ws-inline-margin-left-6d000617" data-workspace-action="open-review"><i class="fas fa-check-circle"></i> Review & Complete</button>` : ''}
         </div>
       </form>
     </div>`;
@@ -801,7 +909,8 @@ async function checkAndUpdateVisitStatus(diagnosis, symptoms, treatment) {
   
   // Phase 5.4: Use workflow status only
   const wf = cv.visit_workflow;
-  const status = wf ? (wf.status || '').toLowerCase().replace(/\s+/g, '_') : 'waiting';
+  const workflowStatus = wf && typeof wf.status === 'string' ? wf.status : '';
+  const status = workflowStatus ? safeClassToken(workflowStatus.replace(/\s+/g, '_')) : 'waiting';
   if (status === 'completed') return;
 
   // If all required fields are filled, mark as Ready to Complete
@@ -861,11 +970,8 @@ function initReviewModal() {
     setLoading(btn, false, 'Complete Visit');
   };
 
-  const btn1 = document.getElementById('ws-review-confirm-btn');
-  if (btn1) btn1.addEventListener('click', () => handler(btn1));
-
-  const btn2 = document.getElementById('ws-confirm-complete-btn');
-  if (btn2) btn2.addEventListener('click', () => handler(btn2));
+  const confirmBtn = document.getElementById('ws-confirm-complete-btn');
+  if (confirmBtn) confirmBtn.addEventListener('click', () => handler(confirmBtn));
 }
 
 function openReviewModal() {
@@ -881,6 +987,7 @@ function openReviewModal() {
   const hasPrescription = rx.length > 0;
 
   const checklist = document.getElementById('ws-review-checklist');
+  if (!checklist) return;
   checklist.innerHTML = `
     <div class="ws-review-item ${hasDiagnosis ? 'checked' : 'unchecked'}">
       <i class="fas ${hasDiagnosis ? 'fa-check-circle' : 'fa-times-circle'}"></i>
@@ -902,12 +1009,14 @@ function openReviewModal() {
   // Show errors if validation failed
   const errorsDiv = document.getElementById('ws-review-errors');
   if (!validation.valid) {
-    errorsDiv.style.display = 'block';
+    errorsDiv.classList.add('is-visible');
     errorsDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Please complete the following before finishing:<ul>${validation.errors.map(e => `<li>${escapeHTML(e)}</li>`).join('')}</ul>`;
-    document.getElementById('ws-review-confirm-btn').disabled = true;
+    const confirmBtn = document.getElementById('ws-confirm-complete-btn');
+    if (confirmBtn) confirmBtn.disabled = true;
   } else {
-    errorsDiv.style.display = 'none';
-    document.getElementById('ws-review-confirm-btn').disabled = false;
+    errorsDiv.classList.remove('is-visible');
+    const confirmBtn = document.getElementById('ws-confirm-complete-btn');
+    if (confirmBtn) confirmBtn.disabled = false;
   }
 
   openModal('ws-review-modal');
@@ -960,9 +1069,12 @@ async function completeVisit() {
    ═══════════════════════════════════════════════════════════ */
 
 function renderPrescriptions() {
-  const rx = ws.prescriptions || [];
+  const rx = Array.isArray(ws.prescriptions)
+    ? ws.prescriptions.filter(prescription => prescription && typeof prescription === "object" && !Array.isArray(prescription))
+    : [];
   const cv = ws.current_visit;
-  const isCompleted = cv && (cv.status || '').toLowerCase() === 'completed';
+  const visitWorkflowStatus = cv?.visit_workflow?.status || cv?.workflow_status || '';
+  const isCompleted = String(visitWorkflowStatus).toLowerCase() === 'completed';
   const c = document.getElementById('ws-prescriptions');
 
   if (rx.length === 0) {
@@ -971,7 +1083,7 @@ function renderPrescriptions() {
         <i class="fas fa-prescription"></i>
         <h4>No Prescription Issued</h4>
         <p>No prescriptions have been issued for this visit.</p>
-        <button class="btn btn-primary" onclick="openRxModal()" ${isCompleted ? 'disabled' : ''}>
+        <button class="btn btn-primary" data-workspace-action="open-prescription" ${isCompleted ? 'disabled' : ''}>
           <i class="fas fa-plus"></i> Issue Prescription
         </button>
       </div>`;
@@ -980,10 +1092,15 @@ function renderPrescriptions() {
 
   // Show summary card for latest prescription
   const latest = rx[0];
-  const sl = (latest.status || 'Active').toLowerCase();
-  const items = (latest.items || []).map(i =>
+  const latestId = safePositiveId(latest.id);
+  const canEditLatest = !isCompleted && latestId && Prescriptions.isEditable(latest.status);
+  const sl = safeClassToken(latest.status || 'Active');
+  const latestItems = Array.isArray(latest.items)
+    ? latest.items.filter(item => item && typeof item === "object" && !Array.isArray(item))
+    : [];
+  const items = latestItems.map(i =>
     `<div class="ws-rx-item"><span class="ws-rx-item-name">${escapeHTML(i.medication_name)}</span><span class="ws-rx-item-detail">${escapeHTML(i.strength)} — ${escapeHTML(i.dosage)} — ${escapeHTML(i.frequency)} — ${escapeHTML(i.duration)}</span></div>`
-  ).join('') || '<p style="color:var(--text-muted);font-size:0.75rem">No details</p>';
+  ).join('') || '<p class="ws-inline-color-font-size-e595b0d9">No details</p>';
 
   c.innerHTML = `
     <div class="ws-rx-summary-card">
@@ -991,35 +1108,42 @@ function renderPrescriptions() {
       <div class="ws-rx-summary-info">
         <div class="ws-rx-summary-title">Prescription Issued</div>
         <div class="ws-rx-summary-meta">
-          <span><i class="fas fa-pills"></i> ${latest.item_count || 0} medication(s)</span>
-          <span><i class="fas fa-calendar"></i> ${formatDate(latest.created_at)}</span>
-          <span><span class="status status-${sl}" style="font-size:0.65rem">${escapeHTML(latest.status)}</span></span>
+          <span><i class="fas fa-pills"></i> ${safeCount(latest.item_count, 0)} medication(s)</span>
+          <span><i class="fas fa-calendar"></i> ${escapeHTML(formatDate(latest.created_at))}</span>
+          <span><span class="status status-${sl} ws-inline-font-size-c3e9d810">${escapeHTML(latest.status)}</span></span>
         </div>
       </div>
       <div class="ws-rx-summary-actions">
-        <button class="btn btn-outline btn-sm" onclick="openRxView(${latest.id})"><i class="fas fa-eye"></i> View</button>
-        <button class="btn btn-outline btn-sm" onclick="printRx(${latest.id})"><i class="fas fa-print"></i> Print</button>
-        ${!isCompleted ? `<button class="btn btn-outline btn-sm" onclick="openRxModal()"><i class="fas fa-pen"></i> Edit</button>` : ''}
+        <button class="btn btn-outline btn-sm" data-workspace-action="view-rx" data-prescription-id="${safePositiveId(latest.id)}"><i class="fas fa-eye"></i> View</button>
+        <button class="btn btn-outline btn-sm" data-workspace-action="print-rx" data-prescription-id="${safePositiveId(latest.id)}"><i class="fas fa-print"></i> Print</button>
+        ${canEditLatest ? `<button class="btn btn-outline btn-sm" data-workspace-action="edit-rx" data-prescription-id="${latestId}"><i class="fas fa-pen"></i> Edit</button>` : ''}
       </div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:var(--s3)">
-      <button class="btn btn-primary" onclick="openRxModal()" ${isCompleted ? 'disabled' : ''}>
+    <div class="ws-inline-display-justify-content-margin-bottom-d0ed7563">
+      <button class="btn btn-primary" data-workspace-action="open-prescription" ${isCompleted ? 'disabled' : ''}>
         <i class="fas fa-plus"></i> Issue Prescription
       </button>
     </div>
     <div class="ws-rx-grid">${rx.map(r => {
-      const sl2 = (r.status || 'Active').toLowerCase();
-      const items2 = (r.items || []).map(i =>
+      const sl2 = safeClassToken(r.status || 'Active');
+      const prescriptionItems = Array.isArray(r.items)
+        ? r.items.filter(item => item && typeof item === "object" && !Array.isArray(item))
+        : [];
+      const items2 = prescriptionItems.map(i =>
         `<div class="ws-rx-item"><span class="ws-rx-item-name">${escapeHTML(i.medication_name)}</span><span class="ws-rx-item-detail">${escapeHTML(i.strength)} — ${escapeHTML(i.dosage)} — ${escapeHTML(i.frequency)} — ${escapeHTML(i.duration)}</span></div>`
-      ).join('') || '<p style="color:var(--text-muted);font-size:0.75rem">No details</p>';
+      ).join('') || '<p class="ws-inline-color-font-size-e595b0d9">No details</p>';
+      const prescriptionId = safePositiveId(r.id);
+      const prescriptionLabel = prescriptionId ? `RX-${String(prescriptionId).padStart(5, '0')}` : 'RX—';
+      const itemCount = safeCount(r.item_count, 0);
+      const canEditPrescription = !isCompleted && prescriptionId && Prescriptions.isEditable(r.status);
       return `<div class="ws-rx-card">
-        <div class="ws-rx-header"><div><div class="ws-rx-doctor">${escapeHTML(r.doctor_name)}</div><div class="ws-rx-id">RX-${String(r.id).padStart(5,'0')} · ${escapeHTML(r.department)}</div></div><span class="status status-${sl2}">${escapeHTML(r.status)}</span></div>
-        <div class="ws-rx-meta"><span><i class="fas fa-calendar"></i> ${formatDate(r.created_at)}</span><span><i class="fas fa-pills"></i> ${r.item_count || 0} med(s)</span></div>
+        <div class="ws-rx-header"><div><div class="ws-rx-doctor">${escapeHTML(r.doctor_name)}</div><div class="ws-rx-id">${prescriptionLabel} · ${escapeHTML(r.department)}</div></div><span class="status status-${sl2}">${escapeHTML(r.status)}</span></div>
+        <div class="ws-rx-meta"><span><i class="fas fa-calendar"></i> ${escapeHTML(formatDate(r.created_at))}</span><span><i class="fas fa-pills"></i> ${itemCount} med(s)</span></div>
         <div class="ws-rx-items">${items2}</div>
-        <div style="display:flex;gap:var(--s2);margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--border-light)">
-          <button class="btn btn-outline btn-sm" onclick="openRxView(${r.id})"><i class="fas fa-eye"></i> View</button>
-          <button class="btn btn-outline btn-sm" onclick="printRx(${r.id})"><i class="fas fa-print"></i> Print</button>
-          ${!isCompleted ? `<button class="btn btn-outline btn-sm" onclick="editRx(${r.id})"><i class="fas fa-pen"></i> Edit</button>` : ''}
+        <div class="ws-inline-display-gap-margin-top-a2f2a5a5">
+          <button class="btn btn-outline btn-sm" data-workspace-action="view-rx" data-prescription-id="${safePositiveId(r.id)}"><i class="fas fa-eye"></i> View</button>
+          <button class="btn btn-outline btn-sm" data-workspace-action="print-rx" data-prescription-id="${safePositiveId(r.id)}"><i class="fas fa-print"></i> Print</button>
+          ${canEditPrescription ? `<button class="btn btn-outline btn-sm" data-workspace-action="edit-rx" data-prescription-id="${prescriptionId}"><i class="fas fa-pen"></i> Edit</button>` : ''}
         </div>
       </div>`;
     }).join('')}</div>`;
@@ -1030,17 +1154,20 @@ function renderPrescriptions() {
    ═══════════════════════════════════════════════════════════ */
 
 function renderTimeline() {
-  const appointments = ws.appointments || [];
-  const visitNotes = ws.visit_notes || [];
-  const prescriptions = ws.prescriptions || [];
-  const mhUpdates = ws.medical_history_updates || [];
+  const toRecordList = value => Array.isArray(value)
+    ? value.filter(record => record && typeof record === "object" && !Array.isArray(record))
+    : [];
+  const appointments = toRecordList(ws.appointments);
+  const visitNotes = toRecordList(ws.visit_notes);
+  const prescriptions = toRecordList(ws.prescriptions);
+  const mhUpdates = toRecordList(ws.medical_history_updates);
   const c = document.getElementById('ws-timeline');
 
   const entries = [];
 
   // Appointment events
   appointments.forEach(a => {
-    const statusLower = (a.status || '').toLowerCase();
+    const statusLower = typeof a.status === 'string' ? a.status.toLowerCase() : '';
     let icon = 'fa-calendar-check';
     let dotClass = 'appointment';
     if (statusLower === 'completed') { icon = 'fa-check-circle'; dotClass = 'completed'; }
@@ -1052,10 +1179,10 @@ function renderTimeline() {
       dotClass,
       icon,
       title: `<i class="fas ${icon}"></i> Appointment ${statusLower === 'completed' ? 'Completed' : statusLower === 'cancelled' ? 'Cancelled' : 'Confirmed'}`,
-      text: `${escapeHTML(a.department)} · ${escapeHTML(a.doctor_user_name || a.doctor)}`,
-      detail: `${escapeHTML(a.date)} ${escapeHTML(formatApptTime(a))}`,
+      text: `${a.department || ''} · ${a.doctor_user_name || a.doctor || ''}`,
+      detail: `${a.date || ''} ${formatApptTime(a)}`,
       doctor: a.doctor_user_name || a.doctor || '—',
-      quickView: `Status: ${a.status} · Department: ${escapeHTML(a.department)}`
+      quickView: `Status: ${a.status || ''} · Department: ${a.department || ''}`
     });
   });
 
@@ -1067,10 +1194,12 @@ function renderTimeline() {
       dotClass: 'visit-note',
       icon: 'fa-file-pen',
       title: `<i class="fas fa-file-pen"></i> ${v.diagnosis ? 'Diagnosis Saved' : 'Visit Documented'}`,
-      text: v.diagnosis ? `Diagnosis: ${escapeHTML(v.diagnosis)}` : 'Visit documented',
-      detail: escapeHTML(v.department),
+      text: v.diagnosis ? `Diagnosis: ${v.diagnosis}` : 'Visit documented',
+      detail: v.department || '',
       doctor: v.doctor_name || '—',
-      quickView: v.diagnosis ? `Diagnosis: ${escapeHTML(v.diagnosis)}${v.symptoms ? ' · Symptoms: ' + escapeHTML(v.symptoms.substring(0, 50)) : ''}` : 'No diagnosis recorded'
+      quickView: typeof v.diagnosis === 'string' && v.diagnosis
+        ? `Diagnosis: ${v.diagnosis}${typeof v.symptoms === 'string' && v.symptoms ? ' · Symptoms: ' + v.symptoms.substring(0, 50) : ''}`
+        : 'No diagnosis recorded'
     });
   });
 
@@ -1082,10 +1211,10 @@ function renderTimeline() {
       dotClass: 'prescription',
       icon: 'fa-prescription',
       title: `<i class="fas fa-prescription"></i> Prescription Issued`,
-      text: `${r.item_count || 0} medication(s) · ${r.status}`,
-      detail: `RX-${String(r.id).padStart(5, '0')}`,
+      text: `${safeCount(r.item_count, 0)} medication(s) · ${typeof r.status === 'string' ? r.status : ''}`,
+      detail: safePositiveId(r.id) ? `RX-${String(safePositiveId(r.id)).padStart(5, '0')}` : 'RX—',
       doctor: r.doctor_name || '—',
-      quickView: `Status: ${r.status} · Items: ${r.item_count || 0}${r.notes ? ' · Notes: ' + escapeHTML(r.notes.substring(0, 80)) : ''}`
+      quickView: `Status: ${typeof r.status === 'string' ? r.status : ''} · Items: ${safeCount(r.item_count, 0)}${typeof r.notes === 'string' && r.notes ? ' · Notes: ' + r.notes.substring(0, 80) : ''}`
     });
   });
 
@@ -1100,7 +1229,10 @@ function renderTimeline() {
       'medical_notes': 'Medical Notes',
       'blood_type': 'Blood Type'
     };
-    const fieldLabel = fieldLabels[mhu.field_name] || mhu.field_name;
+    const fieldName = typeof mhu.field_name === "string" ? mhu.field_name : "Medical history";
+    const fieldLabel = Object.prototype.hasOwnProperty.call(fieldLabels, fieldName)
+      ? fieldLabels[fieldName]
+      : fieldName;
     
     entries.push({
       date: mhu.created_at,
@@ -1111,11 +1243,15 @@ function renderTimeline() {
       text: `${fieldLabel} updated`,
       detail: formatDate(mhu.created_at),
       doctor: mhu.doctor_name || '—',
-      quickView: `Updated: ${fieldLabel}${mhu.new_value ? ' · New: ' + escapeHTML(mhu.new_value.substring(0, 50)) : ''}`
+      quickView: `Updated: ${fieldLabel}${typeof mhu.new_value === 'string' && mhu.new_value ? ' · New: ' + mhu.new_value.substring(0, 50) : ''}`
     });
   });
 
-  entries.sort((a, b) => b.date.localeCompare(a.date));
+  entries.sort((a, b) => {
+    const dateA = typeof a.date === 'string' ? a.date : '';
+    const dateB = typeof b.date === 'string' ? b.date : '';
+    return dateB.localeCompare(dateA);
+  });
 
   if (entries.length === 0) {
     c.innerHTML = `<div class="ws-empty"><i class="fas fa-clock-rotate"></i><h4>No Timeline Entries</h4><p>No activity recorded for this patient yet.</p></div>`;
@@ -1125,16 +1261,16 @@ function renderTimeline() {
   const items = entries.map((e, idx) => `
     <div class="ws-tl-item">
       <div class="ws-tl-dot ${e.dotClass}"><i class="fas ${e.icon}"></i></div>
-      <div class="ws-tl-date"><i class="fas fa-clock"></i> ${e.detail} · ${escapeHTML(e.doctor)}</div>
+      <div class="ws-tl-date"><i class="fas fa-clock"></i> ${escapeHTML(e.detail)} · ${escapeHTML(e.doctor)}</div>
       <div class="ws-tl-content">
         <div class="ws-tl-title">${e.title}</div>
-        <div class="ws-tl-text">${e.text}</div>
+        <div class="ws-tl-text">${escapeHTML(e.text)}</div>
         <div class="ws-tl-meta">
           <span><i class="fas fa-user-md"></i> ${escapeHTML(e.doctor)}</span>
-          <span><i class="fas fa-calendar"></i> ${e.detail}</span>
+          <span><i class="fas fa-calendar"></i> ${escapeHTML(e.detail)}</span>
         </div>
-        <div class="ws-tl-quick-view" id="ws-tl-qv-${idx}">${e.quickView}</div>
-        <button class="ws-tl-toggle" onclick="toggleTimelineView(${idx})" aria-expanded="false" aria-controls="ws-tl-qv-${idx}">
+        <div class="ws-tl-quick-view" id="ws-tl-qv-${idx}">${escapeHTML(e.quickView)}</div>
+        <button class="ws-tl-toggle" data-workspace-action="toggle-timeline" data-timeline-index="${idx}" aria-expanded="false" aria-controls="ws-tl-qv-${idx}">
           <i class="fas fa-chevron-down"></i> Quick View
         </button>
       </div>
@@ -1262,7 +1398,8 @@ async function restoreDraft() {
   
   // Check workflow status - don't restore if completed
   const wf = cv.visit_workflow;
-  const status = wf ? (wf.status || '').toLowerCase() : 'waiting';
+  const workflowStatus = wf && typeof wf.status === 'string' ? wf.status : '';
+  const status = workflowStatus ? safeClassToken(workflowStatus) : 'waiting';
   if (status === 'completed') {
     removeDraft();
     return;
@@ -1388,14 +1525,14 @@ function openRxModal() {
 
   // Reset to one row
   document.getElementById('ws-rx-items').innerHTML = `
-    <div class="ws-rx-row form-grid" style="margin-bottom:var(--s2)">
+    <div class="ws-rx-row form-grid ws-inline-margin-bottom-efd9f1df">
       <div class="form-group"><input type="text" class="rx-med" placeholder="Medication name" required /></div>
       <div class="form-group"><input type="text" class="rx-str" placeholder="Strength" /></div>
       <div class="form-group"><input type="text" class="rx-dos" placeholder="Dosage" /></div>
       <div class="form-group"><input type="text" class="rx-freq" placeholder="Frequency" /></div>
       <div class="form-group"><input type="text" class="rx-dur" placeholder="Duration" /></div>
-      <div class="form-group" style="display:flex;align-items:flex-end">
-        <button type="button" class="btn btn-outline btn-sm" onclick="this.closest('.ws-rx-row').remove()" style="color:var(--danger)"><i class="fas fa-trash-can"></i></button>
+      <div class="form-group ws-inline-display-align-items-0237f138">
+        <button type="button" class="btn btn-outline btn-sm ws-inline-color-497726e8" data-workspace-action="remove-rx-row"><i class="fas fa-trash-can"></i></button>
       </div>
     </div>`;
 
@@ -1407,15 +1544,14 @@ function wsRxAddRow() {
   if (!c) return;
   const row = document.createElement('div');
   row.className = 'ws-rx-row form-grid';
-  row.style.marginBottom = 'var(--s2)';
   row.innerHTML = `
     <div class="form-group"><input type="text" class="rx-med" placeholder="Medication name" required /></div>
     <div class="form-group"><input type="text" class="rx-str" placeholder="Strength" /></div>
     <div class="form-group"><input type="text" class="rx-dos" placeholder="Dosage" /></div>
     <div class="form-group"><input type="text" class="rx-freq" placeholder="Frequency" /></div>
     <div class="form-group"><input type="text" class="rx-dur" placeholder="Duration" /></div>
-    <div class="form-group" style="display:flex;align-items:flex-end">
-      <button type="button" class="btn btn-outline btn-sm rx-remove-row-btn" style="color:var(--danger)"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
+    <div class="form-group ws-inline-display-align-items-0237f138">
+      <button type="button" class="btn btn-outline btn-sm rx-remove-row-btn ws-inline-color-497726e8"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
     </div>`;
   c.appendChild(row);
 }
@@ -1452,7 +1588,8 @@ function initRxForm() {
     const ptId = parseInt(document.getElementById('ws-rx-pt-id')?.value || '0');
     const notes = document.getElementById('ws-rx-notes-h')?.value.trim() || '';
 
-    const rows = document.querySelectorAll('.ws-rx-row');
+    const itemsContainer = document.getElementById('ws-rx-items');
+    const rows = itemsContainer?.querySelectorAll('.ws-rx-row') || [];
     const items = [];
     rows.forEach(row => {
       const name = row.querySelector('.rx-med')?.value?.trim();
@@ -1478,11 +1615,11 @@ function initRxForm() {
       // Prescription issued -> move to Ready to Complete
       const cv = ws.current_visit;
       if (cv) {
-        const status = (cv.status || '').toLowerCase();
+        const status = safeClassToken(cv.status || '');
         if (status !== 'completed' && status !== 'ready_to_complete' && status !== 'ready to complete') {
-          await apiFetch((getBasePath() + "api/appointments/update.php"), {
+          await apiFetch((getBasePath() + "api/medical/transition-workflow.php"), {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: cv.id, status: 'Ready to Complete' }),
+            body: JSON.stringify({ appointment_id: cv.id, status: 'Ready to Complete' }),
           }, '');
         }
       }
@@ -1689,9 +1826,31 @@ async function recordMedicalHistoryUpdate(field, oldValue, newValue) {
   }
 }
 
-function editRx(rxId) {
-  // For simplicity, open the issue modal — the doctor can create a new one
-  openRxModal();
+async function editRx(rxId) {
+  const prescriptionId = safePositiveId(rxId);
+  if (!prescriptionId) {
+    showToast('A valid prescription ID is required.', 'error');
+    return;
+  }
+
+  const prescription = Array.isArray(ws?.prescriptions)
+    ? ws.prescriptions.find((item) => safePositiveId(item?.id) === prescriptionId)
+    : null;
+  if (!prescription) {
+    showToast('Prescription was not found in this patient workspace. Refresh and try again.', 'error');
+    return;
+  }
+  if (!Prescriptions.isEditable(prescription.status)) {
+    showToast('Only Active prescriptions can be edited.', 'error');
+    return;
+  }
+  const visitWorkflowStatus = ws?.current_visit?.visit_workflow?.status || ws?.current_visit?.workflow_status || '';
+  if (String(visitWorkflowStatus).toLowerCase() === 'completed') {
+    showToast('Prescriptions cannot be edited after the visit is completed.', 'error');
+    return;
+  }
+
+  await Prescriptions.openEditModal(prescriptionId);
 }
 
 function printRx(id) {

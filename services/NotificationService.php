@@ -91,8 +91,8 @@ class NotificationService
     ];
 
     /**
-     * All notification types with their human-readable labels.
-     * Used by the Settings UI to let users toggle notification categories.
+     * Canonical server-side labels for notification types.
+     * The current Settings UI maintains its own presentation map and does not call this helper.
      *
      * @return array<string, string>  type => label
      */
@@ -132,8 +132,8 @@ class NotificationService
     }
 
     /**
-     * Notification types that are relevant for each role.
-     * Used to filter which toggles appear in the Settings UI.
+     * Notification types grouped by the role that can receive them.
+     * Available to server-side consumers; the current Settings UI does not call this helper.
      *
      * @return array<string, array<string>>  role => [type, ...]
      */
@@ -210,21 +210,225 @@ class NotificationService
      * @param string $message Body text
      * @param string|null $refType  Related entity type ('appointment', 'rating', 'contact_message', 'doctor', 'user')
      * @param int|null    $refId    Related entity ID
-     * @return int  The new notification ID (0 if skipped due to preferences)
+     * @return int Notification ID when delivered immediately; 0 if skipped or queued for later delivery
      */
     public function create(int $userId, string $type, string $title, string $message, ?string $refType = null, ?int $refId = null): int
     {
-        // Check if user has this notification type enabled in preferences
+        // Preserve the existing preference decision at event time.
         if (!$this->isTypeEnabled($userId, $type)) {
-            return 0; // Silently skip — user opted out
+            return 0;
         }
 
+        // The outbox has no recipient FK by design. When this connection is
+        // inside a business transaction, the queued event commits or rolls
+        // back with that mutation without taking a recipient-user FK lock.
         $stmt = $this->db->prepare(
-            'INSERT INTO notifications (user_id, type, title, message, ref_type, ref_id, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, NOW())'
+            "INSERT INTO notification_outbox
+                (user_id, type, title, message, ref_type, ref_id, status, available_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())"
         );
         $stmt->execute([$userId, $type, $title, $message, $refType, $refId]);
-        return (int) $this->db->lastInsertId();
+        $outboxId = (int)$this->db->lastInsertId();
+
+        // A caller with an open transaction must let its transaction finish.
+        // The CLI worker will deliver the committed event.
+        if ($outboxId <= 0 || $this->db->inTransaction()) {
+            return 0;
+        }
+
+        try {
+            $result = $this->processOutbox(1, $outboxId);
+            return (int)($result['delivered_ids'][$outboxId] ?? 0);
+        } catch (Throwable $error) {
+            // The event is already durable. Leave it pending for the worker.
+            error_log(
+                'Notification outbox immediate dispatch failed for event '
+                . $outboxId . ': ' . get_class($error)
+            );
+            return 0;
+        }
+    }
+
+    /**
+     * Deliver queued notifications with per-event transactions and bounded retry.
+     *
+     * The notification insert and outbox completion update commit together,
+     * so a worker crash cannot create a duplicate on the next run.
+     *
+     * @return array{delivered:int,skipped:int,retried:int,failed:int,remaining:int,delivered_ids:array<int,int>}
+     */
+    public function processOutbox(int $limit = 50, ?int $onlyId = null): array
+    {
+        $limit = min(max($limit, 1), 100);
+        $stats = [
+            'delivered' => 0,
+            'skipped' => 0,
+            'retried' => 0,
+            'failed' => 0,
+            'remaining' => 0,
+            'delivered_ids' => [],
+        ];
+
+        // Never open a nested transaction from a business request.
+        if ($this->db->inTransaction()) {
+            return $stats;
+        }
+
+        for ($processed = 0; $processed < $limit; $processed++) {
+            $event = null;
+            $eventId = null;
+
+            try {
+                $this->db->beginTransaction();
+
+                $sql = "SELECT id, user_id, type, title, message, ref_type, ref_id, created_at, attempt_count
+                        FROM notification_outbox
+                        WHERE status = 'pending'
+                          AND available_at <= NOW()";
+                $params = [];
+                if ($onlyId !== null) {
+                    $sql .= ' AND id = ?';
+                    $params[] = $onlyId;
+                }
+                $sql .= ' ORDER BY id ASC LIMIT 1 FOR UPDATE';
+
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($params);
+                $event = $stmt->fetch();
+
+                if (!$event) {
+                    $this->db->commit();
+                    break;
+                }
+
+                $eventId = (int)$event['id'];
+
+                // The outbox intentionally survives account deletion. Do not
+                // retry an event for a recipient that no longer exists.
+                $recipientStmt = $this->db->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
+                $recipientStmt->execute([(int)$event['user_id']]);
+                if (!$recipientStmt->fetchColumn()) {
+                    $this->markOutboxSkipped($eventId, 'recipient_missing');
+                    $this->db->commit();
+                    $stats['skipped']++;
+                    continue;
+                }
+
+                // Re-check current preferences at delivery time as well.
+                if (!$this->isTypeEnabled((int)$event['user_id'], (string)$event['type'])) {
+                    $this->markOutboxSkipped($eventId, 'preference_disabled');
+                    $this->db->commit();
+                    $stats['skipped']++;
+                    continue;
+                }
+
+                $insert = $this->db->prepare(
+                    'INSERT INTO notifications (user_id, type, title, message, ref_type, ref_id, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)'
+                );
+                $insert->execute([
+                    (int)$event['user_id'],
+                    (string)$event['type'],
+                    (string)$event['title'],
+                    (string)$event['message'],
+                    $event['ref_type'] !== null ? (string)$event['ref_type'] : null,
+                    $event['ref_id'] !== null ? (int)$event['ref_id'] : null,
+                    $event['created_at'],
+                ]);
+                $notificationId = (int)$this->db->lastInsertId();
+
+                $complete = $this->db->prepare(
+                    "UPDATE notification_outbox
+                     SET status = 'delivered', processed_at = NOW(), last_error_code = NULL
+                     WHERE id = ? AND status = 'pending'"
+                );
+                $complete->execute([$eventId]);
+                if ($complete->rowCount() !== 1) {
+                    throw new RuntimeException('Notification outbox event state changed during delivery.');
+                }
+
+                $this->db->commit();
+                $stats['delivered']++;
+                $stats['delivered_ids'][$eventId] = $notificationId;
+            } catch (Throwable $error) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+
+                if ($eventId === null) {
+                    throw $error;
+                }
+
+                $nextAttempt = (int)$event['attempt_count'] + 1;
+                $errorCode = $error instanceof PDOException
+                    ? (string)($error->errorInfo[1] ?? $error->getCode())
+                    : get_class($error);
+                $errorCode = substr(preg_replace('/[^A-Za-z0-9_.-]/', '_', $errorCode) ?: 'unknown', 0, 64);
+
+                try {
+                    $retry = $this->db->prepare(
+                        "UPDATE notification_outbox
+                         SET status = CASE WHEN attempt_count >= 7 THEN 'failed' ELSE 'pending' END,
+                             available_at = DATE_ADD(NOW(), INTERVAL
+                                 CASE attempt_count
+                                     WHEN 0 THEN 30
+                                     WHEN 1 THEN 60
+                                     WHEN 2 THEN 120
+                                     WHEN 3 THEN 240
+                                     WHEN 4 THEN 480
+                                     WHEN 5 THEN 960
+                                     WHEN 6 THEN 1920
+                                     ELSE 1920
+                                 END SECOND),
+                             processed_at = CASE WHEN attempt_count >= 7 THEN NOW() ELSE NULL END,
+                             last_error_code = ?,
+                             attempt_count = attempt_count + 1
+                         WHERE id = ? AND status = 'pending'"
+                    );
+                    $retry->execute([$errorCode, $eventId]);
+                    if ($nextAttempt >= 8) {
+                        $stats['failed']++;
+                    } else {
+                        $stats['retried']++;
+                    }
+                } catch (Throwable $retryError) {
+                    error_log(
+                        'Notification outbox retry-state update failed for event '
+                        . $eventId . ': ' . get_class($retryError)
+                    );
+                }
+
+                // Avoid retrying the same failed event repeatedly in one run.
+                if ($onlyId !== null) {
+                    break;
+                }
+            }
+        }
+
+        // Bound retention of completed payloads. Terminal failures remain for
+        // operator review; delivered/skipped payloads are removed after 30 days.
+        $this->db->exec(
+            "DELETE FROM notification_outbox
+             WHERE status IN ('delivered', 'skipped')
+               AND processed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        );
+
+        $remaining = $this->db->query(
+            "SELECT COUNT(*) FROM notification_outbox WHERE status = 'pending'"
+        );
+        $stats['remaining'] = (int)$remaining->fetchColumn();
+
+        return $stats;
+    }
+
+    private function markOutboxSkipped(int $eventId, string $reason): void
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE notification_outbox
+             SET status = 'skipped', processed_at = NOW(), last_error_code = ?
+             WHERE id = ? AND status = 'pending'"
+        );
+        $stmt->execute([$reason, $eventId]);
     }
 
     // ── Fetch ───────────────────────────────────────────────

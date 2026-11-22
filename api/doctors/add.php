@@ -1,115 +1,96 @@
 <?php
 /**
  * HealthBridge — Admin: Add Doctor
- * Creates a new doctor account with department assignment.
- * Uses DepartmentService for authoritative department_id updates.
+ * Creates the account, profile, default schedule, audit record and admin
+ * notification outbox entries atomically through the schema-aware repository.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/DepartmentService.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../services/AdminAuditService.php';
+require_once __DIR__ . '/../../services/Repositories/DoctorManagementRepository.php';
 
-header('Content-Type: application/json');
+$user = requireRole('admin');
 
-$user = requireAuth();
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $input = getJsonInput();
-
-$name = trim($input['name'] ?? '');
-$email = trim($input['email'] ?? '');
+$nameValue = $input['name'] ?? '';
+$emailValue = $input['email'] ?? '';
 $password = $input['password'] ?? '';
-$departmentId = (int)($input['department_id'] ?? 0);
+$departmentId = parsePositiveInt($input['department_id'] ?? null);
 
-if (!$name || !$email || !$password) {
+if (!is_string($nameValue) || !is_string($emailValue) || !is_string($password)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Name, email, and password values must be text.']);
+}
+$name = trim($nameValue);
+$email = trim($emailValue);
+
+if ($name === '' || $email === '' || $password === '') {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Name, email, and password are required.']);
 }
-
-if (strlen($password) < 6) {
-    jsonResponse(false, ['message' => 'Password must be at least 6 characters.']);
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Invalid email address.']);
 }
-
-if ($departmentId <= 0) {
+if (mb_strlen($name) > 100 || mb_strlen($email) > 150 || mb_strlen($password) < 8 || mb_strlen($password) > 200) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Doctor details or password do not meet the required length limits.']);
+}
+if ($departmentId === null || $departmentId <= 0) {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Department is required.']);
 }
 
 try {
     $db = getDB();
-    $ds = new DepartmentService($db);
-
-    // Check duplicate email
-    $stmt = $db->prepare("SELECT id FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    if ($stmt->fetch()) {
+    $duplicate = $db->prepare('SELECT id FROM users WHERE email=? LIMIT 1');
+    $duplicate->execute([$email]);
+    if ($duplicate->fetchColumn()) {
+        http_response_code(409);
         jsonResponse(false, ['message' => 'A user with this email already exists.']);
     }
 
-    // Verify department exists and is active
-    $department = $ds->getDepartmentById($departmentId);
-    if (!$department) {
-        jsonResponse(false, ['message' => 'Department not found.']);
-    }
-    if ($department['status'] !== 'active') {
-        jsonResponse(false, ['message' => 'Cannot assign doctors to inactive departments.']);
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    if ($passwordHash === false) {
+        throw new RuntimeException('Password hashing failed.');
     }
 
-    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    // Current runtime is V1. The V2 implementation is already fixture-tested.
+    $management = new DoctorManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA'));
+    $doctorUserId = $management->createDoctor(
+        $name,
+        $email,
+        $passwordHash,
+        $departmentId,
+        (int)$user['id']
+    );
 
-    $db->beginTransaction();
-
+    $notifications = new NotificationService($db);
     try {
-        // Create user account
-        $stmt = $db->prepare("INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, 'doctor', NOW())");
-        $stmt->execute([$name, $email, $hashedPassword]);
-        $userId = (int)$db->lastInsertId();
-
-        // Create doctor profile with department assignment
-        $stmt = $db->prepare("INSERT INTO doctors (user_id, name, specialty, rating, exp, available, department_id) VALUES (?, ?, ?, 4.5, 5, 1, ?)");
-        $stmt->execute([$userId, $name, $department['name'], $departmentId]);
-
-        // Create default preferences
-        $stmt = $db->prepare("INSERT IGNORE INTO user_preferences (user_id) VALUES (?)");
-        $stmt->execute([$userId]);
-
-        // Notify all admins
-        $adminStmt = $db->prepare("SELECT id FROM users WHERE role = 'admin'");
-        $adminStmt->execute();
-        $admins = $adminStmt->fetchAll();
-
-        $ns = new NotificationService($db);
-        foreach ($admins as $admin) {
-            $ns->create(
-                (int)$admin['id'],
-                NotificationService::TYPE_NEW_DOCTOR,
-                'New Doctor Registered',
-                "Dr. {$name} ({$email}) has been registered in the {$department['name']} department.",
-                'doctor',
-                $userId
-            );
-        }
-
-        // Log the action
-        try {
-            $audit = new AdminAuditService($db, (int)$user['id']);
-            $audit->log('create', 'doctor', $userId, null, [
-                'name' => $name,
-                'email' => $email,
-                'department_id' => $departmentId,
-                'department' => $department['name'],
-            ]);
-        } catch (Exception $auditErr) {
-            error_log('Audit log error (add_doctor): ' . $auditErr->getMessage());
-        }
-
-        $db->commit();
-        jsonResponse(true, ['message' => 'Doctor added successfully.']);
-
-    } catch (Exception $e) {
-        $db->rollBack();
-        throw $e;
+        $notifications->processOutbox(50);
+    } catch (Throwable $notificationError) {
+        error_log('Add Doctor Outbox Dispatch Error: ' . get_class($notificationError));
     }
 
-} catch (Exception $e) {
+    jsonResponse(true, ['message' => 'Doctor added successfully.', 'doctor_id' => $doctorUserId]);
+} catch (DomainException $e) {
+    http_response_code(str_contains($e->getMessage(), 'active administrator') ? 403 : 400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    if (isDuplicateKeyViolation($e)) {
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'A user with this email or phone already exists.']);
+    }
     error_log('Add Doctor Error: ' . $e->getMessage());
     http_response_code(500);
-    jsonResponse(false, ['message' => 'Failed to add doctor.']);
+    jsonResponse(false, ['message' => 'Failed to add doctor. Please try again.']);
 }

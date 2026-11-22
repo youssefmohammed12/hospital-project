@@ -1,7 +1,7 @@
 /**
  * HealthBridge — Contact Page JavaScript
  * Handles: Leaflet map with persistent light tiles, contact form with
- *          validation and dual submission.
+ *          validation and same-origin HealthBridge submission.
  *
  * Uses shared helpers from main.js:
  *   - apiFetch() — for local DB submission
@@ -12,7 +12,6 @@
 
 "use strict";
 
-const FORMSPREE_ENDPOINT = "https://formspree.io/f/mojpgdab";
 
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
@@ -70,7 +69,7 @@ function initMap() {
 
 /* ============================================================
    CONTACT FORM
-   Dual submission: local DB (primary) + Formspree (backup)
+   Single destination: same-origin HealthBridge contact API
    ============================================================ */
 
 function initContactForm() {
@@ -120,37 +119,16 @@ function initContactForm() {
       submitBtn.disabled = true;
     }
 
-    // 1. Submit to local database
-    let dbResult = await apiFetch((getBasePath() + "api/settings/contact.php"), {
+    // Submit once to the same-origin HealthBridge contact API
+    const dbResult = await apiFetch((getBasePath() + "api/settings/contact.php"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, phone, department, subject, message }),
     });
-    const dbSuccess = dbResult.data?.success;
-
-    // 2. Submit to Formspree (best-effort)
-    let formspreeSuccess = false;
-    try {
-      const formData = new FormData();
-      formData.append("name", name);
-      formData.append("email", email);
-      formData.append("phone", phone);
-      formData.append("department", department);
-      if (subject) formData.append("subject", subject);
-      formData.append("message", message);
-
-      const response = await fetch(FORMSPREE_ENDPOINT, {
-        method: "POST",
-        body: formData,
-        headers: { Accept: "application/json" },
-      });
-      formspreeSuccess = response.ok;
-    } catch {
-      // Formspree failed — non-critical
-    }
+    const dbSuccess = dbResult.ok && dbResult.data?.success === true;
 
     // Show result
-    if (dbSuccess || formspreeSuccess) {
+    if (dbSuccess) {
       showSuccess(dbResult.data?.message || "Thank you! Your message has been sent successfully.");
       form.reset();
     } else {

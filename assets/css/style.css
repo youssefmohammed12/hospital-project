@@ -1728,7 +1728,14 @@ tbody tr:hover td {
 .text-muted {
   color: var(--text-muted) !important;
 }
+.label-muted-sm {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
 
+.mt-2 {
+  margin-top: var(--s2);
+}
 .mt-4 {
   margin-top: var(--s4);
 }
@@ -1737,6 +1744,18 @@ tbody tr:hover td {
 }
 .mt-8 {
   margin-top: var(--s8);
+}
+.mb-3 {
+  margin-bottom: var(--s3);
+}
+.mb-4 {
+  margin-bottom: var(--s4);
+}
+.mb-6 {
+  margin-bottom: var(--s6);
+}
+.mb-8 {
+  margin-bottom: var(--s8);
 }
 
 .flex {
@@ -2223,4 +2242,308 @@ tbody tr:hover td {
   color: var(--primary);
   border-color: var(--primary);
   background: rgba(8, 145, 178, 0.1);
+}
+
+
+/* Native hidden state must take precedence over component display rules. */
+.notification-badge[hidden],
+.notif-footer[hidden] {
+  display: none !important;
+}
+
+
+/* Strict inline-style migration helpers */
+[hidden] {
+  display: none !important;
+}
+
+.hb-table-empty-state {
+  padding: var(--s8);
+  color: var(--text-muted);
+}
+
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(1) { animation-delay: 0s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(2) { animation-delay: 0.13s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(3) { animation-delay: 0.26s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(4) { animation-delay: 0.39s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(5) { animation-delay: 0.52s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(6) { animation-delay: 0.65s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(7) { animation-delay: 0.78s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(8) { animation-delay: 0.91s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(9) { animation-delay: 1.04s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(10) { animation-delay: 1.17s; }
+.fade-in-stagger.animated > .fade-in-stagger-item:nth-child(n+11) { animation-delay: 1.30s; }
+
+.notif-item.is-deleting {
+  animation: notifSlideOut 0.25s ease forwards;
+}
+
+@keyframes notifSlideOut {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+    max-height: 0;
+    margin-block: 0;
+    padding-block: 0;
+  }
+}
+
+
+/* ============================================================
+   MILESTONE 3.4 — SHARED VISUAL FOUNDATION (PROVISIONAL)
+   Applied globally through style.css; page-specific refinements
+   remain in their owning stylesheets. Tokens are not final-locked.
+   ============================================================ */
+
+:root {
+  --font-sans: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Deep teal / calm clinical dark surfaces */
+  --bg-base: #111b19;
+  --bg-surface: #182522;
+  --bg-card: #1b2925;
+  --bg-card-hover: #243a34;
+  --bg-input: #16231f;
+  --bg-secondary: #182522;
+  --bg-subtle: #20312d;
+
+  /* Sea-glass brand accent */
+  --primary: #8bd0c4;
+  --primary-dark: #a4dcd2;
+  --primary-glow: rgba(139, 208, 196, 0.14);
+  --primary-subtle: rgba(139, 208, 196, 0.08);
+
+  /* Semantic states */
+  --success: #8dd8ad;
+  --warning: #f1c878;
+  --danger: #ffaaa4;
+
+  /* Legible neutral text and borders */
+  --text-primary: #e8f2ee;
+  --text-secondary: #bfd0c8;
+  --text-muted: #a9bdb4;
+  --border: rgba(180, 210, 198, 0.17);
+  --border-light: rgba(180, 210, 198, 0.09);
+
+  /* Softer elevation and radii */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18), 0 3px 10px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.32);
+  --shadow-glow: 0 0 28px rgba(139, 208, 196, 0.12);
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 17px;
+  --r-xl: 22px;
+  --t: 0.19s ease;
+  --t-fast: 0.14s ease;
+
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  /* Warm neutral light surfaces */
+  --bg-base: #f5f8f6;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0f6f3;
+  --bg-input: #f5f8f6;
+  --bg-secondary: #ffffff;
+  --bg-subtle: #edf3f0;
+
+  /* Strong teal on light surfaces */
+  --primary: #176b63;
+  --primary-dark: #155b55;
+  --primary-glow: rgba(28, 129, 119, 0.12);
+  --primary-subtle: rgba(28, 129, 119, 0.07);
+
+  --success: #176b4d;
+  --warning: #865500;
+  --danger: #a52b25;
+
+  --text-primary: #172e2b;
+  --text-secondary: #4d625d;
+  --text-muted: #53665f;
+  --border: rgba(27, 78, 66, 0.15);
+  --border-light: rgba(27, 78, 66, 0.09);
+
+  --shadow-sm: 0 1px 2px rgba(16, 58, 55, 0.05), 0 3px 10px rgba(16, 58, 55, 0.035);
+  --shadow-md: 0 12px 30px rgba(20, 48, 43, 0.08);
+  --shadow-lg: 0 18px 44px rgba(20, 48, 43, 0.12);
+  --shadow-glow: 0 0 28px rgba(28, 129, 119, 0.10);
+  color-scheme: light;
+}
+
+/* Use the same system-first type stack on shared controls. */
+body,
+button,
+input,
+select,
+textarea,
+.btn,
+.search-bar input,
+.search-bar button {
+  font-family: var(--font-sans);
+}
+
+/* Calm the shared navigation and remove the old cyan glass treatment. */
+.navbar {
+  background: rgba(24, 37, 34, 0.94);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 3px 20px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(16px) saturate(1.05);
+  -webkit-backdrop-filter: blur(16px) saturate(1.05);
+}
+.navbar::after {
+  background: linear-gradient(90deg, transparent, rgba(139, 208, 196, 0.32), transparent);
+}
+.logo span,
+.footer-logo span {
+  background: linear-gradient(135deg, var(--primary), #c3e9e1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.logo-icon,
+.theme-toggle,
+.nav-icon-btn {
+  background: var(--primary-glow);
+  border-color: var(--border);
+  box-shadow: none;
+}
+.theme-toggle:hover,
+.nav-icon-btn:hover {
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+  box-shadow: none;
+}
+.btn.btn-primary {
+  color: #103a37;
+  border-color: var(--primary);
+}
+.btn.btn-primary:hover {
+  color: #103a37;
+}
+.search-bar button {
+  background: var(--primary);
+  color: #103a37;
+}
+.search-bar button:hover {
+  background: var(--primary-dark);
+  color: #103a37;
+}
+.nav-row {
+  background: var(--bg-surface);
+}
+
+/* Reduce the large cyan/navy overlays while preserving the hero layout. */
+body {
+  background-image: radial-gradient(
+    ellipse 84% 56% at 50% -16%,
+    rgba(139, 208, 196, 0.045) 0%,
+    transparent 64%
+  );
+}
+.hero::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(17, 27, 25, 0.72) 0%,
+    rgba(17, 27, 25, 0.91) 100%
+  );
+}
+.modal-overlay {
+  background: rgba(8, 24, 21, 0.72);
+}
+
+/* Light theme uses the same neutral surfaces rather than blue-tinted panels. */
+html[data-theme="light"] body {
+  background-image: radial-gradient(
+    ellipse 84% 56% at 50% -16%,
+    rgba(28, 129, 119, 0.045) 0%,
+    transparent 64%
+  );
+}
+html[data-theme="light"] .navbar {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom-color: var(--border);
+  box-shadow: 0 3px 18px rgba(16, 58, 55, 0.05);
+}
+html[data-theme="light"] .navbar::after {
+  background: linear-gradient(90deg, transparent, rgba(28, 129, 119, 0.28), transparent);
+}
+html[data-theme="light"] .logo span,
+html[data-theme="light"] .footer-logo span {
+  background: linear-gradient(135deg, #155b55, #176b63);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+html[data-theme="light"] .nav-row {
+  background: rgba(255, 255, 255, 0.98);
+}
+html[data-theme="light"] .btn.btn-primary {
+  color: #ffffff;
+  border-color: var(--primary);
+}
+html[data-theme="light"] .btn.btn-primary:hover {
+  color: #ffffff;
+}
+html[data-theme="light"] .search-bar button,
+html[data-theme="light"] .search-bar button:hover {
+  color: #ffffff;
+}
+html[data-theme="light"] .hero::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(245, 248, 246, 0.58) 0%,
+    rgba(245, 248, 246, 0.9) 100%
+  );
+}
+html[data-theme="light"] thead {
+  background: linear-gradient(135deg, #edf3f0 0%, rgba(237, 243, 240, 0.92) 100%);
+}
+html[data-theme="light"] .footer {
+  background: linear-gradient(180deg, #edf3f0 0%, #e6efeb 100%);
+  border-image: linear-gradient(90deg, transparent, var(--primary), transparent) 1;
+}
+html[data-theme="light"] .footer::before {
+  background: linear-gradient(90deg, transparent, rgba(28, 129, 119, 0.28), transparent);
+}
+html[data-theme="light"] .theme-toggle,
+html[data-theme="light"] .nav-icon-btn {
+  background: rgba(28, 129, 119, 0.07);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+html[data-theme="light"] .theme-toggle:hover,
+html[data-theme="light"] .nav-icon-btn:hover {
+  background: rgba(28, 129, 119, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+html[data-theme="light"] .notification-badge {
+  border-color: #f5f8f6;
+}
+
+/* Respect reduced-motion preferences for shared page entrance effects. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  body {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* Correctly preserve the homepage CTA's white-on-teal label in dark mode. */
+html:not([data-theme="light"]) .home-cta__button {
+  color: #ffffff;
 }

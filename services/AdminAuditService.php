@@ -17,9 +17,9 @@ require_once __DIR__ . '/AuditService.php';
 
 class AdminAuditService extends AuditService
 {
-    public function __construct(PDO $db, int $adminId)
+    public function __construct(PDO $db, int $adminId, string $schema = self::SCHEMA_V1)
     {
-        parent::__construct($db, $adminId, 'admin');
+        parent::__construct($db, $adminId, 'admin', $schema);
     }
 
     /**
@@ -145,51 +145,5 @@ class AdminAuditService extends AuditService
             null,
             $doctorUserId
         );
-    }
-
-    /**
-     * Get audit log entries with optional filtering, search, and pagination.
-     * Delegates to parent class to ensure consistent filtering (including patient_id and doctor_id).
-     */
-    public function getAuditLog(array $filters = []): array
-    {
-        return parent::getAuditLog($filters);
-    }
-
-    /**
-     * Get distinct entity types that exist in the audit log.
-     *
-     * @return array
-     */
-    public function getDistinctEntityTypes(): array
-    {
-        $stmt = $this->db->query("SELECT DISTINCT entity_type FROM admin_audit ORDER BY entity_type ASC");
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-
-    /**
-     * Get distinct actions that exist in the audit log.
-     *
-     * @return array
-     */
-    public function getDistinctActions(): array
-    {
-        $stmt = $this->db->query("SELECT DISTINCT action FROM admin_audit ORDER BY action ASC");
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-
-    /**
-     * Get audit log for a specific entity.
-     *
-     * @param string $entityType
-     * @param int $entityId
-     * @return array
-     */
-    public function getEntityAuditLog(string $entityType, int $entityId): array
-    {
-        return $this->getAuditLog([
-            'entity_type' => $entityType,
-            'entity_id' => $entityId
-        ]);
     }
 }

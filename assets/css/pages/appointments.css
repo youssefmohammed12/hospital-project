@@ -1819,3 +1819,245 @@
   padding-top: var(--s4);
   border-top: 1px solid var(--border-light);
 }
+
+/* Section 213: CSP-safe presentation extracted from pages/patient/appointments.html. */
+[data-csp-style="patient-appt-001"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-002"] {
+  height: 140px; margin-bottom: var(--s4)
+}
+
+[data-csp-style="patient-appt-003"] {
+  height: 140px; margin-bottom: var(--s4)
+}
+
+[data-csp-style="patient-appt-004"] {
+  height: 140px
+}
+
+[data-csp-style="patient-appt-005"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-006"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-007"] {
+  text-align: center; padding: var(--s8)
+}
+
+[data-csp-style="patient-appt-008"] {
+  font-size: 2.5rem;
+                  color: var(--danger);
+                  margin-bottom: var(--s3);
+}
+
+[data-csp-style="patient-appt-009"] {
+  color: var(--text-secondary); margin-bottom: var(--s4)
+}
+
+[data-csp-style="patient-appt-010"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-011"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-012"] {
+  max-width: 580px
+}
+
+[data-csp-style="patient-appt-013"] {
+  max-width: 480px
+}
+
+[data-csp-style="patient-appt-014"] {
+  color: var(--danger)
+}
+
+[data-csp-style="patient-appt-015"] {
+  color: var(--text-secondary);
+            margin-bottom: var(--s4);
+            font-size: 0.875rem;
+}
+
+[data-csp-style="patient-appt-016"] {
+  margin: 0; font-size: 0.95rem; font-weight: 600
+}
+
+[data-csp-style="patient-appt-017"] {
+  margin: 0; font-size: 0.8rem; color: var(--text-muted)
+}
+
+[data-csp-style="patient-appt-018"] {
+  margin: var(--s1) 0 0 0;
+                font-size: 0.8rem;
+                color: var(--text-secondary);
+}
+
+[data-csp-style="patient-appt-019"] {
+  display: flex;
+            gap: var(--s3);
+            justify-content: flex-end;
+            margin-top: var(--s5);
+}
+
+[data-csp-style="patient-appt-020"] {
+  font-size: 0.85rem;
+                        color: var(--text-muted);
+                        margin-bottom: var(--s3);
+}
+
+[data-csp-style="patient-appt-021"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-022"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-023"] {
+  text-align: center; padding: var(--s8)
+}
+
+[data-csp-style="patient-appt-024"] {
+  color: var(--text-secondary)
+}
+
+[data-csp-style="patient-appt-025"] {
+  font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-top: var(--s2);
+}
+
+[data-csp-style="patient-appt-026"] {
+  margin-top: var(--s5)
+}
+
+[data-csp-style="patient-appt-027"] {
+  display: none
+}
+
+[data-csp-style="patient-appt-028"] {
+  max-width: 500px
+}
+
+[data-csp-style="patient-appt-029"] {
+  color: var(--warning)
+}
+
+[data-csp-style="patient-appt-030"] {
+  font-size: 0.8rem; color: var(--text-muted)
+}
+
+[data-csp-style="patient-appt-031"] {
+  color: var(--text-muted); font-weight: 400
+}
+
+[data-csp-style="patient-appt-032"] {
+  display: flex; justify-content: flex-end; margin-top: 4px
+}
+
+[data-csp-style="patient-appt-033"] {
+  color: var(--text-muted); font-size: 0.75rem
+}
+
+[data-csp-style="patient-appt-034"] {
+  display: none
+}
+
+
+/* Section 213: CSP-safe generated appointment presentation states. */
+.appointment-status-badge--reschedule-pending,
+.appointment-status-badge--pending {
+  background: rgba(245, 158, 11, 0.10);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.20);
+}
+.appointment-status-badge--reschedule-suggested {
+  background: rgba(139, 92, 246, 0.10);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.20);
+}
+.appointment-status-badge--reschedule-approved,
+.appointment-status-badge--completed {
+  background: rgba(34, 197, 94, 0.10);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.20);
+}
+.appointment-status-badge--reschedule-rejected,
+.appointment-status-badge--cancelled {
+  background: rgba(239, 68, 68, 0.10);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.20);
+}
+.appointment-status-badge--missed {
+  background: rgba(107, 114, 128, 0.10);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.20);
+}
+.appointment-status-badge--confirmed {
+  background: rgba(59, 130, 246, 0.10);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.20);
+}
+.appointment-status-badge--neutral {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.rating-result-summary { text-align: center; padding: var(--s6) 0; }
+.rating-result-stars { display: flex; gap: var(--s2); justify-content: center; margin-bottom: var(--s3); }
+.rating-result-star { font-size: 1.4rem; }
+.rating-result-star.is-filled,
+.star-icon.is-filled { color: #f59e0b; }
+.rating-result-star.is-empty,
+.star-icon.is-empty { color: var(--border-light); }
+.rating-result-score { font-size: 1.3rem; font-weight: 700; margin-bottom: var(--s2); }
+.rating-result-review {
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: var(--s4);
+  background: var(--bg-subtle);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-light);
+}
+.rating-result-date { font-size: 0.8rem; color: var(--text-muted); margin-top: var(--s3); }
+.slot-placeholder { color: var(--text-muted); }
+
+
+/* CSP-safe visibility states for the Appointments controller. */
+#featured-upcoming-container:not(.is-visible),
+#appointments-skeleton:not(.is-visible),
+#appointments-empty:not(.is-visible),
+#appointments-error:not(.is-visible),
+#appointments-grid:not(.is-visible),
+#pagination-container:not(.is-visible) {
+  display: none;
+}
+#featured-upcoming-container.is-visible { display: block; }
+#appointments-skeleton.is-visible { display: block; }
+#appointments-empty.is-visible,
+#appointments-error.is-visible { display: block; }
+#appointments-grid.is-visible { display: flex; }
+#pagination-container.is-visible { display: flex; }
+#rating-message:not(.is-visible) { display: none; }
+#rating-message.is-visible { display: block; }
+
+
+/* Section 213: CSP-safe booking-wizard state classes. */
+.selection-card.is-locked,
+.doctor-card.is-locked {
+  pointer-events: none;
+  opacity: 0.6;
+}
+.booking-reschedule-reason { margin-top: var(--s4); }
+.step-actions .btn.is-hidden,
+#booking-submit-btn.is-hidden { display: none !important; }
+.booking-summary-card #summary-empty-state.is-hidden { display: none !important; }
+.booking-summary-card #summary-content.is-visible { display: block !important; }

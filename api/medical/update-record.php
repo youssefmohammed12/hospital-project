@@ -1,224 +1,137 @@
 <?php
 /**
  * HealthBridge — Update Medical Record
- * Updates a patient's medical record information.
- * Notifies the patient when changes are made.
  *
- * Permissions:
- *   - Doctor: can update records of patients they have treated
- *   - Admin: can update any patient's record (only admin fields with audit trail)
- *   - Patient: CANNOT edit
+ * Doctors may update patients they have treated; admins may update any patient.
+ * Patient and doctor relationship is checked by the schema-aware repository.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/AuditService.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/Repositories/PatientManagementRepository.php';
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 $user = requireAuth();
 $currentUserId = (int)$user['id'];
-$currentRole   = $user['role'];
-$currentName   = $user['name'] ?? 'A staff member';
+$currentRole = (string)$user['role'];
 
-// Only doctors and admins can update
-if (!in_array($currentRole, ['doctor', 'admin'])) {
+if (!in_array($currentRole, ['doctor', 'admin'], true)) {
     http_response_code(403);
     jsonResponse(false, ['message' => 'Only doctors and admins can update medical records.']);
 }
-
-$input = getJsonInput();
-$patientId = (int)($input['patient_id'] ?? 0);
-$reason = trim($input['reason'] ?? '');
-
-if (!$patientId) {
-    http_response_code(400);
-    jsonResponse(false, ['message' => 'Patient ID is required.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-// For admin corrections, reason is mandatory
-if ($currentRole === 'admin' && !empty($input['blood_type'] ?? $input['emergency_contact_name'] ?? $input['emergency_contact_phone'])) {
-    if (empty($reason)) {
-        http_response_code(400);
-        jsonResponse(false, ['message' => 'Reason is required for administrative corrections.']);
+$input = getJsonInput();
+$patientId = parsePositiveInt($input['patient_id'] ?? null);
+if ($patientId === null || $patientId <= 0) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'A valid patient ID is required.']);
+}
+
+$reasonValue = $input['reason'] ?? '';
+if (!is_string($reasonValue)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Administrative correction reason must be text.']);
+}
+$reason = trim($reasonValue);
+if (mb_strlen($reason) > 1000) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Administrative correction reason must not exceed 1000 characters.']);
+}
+
+$allowedFields = [
+    'blood_type', 'height_cm', 'weight_kg', 'date_of_birth', 'gender',
+    'allergies', 'chronic_diseases', 'current_medications',
+    'previous_surgeries', 'family_history',
+    'emergency_contact_name', 'emergency_contact_rel', 'emergency_contact_phone',
+    'medical_notes',
+];
+$changes = [];
+foreach ($allowedFields as $field) {
+    if (!array_key_exists($field, $input)) {
+        continue;
     }
+
+    $value = $input[$field];
+    if ($value === null || $value === '') {
+        $changes[$field] = null;
+        continue;
+    }
+
+    if (in_array($field, ['height_cm', 'weight_kg'], true)) {
+        if (!(is_int($value) || is_float($value) || is_string($value)) || !is_numeric($value)) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Height and weight values must be numeric.']);
+        }
+        $changes[$field] = (float)$value;
+        continue;
+    }
+
+    if (!is_string($value)) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Medical record text fields must be text.']);
+    }
+    if (mb_strlen($value) > 10000) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Medical record text fields must not exceed 10000 characters.']);
+    }
+    if ($field === 'date_of_birth' && validateDate($value, 'Date of birth') !== null) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Date of birth must be a valid YYYY-MM-DD date.']);
+    }
+    if ($field === 'gender' && !in_array($value, ['Male', 'Female', 'Other'], true)) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Gender must be Male, Female, or Other.']);
+    }
+    $changes[$field] = $value;
 }
 
 try {
     $db = getDB();
-    $db->beginTransaction();
 
-    // ── Authorization: Doctor must have treated this patient ──
-    if ($currentRole === 'doctor') {
-        $authStmt = $db->prepare(
-            "SELECT COUNT(*) as cnt FROM appointments
-             WHERE doctor_id = ? AND user_id = ? AND status IN ('Confirmed', 'Cancelled')
-             LIMIT 1"
-        );
-        $authStmt->execute([$currentUserId, $patientId]);
-        if ((int)$authStmt->fetch()['cnt'] === 0) {
-            http_response_code(403);
-            jsonResponse(false, ['message' => 'You can only update records of patients you have treated.']);
-        }
-    }
+    // The live application is still V1. The repository's V2 branch is tested
+    // against disposable fixtures and can be selected only during approved cutover.
+    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $result = $management->updateMedicalProfile(
+        $patientId,
+        $changes,
+        $currentUserId,
+        $currentRole,
+        $reason
+    );
 
-    // ── Check if medical record exists and get current values ──
-    $checkStmt = $db->prepare("SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1");
-    $checkStmt->execute([$patientId]);
-    $existing = $checkStmt->fetch();
-
-    if (!$existing) {
-        // Auto-create if missing
-        $insertStmt = $db->prepare("INSERT INTO medical_records (patient_id) VALUES (?)");
-        $insertStmt->execute([$patientId]);
-        $existing = [];
-    }
-
-    // ── Admin-only fields (require audit trail) ──
-    $adminFields = ['blood_type', 'emergency_contact_name', 'emergency_contact_phone'];
-    $auditEntries = [];
-
-    // ── Build update fields (only provided ones) ──
-    $allowedFields = [
-        'blood_type', 'height_cm', 'weight_kg', 'date_of_birth', 'gender',
-        'allergies', 'chronic_diseases', 'current_medications',
-        'previous_surgeries', 'family_history',
-        'emergency_contact_name', 'emergency_contact_rel', 'emergency_contact_phone',
-        'medical_notes',
-    ];
-
-    // Human-readable field labels
-    $fieldLabels = [
-        'blood_type'              => 'Blood type',
-        'height_cm'               => 'Height (cm)',
-        'weight_kg'               => 'Weight (kg)',
-        'date_of_birth'           => 'Date of birth',
-        'gender'                  => 'Gender',
-        'allergies'               => 'Allergies',
-        'chronic_diseases'        => 'Chronic diseases',
-        'current_medications'     => 'Current medications',
-        'previous_surgeries'      => 'Previous surgeries',
-        'family_history'          => 'Family history',
-        'emergency_contact_name'  => 'Emergency contact name',
-        'emergency_contact_rel'   => 'Emergency contact relationship',
-        'emergency_contact_phone' => 'Emergency contact phone',
-        'medical_notes'           => 'Medical notes',
-    ];
-
-    $updates = [];
-    $params = [];
-    $hasActualChange = false;
-    $oldValues = [];
-    $newValues = [];
-    $changeDescriptions = [];
-
-    foreach ($allowedFields as $field) {
-        if (array_key_exists($field, $input)) {
-            $newValue = $input[$field] !== '' ? $input[$field] : null;
-            $oldValue = $existing[$field] ?? null;
-
-            // Only include if the value actually changed
-            if ($newValue !== $oldValue) {
-                $updates[] = "{$field} = ?";
-                $params[] = $newValue;
-                $hasActualChange = true;
-
-                $oldValues[$field] = $oldValue;
-                $newValues[$field] = $newValue;
-
-                $label = $fieldLabels[$field] ?? ucwords(str_replace('_', ' ', $field));
-                $oldDisplay = $oldValue !== null && $oldValue !== '' ? $oldValue : 'None';
-                $newDisplay = $newValue !== null && $newValue !== '' ? $newValue : 'None';
-                $changeDescriptions[] = "{$label}: {$oldDisplay} → {$newDisplay}";
-
-                // Track admin-only fields for medical_record_audit table
-                if ($currentRole === 'admin' && in_array($field, $adminFields)) {
-                    $auditEntries[] = [
-                        'field' => $field,
-                        'old' => $oldValue,
-                        'new' => $newValue
-                    ];
-                }
-            }
-        }
-    }
-
-    if (!$hasActualChange) {
-        $db->rollBack();
+    if (!$result['changed']) {
         jsonResponse(true, ['message' => 'No changes detected.']);
     }
 
-    $params[] = $patientId;
-    $sql = "UPDATE medical_records SET " . implode(', ', $updates) . " WHERE patient_id = ?";
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-
-    // ── Log audit entries for admin corrections (medical_record_audit table) ──
-    if ($currentRole === 'admin' && !empty($auditEntries)) {
-        $auditStmt = $db->prepare("
-            INSERT INTO medical_record_audit
-            (patient_id, admin_id, field_name, old_value, new_value, reason)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-
-        foreach ($auditEntries as $entry) {
-            $auditStmt->execute([
-                $patientId,
-                $currentUserId,
-                $entry['field'],
-                $entry['old'],
-                $entry['new'],
-                $reason
-            ]);
-        }
+    $notifications = new NotificationService($db);
+    try {
+        $notifications->processOutbox(50);
+    } catch (Throwable $dispatchError) {
+        error_log('Medical record update committed; notification dispatch deferred: ' . get_class($dispatchError));
     }
-
-    // ── Log to universal audit trail (inside transaction so it rolls back on failure) ──
-    $description = 'Medical record updated: ' . implode(', ', $changeDescriptions);
-    $audit = new AuditService($db, $currentUserId, $currentRole);
-    $audit->log(
-        'update',
-        'patient',
-        $patientId,
-        $oldValues,
-        $newValues,
-        $description,
-        $patientId,
-        ($currentRole === 'doctor' ? $currentUserId : null)
-    );
-
-    // ── Notify the patient ──
-    $ns = new NotificationService($db);
-    if ($currentRole === 'doctor') {
-        $ns->create(
-            $patientId,
-            NotificationService::TYPE_MEDICAL_RECORD_UPDATED,
-            'Medical Record Updated',
-            "{$currentName} updated your medical record. Review the latest information in your Medical Record.",
-            'medical_record',
-            $patientId
-        );
-    } else {
-        $ns->create(
-            $patientId,
-            NotificationService::TYPE_MEDICAL_RECORD_UPDATED,
-            'Medical Record Updated',
-            'Your medical record was updated by the hospital administration. You can review the changes in your Medical Record.',
-            'medical_record',
-            $patientId
-        );
-    }
-
-    $db->commit();
 
     jsonResponse(true, ['message' => 'Medical record updated successfully.']);
-
-} catch (Exception $e) {
-    if (isset($db) && $db->inTransaction()) {
-        $db->rollBack();
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    if (str_contains($message, 'not found')) {
+        http_response_code(404);
+    } elseif (str_contains($message, 'Reason is required')) {
+        http_response_code(400);
+    } else {
+        http_response_code(403);
     }
+    jsonResponse(false, ['message' => $message]);
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
     error_log('Update Medical Record Error: ' . $e->getMessage());
     http_response_code(500);
-    jsonResponse(false, ['message' => 'Failed to update medical record. Error: ' . $e->getMessage()]);
+    jsonResponse(false, ['message' => 'Failed to update medical record. Please try again.']);
 }
-

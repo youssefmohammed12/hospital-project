@@ -8,12 +8,13 @@
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
   <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g" crossorigin="anonymous" />
   <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=3" />
   <link rel="stylesheet" href="../../assets/css/pages/admin.css?v=3" />
   <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
   <link rel="stylesheet" href="../../assets/css/pages/patient-emr.css?v=3" />
   <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=3" />
+  <link rel="stylesheet" href="../../assets/css/modules/prescription.css?v=3" />
   <link rel="stylesheet" href="../../assets/css/pages/doctor-workspace.css?v=3" />
 </head>
 <body class="doctor-workspace-body">
@@ -43,7 +44,7 @@
       <div>
         <div class="sidebar-user">
           <div class="sidebar-avatar-container">
-            <div class="sidebar-avatar" style="background: var(--primary-glow); border-color: var(--border)">DR</div>
+            <div class="sidebar-avatar ws-inline-background-border-color-24b75413">DR</div>
             <div class="status-dot" title="EMR Online"></div>
           </div>
           <h3 id="ws-sb-name">Doctor Panel</h3>
@@ -51,7 +52,7 @@
         </div>
         <nav class="sidebar-nav">
           <a href="doctor-dashboard.html"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Dashboard</a>
-          <hr style="border:0;border-top:1px solid var(--border-light);margin:var(--s3) 0" />
+          <hr / class="ws-inline-border-border-top-margin-3a19f08a">
           <a href="doctor-dashboard.html#appointments"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments</a>
           <a href="doctor-dashboard.html#queue"><i class="fas fa-users-rectangle" aria-hidden="true"></i> Patient Queue</a>
         </nav>
@@ -128,7 +129,7 @@
 
   <!-- ====== PRESCRIPTION ISSUE MODAL ====== -->
   <div id="ws-rx-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-rx-title" style="max-width:720px;width:min(720px,100%)">
+    <div class="modal ws-inline-max-width-width-1c54fdb8" role="dialog" aria-modal="true" aria-labelledby="ws-rx-title">
       <div class="modal-header">
         <h3 id="ws-rx-title"><i class="fas fa-prescription" aria-hidden="true"></i> Issue Prescription</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -138,30 +139,30 @@
           <input type="hidden" id="ws-rx-appt-id" />
           <input type="hidden" id="ws-rx-pt-id" />
           <div class="form-grid">
-            <div class="form-group"><label>Patient</label><input type="text" id="ws-rx-pt-name" readonly style="background:var(--bg-subtle)" /></div>
-            <div class="form-group"><label>Appointment</label><input type="text" id="ws-rx-appt-date" readonly style="background:var(--bg-subtle)" /></div>
+            <div class="form-group"><label>Patient</label><input type="text" id="ws-rx-pt-name" readonly / class="ws-inline-background-b03607d7"></div>
+            <div class="form-group"><label>Appointment</label><input type="text" id="ws-rx-appt-date" readonly / class="ws-inline-background-b03607d7"></div>
           </div>
-          <div class="form-group" style="margin-top:var(--s4)">
-            <label>Medications <span style="color:var(--text-muted);font-size:0.78rem">(add at least one)</span></label>
+          <div class="form-group mt-4">
+            <label>Medications <span class="ws-inline-color-font-size-69d4101b">(add at least one)</span></label>
           </div>
           <div id="ws-rx-items">
-            <div class="ws-rx-row form-grid" style="margin-bottom:var(--s2)">
+            <div class="ws-rx-row form-grid ws-inline-margin-bottom-efd9f1df">
               <div class="form-group"><input type="text" class="rx-med" placeholder="Medication name" required /></div>
               <div class="form-group"><input type="text" class="rx-str" placeholder="Strength (e.g. 500mg)" /></div>
               <div class="form-group"><input type="text" class="rx-dos" placeholder="Dosage (e.g. 1 tab)" /></div>
               <div class="form-group"><input type="text" class="rx-freq" placeholder="Frequency (e.g. BID)" /></div>
               <div class="form-group"><input type="text" class="rx-dur" placeholder="Duration (e.g. 7d)" /></div>
-              <div class="form-group" style="display:flex;align-items:flex-end">
-                <button type="button" class="btn btn-outline btn-sm rx-remove-row-btn" style="color:var(--danger)"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
+              <div class="form-group ws-inline-display-align-items-0237f138">
+                <button type="button" class="btn btn-outline btn-sm rx-remove-row-btn ws-inline-color-497726e8"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
               </div>
             </div>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" id="ws-rx-add-row-btn" style="margin-bottom:var(--s3)"><i class="fas fa-plus" aria-hidden="true"></i> Add Medication</button>
+          <button type="button" class="btn btn-outline btn-sm mb-3" id="ws-rx-add-row-btn"><i class="fas fa-plus" aria-hidden="true"></i> Add Medication</button>
           <div class="form-group full">
             <label for="ws-rx-notes-h">Notes (Optional)</label>
-            <textarea id="ws-rx-notes-h" placeholder="Additional instructions for patient..." maxlength="1000" style="min-height:50px"></textarea>
+            <textarea id="ws-rx-notes-h" placeholder="Additional instructions for patient..." maxlength="1000" class="ws-inline-min-height-b7406c0f"></textarea>
           </div>
-          <div class="modal-footer" style="border-top:1px solid var(--border-light);padding:var(--s4) 0 0;margin-top:var(--s4)">
+          <div class="modal-footer ws-inline-border-top-padding-margin-top-8c9fbf94">
             <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
             <button type="submit" class="btn btn-primary"><i class="fas fa-prescription" aria-hidden="true"></i> Issue Prescription</button>
           </div>
@@ -172,14 +173,16 @@
 
   <!-- ====== FINISH VISIT REVIEW MODAL ====== -->
   <div id="ws-review-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-review-title" style="max-width:520px;width:min(520px,100%)">
+    <div class="modal ws-inline-max-width-width-01511602" role="dialog" aria-modal="true" aria-labelledby="ws-review-title">
       <div class="modal-header">
         <h3 id="ws-review-title"><i class="fas fa-clipboard-check" aria-hidden="true"></i> Complete Visit</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="color:var(--text-secondary);margin-bottom:var(--s4)">Review visit summary before marking consultation as completed.</p>
-        <div id="ws-review-summary" style="background:var(--bg-subtle);border-radius:var(--r-md);padding:var(--s4);margin-bottom:var(--s4)"></div>
+        <p class="ws-inline-color-margin-bottom-166c075c">Review visit summary before marking consultation as completed.</p>
+        <div id="ws-review-summary" class="ws-inline-background-border-radius-padding-2c7ac996"></div>
+        <div id="ws-review-checklist" class="ws-review-checklist" aria-label="Visit completion checklist"></div>
+        <div id="ws-review-errors" class="ws-review-errors" role="alert" aria-live="assertive"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline modal-close-btn">Continue Editing</button>
           <button type="button" class="btn btn-success" id="ws-confirm-complete-btn"><i class="fas fa-check-circle" aria-hidden="true"></i> Confirm &amp; Complete Visit</button>
@@ -191,7 +194,7 @@
   <!-- ====== MEDICAL HISTORY MODALS ====== -->
   <!-- Allergies Modal -->
   <div id="ws-mh-allergies-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-allergies-title" style="max-width:520px;width:min(520px,100%)">
+    <div class="modal ws-inline-max-width-width-01511602" role="dialog" aria-modal="true" aria-labelledby="ws-mh-allergies-title">
       <div class="modal-header">
         <h3 id="ws-mh-allergies-title"><i class="fas fa-allergies" aria-hidden="true"></i> Update Allergies</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -201,7 +204,7 @@
           <input type="hidden" id="ws-mh-allergies-pt-id" />
           <div class="form-group">
             <label for="ws-mh-allergies-input">Known Allergies</label>
-            <textarea id="ws-mh-allergies-input" placeholder="List known allergies (e.g., Penicillin, Peanuts, Latex)" maxlength="2000" style="min-height:100px"></textarea>
+            <textarea id="ws-mh-allergies-input" placeholder="List known allergies (e.g., Penicillin, Peanuts, Latex)" maxlength="2000" class="ws-inline-min-height-30ed687d"></textarea>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
@@ -214,7 +217,7 @@
 
   <!-- Chronic Diseases Modal -->
   <div id="ws-mh-chronic-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-chronic-title" style="max-width:520px;width:min(520px,100%)">
+    <div class="modal ws-inline-max-width-width-01511602" role="dialog" aria-modal="true" aria-labelledby="ws-mh-chronic-title">
       <div class="modal-header">
         <h3 id="ws-mh-chronic-title"><i class="fas fa-heart-pulse" aria-hidden="true"></i> Update Chronic Conditions</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -224,7 +227,7 @@
           <input type="hidden" id="ws-mh-chronic-pt-id" />
           <div class="form-group">
             <label for="ws-mh-chronic-input">Chronic Diseases / Conditions</label>
-            <textarea id="ws-mh-chronic-input" placeholder="List chronic diseases (e.g., Type 2 Diabetes, Hypertension, Asthma)" maxlength="2000" style="min-height:100px"></textarea>
+            <textarea id="ws-mh-chronic-input" placeholder="List chronic diseases (e.g., Type 2 Diabetes, Hypertension, Asthma)" maxlength="2000" class="ws-inline-min-height-30ed687d"></textarea>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
@@ -237,7 +240,7 @@
 
   <!-- Current Medications Modal -->
   <div id="ws-mh-medications-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-medications-title" style="max-width:520px;width:min(520px,100%)">
+    <div class="modal ws-inline-max-width-width-01511602" role="dialog" aria-modal="true" aria-labelledby="ws-mh-medications-title">
       <div class="modal-header">
         <h3 id="ws-mh-medications-title"><i class="fas fa-pills" aria-hidden="true"></i> Update Current Medications</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -247,7 +250,7 @@
           <input type="hidden" id="ws-mh-medications-pt-id" />
           <div class="form-group">
             <label for="ws-mh-medications-input">Current Medications</label>
-            <textarea id="ws-mh-medications-input" placeholder="List current medications (e.g., Metformin 500mg, Lisinopril 10mg)" maxlength="2000" style="min-height:100px"></textarea>
+            <textarea id="ws-mh-medications-input" placeholder="List current medications (e.g., Metformin 500mg, Lisinopril 10mg)" maxlength="2000" class="ws-inline-min-height-30ed687d"></textarea>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
@@ -260,7 +263,7 @@
 
   <!-- Previous Surgeries Modal -->
   <div id="ws-mh-surgeries-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-surgeries-title" style="max-width:520px;width:min(520px,100%)">
+    <div class="modal ws-inline-max-width-width-01511602" role="dialog" aria-modal="true" aria-labelledby="ws-mh-surgeries-title">
       <div class="modal-header">
         <h3 id="ws-mh-surgeries-title"><i class="fas fa-scalpel" aria-hidden="true"></i> Update Previous Surgeries</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -270,7 +273,7 @@
           <input type="hidden" id="ws-mh-surgeries-pt-id" />
           <div class="form-group">
             <label for="ws-mh-surgeries-input">Previous Surgeries</label>
-            <textarea id="ws-mh-surgeries-input" placeholder="List previous surgeries with dates" maxlength="2000" style="min-height:100px"></textarea>
+            <textarea id="ws-mh-surgeries-input" placeholder="List previous surgeries with dates" maxlength="2000" class="ws-inline-min-height-30ed687d"></textarea>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
@@ -283,7 +286,7 @@
 
   <!-- Family History Modal -->
   <div id="ws-mh-family-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-family-title" style="max-width:520px;width:min(520px,100%)">
+    <div class="modal ws-inline-max-width-width-01511602" role="dialog" aria-modal="true" aria-labelledby="ws-mh-family-title">
       <div class="modal-header">
         <h3 id="ws-mh-family-title"><i class="fas fa-users" aria-hidden="true"></i> Update Family History</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -293,7 +296,7 @@
           <input type="hidden" id="ws-mh-family-pt-id" />
           <div class="form-group">
             <label for="ws-mh-family-input">Family Medical History</label>
-            <textarea id="ws-mh-family-input" placeholder="List relevant family medical history" maxlength="2000" style="min-height:100px"></textarea>
+            <textarea id="ws-mh-family-input" placeholder="List relevant family medical history" maxlength="2000" class="ws-inline-min-height-30ed687d"></textarea>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
@@ -306,7 +309,7 @@
 
   <!-- Medical Notes Modal -->
   <div id="ws-mh-notes-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-notes-title" style="max-width:600px;width:min(600px,100%)">
+    <div class="modal ws-inline-max-width-width-8051bfe6" role="dialog" aria-modal="true" aria-labelledby="ws-mh-notes-title">
       <div class="modal-header">
         <h3 id="ws-mh-notes-title"><i class="fas fa-stethoscope" aria-hidden="true"></i> Update Medical Notes</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -316,7 +319,7 @@
           <input type="hidden" id="ws-mh-notes-pt-id" />
           <div class="form-group">
             <label for="ws-mh-notes-input">Medical Notes</label>
-            <textarea id="ws-mh-notes-input" placeholder="General medical notes or observations" maxlength="5000" style="min-height:150px"></textarea>
+            <textarea id="ws-mh-notes-input" placeholder="General medical notes or observations" maxlength="5000" class="ws-inline-min-height-bf841e36"></textarea>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
@@ -329,7 +332,7 @@
 
   <!-- Blood Type Modal -->
   <div id="ws-mh-blood-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-blood-title" style="max-width:480px;width:min(480px,100%)">
+    <div class="modal ws-inline-max-width-width-0362039e" role="dialog" aria-modal="true" aria-labelledby="ws-mh-blood-title">
       <div class="modal-header">
         <h3 id="ws-mh-blood-title"><i class="fas fa-droplet" aria-hidden="true"></i> Set Blood Type</h3>
         <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
@@ -366,9 +369,9 @@
     <span id="ws-autosave-text">Draft saved</span>
   </div>
 
-  <script src="../../assets/js/core/main.js?v=3"></script>
-  <script src="../../assets/js/modules/prescriptions.js?v=3"></script>
-  <script src="../../assets/js/pages/doctor-workspace.js?v=3"></script>
-  <script src="../../assets/js/modules/notifications.js?v=3"></script>
+  <script src="../../assets/js/core/main.js?v=7"></script>
+  <script src="../../assets/js/modules/prescriptions.js?v=5"></script>
+  <script src="../../assets/js/pages/doctor-workspace.js?v=8"></script>
+  <script src="../../assets/js/modules/notifications.js?v=5"></script>
 </body>
 </html>

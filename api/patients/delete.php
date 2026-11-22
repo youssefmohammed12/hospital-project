@@ -1,57 +1,55 @@
 <?php
 /**
- * HealthBridge — Admin: Delete Patient
- * Removes a patient account and cancels their active appointments.
+ * HealthBridge — Admin: Archive Patient
+ *
+ * Disables sign-in and cancels only appointments whose clinical work has not
+ * started. Patient, EMR, notes, prescriptions and audit history are retained.
  * POST { id }
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/AuditService.php';
+require_once __DIR__ . '/../../services/Repositories/PatientManagementRepository.php';
 
-requireRole('admin');
+$user = requireRole('admin');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 $data = getJsonInput();
-$id   = (int)($data['id'] ?? 0);
-
-if (!$id) {
+$id = parsePositiveInt($data['id'] ?? null);
+if ($id <= 0) {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Invalid patient ID.']);
 }
 
 try {
     $db = getDB();
 
-    // Verify patient exists
-    $check = $db->prepare('SELECT id, name FROM users WHERE id = ? AND role = "patient" LIMIT 1');
-    $check->execute([$id]);
-    $patient = $check->fetch();
+    // Keep current runtime on v1; v2 behavior is exercised through disposable fixtures.
+    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $result = $management->archivePatient($id, (int)$user['id']);
 
-    if (!$patient) {
-        jsonResponse(false, ['message' => 'Patient not found.']);
+    jsonResponse(true, [
+        'message' => "Patient '{$result['patient_name']}' archived. Sign-in is disabled; medical and audit history has been retained.",
+        'cancelled_appointments' => (int)$result['cancelled_appointments'],
+        'is_active' => 0,
+    ]);
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    if ($message === 'Patient not found.') {
+        http_response_code(404);
+    } elseif ($message === 'This patient account is already disabled.') {
+        http_response_code(409);
+    } else {
+        http_response_code(403);
+        $message = 'An active administrator is required to archive a patient account.';
     }
-
-    $db->beginTransaction();
-
-    // Cancel active appointments for this patient
-    $db->prepare(
-        'UPDATE appointments SET status = "Cancelled"
-         WHERE user_id = ? AND status IN ("Pending","Confirmed")'
-    )->execute([$id]);
-
-    // Delete patient account
-    $db->prepare('DELETE FROM users WHERE id = ? AND role = "patient"')->execute([$id]);
-
-    // Log to audit
-    $audit = new AuditService($db, (int)$_SESSION['user_id'], $_SESSION['role']);
-    $audit->log('delete', 'patient', $id, $patient['name'], null, "Patient '{$patient['name']}' deleted", $id);
-
-    $db->commit();
-
-    jsonResponse(true, ['message' => "Patient '{$patient['name']}' deleted successfully."]);
-
-} catch (Exception $e) {
-    if (isset($db) && $db->inTransaction()) $db->rollBack();
-    error_log('Delete Patient Error: ' . $e->getMessage());
+    jsonResponse(false, ['message' => $message]);
+} catch (Throwable $e) {
+    error_log('Archive Patient Error: ' . $e->getMessage());
     http_response_code(500);
-    jsonResponse(false, ['message' => 'Failed to delete patient. Please try again.']);
+    jsonResponse(false, ['message' => 'Failed to archive patient. Please try again.']);
 }
-

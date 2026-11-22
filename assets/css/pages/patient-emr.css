@@ -1217,3 +1217,171 @@
   position: absolute; width: 1px; height: 1px; padding: 0;
   margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0;
 }
+
+/* Section 213: CSP-safe presentation extracted from pages/patient/patient-emr.html. */
+[data-csp-style="patient-emr-001"] {
+  background: var(--primary-glow); border-color: var(--border)
+}
+
+[data-csp-style="patient-emr-002"] {
+  border:0;border-top:1px solid var(--border-light);margin:var(--s3) 0
+}
+
+[data-csp-style="patient-emr-003"] {
+  color:var(--text-muted);font-weight:400
+}
+
+[data-csp-style="patient-emr-004"] {
+  border-top:1px solid var(--border-light);padding:var(--s4) 0 0 0;margin-top:var(--s6)
+}
+
+[data-csp-style="patient-emr-005"] {
+  max-width:620px;width:min(620px,100%)
+}
+
+[data-csp-style="patient-emr-006"] {
+  overflow-y:auto
+}
+
+[data-csp-style="patient-emr-007"] {
+  color:var(--text-muted);font-size:0.85rem
+}
+
+[data-csp-style="patient-emr-008"] {
+  display:none;margin-top:var(--s3)
+}
+
+[data-csp-style="patient-emr-009"] {
+  background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4)
+}
+
+[data-csp-style="patient-emr-010"] {
+  font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px
+}
+
+[data-csp-style="patient-emr-011"] {
+  display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s1)
+}
+
+[data-csp-style="patient-emr-012"] {
+  display:flex;align-items:center;gap:var(--s1);font-size:0.82rem;color:var(--text-secondary)
+}
+
+[data-csp-style="patient-emr-013"] {
+  color:var(--primary);font-size:0.75rem
+}
+
+[data-csp-style="patient-emr-014"] {
+  display:flex;align-items:center;gap:var(--s1);font-size:0.82rem;color:var(--text-secondary)
+}
+
+[data-csp-style="patient-emr-015"] {
+  color:var(--primary);font-size:0.75rem
+}
+
+[data-csp-style="patient-emr-016"] {
+  display:flex;align-items:center;gap:var(--s1);font-size:0.82rem;color:var(--text-secondary)
+}
+
+[data-csp-style="patient-emr-017"] {
+  color:var(--primary);font-size:0.75rem
+}
+
+[data-csp-style="patient-emr-018"] {
+  border-top:1px solid var(--border-light);padding:var(--s4) 0 0 0;margin-top:var(--s6)
+}
+
+[data-csp-style="patient-emr-019"] {
+  max-width:420px;width:min(420px,100%)
+}
+
+[data-csp-style="patient-emr-020"] {
+  border-top:1px solid var(--border-light);padding:var(--s4) 0 0 0;margin-top:var(--s6)
+}
+
+[data-csp-style="patient-emr-021"] {
+  max-width:420px;width:min(420px,100%)
+}
+
+[data-csp-style="patient-emr-022"] {
+  color:var(--danger)
+}
+
+[data-csp-style="patient-emr-023"] {
+  margin-bottom:var(--s4);color:var(--text-secondary)
+}
+
+[data-csp-style="patient-emr-024"] {
+  font-size:0.82rem;color:var(--text-secondary);margin-bottom:var(--s4)
+}
+
+[data-csp-style="patient-emr-025"] {
+  border-top:1px solid var(--border-light);padding:var(--s4) 0 0 0
+}
+
+[data-csp-style="patient-emr-026"] {
+  max-width:520px;width:min(520px,100%)
+}
+
+[data-csp-style="patient-emr-027"] {
+  min-height:80px
+}
+
+[data-csp-style="patient-emr-028"] {
+  border-top:1px solid var(--border-light);padding:var(--s4) 0 0 0;margin-top:var(--s6)
+}
+
+
+/* Section 220: CSP-safe Patient EMR generated presentation. */
+.emr-skeleton-title-line { height: 28px; margin-bottom: var(--s3); }
+.emr-skeleton-subtitle-line { height: 14px; }
+.emr-skeleton-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--s2); margin-top:var(--s4); }
+.emr-status-compact { font-size:0.7rem; padding:2px 10px; border-radius:var(--r-full); }
+.emr-tone-warning { color:var(--warning); } .emr-tone-success { color:var(--success); } .emr-tone-danger { color:var(--danger); }
+.emr-empty-state--compact { padding:var(--s6); } .emr-empty-state-icon--compact { font-size:1.5rem; }
+.emr-doctor-chip { display:inline-block; background:var(--bg-surface); border:1px solid var(--border-light); padding:2px 10px; border-radius:var(--r-full); font-size:0.78rem; margin:2px; }
+.emr-text-muted { color:var(--text-muted); } .emr-text-muted--small { color:var(--text-muted); font-size:0.83rem; }
+.emr-inline-separator { margin:0 var(--s1); } .emr-doctor-chip-list { display:flex; flex-wrap:wrap; gap:var(--s1); }
+.emr-section-spaced { margin-top:var(--s6); }
+.emr-overview-section-heading { font-size:1rem; margin-bottom:var(--s4); color:var(--text-primary); }
+.emr-section-gap-small { margin-top:var(--s4); } .emr-quick-actions-heading { font-size:1rem; margin-bottom:var(--s3); color:var(--text-primary); }
+.emr-break-all { word-break:break-all; } .emr-actions-compact { gap:var(--s1); }
+.emr-table-empty-cell { padding:var(--s8); color:var(--text-muted); }
+.emr-last-clinical-update { margin-top:var(--s3); padding:var(--s3); background:rgba(34,211,238,0.05); border:1px solid rgba(34,211,238,0.15); border-radius:var(--r-md); font-size:0.78rem; color:var(--text-secondary); }
+.emr-section-header-spacing { margin-bottom:var(--s4); } .emr-section-heading { font-size:1rem; margin:0; color:var(--text-primary); }
+.emr-record-value { font-size:0.83rem; color:var(--text-secondary); }
+.emr-managed-by-doctors { margin-left:var(--s2); font-size:0.7rem; background:rgba(250,204,21,0.1); color:var(--warning); border:1px solid rgba(250,204,21,0.25); }
+.emr-view-only-label { font-size:0.78rem; color:var(--text-muted); } .emr-record-card--readonly { opacity:0.85; }
+.emr-text-muted--compact { color:var(--text-muted); font-size:0.78rem; }
+.emr-related-actions-divider { margin-top:var(--s3); padding-top:var(--s3); border-top:1px solid var(--border-light); }
+.emr-view-only-row { display:flex; justify-content:flex-end; margin-bottom:var(--s4); }
+.emr-hidden-status-badge { margin-left:var(--s1); font-size:0.65rem; }
+.emr-action-button { font-size:0.7rem; padding:2px 8px; }
+.emr-action-button--success { color:var(--success); } .emr-action-button--warning { color:var(--warning); } .emr-action-button--danger { color:var(--danger); }
+.emr-notif-actions { margin-top:var(--s1); display:flex; gap:var(--s1); }
+.emr-timeline-item { position:relative; padding-left:var(--s8); margin-bottom:var(--s5); }
+.emr-timeline-marker { position:absolute; left:calc(-1 * var(--s8) + 8px); top:4px; width:16px; height:16px; border-radius:50%; border:3px solid var(--bg-surface); z-index:1; display:flex; align-items:center; justify-content:center; }
+.emr-timeline-marker--appointment { background:var(--primary); } .emr-timeline-marker--visit-note { background:var(--success); } .emr-timeline-marker--prescription { background:var(--warning); }
+.emr-timeline-marker-icon { font-size:0.45rem; color:#fff; }
+.emr-timeline-detail { font-size:0.75rem; color:var(--text-muted); margin-bottom:var(--s1); }
+.emr-timeline-entry-card { background:var(--bg-surface); border:1px solid var(--border-light); border-radius:var(--r-md); padding:var(--s3) var(--s4); }
+.emr-timeline-entry-title { font-weight:600; font-size:0.85rem; color:var(--text-primary); margin-bottom:2px; }
+.emr-timeline-entry-text { font-size:0.8rem; color:var(--text-secondary); }
+.emr-info-card--related { margin-top:var(--s3); } .emr-info-card--flush { margin-bottom:0; }
+.emr-slot-placeholder { color:var(--text-muted); font-size:0.85rem; } .emr-slot-placeholder--error { color:var(--danger); font-size:0.85rem; }
+.emr-audit-role-badge { font-size:0.7rem; padding:1px 8px; border-radius:var(--r-full); margin-left:var(--s1); }
+.emr-audit-role-badge--doctor { background:rgba(99,102,241,0.1); color:var(--primary); }
+.emr-audit-role-badge--admin { background:rgba(34,197,94,0.1); color:var(--success); }
+.emr-audit-role-badge--patient { background:rgba(250,204,21,0.1); color:var(--warning); }
+.emr-audit-entry { display:flex; gap:var(--s3); padding:var(--s3) var(--s4); background:var(--bg-surface); border:1px solid var(--border-light); border-radius:var(--r-md); margin-bottom:var(--s2); }
+.emr-audit-entry-icon { width:32px; height:32px; border-radius:50%; background:var(--bg-subtle); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text-muted); }
+.emr-audit-entry-icon-mark { font-size:0.8rem; } .emr-audit-entry-content { flex:1; min-width:0; }
+.emr-audit-entry-heading { font-weight:600; font-size:0.85rem; color:var(--text-primary); display:flex; align-items:center; flex-wrap:wrap; gap:var(--s1); }
+.emr-audit-entry-description { font-size:0.82rem; color:var(--text-secondary); margin:var(--s1) 0; }
+.emr-audit-entry-time { font-size:0.72rem; color:var(--text-muted); }
+.emr-audit-summary-text { font-size:0.78rem; color:var(--text-muted); margin:var(--s1) 0 0 0; }
+.emr-audit-entry-list { display:flex; flex-direction:column; gap:var(--s1); }
+.emr-audit-history-empty { padding:var(--s4); background:var(--bg-surface); border:1px solid var(--border-light); border-radius:var(--r-md); }
+.emr-audit-history-empty-icon { font-size:1.2rem; color:var(--text-muted); }
+.emr-audit-history-empty-text { font-size:0.83rem; color:var(--text-muted); margin:var(--s2) 0 0 0; }
+.emr-audit-table-scroll { max-height:300px; overflow-y:auto; }

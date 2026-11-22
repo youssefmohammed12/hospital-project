@@ -1,59 +1,100 @@
 <?php
 /**
  * HealthBridge — Admin: Add Patient
- * Creates a new patient account (admin-only).
+ * Creates the patient account and normalized profile aggregate atomically.
  * POST { name, email, password, phone? }
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../services/Repositories/PatientManagementRepository.php';
 
-requireRole('admin');
+$admin = requireRole('admin');
 
-$data     = getJsonInput();
-$name     = sanitizeString($data['name']     ?? '', 100);
-$email    = sanitizeString($data['email']    ?? '', 150);
-$password = trim($data['password'] ?? '');
-$phone    = sanitizeString($data['phone']    ?? '', 20);
-
-// Validation
-if (!$name || !$email || !$password) {
-    jsonResponse(false, ['message' => 'Name, email, and password are required.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    jsonResponse(false, ['message' => 'Invalid email address.']);
+
+$input = getJsonInput();
+$name = is_string($input['name'] ?? null) ? trim($input['name']) : '';
+$email = is_string($input['email'] ?? null) ? trim($input['email']) : '';
+$password = is_string($input['password'] ?? null) ? $input['password'] : '';
+$phone = is_string($input['phone'] ?? null) ? trim($input['phone']) : '';
+
+$errors = [];
+if ($name === '') {
+    $errors[] = 'Patient name is required.';
+} elseif (mb_strlen($name, 'UTF-8') < 2 || mb_strlen($name, 'UTF-8') > 100) {
+    $errors[] = 'Patient name must be between 2 and 100 characters.';
 }
-if (strlen($password) < 6) {
-    jsonResponse(false, ['message' => 'Password must be at least 6 characters.']);
+$emailError = validateEmail($email);
+if ($emailError !== null) {
+    $errors[] = $emailError;
+}
+if ($password === '') {
+    $errors[] = 'Password is required.';
+} else {
+    $passwordValidation = validatePassword($password);
+    if (!$passwordValidation['valid']) {
+        $errors = array_merge($errors, $passwordValidation['errors']);
+    }
+}
+if (isset($input['phone']) && !is_string($input['phone'])) {
+    $errors[] = 'Phone number must be text.';
+} elseif ($phone !== '') {
+    $phoneError = validatePhone($phone);
+    if ($phoneError !== null) {
+        $errors[] = $phoneError;
+    }
+}
+if ($errors !== []) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => implode(' ', $errors), 'errors' => $errors]);
 }
 
 try {
     $db = getDB();
-
-    // Check duplicate email
-    $check = $db->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
-    $check->execute([$email]);
-    if ($check->fetch()) {
-        jsonResponse(false, ['message' => 'A user with this email already exists.']);
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    if ($passwordHash === false) {
+        throw new RuntimeException('Password hashing failed.');
     }
+    $patientNumber = generatePatientNumber($db);
 
-    // Insert patient
-    $hashed = password_hash($password, PASSWORD_DEFAULT);
-    $db->prepare(
-        'INSERT INTO users (name, email, password, role, phone, created_at) VALUES (?, ?, ?, "patient", ?, NOW())'
-    )->execute([$name, $email, $hashed, $phone ?: null]);
+    // Live runtime remains V1 until the approved cutover.
+    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $patientId = $management->createPatient(
+        $name,
+        $email,
+        $passwordHash,
+        $patientNumber,
+        $phone !== '' ? $phone : null,
+        (int)$admin['id']
+    );
 
     jsonResponse(true, [
+        'message' => 'Patient added successfully.',
         'patient' => [
-            'id'   => (int)$db->lastInsertId(),
+            'id' => $patientId,
             'name' => $name,
             'email' => $email,
             'role' => 'patient',
-        ]
+            'patient_number' => $patientNumber,
+        ],
     ]);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    http_response_code(str_contains($message, 'already exists') || str_contains($message, 'already registered') ? 409 : 403);
+    jsonResponse(false, ['message' => $message]);
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    if (isDuplicateKeyViolation($e)) {
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'The submitted email, phone number, or patient number is already in use.']);
+    }
     error_log('Add Patient Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to add patient. Please try again.']);
 }
-

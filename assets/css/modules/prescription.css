@@ -810,3 +810,257 @@
     padding: var(--s4);
   }
 }
+
+
+/* ── Patient prescription cards (CSP-safe generated markup) ─── */
+.patient-rx-card {
+  margin-bottom: var(--s5);
+  padding: var(--s6);
+  border: 1px solid var(--border);
+}
+
+.patient-rx-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.patient-rx-card__doctor {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.patient-rx-card__avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.patient-rx-card__name {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.patient-rx-card__department {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.patient-rx-card__department-icon,
+.patient-rx-card__section-icon {
+  color: var(--primary);
+}
+
+.patient-rx-card__issued {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: var(--s1);
+}
+
+.patient-rx-card__side-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+}
+
+.patient-rx-card__status {
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.patient-rx-card__item-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.patient-rx-card__body {
+  margin-bottom: var(--s5);
+}
+
+.patient-rx-card__section-title {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.patient-rx-card__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.patient-rx-card__medication {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+
+.patient-rx-card__medication-content {
+  flex: 1;
+  min-width: 200px;
+}
+
+.patient-rx-card__medication-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.patient-rx-card__strength {
+  font-weight: 400;
+  color: var(--primary);
+}
+
+.patient-rx-card__details {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  margin-top: var(--s1);
+}
+
+.patient-rx-card__details-icon {
+  color: var(--text-muted);
+}
+
+.patient-rx-card__instructions {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: var(--s2);
+  font-style: italic;
+  background: var(--bg-card);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+}
+
+.patient-rx-card__instructions-icon {
+  color: var(--info);
+}
+
+.patient-rx-card__notes {
+  margin-bottom: var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--bg-surface);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.patient-rx-card__footer {
+  display: flex;
+  gap: var(--s3);
+  justify-content: flex-end;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-light);
+}
+
+/* Patient prescriptions page layout and loading placeholders */
+.patient-rx-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s4);
+}
+
+.patient-rx-controls {
+  margin-bottom: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.patient-rx-search {
+  max-width: 100%;
+}
+
+.patient-rx-skeleton-card {
+  height: 140px;
+  margin-bottom: var(--s4);
+}
+
+#prescriptions-container .patient-rx-skeleton-card:last-child {
+  margin-bottom: 0;
+}
+
+
+/* Shared medication row component used by prescription create/edit forms. */
+.rx-medication-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  padding: var(--s4);
+  margin-bottom: var(--s4);
+}
+
+
+/* Section 219: CSP-safe generated prescription presentation. */
+.rx-modal--large {
+  max-width: 700px;
+  width: min(700px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.rx-modal--view {
+  max-width: 750px;
+  width: min(750px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.rx-modal--compact { max-width: 500px; width: min(500px, 100%); }
+.rx-modal-header { margin-bottom: var(--s6); }
+.rx-appointment-context {
+  background: var(--bg-surface);
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-light);
+  margin-bottom: var(--s5);
+}
+.rx-appointment-context-text { margin: 0; font-size: 0.88rem; }
+.rx-add-medication-action { margin-bottom: var(--s5); }
+.form-group textarea.rx-textarea--short { min-height: 80px; }
+.form-group textarea.rx-textarea--medium { min-height: 100px; }
+.rx-form-actions { display: flex; gap: var(--s3); margin-top: var(--s2); }
+.rx-medication-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--s3);
+}
+.rx-medication-item-title { color: var(--text-primary); }
+.rx-medication-remove-button { color: var(--danger); border-color: rgba(252, 165, 165, 0.3); }
+.rx-medication-grid { gap: var(--s3); }
+.rx-medication-field { margin-bottom: var(--s3); }
+.rx-medication-field--last { margin-bottom: 0; }
+.rx-meta-issued { font-size: 0.82rem; color: var(--text-muted); margin-top: var(--s1); }
+.rx-meds-count { font-weight: 400; font-size: 0.8rem; color: var(--text-muted); }
+.rx-signature-code { font-size: 0.78rem; color: var(--text-muted); }
+.rx-cancel-description { margin-bottom: var(--s4); color: var(--text-secondary); }
+.rx-empty-cell { padding: var(--s8); color: var(--text-muted); }
+.rx-list-item-count { color: var(--text-secondary); }

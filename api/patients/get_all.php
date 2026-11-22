@@ -8,6 +8,12 @@ require_once __DIR__ . '/../../includes/auth.php';
 
 requireRole('admin');
 
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 try {
     $db = getDB();
     $stmt = $db->prepare(

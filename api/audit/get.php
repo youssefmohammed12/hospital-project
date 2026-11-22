@@ -5,10 +5,11 @@
  * Returns paginated, filterable audit log entries.
  * Admin-only endpoint. Requires authentication.
  *
- * GET /php/get_audit_log.php
+ * GET /api/audit/get.php
  *   ?search=keyword
  *   &action=create|update|delete|activate|deactivate|reassign
  *   &entity_type=department|hospital_settings|doctor|patient
+ *   &entity_id=3
  *   &patient_id=2
  *   &doctor_id=3
  *   &actor_id=1
@@ -22,11 +23,13 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/AdminAuditService.php';
 
-// ── Require admin authentication ────────────────────────────
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Admin access required.']);
-    exit;
+// Central authentication also verifies account status and the session version.
+$user = requireRole('admin');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
 try {
@@ -45,6 +48,10 @@ try {
 
     if (!empty($_GET['entity_type'])) {
         $filters['entity_type'] = trim($_GET['entity_type']);
+    }
+
+    if (isset($_GET['entity_id']) && (int)$_GET['entity_id'] > 0) {
+        $filters['entity_id'] = (int)$_GET['entity_id'];
     }
 
     if (!empty($_GET['actor_id'])) {
@@ -83,17 +90,29 @@ try {
     $filters['page'] = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
     $filters['limit'] = isset($_GET['limit']) ? max(1, min(100, (int)$_GET['limit'])) : 20;
 
-    $audit = new AdminAuditService($db, (int)$_SESSION['user_id']);
+    $auditSchema = AdminAuditService::schemaFromEnvironment();
+    $audit = new AdminAuditService($db, (int)$user['id'], $auditSchema);
     $result = $audit->getAuditLog($filters);
 
-    // Also return filter options for dropdowns
-    $adminStmt = $db->query("
-        SELECT DISTINCT a.actor_id, COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role, 1, 1)), SUBSTRING(a.actor_role, 2))) as name
-        FROM admin_audit a
-        LEFT JOIN users u ON a.actor_id = u.id
-        ORDER BY name ASC
-    ");
-    $admins = $adminStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Keep filter-option DTOs stable while reading the schema-specific actor columns.
+    if ($auditSchema === AuditService::SCHEMA_V2) {
+        $adminSql = "
+            SELECT DISTINCT a.actor_user_id AS actor_id,
+                   COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role_snapshot, 1, 1)), SUBSTRING(a.actor_role_snapshot, 2))) AS name
+            FROM audit_events a
+            LEFT JOIN users u ON a.actor_user_id = u.id
+            ORDER BY name ASC
+        ";
+    } else {
+        $adminSql = "
+            SELECT DISTINCT a.actor_id,
+                   COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role, 1, 1)), SUBSTRING(a.actor_role, 2))) AS name
+            FROM admin_audit a
+            LEFT JOIN users u ON a.actor_id = u.id
+            ORDER BY name ASC
+        ";
+    }
+    $admins = $db->query($adminSql)->fetchAll(PDO::FETCH_ASSOC);
 
     jsonResponse(true, [
         'entries' => $result['entries'],
@@ -108,7 +127,7 @@ try {
         ],
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get Audit Log Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to load audit log.']);

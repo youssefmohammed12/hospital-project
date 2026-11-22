@@ -19,9 +19,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Show only one panel at a time
   function showPanel(el) {
     [loadingEl, invalidEl, formWrapEl, successEl].forEach(p => {
-      if (p) p.style.display = "none";
+      if (p) p.classList.add("is-hidden");
     });
-    if (el) el.style.display = "";
+    if (el) el.classList.remove("is-hidden");
   }
 
   // No token in URL → invalid immediately
@@ -41,8 +41,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     const result = await res.json();
 
-    // "Passwords do not match" or "at least 6 chars" = token is valid, form should show
-    // "invalid or has expired" = token is bad
+    // Token validity is handled explicitly by the API response; password rules
+    // are checked only after the user submits the new credential.
     if (!result.success && (result.message?.includes("invalid") || result.message?.includes("expired"))) {
       showPanel(invalidEl);
       return;
@@ -59,31 +59,41 @@ document.addEventListener("DOMContentLoaded", async () => {
   const strengthLbl = document.getElementById("pw-strength-label");
 
   pwInput?.addEventListener("input", () => {
-    const pw  = pwInput.value;
-    let score = 0;
-    if (pw.length >= 6)            score++;
-    if (pw.length >= 10)           score++;
-    if (/[A-Z]/.test(pw))          score++;
-    if (/[0-9]/.test(pw))          score++;
-    if (/[^A-Za-z0-9]/.test(pw))  score++;
-
+    const pw = pwInput.value;
+    const checks = {
+      min_length: pw.length >= 8,
+      has_uppercase: /[A-Z]/.test(pw),
+      has_lowercase: /[a-z]/.test(pw),
+      has_number: /[0-9]/.test(pw),
+      has_special: /[^A-Za-z0-9]/.test(pw),
+    };
+    const score = Object.values(checks).filter(Boolean).length;
     const levels = [
-      { label: "",            color: "transparent", width: "0%"   },
-      { label: "Very Weak",   color: "#ef4444",     width: "20%"  },
-      { label: "Weak",        color: "#f97316",     width: "40%"  },
-      { label: "Fair",        color: "#eab308",     width: "60%"  },
-      { label: "Strong",      color: "#22c55e",     width: "80%"  },
-      { label: "Very Strong", color: "#22d3ee",     width: "100%" },
+      { label: "Weak",        color: "#ef4444", width: "0%" },
+      { label: "Weak",        color: "#f97316", width: "20%" },
+      { label: "Weak",        color: "#f97316", width: "40%" },
+      { label: "Medium",      color: "#eab308", width: "60%" },
+      { label: "Strong",      color: "#22c55e", width: "80%" },
+      { label: "Very Strong", color: "#22d3ee", width: "100%" },
     ];
 
-    const level = levels[score] || levels[0];
+    const level = pw.length === 0
+      ? { label: "", color: "transparent", width: "0%" }
+      : levels[score];
     if (strengthBar) {
-      strengthBar.style.width      = level.width;
-      strengthBar.style.background = level.color;
+      strengthBar.classList.remove(
+        "strength-level-0", "strength-level-1", "strength-level-2",
+        "strength-level-3", "strength-level-4", "strength-level-5",
+      );
+      if (pw.length > 0) strengthBar.classList.add("strength-level-" + score);
     }
     if (strengthLbl) {
       strengthLbl.textContent = level.label;
-      strengthLbl.style.color = level.color;
+      strengthLbl.classList.remove(
+        "strength-level-0", "strength-level-1", "strength-level-2",
+        "strength-level-3", "strength-level-4", "strength-level-5",
+      );
+      if (pw.length > 0) strengthLbl.classList.add("strength-level-" + score);
     }
   });
 
@@ -96,8 +106,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     const password  = document.getElementById("reset-password")?.value || "";
     const confirmPw = document.getElementById("reset-confirm")?.value || "";
 
-    if (password.length < 6) {
-      showToast("Password must be at least 6 characters.", "error");
+    const passwordChecks = {
+      min_length: password.length >= 8,
+      has_uppercase: /[A-Z]/.test(password),
+      has_lowercase: /[a-z]/.test(password),
+      has_number: /[0-9]/.test(password),
+      has_special: /[^A-Za-z0-9]/.test(password),
+    };
+    const passwordScore = Object.values(passwordChecks).filter(Boolean).length;
+    if (passwordScore < 4) {
+      showToast(
+        "Password currently meets " + passwordScore +
+          " of 5 requirements. Please meet at least 4.",
+        "error",
+      );
       return;
     }
     if (password !== confirmPw) {

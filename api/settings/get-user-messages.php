@@ -5,12 +5,15 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    jsonResponse(false, ['message' => 'Unauthorized.']);
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-$userId = (int)$_SESSION['user_id'];
+$user = requireAuth();
+$userId = (int)$user['id'];
 
 try {
     $db = getDB();

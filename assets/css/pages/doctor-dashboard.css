@@ -1046,3 +1046,150 @@
   box-shadow: 0 8px 20px rgba(8, 145, 178, 0.1);
 }
 
+
+
+/* CSP-safe Doctor Dashboard template and generated-fragment presentation */
+.doctor-notification-trigger { position: relative; }
+.doctor-notification-badge { display: none; position: absolute; top: -4px; right: -4px; font-size: 0.65rem; padding: 2px 5px; border-radius: 10px; }
+.doctor-sidebar-avatar { background: var(--primary-glow); border-color: var(--border); }
+.doctor-availability-value { font-size: 1.1rem; }
+.doctor-empty-state--large { padding: var(--s6); }
+.doctor-padding--medium { padding: var(--s4); }
+.doctor-card--flush { padding: 0; overflow: hidden; }
+.doctor-empty-state--spacious { padding: var(--s8); }
+.doctor-table-wrap--flush { border: none; border-radius: 0; }
+.doctor-empty-state--secondary { color: var(--text-secondary); text-align: center; padding: var(--s8); }
+.doctor-section-header--toolbar { display: flex; justify-content: space-between; align-items: center; }
+.doctor-rating-bar--empty { width: 0%; }
+.doctor-empty-state--full-row { grid-column: 1 / -1; padding: var(--s8); }
+.doctor-profile-grid--spaced { margin-top: var(--s6); }
+.doctor-section-header--settings { margin-bottom: var(--s6); border-radius: var(--r-md); }
+.doctor-settings-form { padding: 0 var(--s2); }
+.doctor-settings-form__full-row { grid-column: 1 / -1; margin-top: var(--s2); }
+.doctor-settings-checkbox { display: inline-flex; align-items: center; gap: var(--s3); cursor: pointer; }
+.doctor-settings-checkbox__input { width: 18px; height: 18px; accent-color: var(--primary); }
+.doctor-settings-checkbox__label { font-size: 0.9rem; color: var(--text-primary); }
+.doctor-settings-actions { grid-column: 1 / -1; margin-top: var(--s4); }
+
+.doctor-dashboard-empty--secondary { color: var(--text-secondary); text-align: center; padding: var(--s8); }
+.doctor-dashboard-muted { color: var(--text-muted); }
+.doctor-dashboard-rating-note { font-size: 0.78rem; color: #f59e0b; margin-top: 2px; }
+.doctor-dashboard-danger { color: var(--danger); }
+.doctor-dashboard-font-semibold { font-weight: 600; }
+.doctor-dashboard-notes-cell { color: var(--text-secondary); font-size: 0.85rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doctor-dashboard-inline-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }
+.doctor-dashboard-table--full-width { width: 100%; }
+.doctor-dashboard-empty--large { padding: var(--s6); }
+.doctor-dashboard-open-link { margin-top: 6px; }
+.doctor-dashboard-empty--medium { padding: var(--s4); }
+.doctor-dashboard-icon--primary { color: var(--primary); }
+.doctor-dashboard-empty--full-row { grid-column: 1 / -1; padding: var(--s8); }
+.doctor-dashboard-muted--italic { color: var(--text-muted); font-style: italic; }
+.doctor-dashboard-meta--strong { font-weight: 600; font-size: 0.9rem; }
+
+
+/* CSP-safe notification badge visibility state. */
+.doctor-notification-badge.is-visible { display: inline-block; }
+
+/* Dynamic rating progress widths use bounded CSS classes, never inline styles. */
+.rating-bar-fill.rating-bar-fill--0 { width: 0%; }
+.rating-bar-fill.rating-bar-fill--1 { width: 1%; }
+.rating-bar-fill.rating-bar-fill--2 { width: 2%; }
+.rating-bar-fill.rating-bar-fill--3 { width: 3%; }
+.rating-bar-fill.rating-bar-fill--4 { width: 4%; }
+.rating-bar-fill.rating-bar-fill--5 { width: 5%; }
+.rating-bar-fill.rating-bar-fill--6 { width: 6%; }
+.rating-bar-fill.rating-bar-fill--7 { width: 7%; }
+.rating-bar-fill.rating-bar-fill--8 { width: 8%; }
+.rating-bar-fill.rating-bar-fill--9 { width: 9%; }
+.rating-bar-fill.rating-bar-fill--10 { width: 10%; }
+.rating-bar-fill.rating-bar-fill--11 { width: 11%; }
+.rating-bar-fill.rating-bar-fill--12 { width: 12%; }
+.rating-bar-fill.rating-bar-fill--13 { width: 13%; }
+.rating-bar-fill.rating-bar-fill--14 { width: 14%; }
+.rating-bar-fill.rating-bar-fill--15 { width: 15%; }
+.rating-bar-fill.rating-bar-fill--16 { width: 16%; }
+.rating-bar-fill.rating-bar-fill--17 { width: 17%; }
+.rating-bar-fill.rating-bar-fill--18 { width: 18%; }
+.rating-bar-fill.rating-bar-fill--19 { width: 19%; }
+.rating-bar-fill.rating-bar-fill--20 { width: 20%; }
+.rating-bar-fill.rating-bar-fill--21 { width: 21%; }
+.rating-bar-fill.rating-bar-fill--22 { width: 22%; }
+.rating-bar-fill.rating-bar-fill--23 { width: 23%; }
+.rating-bar-fill.rating-bar-fill--24 { width: 24%; }
+.rating-bar-fill.rating-bar-fill--25 { width: 25%; }
+.rating-bar-fill.rating-bar-fill--26 { width: 26%; }
+.rating-bar-fill.rating-bar-fill--27 { width: 27%; }
+.rating-bar-fill.rating-bar-fill--28 { width: 28%; }
+.rating-bar-fill.rating-bar-fill--29 { width: 29%; }
+.rating-bar-fill.rating-bar-fill--30 { width: 30%; }
+.rating-bar-fill.rating-bar-fill--31 { width: 31%; }
+.rating-bar-fill.rating-bar-fill--32 { width: 32%; }
+.rating-bar-fill.rating-bar-fill--33 { width: 33%; }
+.rating-bar-fill.rating-bar-fill--34 { width: 34%; }
+.rating-bar-fill.rating-bar-fill--35 { width: 35%; }
+.rating-bar-fill.rating-bar-fill--36 { width: 36%; }
+.rating-bar-fill.rating-bar-fill--37 { width: 37%; }
+.rating-bar-fill.rating-bar-fill--38 { width: 38%; }
+.rating-bar-fill.rating-bar-fill--39 { width: 39%; }
+.rating-bar-fill.rating-bar-fill--40 { width: 40%; }
+.rating-bar-fill.rating-bar-fill--41 { width: 41%; }
+.rating-bar-fill.rating-bar-fill--42 { width: 42%; }
+.rating-bar-fill.rating-bar-fill--43 { width: 43%; }
+.rating-bar-fill.rating-bar-fill--44 { width: 44%; }
+.rating-bar-fill.rating-bar-fill--45 { width: 45%; }
+.rating-bar-fill.rating-bar-fill--46 { width: 46%; }
+.rating-bar-fill.rating-bar-fill--47 { width: 47%; }
+.rating-bar-fill.rating-bar-fill--48 { width: 48%; }
+.rating-bar-fill.rating-bar-fill--49 { width: 49%; }
+.rating-bar-fill.rating-bar-fill--50 { width: 50%; }
+.rating-bar-fill.rating-bar-fill--51 { width: 51%; }
+.rating-bar-fill.rating-bar-fill--52 { width: 52%; }
+.rating-bar-fill.rating-bar-fill--53 { width: 53%; }
+.rating-bar-fill.rating-bar-fill--54 { width: 54%; }
+.rating-bar-fill.rating-bar-fill--55 { width: 55%; }
+.rating-bar-fill.rating-bar-fill--56 { width: 56%; }
+.rating-bar-fill.rating-bar-fill--57 { width: 57%; }
+.rating-bar-fill.rating-bar-fill--58 { width: 58%; }
+.rating-bar-fill.rating-bar-fill--59 { width: 59%; }
+.rating-bar-fill.rating-bar-fill--60 { width: 60%; }
+.rating-bar-fill.rating-bar-fill--61 { width: 61%; }
+.rating-bar-fill.rating-bar-fill--62 { width: 62%; }
+.rating-bar-fill.rating-bar-fill--63 { width: 63%; }
+.rating-bar-fill.rating-bar-fill--64 { width: 64%; }
+.rating-bar-fill.rating-bar-fill--65 { width: 65%; }
+.rating-bar-fill.rating-bar-fill--66 { width: 66%; }
+.rating-bar-fill.rating-bar-fill--67 { width: 67%; }
+.rating-bar-fill.rating-bar-fill--68 { width: 68%; }
+.rating-bar-fill.rating-bar-fill--69 { width: 69%; }
+.rating-bar-fill.rating-bar-fill--70 { width: 70%; }
+.rating-bar-fill.rating-bar-fill--71 { width: 71%; }
+.rating-bar-fill.rating-bar-fill--72 { width: 72%; }
+.rating-bar-fill.rating-bar-fill--73 { width: 73%; }
+.rating-bar-fill.rating-bar-fill--74 { width: 74%; }
+.rating-bar-fill.rating-bar-fill--75 { width: 75%; }
+.rating-bar-fill.rating-bar-fill--76 { width: 76%; }
+.rating-bar-fill.rating-bar-fill--77 { width: 77%; }
+.rating-bar-fill.rating-bar-fill--78 { width: 78%; }
+.rating-bar-fill.rating-bar-fill--79 { width: 79%; }
+.rating-bar-fill.rating-bar-fill--80 { width: 80%; }
+.rating-bar-fill.rating-bar-fill--81 { width: 81%; }
+.rating-bar-fill.rating-bar-fill--82 { width: 82%; }
+.rating-bar-fill.rating-bar-fill--83 { width: 83%; }
+.rating-bar-fill.rating-bar-fill--84 { width: 84%; }
+.rating-bar-fill.rating-bar-fill--85 { width: 85%; }
+.rating-bar-fill.rating-bar-fill--86 { width: 86%; }
+.rating-bar-fill.rating-bar-fill--87 { width: 87%; }
+.rating-bar-fill.rating-bar-fill--88 { width: 88%; }
+.rating-bar-fill.rating-bar-fill--89 { width: 89%; }
+.rating-bar-fill.rating-bar-fill--90 { width: 90%; }
+.rating-bar-fill.rating-bar-fill--91 { width: 91%; }
+.rating-bar-fill.rating-bar-fill--92 { width: 92%; }
+.rating-bar-fill.rating-bar-fill--93 { width: 93%; }
+.rating-bar-fill.rating-bar-fill--94 { width: 94%; }
+.rating-bar-fill.rating-bar-fill--95 { width: 95%; }
+.rating-bar-fill.rating-bar-fill--96 { width: 96%; }
+.rating-bar-fill.rating-bar-fill--97 { width: 97%; }
+.rating-bar-fill.rating-bar-fill--98 { width: 98%; }
+.rating-bar-fill.rating-bar-fill--99 { width: 99%; }
+.rating-bar-fill.rating-bar-fill--100 { width: 100%; }

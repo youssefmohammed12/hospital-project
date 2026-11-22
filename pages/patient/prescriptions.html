@@ -6,29 +6,13 @@
     <meta name="description" content="Prescriptions — HealthBridge" />
     <title>Prescriptions — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-    <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    />
-    <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=2" />
-    <link
-      rel="stylesheet"
-      href="../../assets/css/pages/patient-portal.css?v=7"
-    />
-    <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
-    <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=2" />
-    <link
-      rel="stylesheet"
-      href="../../assets/css/modules/prescription.css?v=2"
-    />
-    <script src="../../assets/js/core/main.js?v=2"></script>
-    <script src="../../assets/js/components/layout.js?v=2"></script>
-  </head>
+      <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=9" />
+  <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
+  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=4"></script>
+</head>
   <body>
     <div id="navbar-container"></div>
     <div class="dashboard">
@@ -36,14 +20,7 @@
       <main class="main-content">
         <div class="portal-content">
           <div
-            class="page-header"
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              flex-wrap: wrap;
-              gap: var(--s4);
-            "
+            class="page-header patient-rx-page-header"
           >
             <div>
               <h1>
@@ -61,14 +38,9 @@
 
           <!-- Search & Filter Controls -->
           <div
-            style="
-              margin-bottom: var(--s5);
-              display: flex;
-              flex-direction: column;
-              gap: var(--s3);
-            "
+            class="patient-rx-controls"
           >
-            <div class="search-bar" style="max-width: 100%">
+            <div class="search-bar patient-rx-search">
               <i class="fas fa-search search-icon" aria-hidden="true"></i>
               <input
                 type="text"
@@ -105,19 +77,16 @@
           <div id="prescriptions-container">
             <div class="skeleton-loader">
               <div
-                class="skeleton skeleton-card"
-                style="height: 140px; margin-bottom: var(--s4)"
+                class="skeleton skeleton-card patient-rx-skeleton-card"
               ></div>
               <div
-                class="skeleton skeleton-card"
-                style="height: 140px; margin-bottom: var(--s4)"
+                class="skeleton skeleton-card patient-rx-skeleton-card"
               ></div>
-              <div class="skeleton skeleton-card" style="height: 140px"></div>
+              <div class="skeleton skeleton-card patient-rx-skeleton-card"></div>
             </div>
           </div>
         </div>
       </main>
     </div>
-    <script src="../../assets/js/pages/patient/prescriptions.js?v=2"></script>
-  </body>
+    </body>
 </html>

@@ -13,6 +13,65 @@ let _summaryLocked = false;
 // Cache of slots booked in this client session to prevent double-booking UI collisions
 const bookedSlots = new Set();
 
+function isBookingRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isBookingTime(value) {
+  if (typeof value !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return false;
+  return true;
+}
+
+function isBookingDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function normalizeBookingDoctor(value) {
+  if (!isBookingRecord(value)) return null;
+  const userId = safePositiveId(value.user_id);
+  if (!userId) return null;
+
+  const scalarText = (candidate, fallback = "") =>
+    typeof candidate === "string" ? candidate : fallback;
+  const rawRating = value.rating;
+  const ratingText = typeof rawRating === "string" ? rawRating.trim() : rawRating;
+  const validRating = (typeof ratingText === "number" || typeof ratingText === "string")
+    && (typeof ratingText !== "string" || /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(ratingText))
+    && Number.isFinite(Number(ratingText)) && Number(ratingText) >= 0 && Number(ratingText) <= 5;
+  const duration = safeCount(value.duration, 30);
+  const workingDays = Array.isArray(value.working_days)
+    ? value.working_days.filter(day => typeof day === "string").slice(0, 7).join(", ")
+    : scalarText(value.working_days, "Mon - Fri");
+
+  return {
+    user_id: userId,
+    name: scalarText(value.name, "Doctor").slice(0, 160),
+    specialty: scalarText(value.specialty).slice(0, 160),
+    department_name: scalarText(value.department_name).slice(0, 160),
+    available: value.available === true || value.available === 1 || value.available === "1" ? 1 : 0,
+    rating: validRating ? Number(ratingText) : 0,
+    rating_count: safeCount(value.rating_count, 0),
+    exp: safeCount(value.exp, 0),
+    duration: duration > 0 && duration <= 240 ? duration : 30,
+    working_days: workingDays.slice(0, 160),
+    next_available: scalarText(value.next_available).slice(0, 100),
+    available_date: scalarText(value.available_date).slice(0, 40),
+  };
+}
+
+function getBookingDoctorRatingLabel(doctor) {
+  if (!isBookingRecord(doctor)) return "No ratings yet";
+  const ratingCount = safeCount(doctor.rating_count, 0);
+  if (ratingCount === 0) return "No ratings yet";
+
+  const rating = typeof doctor.rating === "number" ? doctor.rating : null;
+  if (rating === null || !Number.isFinite(rating) || rating < 0 || rating > 5) return "No ratings yet";
+  return rating.toFixed(1);
+}
+
 const BookingStateManager = {
   state: {
     department: "",
@@ -100,7 +159,15 @@ const DraftManager = {
   },
 
   load() {
-    try { const raw = localStorage.getItem(this.STORAGE_KEY); if (!raw) return null; return JSON.parse(raw); } catch (e) { console.error("Failed to load booking draft:", e); return null; }
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (!raw) return null;
+      const draft = JSON.parse(raw);
+      return isBookingRecord(draft) ? draft : null;
+    } catch (e) {
+      console.error("Failed to load booking draft:", e);
+      return null;
+    }
   },
 };
 
@@ -122,26 +189,36 @@ const BookingWizard = {
   onClose: null,
   rescheduleMode: false,
   rescheduleAppt: null,
+  initPromise: null,
 
   async init(options = {}) {
     if (this.initialized) return;
-    this.onSuccess = options.onSuccess || null;
-    this.onClose = options.onClose || null;
-    await this.loadDoctors();
-    if (typeof loadDepartmentsDropdown === "function") {
-      await loadDepartmentsDropdown("appt-department", true);
-      this.renderDepartmentCards();
+    if (this.initPromise) return this.initPromise;
+
+    this.onSuccess = typeof options.onSuccess === "function" ? options.onSuccess : null;
+    this.onClose = typeof options.onClose === "function" ? options.onClose : null;
+    this.initPromise = (async () => {
+      await this.loadDoctors();
+      if (typeof loadDepartmentsDropdown === "function") {
+        await loadDepartmentsDropdown("appt-department", true);
+        this.renderDepartmentCards();
+      }
+      this.attachEventListeners();
+      await this.restoreDraft();
+      this.initialized = true;
+    })();
+
+    try {
+      await this.initPromise;
+    } finally {
+      this.initPromise = null;
     }
-    this.attachEventListeners();
-    this.restoreDraft();
-    this.initialized = true;
   },
 
   async open() {
     const modal = document.getElementById("book-appointment-modal");
     if (!modal) return;
     if (!this.initialized) await this.init();
-    modal.style.display = "flex";
     modal.classList.add("open");
     document.body.classList.add("modal-open");
     this.isOpen = true;
@@ -149,14 +226,21 @@ const BookingWizard = {
     try {
       const patientNameInput = document.getElementById("appt-patient");
       const user = typeof getUser === "function" ? getUser() : null;
-      if (patientNameInput && user && user.name) patientNameInput.value = user.name;
+      if (patientNameInput && typeof user?.name === "string") patientNameInput.value = user.name.slice(0, patientNameInput.maxLength > 0 ? patientNameInput.maxLength : 160);
     } catch (e) { console.warn("Failed to set appt-patient value:", e); }
   },
 
   async openReschedule(appt) {
-    if (!appt) return;
+    const appointmentId = isBookingRecord(appt) ? safePositiveId(appt.id) : 0;
+    if (!appointmentId) return;
     this.rescheduleMode = true;
-    this.rescheduleAppt = appt;
+    this.rescheduleAppt = {
+      id: appointmentId,
+      department: typeof appt.department === "string" ? appt.department.slice(0, 160) : "",
+      department_id: safePositiveId(appt.department_id),
+      doctor: typeof appt.doctor === "string" ? appt.doctor.slice(0, 160) : "",
+      doctor_id: safePositiveId(appt.doctor_id),
+    };
     await this.open();
     const departmentInput = document.getElementById("appt-department");
     if (departmentInput && appt.department) {
@@ -170,7 +254,9 @@ const BookingWizard = {
             const doctorInput = document.getElementById("appt-doctor");
             if (doctorInput && appt.doctor) {
               const docOptions = [...doctorInput.options];
-              const docMatch = docOptions.find(o => o.textContent.trim() === appt.doctor);
+              const docMatch = appt.doctor_id
+                ? docOptions.find((option) => option.value === String(appt.doctor_id))
+                : null;
               if (docMatch) { doctorInput.value = docMatch.value; doctorInput.dispatchEvent(new Event("change", { bubbles: true })); this.lockRescheduleFields(); }
               else { setTimeout(trySetDoc, 300); }
             }
@@ -181,7 +267,9 @@ const BookingWizard = {
         const doctorInput = document.getElementById("appt-doctor");
         if (doctorInput && appt.doctor) {
           const docOptions = [...doctorInput.options];
-          const docMatch = docOptions.find(o => o.textContent.trim() === appt.doctor);
+          const docMatch = appt.doctor_id
+            ? docOptions.find((option) => option.value === String(appt.doctor_id))
+            : null;
           if (docMatch) { doctorInput.value = docMatch.value; doctorInput.dispatchEvent(new Event("change", { bubbles: true })); this.lockRescheduleFields(); }
           else { setTimeout(trySetDoc, 500); }
         }
@@ -198,8 +286,8 @@ const BookingWizard = {
     const doctorCards = document.getElementById("doctor-card-grid");
     if (departmentInput) departmentInput.disabled = true;
     if (doctorInput) doctorInput.disabled = true;
-    if (departmentCards) { departmentCards.querySelectorAll(".selection-card").forEach(c => { c.style.pointerEvents = "none"; c.style.opacity = "0.6"; }); }
-    if (doctorCards) { doctorCards.querySelectorAll(".doctor-card").forEach(c => { c.style.pointerEvents = "none"; c.style.opacity = "0.6"; }); }
+    if (departmentCards) departmentCards.querySelectorAll(".selection-card").forEach(card => card.classList.add("is-locked"));
+    if (doctorCards) doctorCards.querySelectorAll(".doctor-card").forEach(card => card.classList.add("is-locked"));
   },
 
   unlockRescheduleFields() {
@@ -209,8 +297,8 @@ const BookingWizard = {
     const doctorCards = document.getElementById("doctor-card-grid");
     if (departmentInput) departmentInput.disabled = false;
     if (doctorInput) doctorInput.disabled = false;
-    if (departmentCards) { departmentCards.querySelectorAll(".selection-card").forEach(c => { c.style.pointerEvents = ""; c.style.opacity = ""; }); }
-    if (doctorCards) { doctorCards.querySelectorAll(".doctor-card").forEach(c => { c.style.pointerEvents = ""; c.style.opacity = ""; }); }
+    if (departmentCards) departmentCards.querySelectorAll(".selection-card").forEach(card => card.classList.remove("is-locked"));
+    if (doctorCards) doctorCards.querySelectorAll(".doctor-card").forEach(card => card.classList.remove("is-locked"));
   },
 
   updateRescheduleUI() {
@@ -223,8 +311,7 @@ const BookingWizard = {
     const reviewCard = document.querySelector(".review-card");
     if (reviewCard && !document.getElementById("reschedule-reason")) {
       const reasonRow = document.createElement("div");
-      reasonRow.className = "form-group";
-      reasonRow.style.marginTop = "var(--s4)";
+      reasonRow.className = "form-group booking-reschedule-reason";
       reasonRow.innerHTML = '<label for="reschedule-reason">Reason for Rescheduling (Optional)</label><textarea id="reschedule-reason" class="form-input" placeholder="Tell the doctor why you need to reschedule..." rows="3"></textarea>';
       reviewCard.parentNode.insertBefore(reasonRow, reviewCard.nextSibling);
     }
@@ -248,7 +335,6 @@ const BookingWizard = {
     const modal = document.getElementById("book-appointment-modal");
     if (!modal) return;
     modal.classList.remove("open");
-    modal.style.display = "none";
     document.body.classList.remove("modal-open");
     this.isOpen = false;
     if (this.rescheduleMode) this.restoreBookingUI();
@@ -262,21 +348,29 @@ const BookingWizard = {
   },
 
   async openWithAppointment(appt) {
-    if (!appt) return;
+    if (!isBookingRecord(appt)) return;
     await this.open();
     const departmentInput = document.getElementById("appt-department");
     const doctorInput = document.getElementById("appt-doctor");
     const dateInput = document.getElementById("appt-date");
     const notesInput = document.getElementById("appt-notes");
     if (departmentInput) {
-      if (appt.department) departmentInput.value = appt.department;
-      if (!departmentInput.value && appt.department_id) {
-        const matchOption = [...departmentInput.options].find(option => option.textContent.trim() === appt.department || option.value === String(appt.department_id));
-        if (matchOption) departmentInput.value = matchOption.value;
-      }
-      departmentInput.dispatchEvent(new Event("change"));
+      const departmentName = typeof appt.department === "string" ? appt.department : "";
+      const departmentId = safePositiveId(appt.department_id);
+      const matchOption = [...departmentInput.options].find(option =>
+        option.value === departmentName || (departmentId > 0 && option.value === String(departmentId))
+      );
+      departmentInput.value = matchOption?.value || "";
+      departmentInput.dispatchEvent(new Event("change", { bubbles: true }));
     }
-    if (doctorInput) { if (appt.doctor) doctorInput.value = appt.doctor; doctorInput.dispatchEvent(new Event("change")); }
+    if (doctorInput) {
+      const doctorId = safePositiveId(appt.doctor_id);
+      const doctorOption = doctorId
+        ? [...doctorInput.options].find(option => option.value === String(doctorId) && !option.disabled)
+        : null;
+      doctorInput.value = doctorOption?.value || "";
+      doctorInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     if (dateInput) dateInput.value = "";
     if (notesInput) notesInput.value = "";
     this.hideSlotSummary();
@@ -286,8 +380,11 @@ const BookingWizard = {
   async loadDoctors() {
     try {
       const response = await fetch(getBasePath() + "api/doctors/get.php");
+      if (!response.ok) throw new Error("Doctor directory request failed.");
       const result = await response.json();
-      appointmentDoctors = Array.isArray(result.doctors) && result.doctors.length ? result.doctors : [];
+      appointmentDoctors = Array.isArray(result?.doctors)
+        ? result.doctors.map(normalizeBookingDoctor).filter(Boolean)
+        : [];
       this.renderDoctorOptions();
       this.renderDoctorCards();
     } catch (error) {
@@ -307,6 +404,40 @@ const BookingWizard = {
     const form = document.getElementById("booking-form");
     const summarySubmitBtn = document.getElementById("booking-summary-submit-btn");
 
+    const bookingModal = document.getElementById("book-appointment-modal");
+    if (bookingModal && bookingModal.dataset.delegatedActionsBound !== "true") {
+      bookingModal.dataset.delegatedActionsBound = "true";
+      bookingModal.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) return;
+
+        const stepButton = target.closest("[data-booking-step]");
+        if (stepButton && bookingModal.contains(stepButton)) {
+          const step = Number(stepButton.dataset.bookingStep);
+          if (Number.isInteger(step) && step >= 1 && step <= 4) this.goToStep(step);
+          return;
+        }
+
+        const closeButton = target.closest('[data-booking-action="close"]');
+        if (closeButton && bookingModal.contains(closeButton)) {
+          this.close();
+          return;
+        }
+
+        const tabButton = target.closest("[data-slot-tab]");
+        if (tabButton && bookingModal.contains(tabButton)) {
+          const tab = tabButton.dataset.slotTab;
+          if (["morning", "afternoon", "evening"].includes(tab)) this.switchSlotTab(tab);
+          return;
+        }
+
+        const slotButton = target.closest("[data-slot-select]");
+        if (slotButton && bookingModal.contains(slotButton) && !slotButton.disabled) {
+          this.selectSlot(slotButton);
+        }
+      });
+    }
+
     if (departmentInput) departmentInput.addEventListener("change", () => this.handleDepartmentChange());
     if (departmentCards) {
       departmentCards.addEventListener("click", (event) => {
@@ -321,8 +452,8 @@ const BookingWizard = {
       doctorCards.addEventListener("click", (event) => {
         const card = event.target.closest(".doctor-card");
         if (!card || card.disabled) return;
-        const doctorName = card.dataset.doctor;
-        if (doctorName) this.selectDoctor(doctorName);
+        const doctorId = card.dataset.doctorId;
+        if (doctorId) this.selectDoctor(doctorId);
       });
     }
     if (dateInput) { dateInput.addEventListener("change", () => this.handleDateChange()); dateInput.min = new Date().toISOString().split("T")[0]; }
@@ -334,7 +465,11 @@ const BookingWizard = {
     const departmentInput = document.getElementById("appt-department");
     const doctorInput = document.getElementById("appt-doctor");
     if (!departmentInput) return;
-    const val = departmentInput.value;
+    const selectedValue = typeof departmentInput.value === "string" ? departmentInput.value : "";
+    const val = selectedValue && [...departmentInput.options].some(option => option.value === selectedValue)
+      ? selectedValue
+      : "";
+    if (departmentInput.value !== val) departmentInput.value = val;
     BookingStateManager.update({ department: val });
     this.renderDepartmentCards();
     this.renderDoctorOptions();
@@ -357,17 +492,26 @@ const BookingWizard = {
     const doctorInput = document.getElementById("appt-doctor");
     const departmentInput = document.getElementById("appt-department");
     if (!doctorInput) return;
-    const selectedName = doctorInput.value || "";
-    const selected = appointmentDoctors.find((d) => d.name === selectedName);
-    if (selectedName && selected) {
-      BookingStateManager.update({ doctor: selectedName, doctorId: selected.user_id || selected.id || 0, doctorData: selected });
+    const selectedDoctorId = safePositiveId(doctorInput.value);
+    const selectedOption = [...doctorInput.options].find(option => option.value === String(selectedDoctorId));
+    const selected = selectedDoctorId && selectedOption && !selectedOption.disabled
+      ? appointmentDoctors.find(doctor => safePositiveId(doctor.user_id) === selectedDoctorId && doctor.available === 1)
+      : null;
+    if (selectedDoctorId > 0 && selected) {
+      BookingStateManager.update({ doctor: selected.name, doctorId: selectedDoctorId, doctorData: selected });
       this.renderDoctorPreview(selected);
       this.renderDoctorCards();
-      if (selected.specialty && departmentInput) { departmentInput.value = selected.specialty; BookingStateManager.update({ department: selected.specialty }); this.renderDepartmentCards(); }
+      const selectedDepartment = selected.department_name || selected.specialty || "";
+      if (selectedDepartment && departmentInput) {
+        departmentInput.value = selectedDepartment;
+        BookingStateManager.update({ department: selectedDepartment });
+        this.renderDepartmentCards();
+      }
       const btn = document.getElementById("step-2-next");
       if (btn) btn.disabled = false;
       this.clearDateAndSlots();
     } else {
+      if (doctorInput.value) doctorInput.value = "";
       BookingStateManager.update({ doctor: "", doctorId: 0, doctorData: null });
       this.clearDoctorPreview();
       this.renderDoctorCards();
@@ -388,9 +532,11 @@ const BookingWizard = {
   handleDateChange() {
     const dateInput = document.getElementById("appt-date");
     if (!dateInput) return;
-    const val = dateInput.value;
+    const requestedDate = typeof dateInput.value === "string" ? dateInput.value : "";
+    const val = isBookingDate(requestedDate) ? requestedDate : "";
+    if (dateInput.value !== val) dateInput.value = val;
     BookingStateManager.update({ date: val });
-    if (val && BookingStateManager.doctorId) {
+    if (val && safePositiveId(BookingStateManager.doctorId)) {
       const btn = document.getElementById("step-3-next");
       if (btn) btn.disabled = false;
       this.loadSlots();
@@ -417,16 +563,45 @@ const BookingWizard = {
     const timeInput = document.getElementById("appt-time");
     const patientNameInput = document.getElementById("appt-patient");
     const notesInput = document.getElementById("appt-notes");
+    const departmentValue = typeof departmentInput?.value === "string" ? departmentInput.value : "";
+    const departmentOption = departmentInput
+      ? [...departmentInput.options].find(option => option.value === departmentValue && departmentValue !== "")
+      : null;
+    const doctorId = safePositiveId(doctorInput?.value);
+    const doctorOption = doctorInput && doctorId
+      ? [...doctorInput.options].find(option => option.value === String(doctorId) && !option.disabled)
+      : null;
+    const selectedDoctor = doctorId
+      ? appointmentDoctors.find(doctor => safePositiveId(doctor.user_id) === doctorId && doctor.available === 1)
+      : null;
+    const dateCandidate = typeof dateInput?.value === "string" ? dateInput.value : "";
+    const timeCandidate = typeof timeInput?.value === "string" ? timeInput.value : "";
+    const dateValue = isBookingDate(dateCandidate) && dateCandidate === BookingStateManager.date
+      ? dateCandidate
+      : "";
+    const timeValue = isBookingTime(timeCandidate) && timeCandidate === BookingStateManager.time
+      ? timeCandidate
+      : "";
+    const currentUser = typeof getUser === "function" ? getUser() : null;
+    const patientNameValue = typeof patientNameInput?.value === "string" && patientNameInput.value.trim()
+      ? patientNameInput.value.trim()
+      : (typeof currentUser?.name === "string" ? currentUser.name.trim() : "");
+    const notesValue = typeof notesInput?.value === "string" ? notesInput.value.slice(0, 2000) : "";
+    const selectedDoctorDepartment = selectedDoctor
+      ? (selectedDoctor.department_name || selectedDoctor.specialty || "")
+      : "";
+    const doctorMatchesDepartment = Boolean(selectedDoctorDepartment && selectedDoctorDepartment === departmentOption?.value);
     const data = {
-      department: BookingStateManager.department || departmentInput?.value || "",
-      doctor: BookingStateManager.doctor || doctorInput?.value || "",
-      date: BookingStateManager.date || dateInput?.value || "",
-      time: BookingStateManager.time || timeInput?.value || "",
-      patientName: patientNameInput?.value || (typeof getUser === "function" ? getUser()?.name : "") || "",
-      notes: notesInput?.value || "",
+      department: departmentOption?.value || "",
+      doctor: selectedDoctor?.name || "",
+      doctor_id: selectedDoctor && doctorOption && doctorMatchesDepartment ? doctorId : 0,
+      date: dateValue,
+      time: timeValue,
+      patientName: patientNameValue.slice(0, 160),
+      notes: notesValue,
     };
-    if (!data.department || !data.doctor || !data.date || !data.time || !data.patientName) {
-      showToast("Please fill in all required fields.", "error");
+    if (!data.department || !data.doctor_id || !data.doctor || !data.date || !data.time || !data.patientName) {
+      showToast("Please select a valid department, available doctor, date and time, and provide a patient name.", "error");
       return;
     }
     const submitBtn = document.getElementById("booking-submit-btn");
@@ -434,10 +609,16 @@ const BookingWizard = {
     setLoading(submitBtn, true, "Booking...");
     let endpoint, bodyData;
     if (this.rescheduleMode && this.rescheduleAppt) {
+      const appointmentId = safePositiveId(this.rescheduleAppt.id);
+      if (!appointmentId) {
+        setLoading(submitBtn, false, originalText);
+        showToast("The appointment reference is no longer valid.", "error");
+        return;
+      }
       const reasonInput = document.getElementById("reschedule-reason");
-      const reason = reasonInput?.value?.trim() || "";
+      const reason = typeof reasonInput?.value === "string" ? reasonInput.value.trim().slice(0, 500) : "";
       endpoint = getBasePath() + "api/appointments/request-reschedule.php";
-      bodyData = { appointment_id: this.rescheduleAppt.id, new_date: data.date, new_time: data.time, reason: reason };
+      bodyData = { appointment_id: appointmentId, new_date: data.date, new_time: data.time, reason: reason };
     } else {
       endpoint = getBasePath() + "api/appointments/book.php";
       bodyData = data;
@@ -478,36 +659,58 @@ const BookingWizard = {
     const doctorInput = document.getElementById("appt-doctor");
     const departmentInput = document.getElementById("appt-department");
     if (!doctorInput) return;
-    const department = departmentInput?.value || "";
-    const doctorsToShow = department ? appointmentDoctors.filter((d) => { const deptName = d.department_name || d.specialty || ""; return deptName === department; }) : appointmentDoctors;
-    const currentDoctor = doctorInput.value;
-    doctorInput.innerHTML = '<option value="">Select a doctor</option>';
-    doctorsToShow.forEach((d) => {
-      const label = `${d.name}${d.available == 0 ? " (Not available)" : ""}`;
-      const option = new Option(label, d.name);
-      option.disabled = d.available == 0;
-      if (d.id) option.value = d.name;
-      option.dataset.specialty = d.specialty;
+    const department = typeof departmentInput?.value === "string" ? departmentInput.value : "";
+    const doctorsToShow = department
+      ? appointmentDoctors.filter(doctor => (doctor.department_name || doctor.specialty) === department)
+      : appointmentDoctors;
+    const currentDoctor = safePositiveId(doctorInput.value);
+    doctorInput.replaceChildren(new Option("Select a doctor", ""));
+    doctorsToShow.forEach(doctor => {
+      const doctorId = safePositiveId(doctor.user_id);
+      if (!doctorId) return;
+      const doctorName = typeof doctor.name === "string" ? doctor.name : "Doctor";
+      const specialty = typeof doctor.specialty === "string" ? doctor.specialty : "";
+      const unavailable = doctor.available === 0;
+      const option = new Option(`${doctorName}${unavailable ? " (Not available)" : ""}`, String(doctorId));
+      option.disabled = unavailable;
+      option.dataset.specialty = specialty;
       doctorInput.add(option);
     });
-    if (currentDoctor && [...doctorInput.options].some((o) => o.value === currentDoctor)) doctorInput.value = currentDoctor;
-    BookingStateManager.update({ doctor: "", doctorId: 0, doctorData: null });
-    this.clearDoctorPreview();
+    const retainedDoctor = currentDoctor
+      ? doctorsToShow.find(doctor => safePositiveId(doctor.user_id) === currentDoctor)
+      : null;
+    if (retainedDoctor) {
+      doctorInput.value = String(retainedDoctor.user_id);
+      BookingStateManager.update({
+        doctor: retainedDoctor.name,
+        doctorId: Number(retainedDoctor.user_id),
+        doctorData: retainedDoctor,
+      });
+      this.renderDoctorPreview(retainedDoctor);
+    } else {
+      BookingStateManager.update({ doctor: "", doctorId: 0, doctorData: null });
+      this.clearDoctorPreview();
+    }
     this.renderDoctorCards();
     this.clearDateAndSlots();
   },
 
   selectDepartment(department) {
     const departmentInput = document.getElementById("appt-department");
-    if (!departmentInput) return;
-    departmentInput.value = department;
+    if (!departmentInput || typeof department !== "string") return;
+    const option = [...departmentInput.options].find(candidate => candidate.value === department);
+    if (!option) return;
+    departmentInput.value = option.value;
     departmentInput.dispatchEvent(new Event("change", { bubbles: true }));
   },
 
-  selectDoctor(doctorName) {
+  selectDoctor(doctorId) {
     const doctorInput = document.getElementById("appt-doctor");
-    if (!doctorInput) return;
-    doctorInput.value = doctorName;
+    const safeId = safePositiveId(doctorId);
+    if (!doctorInput || !safeId) return;
+    const option = [...doctorInput.options].find(candidate => candidate.value === String(safeId) && !candidate.disabled);
+    if (!option) return;
+    doctorInput.value = option.value;
     doctorInput.dispatchEvent(new Event("change", { bubbles: true }));
   },
 
@@ -542,17 +745,32 @@ const BookingWizard = {
     const doctorInput = document.getElementById("appt-doctor");
     const cardGrid = document.getElementById("doctor-card-grid");
     if (!doctorInput || !cardGrid) return;
-    const department = departmentInput?.value || "";
-    const doctorsToShow = department ? appointmentDoctors.filter((d) => { const deptName = d.department_name || d.specialty || ""; return deptName === department; }) : appointmentDoctors;
+    const department = typeof departmentInput?.value === "string" ? departmentInput.value : "";
+    const doctorsToShow = department
+      ? appointmentDoctors.filter(doctor => (doctor.department_name || doctor.specialty) === department)
+      : appointmentDoctors;
     if (!doctorsToShow.length) { cardGrid.innerHTML = `<div class="empty-state">No doctors found for this department.</div>`; return; }
-    const selectedDoctor = BookingStateManager.doctor || doctorInput.value || "";
-    cardGrid.innerHTML = doctorsToShow.map((doctor) => {
-      const isSelected = doctor.name === selectedDoctor;
-      const available = doctor.available != 0;
-      const rating = doctor.rating || "4.5";
-      const experience = doctor.experience ? `${escapeHTML(String(doctor.experience))} yrs` : "";
-      const nextAvailable = doctor.next_available || doctor.available_date || "";
-      return `<button type="button" class="doctor-card${isSelected ? " selected" : ""}${available ? "" : " disabled"}" data-doctor="${escapeHTML(doctor.name)}" ${available ? "" : "disabled"} aria-pressed="${isSelected ? "true" : "false"}"><div class="doctor-card-avatar">${escapeHTML(doctor.name ? doctor.name.split(" ").map(part => part[0]).join("").substring(0, 2).toUpperCase() : "DR")}</div><div class="doctor-card-body"><div class="doctor-card-header"><div><h4>${escapeHTML(doctor.name || "Doctor")}</h4><p>${escapeHTML(doctor.specialty || doctor.department_name || "General Practice")}</p></div><span class="doctor-card-badge ${available ? "available" : "unavailable"}">${available ? "Available" : "Unavailable"}</span></div><div class="doctor-card-meta"><span><i class="fas fa-star" aria-hidden="true"></i> ${escapeHTML(String(rating))}</span>${experience ? `<span><i class="fas fa-briefcase" aria-hidden="true"></i> ${experience}</span>` : ""}${nextAvailable ? `<span><i class="fas fa-calendar-check" aria-hidden="true"></i> ${escapeHTML(nextAvailable)}</span>` : ""}</div></div></button>`;
+    const selectedDoctorId = safePositiveId(BookingStateManager.doctorId) || safePositiveId(doctorInput.value);
+    cardGrid.innerHTML = doctorsToShow.map(doctor => {
+      const doctorId = safePositiveId(doctor.user_id);
+      if (!doctorId) return "";
+      const doctorName = typeof doctor.name === "string" && doctor.name.trim() ? doctor.name : "Doctor";
+      const doctorSpecialty = typeof doctor.specialty === "string" && doctor.specialty.trim()
+        ? doctor.specialty
+        : (typeof doctor.department_name === "string" && doctor.department_name.trim() ? doctor.department_name : "General Practice");
+      const isSelected = doctorId === selectedDoctorId;
+      const available = doctor.available !== 0;
+      const rating = getBookingDoctorRatingLabel(doctor);
+      const ratingMarkup = rating === "No ratings yet"
+        ? "No ratings yet"
+        : `<i class="fas fa-star" aria-hidden="true"></i> ${escapeHTML(rating)}`;
+      const experienceYears = safeCount(doctor.exp, 0);
+      const experience = experienceYears ? `${experienceYears} yrs` : "";
+      const nextAvailable = typeof doctor.next_available === "string" && doctor.next_available
+        ? doctor.next_available
+        : (typeof doctor.available_date === "string" ? doctor.available_date : "");
+      const initials = doctorName.split(/\s+/).filter(Boolean).map(part => part[0]).join("").substring(0, 2).toUpperCase() || "DR";
+      return `<button type="button" class="doctor-card${isSelected ? " selected" : ""}${available ? "" : " disabled"}" data-doctor-id="${doctorId}" ${available ? "" : "disabled"} aria-pressed="${isSelected ? "true" : "false"}"><div class="doctor-card-avatar">${escapeHTML(initials)}</div><div class="doctor-card-body"><div class="doctor-card-header"><div><h4>${escapeHTML(doctorName)}</h4><p>${escapeHTML(doctorSpecialty)}</p></div><span class="doctor-card-badge ${available ? "available" : "unavailable"}">${available ? "Available" : "Unavailable"}</span></div><div class="doctor-card-meta"><span>${ratingMarkup}</span>${experience ? `<span><i class="fas fa-briefcase" aria-hidden="true"></i> ${experience}</span>` : ""}${nextAvailable ? `<span><i class="fas fa-calendar-check" aria-hidden="true"></i> ${escapeHTML(nextAvailable)}</span>` : ""}</div></div></button>`;
     }).join("");
   },
 
@@ -560,15 +778,23 @@ const BookingWizard = {
 
   renderDoctorPreview(doctor) {
     const container = document.getElementById("doctor-preview-container");
-    if (!container || !doctor) return;
-    const initials = doctor.name ? doctor.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "DR";
-    const rating = doctor.rating || "4.5";
-    const isAvail = doctor.available != 0;
+    if (!container || !isBookingRecord(doctor)) return;
+    const doctorName = typeof doctor.name === "string" && doctor.name.trim() ? doctor.name : "Doctor";
+    const specialty = typeof doctor.specialty === "string" && doctor.specialty.trim() ? doctor.specialty : "General Practice";
+    const initials = doctorName.split(/\s+/).filter(Boolean).map(part => part[0]).join("").substring(0, 2).toUpperCase() || "DR";
+    const rating = getBookingDoctorRatingLabel(doctor);
+    const ratingMarkup = rating === "No ratings yet"
+      ? "No ratings yet"
+      : `<i class="fas fa-star" aria-hidden="true"></i> ${escapeHTML(rating)} Rating`;
+    const isAvail = doctor.available !== 0;
     const availText = isAvail ? "Available" : "Not Available";
     const availClass = isAvail ? "available" : "unavailable";
-    const workingDays = doctor.working_days ? (Array.isArray(doctor.working_days) ? doctor.working_days.join(", ") : doctor.working_days) : "Mon - Fri";
-    const duration = doctor.duration ? `${doctor.duration} min` : "30 min";
-    container.innerHTML = `<div class="doctor-preview-card"><div class="doctor-preview-avatar">${escapeHTML(initials)}</div><div class="doctor-preview-body"><h4 class="doctor-preview-name">${escapeHTML(doctor.name || "Doctor")}</h4><p class="doctor-preview-specialty">${escapeHTML(doctor.specialty || "General Practice")}</p><div class="doctor-preview-meta"><span><i class="fas fa-star" aria-hidden="true"></i> ${escapeHTML(String(rating))} Rating</span><span><i class="fas fa-clock" aria-hidden="true"></i> ${escapeHTML(duration)}</span><span><i class="fas fa-calendar-week" aria-hidden="true"></i> ${escapeHTML(workingDays)}</span></div><span class="doctor-preview-badge ${escapeHTML(availClass)}"><i class="fas ${isAvail ? "fa-check-circle" : "fa-times-circle"}" aria-hidden="true"></i> ${escapeHTML(availText)}</span></div></div>`;
+    const workingDays = typeof doctor.working_days === "string" && doctor.working_days.trim()
+      ? doctor.working_days.slice(0, 160)
+      : "Mon - Fri";
+    const rawDuration = safeCount(doctor.duration, 30);
+    const duration = rawDuration > 0 && rawDuration <= 240 ? rawDuration : 30;
+    container.innerHTML = `<div class="doctor-preview-card"><div class="doctor-preview-avatar">${escapeHTML(initials)}</div><div class="doctor-preview-body"><h4 class="doctor-preview-name">${escapeHTML(doctorName)}</h4><p class="doctor-preview-specialty">${escapeHTML(specialty)}</p><div class="doctor-preview-meta"><span>${ratingMarkup}</span><span><i class="fas fa-clock" aria-hidden="true"></i> ${duration} min</span><span><i class="fas fa-calendar-week" aria-hidden="true"></i> ${escapeHTML(workingDays)}</span></div><span class="doctor-preview-badge ${availClass}"><i class="fas ${isAvail ? "fa-check-circle" : "fa-times-circle"}" aria-hidden="true"></i> ${escapeHTML(availText)}</span></div></div>`;
   },
 
   clearDateAndSlots() {
@@ -583,15 +809,10 @@ const BookingWizard = {
   },
 
   hideSlotUI() {
+    lastSlotRequestId += 1;
     const slotContainer = document.getElementById("slot-picker-container");
     if (!slotContainer) return;
-    const durationBar = document.getElementById("slot-duration-bar");
-    if (durationBar) durationBar.style.display = "none";
-    const tabs = document.getElementById("slot-tabs");
-    if (tabs) tabs.style.display = "none";
-    const scrollArea = document.getElementById("slot-scroll-area");
-    if (scrollArea) scrollArea.style.display = "none";
-    slotContainer.innerHTML = '<p class="slot-placeholder" style="color:var(--text-muted);font-size:0.85rem">Select a doctor and date to see available slots.</p>';
+    slotContainer.innerHTML = '<p class="slot-placeholder">Select a doctor and date to see available slots.</p>';
   },
 
   async ensureDepartmentsLoaded() {
@@ -604,43 +825,86 @@ const BookingWizard = {
     const draft = DraftManager.load();
     if (!draft) return;
     BookingStateManager.setRestoring(true);
-    const departmentInput = document.getElementById("appt-department");
-    const doctorInput = document.getElementById("appt-doctor");
-    const dateInput = document.getElementById("appt-date");
-    const notesInput = document.getElementById("appt-notes");
-    if (departmentInput && draft.department) departmentInput.value = draft.department;
-    this.renderDepartmentCards();
-    this.renderDoctorOptions();
-    if (doctorInput && draft.doctor) { doctorInput.value = draft.doctor; this.handleDoctorChange(); }
-    if (dateInput && draft.date) dateInput.value = draft.date;
-    if (notesInput && draft.notes) notesInput.value = draft.notes;
-    BookingStateManager.setRestoring(false);
+    try {
+      const departmentInput = document.getElementById("appt-department");
+      const doctorInput = document.getElementById("appt-doctor");
+      const dateInput = document.getElementById("appt-date");
+      const notesInput = document.getElementById("appt-notes");
+
+      if (departmentInput && typeof draft.department === "string") {
+        const departmentOption = [...departmentInput.options].find(option => option.value === draft.department);
+        departmentInput.value = departmentOption ? departmentOption.value : "";
+      }
+      this.renderDepartmentCards();
+      this.renderDoctorOptions();
+
+      const draftDoctorId = safePositiveId(draft.doctorId);
+      if (doctorInput && draftDoctorId) {
+        const matchingDoctor = appointmentDoctors.find(doctor => safePositiveId(doctor.user_id) === draftDoctorId && doctor.available === 1);
+        if (matchingDoctor) {
+          doctorInput.value = String(draftDoctorId);
+          this.handleDoctorChange();
+        }
+      }
+      if (dateInput && isBookingDate(draft.date) && safePositiveId(BookingStateManager.doctorId)) {
+        dateInput.value = draft.date;
+        if (dateInput.value === draft.date) {
+          BookingStateManager.update({ date: draft.date });
+          await this.loadSlots();
+          const draftTime = isBookingTime(draft.time) ? draft.time : "";
+          if (draftTime) {
+            const matchingSlot = [...document.querySelectorAll("#slot-picker-container [data-slot-select]")]
+              .find(slot => slot.dataset.time === draftTime);
+            if (matchingSlot) this.selectSlot(matchingSlot);
+          }
+        }
+      }
+      if (notesInput && typeof draft.notes === "string") {
+        notesInput.value = draft.notes.slice(0, notesInput.maxLength > 0 ? notesInput.maxLength : 2000);
+      }
+      this.updateSummary();
+    } finally {
+      BookingStateManager.setRestoring(false);
+    }
   },
 
   async loadSlots() {
-    const doctorId = BookingStateManager.doctorId;
+    const doctorId = safePositiveId(BookingStateManager.doctorId);
     const date = BookingStateManager.date;
     const slotContainer = document.getElementById("slot-picker-container");
     const slotMessage = document.getElementById("slot-picker-message");
     if (!slotContainer || !slotMessage) return;
-    if (!doctorId || !date) { this.hideSlotUI(); return; }
+    if (!doctorId || !isBookingDate(date)) { this.hideSlotUI(); return; }
     const requestId = ++lastSlotRequestId;
     slotMessage.textContent = "Loading available slots...";
     try {
       const response = await fetch(getBasePath() + "api/appointments/get-available-slots.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ doctor_id: doctorId, date }) });
+      if (!response.ok) throw new Error("Available slots request failed.");
       const result = await response.json();
-      let slots = Array.isArray(result.slots) ? result.slots : [];
-      slots = slots.filter((s) => !bookedSlots.has(`${doctorId}|${date}|${s.time}`));
+      if (requestId !== lastSlotRequestId) return;
+      const sourceSlots = Array.isArray(result?.slots) ? result.slots : [];
+      const slots = sourceSlots
+        .filter(slot => isBookingRecord(slot) && isBookingTime(slot.time))
+        .map(slot => ({
+          time: slot.time,
+          label: typeof slot.label === "string" && slot.label.trim()
+            ? slot.label.trim().slice(0, 80)
+            : slot.time,
+        }))
+        .filter(slot => !bookedSlots.has(`${doctorId}|${date}|${slot.time}`));
       if (!slots.length) {
-        const message = result.message || "No appointment slots are available for this date.";
+        const message = typeof result?.message === "string" && result.message.trim()
+          ? result.message.slice(0, 300)
+          : "No appointment slots are available for this date.";
         this.renderSlots([], message, requestId);
-        slotMessage.textContent = result.message || "No available slots for the selected doctor on this date.";
+        slotMessage.textContent = message;
         return;
       }
       this.renderSlots(slots, "", requestId);
       slotMessage.textContent = "Select one of the available time slots.";
     } catch (error) {
       console.error("Failed to load appointment slots:", error);
+      if (requestId !== lastSlotRequestId) return;
       this.renderSlots([], "Unable to load slots. Please try again.", requestId);
       slotMessage.textContent = "Unable to load available slots. Please try again later.";
     }
@@ -652,9 +916,9 @@ const BookingWizard = {
     const groups = this.groupSlotsByPeriod(slots);
     let html = '';
     html += '<div class="slot-tabs" id="slot-tabs">';
-    html += `<button class="slot-tab active" id="slot-tab-morning" type="button" onclick="switchSlotTab('morning')" aria-selected="true"><span>Morning</span><span class="slot-tab-count">${groups.Morning.length}</span></button>`;
-    html += `<button class="slot-tab" id="slot-tab-afternoon" type="button" onclick="switchSlotTab('afternoon')" aria-selected="false"><span>Afternoon</span><span class="slot-tab-count">${groups.Afternoon.length}</span></button>`;
-    html += `<button class="slot-tab" id="slot-tab-evening" type="button" onclick="switchSlotTab('evening')" aria-selected="false"><span>Evening</span><span class="slot-tab-count">${groups.Evening.length}</span></button>`;
+    html += `<button class="slot-tab active" id="slot-tab-morning" type="button" data-slot-tab="morning" aria-selected="true"><span>Morning</span><span class="slot-tab-count">${groups.Morning.length}</span></button>`;
+    html += `<button class="slot-tab" id="slot-tab-afternoon" type="button" data-slot-tab="afternoon" aria-selected="false"><span>Afternoon</span><span class="slot-tab-count">${groups.Afternoon.length}</span></button>`;
+    html += `<button class="slot-tab" id="slot-tab-evening" type="button" data-slot-tab="evening" aria-selected="false"><span>Evening</span><span class="slot-tab-count">${groups.Evening.length}</span></button>`;
     html += '</div><div class="slot-scroll-area" id="slot-scroll-area">';
     const periods = [{ id: "morning", name: "Morning" }, { id: "afternoon", name: "Afternoon" }, { id: "evening", name: "Evening" }];
     periods.forEach((period, index) => {
@@ -665,7 +929,7 @@ const BookingWizard = {
       } else {
         html += '<div class="slot-grid" role="radiogroup">';
         periodSlots.forEach((slot) => {
-          html += `<button type="button" class="slot-chip" data-time="${escapeHTML(slot.time)}" data-label="${escapeHTML(slot.label)}" onclick="selectSlot(this)" role="radio" aria-checked="false" tabindex="0"><span class="slot-check" aria-hidden="true"><i class="fas fa-check"></i></span><span class="slot-label">${escapeHTML(slot.label)}</span></button>`;
+          html += `<button type="button" class="slot-chip" data-time="${escapeHTML(slot.time)}" data-label="${escapeHTML(slot.label)}" data-slot-select="true" role="radio" aria-checked="false" tabindex="0"><span class="slot-check" aria-hidden="true"><i class="fas fa-check"></i></span><span class="slot-label">${escapeHTML(slot.label)}</span></button>`;
         });
         html += '</div>';
       }
@@ -675,15 +939,30 @@ const BookingWizard = {
     if (requestId !== lastSlotRequestId) return;
     slotContainer.innerHTML = html;
     const firstActive = groups.Morning.length > 0 ? "morning" : groups.Afternoon.length > 0 ? "afternoon" : "evening";
-    switchSlotTab(firstActive);
+    this.switchSlotTab(firstActive);
     this.hideSlotSummary();
-    slotContainer.querySelectorAll(".slot-chip").forEach((chip) => { chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chip.click(); } }); });
+
     this.disableSubmitButtons();
   },
 
   groupSlotsByPeriod(slots) {
     const groups = { Morning: [], Afternoon: [], Evening: [] };
-    slots.forEach((slot) => { const [hour] = (slot.time || "").split(":").map(Number); if (hour >= 17) { groups.Evening.push(slot); } else if (hour >= 12) { groups.Afternoon.push(slot); } else { groups.Morning.push(slot); } });
+    const validSlots = Array.isArray(slots)
+      ? slots.filter(slot => isBookingRecord(slot) && isBookingTime(slot.time))
+        .map(slot => ({
+          time: slot.time,
+          label: typeof slot.label === "string" && slot.label.trim()
+            ? slot.label.trim().slice(0, 80)
+            : slot.time,
+        }))
+      : [];
+
+    validSlots.forEach(slot => {
+      const hour = Number(slot.time.slice(0, 2));
+      if (hour >= 17) groups.Evening.push(slot);
+      else if (hour >= 12) groups.Afternoon.push(slot);
+      else groups.Morning.push(slot);
+    });
     return groups;
   },
 
@@ -800,14 +1079,14 @@ const BookingWizard = {
 
       if (currentStep === 4) {
         // On the final step: hide Next, show Confirm
-        if (!isConfirm) btn.style.display = "none";
+        if (!isConfirm) btn.classList.add("is-hidden");
         const confirmBtn = document.getElementById("booking-submit-btn");
-        if (confirmBtn) confirmBtn.style.display = "inline-flex";
+        if (confirmBtn) confirmBtn.classList.remove("is-hidden");
       } else {
         // On steps 1–3: show Next, hide Confirm
-        if (!isConfirm) btn.style.display = "inline-flex";
+        if (!isConfirm) btn.classList.remove("is-hidden");
         const confirmBtn = document.getElementById("booking-submit-btn");
-        if (confirmBtn) confirmBtn.style.display = "none";
+        if (confirmBtn) confirmBtn.classList.add("is-hidden");
       }
     });
 
@@ -821,12 +1100,18 @@ const BookingWizard = {
   },
 
   selectSlot(btn) {
+    const slotContainer = document.getElementById("slot-picker-container");
+    if (!(btn instanceof HTMLButtonElement) || !slotContainer?.contains(btn)
+      || btn.dataset.slotSelect !== "true" || !isBookingTime(btn.dataset.time)) return;
+    const slotLabel = typeof btn.dataset.label === "string" && btn.dataset.label.trim()
+      ? btn.dataset.label.trim().slice(0, 80)
+      : (btn.querySelector(".slot-label")?.textContent || btn.dataset.time).slice(0, 80);
     document.querySelectorAll(".slot-chip.selected").forEach((c) => { c.classList.remove("selected"); c.setAttribute("aria-checked", "false"); });
     btn.classList.add("selected");
     btn.setAttribute("aria-checked", "true");
     const timeInput = document.getElementById("appt-time");
     if (timeInput) timeInput.value = btn.dataset.time;
-    BookingStateManager.update({ time: btn.dataset.time, timeLabel: btn.dataset.label || btn.querySelector(".slot-label")?.textContent || "" });
+    BookingStateManager.update({ time: btn.dataset.time, timeLabel: slotLabel });
     this.updateSlotSummary(btn);
     this.enableSubmitButtons();
     this.updateSummary();
@@ -856,6 +1141,7 @@ const BookingWizard = {
   hideSlotSummary() { const wrapper = document.getElementById("slot-summary-wrapper"); if (wrapper) wrapper.classList.remove("visible"); },
 
   switchSlotTab(tabId) {
+    if (!["morning", "afternoon", "evening"].includes(tabId)) return;
     document.querySelectorAll(".slot-tab").forEach((tab) => { const isActive = tab.id === `slot-tab-${tabId}`; tab.classList.toggle("active", isActive); tab.setAttribute("aria-selected", isActive ? "true" : "false"); tab.setAttribute("tabindex", isActive ? "0" : "-1"); });
     document.querySelectorAll(".slot-panel").forEach((panel) => { panel.classList.toggle("active", panel.id === `slot-panel-${tabId}`); });
   },
@@ -866,27 +1152,40 @@ const BookingWizard = {
     const content = document.getElementById("summary-content");
     const detailsContainer = document.getElementById("summary-details-container");
     if (!emptyState || !content || !detailsContainer) return;
-    const hasDept = BookingStateManager.department;
-    const hasDoctor = BookingStateManager.doctor && BookingStateManager.doctorData;
-    const hasDate = BookingStateManager.date;
-    const hasTime = BookingStateManager.time;
-    if (!hasDept && !hasDoctor && !hasDate && !hasTime) { emptyState.style.display = "flex"; content.style.display = "none"; return; }
-    emptyState.style.display = "none";
-    content.style.display = "block";
+    const departmentLabel = typeof BookingStateManager.department === "string" ? BookingStateManager.department : "";
+    const doctorLabel = typeof BookingStateManager.doctor === "string" ? BookingStateManager.doctor : "";
+    const dateValue = isBookingDate(BookingStateManager.date) ? BookingStateManager.date : "";
+    const timeValue = isBookingTime(BookingStateManager.time) ? BookingStateManager.time : "";
+    const timeLabel = typeof BookingStateManager.timeLabel === "string" ? BookingStateManager.timeLabel.slice(0, 80) : timeValue;
+    const doctorData = isBookingRecord(BookingStateManager.doctorData) ? BookingStateManager.doctorData : null;
+    const hasDept = Boolean(departmentLabel);
+    const hasDoctor = Boolean(doctorLabel && doctorData);
+    const hasDate = Boolean(dateValue);
+    const hasTime = Boolean(timeValue);
+    let selectedDuration = 30;
+    if (!hasDept && !hasDoctor && !hasDate && !hasTime) {
+      emptyState.classList.remove("is-hidden");
+      content.classList.remove("is-visible");
+      return;
+    }
+    emptyState.classList.add("is-hidden");
+    content.classList.add("is-visible");
     let html = '';
-    if (hasDept) html += `<div class="summary-row"><i class="fas fa-building" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Department</div><div class="summary-row-value">${escapeHTML(BookingStateManager.department)}</div></div></div>`;
-    if (hasDoctor) html += `<div class="summary-row"><i class="fas fa-user-doctor" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Doctor</div><div class="summary-row-value">${escapeHTML(BookingStateManager.doctor)}</div></div></div>`;
+    if (hasDept) html += `<div class="summary-row"><i class="fas fa-building" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Department</div><div class="summary-row-value">${escapeHTML(departmentLabel)}</div></div></div>`;
+    if (hasDoctor) html += `<div class="summary-row"><i class="fas fa-user-doctor" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Doctor</div><div class="summary-row-value">${escapeHTML(doctorLabel)}</div></div></div>`;
     let dateDisplay = '';
     if (hasDate) {
-      dateDisplay = BookingStateManager.date || '';
+      dateDisplay = dateValue;
       try { const d = new Date(dateDisplay + "T12:00:00"); dateDisplay = d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }); } catch (e) {}
       html += `<div class="summary-row"><i class="fas fa-calendar" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Date</div><div class="summary-row-value">${escapeHTML(dateDisplay)}</div></div></div>`;
     }
     if (hasTime) {
-      const duration = BookingStateManager.doctorData?.duration || 30;
+      const rawDuration = safeCount(doctorData?.duration, 30);
+      const duration = rawDuration > 0 && rawDuration <= 240 ? rawDuration : 30;
+      selectedDuration = duration;
       let endTime = '';
       try { const [h, m] = BookingStateManager.time.split(":").map(Number); const totalMin = h * 60 + m + duration; const endH = Math.floor(totalMin / 60) % 24; const endM = totalMin % 60; const ampm = endH >= 12 ? "PM" : "AM"; const displayH = endH % 12 || 12; endTime = ` – ${displayH}:${String(endM).padStart(2, "0")} ${ampm}`; } catch (e) {}
-      html += `<div class="summary-divider"></div><div class="summary-row"><i class="fas fa-clock" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Time</div><div class="summary-row-value">${escapeHTML(BookingStateManager.timeLabel)}${escapeHTML(endTime)}</div></div></div><div class="summary-row"><i class="fas fa-hourglass-half" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Duration</div><div class="summary-row-value">${duration} Minutes</div></div></div>`;
+      html += `<div class="summary-divider"></div><div class="summary-row"><i class="fas fa-clock" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Time</div><div class="summary-row-value">${escapeHTML(timeLabel)}${escapeHTML(endTime)}</div></div></div><div class="summary-row"><i class="fas fa-hourglass-half" aria-hidden="true"></i><div class="summary-row-content"><div class="summary-row-label">Duration</div><div class="summary-row-value">${duration} Minutes</div></div></div>`;
     }
     detailsContainer.innerHTML = html;
     const reviewDepartment = document.getElementById("review-department");
@@ -894,11 +1193,11 @@ const BookingWizard = {
     const reviewDate = document.getElementById("review-date");
     const reviewTime = document.getElementById("review-time");
     const reviewDuration = document.getElementById("review-duration");
-    if (reviewDepartment) reviewDepartment.textContent = hasDept ? BookingStateManager.department : "—";
-    if (reviewDoctor) reviewDoctor.textContent = hasDoctor ? BookingStateManager.doctor : "—";
+    if (reviewDepartment) reviewDepartment.textContent = hasDept ? departmentLabel : "—";
+    if (reviewDoctor) reviewDoctor.textContent = hasDoctor ? doctorLabel : "—";
     if (reviewDate) reviewDate.textContent = hasDate ? dateDisplay : "—";
-    if (reviewTime) reviewTime.textContent = hasTime ? BookingStateManager.timeLabel : "—";
-    if (reviewDuration) reviewDuration.textContent = hasTime ? `${BookingStateManager.doctorData?.duration || 30} Minutes` : "—";
+    if (reviewTime) reviewTime.textContent = hasTime ? timeLabel : "—";
+    if (reviewDuration) reviewDuration.textContent = hasTime ? `${selectedDuration} Minutes` : "—";
     const submitBtn = document.getElementById("booking-summary-submit-btn");
     if (submitBtn) submitBtn.disabled = !(hasDept && hasDoctor && hasDate && hasTime);
   },
@@ -907,11 +1206,4 @@ const BookingWizard = {
   disableSubmitButtons() { const btn1 = document.getElementById("booking-submit-btn"); const btn2 = document.getElementById("booking-summary-submit-btn"); if (btn1) btn1.disabled = true; if (btn2) btn2.disabled = true; },
 };
 
-function goToStep(step) { BookingWizard.goToStep(step); }
-function selectSlot(btn) { BookingWizard.selectSlot(btn); }
-function switchSlotTab(tabId) { BookingWizard.switchSlotTab(tabId); }
-
 window.BookingWizard = BookingWizard;
-window.goToStep = goToStep;
-window.selectSlot = selectSlot;
-window.switchSlotTab = switchSlotTab;

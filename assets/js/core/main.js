@@ -83,12 +83,23 @@ function getUser() {
   }
 }
 
-/** Remove localStorage user and call server logout */
-function logoutUser() {
+/** Remove local identity and terminate the server-side session before redirecting. */
+async function logoutUser() {
   localStorage.removeItem("hb_user");
-  fetch((getBasePath() + "api/auth/logout.php"), { credentials: "same-origin" }).catch(() => {});
-  window.location.href = getBasePath() + "pages/auth/login.html";
+  localStorage.removeItem("hb_remember");
+
+  try {
+    await fetch(getBasePath() + "api/auth/logout.php", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+  } catch {
+    // Local identity is cleared even when the server cannot be reached.
+  } finally {
+    window.location.href = getBasePath() + "pages/auth/login.html";
+  }
 }
+window.logoutUser = logoutUser;
 
 /** Redirect to login if no localStorage user */
 function requireAuth() {
@@ -118,7 +129,8 @@ async function getSessionUser() {
 
 /** Verify server-side role, redirect if mismatch */
 async function requireServerRole(role, redirectUrl = null) {
-  if (!redirectUrl) redirectUrl = getBasePath() + "pages/auth/login.html";
+  const defaultRedirectUrl = getBasePath() + "pages/auth/login.html";
+  redirectUrl = safeSameOriginUrl(redirectUrl || defaultRedirectUrl, defaultRedirectUrl);
   try {
     const user = await getSessionUser();
     if (!user || user.role !== role) {
@@ -249,6 +261,26 @@ function initNavbar() {
   const navbar = document.getElementById("navbar");
   if (!navbar) return;
 
+  if (!window._hbSharedNavbarActionsBound) {
+    document.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const action = target?.closest("[data-navbar-action]");
+      if (!action) return;
+
+      switch (action.dataset.navbarAction) {
+        case "open-settings":
+          event.preventDefault();
+          if (typeof window.openSettings === "function") window.openSettings();
+          break;
+        case "logout":
+          event.preventDefault();
+          if (typeof window.logoutUser === "function") window.logoutUser();
+          break;
+      }
+    });
+    window._hbSharedNavbarActionsBound = true;
+  }
+
   const hasNavRow = !!navbar.querySelector(".nav-row");
 
   // Mobile hamburger toggle — only for navbars with a .nav-row
@@ -286,7 +318,7 @@ function initNavbar() {
   if (navContainer && !navContainer.querySelector(".theme-toggle")) {
     const themeBtn = document.createElement("button");
     themeBtn.className = "theme-toggle";
-    themeBtn.onclick = toggleTheme;
+    themeBtn.addEventListener("click", toggleTheme);
     const isDark = getCurrentTheme() === "dark";
     themeBtn.innerHTML = isDark ? SUN_SVG : MOON_SVG;
     themeBtn.setAttribute(
@@ -329,24 +361,24 @@ function initNavbar() {
   const user = getUser();
   if (user) {
     authArea.innerHTML = `
-      <button class="nav-icon-btn" onclick="openSettings()" title="Settings" aria-label="Settings">
+      <button class="nav-icon-btn" data-navbar-action="open-settings" title="Settings" aria-label="Settings">
         <i class="fas fa-cog"></i>
       </button>
       <button class="nav-icon-btn" id="notif-bell-btn" title="Notifications" aria-label="Notifications">
         <i class="fas fa-bell"></i>
-        <span class="notification-badge" id="notif-badge" style="display:none">0</span>
+        <span class="notification-badge" id="notif-badge" hidden>0</span>
       </button>
       <span class="nav-user-name">${escapeHTML(user.name)}</span>
       <a href="${getDashboardUrl(user.role)}" class="nav-dashboard-link" title="Dashboard" aria-label="Open dashboard">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8v9.7a.5.5 0 0 1-.5.5h-5.2a.5.5 0 0 1-.5-.5v-5.4H9.2v5.4a.5.5 0 0 1-.5.5H3.5a.5.5 0 0 1-.5-.5v-9.7Z"></path></svg>
         <span>Dashboard</span>
       </a>
-      <button class="btn btn-outline btn-sm" onclick="logoutUser()">Logout</button>
+      <button class="btn btn-outline btn-sm" data-navbar-action="logout">Logout</button>
     `;
   } else {
     authArea.innerHTML = `
       <a href="${getBasePath()}pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
-      <a href="${getBasePath()}pages/auth/login.html#signup" class="btn btn-primary btn-sm">Sign Up</a>
+      <a href="${getBasePath()}pages/auth/register.html" class="btn btn-primary btn-sm">Sign Up</a>
     `;
   }
 }
@@ -368,6 +400,79 @@ function escapeHTML(value) {
         "'": "&#039;",
       })[char],
   );
+}
+
+/**
+ * Restrict untrusted values used in CSS class-name tokens.
+ * Preserve simple status identifiers while rejecting whitespace and markup.
+ */
+function safeClassToken(value, fallback = "unknown") {
+  const token = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+  return /^[a-z0-9_-]{1,40}$/.test(token) ? token : fallback;
+}
+
+/** Parse an untrusted identifier before embedding it in a numeric JS/HTML context. */
+function safePositiveId(value) {
+  if (typeof value !== "number" && typeof value !== "string") return 0;
+
+  const normalized = typeof value === "string" ? value.trim() : value;
+  if (typeof normalized === "string" && !/^\d+$/.test(normalized)) return 0;
+
+  const id = Number(normalized);
+  return Number.isSafeInteger(id) && id > 0 ? id : 0;
+}
+
+/**
+ * Resolve a navigation target only when it remains on this application's origin.
+ * Return a root-relative URL so callers cannot carry an untrusted scheme/host
+ * into href or window.open sinks.
+ */
+function safeSameOriginUrl(value, fallback = "") {
+  try {
+    if (typeof value !== "string") return fallback;
+    const candidate = value.trim();
+    if (!candidate) return fallback;
+
+    const url = new URL(candidate, window.location.href);
+    if (!["http:", "https:"].includes(url.protocol)) return fallback;
+    if (url.username || url.password) return fallback;
+    if (url.origin !== window.location.origin) return fallback;
+
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Allow only a single CSS color token, not an arbitrary style declaration.
+ * Supports the app's CSS variable palette and simple hexadecimal colors.
+ */
+function safeCssColor(value, fallback = "var(--primary)") {
+  const candidate = String(value ?? "").trim();
+  const allowedVariables = [
+    "var(--primary)",
+    "var(--primary-dark)",
+    "var(--danger)",
+    "var(--success)",
+    "var(--warning)",
+    "var(--text-muted)",
+  ];
+  if (allowedVariables.includes(candidate)) return candidate;
+  if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(candidate)) return candidate;
+  return fallback;
+}
+
+/** Normalize API aggregate counts before inserting them into HTML or SVG attributes. */
+function safeCount(value, fallback = 0) {
+  if (typeof value !== "number" && typeof value !== "string") return fallback;
+  const normalized = typeof value === "string" ? value.trim() : value;
+  if (typeof normalized === "string" && !/^\d+$/.test(normalized)) return fallback;
+  const count = Number(normalized);
+  return Number.isSafeInteger(count) && count >= 0 ? count : fallback;
 }
 
 /** Debounce function calls — useful for search input handlers */
@@ -490,7 +595,7 @@ function renderTable(
   if (!tbody) return;
 
   if (!items.length) {
-    tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center" style="padding:var(--s8);color:var(--text-muted)">${emptyMsg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center hb-table-empty-state">${escapeHTML(emptyMsg)}</td></tr>`;
     return;
   }
 
@@ -553,8 +658,8 @@ function initScrollAnimations() {
         el.classList.add("animated");
         // Stagger: assign increasing delay to each child
         if (el.classList.contains("fade-in-stagger")) {
-          [...el.children].forEach((child, i) => {
-            child.style.animationDelay = `${i * 0.13}s`;
+          [...el.children].forEach((child) => {
+            child.classList.add("fade-in-stagger-item");
           });
         }
         observer.unobserve(el);
@@ -639,6 +744,31 @@ function togglePasswordVisibility(btn) {
   btn.setAttribute("title", isHidden ? "Hide password" : "Show password");
 }
 
+// One shared retry action covers generated Patient error states.
+if (!window._hbPatientPageRetryBound) {
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const retry = target?.closest('[data-page-action="retry"]');
+    if (!retry) return;
+
+    event.preventDefault();
+    window.location.reload();
+  });
+  window._hbPatientPageRetryBound = true;
+}
+
+// Shared delegated password visibility controls for static and generated UI.
+if (!window._hbGlobalPasswordToggleBound) {
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const toggle = target?.closest("[data-password-toggle]");
+    if (!toggle) return;
+    event.preventDefault();
+    togglePasswordVisibility(toggle);
+  });
+  window._hbGlobalPasswordToggleBound = true;
+}
+
 /* ============================================================
    GENERIC TAB NAVIGATION SYSTEM
    Used by dashboard.html, doctor-dashboard.html, admin.html
@@ -675,22 +805,23 @@ function initTabNavigation(storageKey) {
   // Click on stat cards to jump to their linked tab
   document.querySelectorAll(".stat-card[data-tab]").forEach((card) => {
     card.addEventListener("click", () => {
-      document
-        .querySelector(
-          `.sidebar-nav a[href="#${card.getAttribute("data-tab")}"]`,
-        )
-        ?.click();
+      const targetTab = card.getAttribute("data-tab") || "";
+      const link = Array.from(navLinks).find(
+        (anchor) => anchor.getAttribute("href") === `#${targetTab}`,
+      );
+      link?.click();
     });
   });
 
-  // Restore active tab (URL hash > localStorage > first tab)
+  // Restore active tab (URL hash > localStorage > first tab) by comparing
+  // attribute values, never by interpolating untrusted values into a selector.
   const hash = window.location.hash.substring(1);
   const savedTab =
     hash ||
     (storageKey ? localStorage.getItem(storageKey) : null) ||
     "overview";
-  const activeLink = document.querySelector(
-    `.sidebar-nav a[href="#${savedTab}"]`,
+  const activeLink = Array.from(navLinks).find(
+    (anchor) => anchor.getAttribute("href") === `#${savedTab}`,
   );
   if (activeLink) {
     activeLink.click();
@@ -698,12 +829,13 @@ function initTabNavigation(storageKey) {
     navLinks[0].click();
   }
 
-  // Handle hash changes
+  // Handle hash changes with the same selector-free attribute comparison.
   window.addEventListener("hashchange", () => {
-    const link = document.querySelector(
-      `.sidebar-nav a[href="${window.location.hash}"]`,
+    const currentHash = window.location.hash;
+    const link = Array.from(navLinks).find(
+      (anchor) => anchor.getAttribute("href") === currentHash,
     );
-    if (link) link.click();
+    link?.click();
   });
 }
 
@@ -907,38 +1039,66 @@ document.addEventListener("DOMContentLoaded", () => {
       document.head.appendChild(css);
     }
 
-    // Prevent duplicate notification initialization
-    if (!window._hbNotificationsInitialized) {
-      // Load settings.js if not already loaded
-      if (typeof openSettings === "undefined") {
-        const script1 = document.createElement("script");
-        script1.src = getBasePath() + "assets/js/pages/settings.js";
-        script1.onload = () => {
-          // Now load notifications.js
-          if (typeof NotificationService === "undefined") {
-            const script2 = document.createElement("script");
-            script2.src = getBasePath() + "assets/js/modules/notifications.js";
-            script2.onload = () => {
-              window._hbNotificationsInitialized = true;
-              NotificationService.init();
-              NotificationService.initDropdown();
-            };
-            document.body.appendChild(script2);
-          } else {
-            window._hbNotificationsInitialized = true;
-            NotificationService.init();
-            NotificationService.initDropdown();
+    // Load shared UI modules once, with explicit same-origin and failure handling.
+    if (
+      !window._hbNotificationsInitialized &&
+      !window._hbNotificationsInitializing
+    ) {
+      window._hbNotificationsInitializing = true;
+
+      const loadLocalScript = (relativePath) =>
+        new Promise((resolve, reject) => {
+          const scriptUrl = new URL(
+            getBasePath() + relativePath,
+            window.location.href,
+          );
+
+          if (scriptUrl.origin !== window.location.origin) {
+            reject(new Error("Refused to load a non-local HealthBridge script."));
+            return;
           }
-        };
-        document.body.appendChild(script1);
-      } else {
-        // Both already loaded (dashboard pages)
-        if (typeof NotificationService !== "undefined") {
-          window._hbNotificationsInitialized = true;
+
+          const script = document.createElement("script");
+          script.src = scriptUrl.href;
+          script.addEventListener("load", () => resolve(), { once: true });
+          script.addEventListener(
+            "error",
+            () => reject(new Error(`Failed to load ${relativePath}`)),
+            { once: true },
+          );
+          document.body.appendChild(script);
+        });
+
+      (async () => {
+        try {
+          if (typeof openSettings === "undefined") {
+            await loadLocalScript("assets/js/pages/settings.js?v=3");
+          }
+
+          if (typeof NotificationService === "undefined") {
+            await loadLocalScript("assets/js/modules/notifications.js?v=5");
+          }
+
+          if (
+            typeof NotificationService === "undefined" ||
+            typeof NotificationService.init !== "function" ||
+            typeof NotificationService.initDropdown !== "function"
+          ) {
+            throw new Error("HealthBridge notification service is unavailable.");
+          }
+
           NotificationService.init();
           NotificationService.initDropdown();
+          window._hbNotificationsInitialized = true;
+        } catch (error) {
+          console.error(
+            "HealthBridge shared UI modules could not be initialized.",
+            error,
+          );
+        } finally {
+          window._hbNotificationsInitializing = false;
         }
-      }
+      })();
     }
   }
 });

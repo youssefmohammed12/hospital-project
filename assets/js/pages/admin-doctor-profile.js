@@ -30,12 +30,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const user = await requireServerRole("admin");
   if (!user) return;
 
+  attachDoctorProfileActions();
   setText("admin-name", user.name || "Admin");
   setText("admin-email", user.email || "admin@healthbridge.com");
 
   // Read doctor ID from URL
   const params = new URLSearchParams(window.location.search);
-  const doctorId = parseInt(params.get("id"), 10);
+  const doctorId = safePositiveId(params.get("id"));
 
   if (!doctorId || doctorId <= 0) {
     showError("Invalid Doctor ID", "No valid doctor ID was provided in the URL.");
@@ -43,10 +44,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Hide error state initially, show loading
-  document.getElementById("dp-error").style.display = "none";
-  document.getElementById("dp-header-card").style.display = "none";
-  document.getElementById("dp-tabs").style.display = "none";
-  document.getElementById("dp-tab-contents").style.display = "none";
+  document.getElementById("dp-error").classList.add("is-hidden");
+  document.getElementById("dp-header-card").classList.add("is-hidden");
+  document.getElementById("dp-tabs").classList.add("is-hidden");
+  document.getElementById("dp-tab-contents").classList.add("is-hidden");
 
   await loadDoctorProfile(doctorId);
   initEditDoctorForm();
@@ -55,15 +56,71 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 /**
+ * Bind page-owned actions through one delegated listener. The admin role check
+ * completes before the listener is attached; action values are fixed allowlist
+ * tokens rather than executable markup.
+ */
+function attachDoctorProfileActions() {
+  if (window._hbDoctorProfileActionsBound) return;
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const tabControl = target.closest("[data-doctor-profile-tab]");
+    if (tabControl) {
+      event.preventDefault();
+      const tabId = tabControl.dataset.doctorProfileTab;
+      if (["overview", "professional", "schedule", "appointments", "reviews", "audit"].includes(tabId)) {
+        switchDoctorTab(tabId);
+      }
+      return;
+    }
+
+    const actionControl = target.closest("[data-doctor-profile-action]");
+    if (!actionControl) return;
+
+    switch (actionControl.dataset.doctorProfileAction) {
+      case "edit-doctor":
+        editCurrentDoctor();
+        break;
+      case "reassign-doctor":
+        reassignCurrentDoctorDepartment();
+        break;
+      case "toggle-status":
+        toggleCurrentDoctorStatus();
+        break;
+      case "open-booking":
+        openBookingForDoctor();
+        break;
+      case "delete-doctor":
+        deleteCurrentDoctor();
+        break;
+      case "close-edit":
+        closeDoctorEditModal();
+        break;
+      case "close-reassign":
+        closeDoctorReassignModal();
+        break;
+      case "toggle-book-modal":
+        toggleBookAppointmentModal();
+        break;
+    }
+  });
+
+  window._hbDoctorProfileActionsBound = true;
+}
+
+/**
  * Show a professional error state.
  */
 function showError(title, message) {
   document.getElementById("dp-error-title").textContent = title;
   document.getElementById("dp-error-message").textContent = message;
-  document.getElementById("dp-error").style.display = "";
-  document.getElementById("dp-header-card").style.display = "none";
-  document.getElementById("dp-tabs").style.display = "none";
-  document.getElementById("dp-tab-contents").style.display = "none";
+  document.getElementById("dp-error").classList.remove("is-hidden");
+  document.getElementById("dp-header-card").classList.add("is-hidden");
+  document.getElementById("dp-tabs").classList.add("is-hidden");
+  document.getElementById("dp-tab-contents").classList.add("is-hidden");
 }
 
 /**
@@ -72,18 +129,28 @@ function showError(title, message) {
  * doctor data, appointments, AND reviews — avoiding separate doctor-only endpoints.
  */
 async function loadDoctorProfile(id) {
-  _profileDoctorId = id;
+  const safeDoctorId = safePositiveId(id);
+  if (!safeDoctorId) {
+    showError("Invalid Doctor ID", "No valid doctor ID was provided in the URL.");
+    return;
+  }
+  _profileDoctorId = safeDoctorId;
   _loadedTabs = {};
 
   // Load departments for modals
   _profileDepartments = [];
   const deptResult = await apiFetch((getBasePath() + "api/departments/get.php"), {}, "Failed to load departments.");
-  if (deptResult.ok && deptResult.data?.departments) {
-    _profileDepartments = deptResult.data.departments.filter(d => d.status === 'active');
+  if (deptResult.ok && Array.isArray(deptResult.data?.departments)) {
+    _profileDepartments = deptResult.data.departments.filter(department =>
+      department && typeof department === "object" && !Array.isArray(department)
+      && department.status === "active"
+      && safePositiveId(department.id) > 0
+      && typeof department.name === "string"
+    );
   }
 
   const result = await apiFetch(
-    `${getBasePath()}api/doctors/profile.php?id=${id}`,
+    `${getBasePath()}api/doctors/profile.php?id=${safeDoctorId}`,
     {},
     "Failed to load doctor profile.",
   );
@@ -98,10 +165,10 @@ async function loadDoctorProfile(id) {
   window._currentDoctorProfile = doc;
 
   // Show UI
-  document.getElementById("dp-error").style.display = "none";
-  document.getElementById("dp-header-card").style.display = "";
-  document.getElementById("dp-tabs").style.display = "";
-  document.getElementById("dp-tab-contents").style.display = "";
+  document.getElementById("dp-error").classList.add("is-hidden");
+  document.getElementById("dp-header-card").classList.remove("is-hidden");
+  document.getElementById("dp-tabs").classList.remove("is-hidden");
+  document.getElementById("dp-tab-contents").classList.remove("is-hidden");
 
   // --- Profile Header ---
   setText("dp-full-name", doc.name || "Unknown");
@@ -141,8 +208,17 @@ async function loadDoctorProfile(id) {
   // --- Overview Tab Stats ---
   const completedCount = data.completed_count || 0;
   const totalAppts = (data.appointments || []).length;
-  const totalReviews = (data.reviews || []).length;
-  setText("dp-overview-rating", `${(parseFloat(doc.rating) || 0).toFixed(1)}`);
+  const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+  const totalReviews = reviews.length;
+  const validReviewStars = reviews
+    .map((review) => Number(review.stars))
+    .filter((stars) => Number.isInteger(stars) && stars >= 1 && stars <= 5);
+  const averageRating = validReviewStars.length
+    ? validReviewStars.reduce((sum, stars) => sum + stars, 0) / validReviewStars.length
+    : null;
+  const ratingLabel = averageRating === null ? "No ratings yet" : averageRating.toFixed(1);
+  setText("dp-rating-display", `${ratingLabel}${averageRating === null ? "" : " ★"}`);
+  setText("dp-overview-rating", averageRating === null ? "—" : ratingLabel);
   setText("dp-overview-completed", completedCount);
   setText("dp-overview-total", totalAppts);
   setText("dp-overview-reviews", totalReviews);
@@ -214,11 +290,11 @@ async function loadProfileSchedule() {
     <div id="dp-schedule-summary" class="dp-schedule-summary">
       <div class="empty-state"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><p>Loading schedule summary...</p></div>
     </div>
-    <div class="dp-section" style="margin-top: var(--s6)">
+    <div class="dp-section" data-csp-style="profile-0035580c7512">
       <h4 class="dp-section-title"><i class="fas fa-pen" aria-hidden="true"></i> Edit Weekly Schedule</h4>
       <div id="dp-schedule-editor"></div>
     </div>
-    <div class="dp-section" style="margin-top: var(--s6)">
+    <div class="dp-section" data-csp-style="profile-0035580c7512">
       <h4 class="dp-section-title"><i class="fas fa-history" aria-hidden="true"></i> Schedule Change History</h4>
       <div id="dp-schedule-history"><div class="empty-state"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><p>Loading history...</p></div></div>
     </div>
@@ -248,19 +324,15 @@ async function loadScheduleSummary() {
 
   try {
     const result = await apiFetch(
-      (getBasePath() + "api/schedule/get.php"),
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ doctor_id: _profileDoctorId }),
-      },
+      getBasePath() + "api/schedule/get.php?doctor_id=" + encodeURIComponent(_profileDoctorId),
+      {},
       "Failed to load schedule."
     );
 
     if (!result.ok || !result.data?.success) {
       summaryEl.innerHTML = `
         <div class="dp-schedule-summary-inner">
-          <div class="dp-summary-item"><span class="dp-summary-label">Availability</span><span class="dp-summary-value" style="color:var(--text-muted)">No schedule</span></div>
+          <div class="dp-summary-item"><span class="dp-summary-label">Availability</span><span class="dp-summary-value" data-csp-style="profile-5872de20d564">No schedule</span></div>
         </div>
       `;
       return;
@@ -268,8 +340,14 @@ async function loadScheduleSummary() {
 
     const sched = result.data.schedule;
     const settings = sched.settings || {};
-    const weekly = sched.weekly || [];
+    const weekly = Array.isArray(sched.weekly)
+      ? sched.weekly.filter((day) => day && typeof day === "object" && !Array.isArray(day))
+      : [];
     const workingDays = weekly.filter(d => parseInt(d.is_working) === 1);
+    const rawDuration = safeCount(settings.appointment_duration, 30);
+    const appointmentDuration = rawDuration >= 1 && rawDuration <= 240 ? rawDuration : 30;
+    const rawDailyLimit = safeCount(settings.max_appointments_per_day, 25);
+    const dailyLimit = rawDailyLimit >= 1 && rawDailyLimit <= 1000 ? rawDailyLimit : 25;
     const isAvail = parseInt(settings.is_available) === 1;
     const hospitalHours = document.getElementById("schedule-hospital-hours");
     const hospitalHoursText = hospitalHours ? hospitalHours.textContent : "08:00 AM – 10:00 PM";
@@ -291,7 +369,7 @@ async function loadScheduleSummary() {
         </div>
         <div class="dp-summary-item">
           <span class="dp-summary-label">Appointment Duration</span>
-          <span class="dp-summary-value">${settings.appointment_duration || 30} minutes</span>
+          <span class="dp-summary-value">${appointmentDuration} minutes</span>
         </div>
         <div class="dp-summary-item">
           <span class="dp-summary-label">Working Days</span>
@@ -307,15 +385,16 @@ async function loadScheduleSummary() {
         </div>
         <div class="dp-summary-item">
           <span class="dp-summary-label">Max Appts / Day</span>
-          <span class="dp-summary-value">${settings.max_appointments_per_day || 25}</span>
+          <span class="dp-summary-value">${dailyLimit}</span>
         </div>
       </div>
       <div class="dp-schedule-working-days">
         ${workingDays.map(d => {
           const dayNames = {1:"Mon",2:"Tue",3:"Wed",4:"Thu",5:"Fri",6:"Sat",7:"Sun"};
           const dayFull = {1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",5:"Friday",6:"Saturday",7:"Sunday"};
-          const name = dayNames[parseInt(d.day_of_week)] || d.day_of_week;
-          const fullName = dayFull[parseInt(d.day_of_week)] || d.day_of_week;
+          const dayNumber = safePositiveId(d.day_of_week);
+          const name = dayNames[dayNumber] || "Unknown";
+          const fullName = dayFull[dayNumber] || "Unknown";
           return `<div class="dp-work-day-badge" title="${fullName}">
             <span class="dp-work-day-name">${escapeHTML(name)}</span>
             <span class="dp-work-day-hours">${escapeHTML(d.start_time || '—')} – ${escapeHTML(d.end_time || '—')}</span>
@@ -345,12 +424,14 @@ async function loadScheduleHistory() {
       "Failed to load history."
     );
 
-    const entries = (result.ok && result.data?.entries) ? result.data.entries : [];
-    
+    const entries = result.ok && Array.isArray(result.data?.entries)
+      ? result.data.entries.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+      : [];
+
     // Filter for schedule-related actions (update_schedule)
     const scheduleEntries = entries.filter(e => {
-      const action = (e.action || '').toLowerCase();
-      return action.includes('schedule');
+      const action = typeof e.action === "string" ? e.action.toLowerCase() : "";
+      return action.includes("schedule");
     });
 
     if (scheduleEntries.length === 0) {
@@ -405,13 +486,14 @@ function renderProfileAppointments(appts) {
   const tableHtml = `<div class="table-wrap"><table>
     <thead><tr><th>Patient</th><th>Date & Time</th><th>Status</th></tr></thead>
     <tbody>${appts.map(a => {
-      const statusLower = (a.status || "pending").toLowerCase();
-      const patientDisplay = a.patient_id
-        ? `<a href="${getBasePath()}pages/patient/patient-emr.html?patient_id=${a.patient_id}" style="font-weight:600;color:var(--primary);text-decoration:none">${escapeHTML(a.patient_name)}</a>`
-        : `<span style="font-weight:600">${escapeHTML(a.patient_name)}</span>`;
+      const statusLower = safeClassToken(a.status || "pending");
+      const patientId = safePositiveId(a.patient_id);
+      const patientDisplay = patientId
+        ? `<a href="${getBasePath()}pages/patient/patient-emr.html?patient_id=${patientId}" data-csp-style="profile-5a74e195054b">${escapeHTML(a.patient_name)}</a>`
+        : `<span data-csp-style="profile-eed0f8fb89cd">${escapeHTML(a.patient_name)}</span>`;
       return `<tr>
         <td>${patientDisplay}</td>
-        <td style="font-size:0.85rem">${escapeHTML(formatDate(a.date))} ${escapeHTML(formatApptTime(a))}</td>
+        <td data-csp-style="profile-1e8f47ba0c0b">${escapeHTML(formatDate(a.date))} ${escapeHTML(formatApptTime(a))}</td>
         <td><span class="status status-${statusLower}">${escapeHTML(a.status)}</span></td>
       </tr>`;
     }).join('')}</tbody>
@@ -431,18 +513,26 @@ function renderProfileReviews(reviews) {
     return;
   }
   const tableHtml = `<div class="table-wrap"><table>
-    <thead><tr><th>Patient</th><th>Rating</th><th>Comment</th><th>Date</th></tr></thead>
+    <thead><tr><th>Patient</th><th>Rating</th><th>Visibility</th><th>Comment</th><th>Date</th></tr></thead>
     <tbody>${reviews.map(r => {
-      const starsVal = parseInt(r.stars) || 0;
-      const starDisplay = `<span style="color:var(--warning)">${Array(starsVal).fill('<i class="fas fa-star" aria-hidden="true"></i>').join('')}${Array(5 - starsVal).fill('<i class="far fa-star" aria-hidden="true"></i>').join('')}</span>`;
+      const parsedStars = safeCount(r.stars, 0);
+      const hasValidStars = parsedStars >= 1 && parsedStars <= 5;
+      const starsVal = hasValidStars ? parsedStars : 0;
+      const starDisplay = hasValidStars
+        ? `<span data-csp-style="profile-52df2b00a094">${Array(starsVal).fill('<i class="fas fa-star" aria-hidden="true"></i>').join('')}${Array(5 - starsVal).fill('<i class="far fa-star" aria-hidden="true"></i>').join('')}</span>`
+        : '<span data-csp-style="profile-5872de20d564">Not rated</span>';
       const comment = r.review
         ? escapeHTML(r.review)
-        : '<span style="color:var(--text-muted);font-style:italic">No written comment.</span>';
+        : '<span data-csp-style="profile-e0086d5c9f97">No written comment.</span>';
+      const visibility = Number(r.is_hidden) === 1
+        ? '<span class="status status-cancelled">Hidden</span>'
+        : '<span class="status status-confirmed">Public</span>';
       return `<tr>
-        <td><div style="font-weight:600">${escapeHTML(r.patient_name || 'Unknown')}</div></td>
-        <td>${starDisplay} (${starsVal}/5)</td>
-        <td style="max-width:300px;word-break:break-word">${comment}</td>
-        <td style="font-size:0.8rem">${escapeHTML(formatDate(r.review_date))}</td>
+        <td><div data-csp-style="profile-eed0f8fb89cd">${escapeHTML(r.patient_name || 'Unknown')}</div></td>
+        <td>${starDisplay}${hasValidStars ? ` (${starsVal}/5)` : ""}</td>
+        <td>${visibility}</td>
+        <td data-csp-style="profile-312d54ef958b">${comment}</td>
+        <td data-csp-style="profile-c9565925f3a7">${escapeHTML(formatDate(r.review_date))}</td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>`;
@@ -459,26 +549,33 @@ async function loadProfileAudit() {
       {},
       "Failed to load audit log."
     );
-    const entries = (result.ok && result.data?.entries) ? result.data.entries : [];
+    const entries = result.ok && Array.isArray(result.data?.entries)
+      ? result.data.entries.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+      : [];
     if (entries.length === 0) {
       container.innerHTML = '<div class="empty-state"><i class="fas fa-history" aria-hidden="true"></i><p>No administrative activity recorded for this doctor.</p></div>';
       return;
     }
     const actionIcons = { create:'fa-plus-circle', update:'fa-pen', update_schedule:'fa-calendar', delete:'fa-trash', activate:'fa-toggle-on', deactivate:'fa-toggle-off', reassign:'fa-right-left', book:'fa-calendar-plus', approve:'fa-check', decline:'fa-ban' };
     const roleBadge = (role) => {
-      if (role === 'doctor') return '<span class="dp-role-badge dp-role-doctor" style="font-size:0.7rem;padding:1px 8px;border-radius:var(--r-full);background:var(--primary-light);color:var(--primary)">Doctor</span>';
-      if (role === 'admin') return '<span class="dp-role-badge dp-role-admin" style="font-size:0.7rem;padding:1px 8px;border-radius:var(--r-full);background:var(--success-light, #e8f5e9);color:var(--success, #2e7d32)">Admin</span>';
+      if (role === 'doctor') return '<span class="dp-role-badge dp-role-doctor" data-csp-style="profile-af88b74636a8">Doctor</span>';
+      if (role === 'admin') return '<span class="dp-role-badge dp-role-admin" data-csp-style="profile-99bda4f95b52">Admin</span>';
       return '';
     };
     const html = entries.map(e => {
-      const icon = actionIcons[e.action] || 'fa-circle';
-      const desc = e.description ? escapeHTML(e.description) : `${escapeHTML(e.action)} on ${escapeHTML(e.entity_type)}`;
+      const action = typeof e.action === "string" ? e.action : "";
+      const icon = Object.prototype.hasOwnProperty.call(actionIcons, action)
+        ? actionIcons[action]
+        : "fa-circle";
+      const desc = e.description
+        ? escapeHTML(e.description)
+        : `${escapeHTML(action)} on ${escapeHTML(e.entity_type)}`;
       return `<div class="dp-audit-entry">
         <div class="dp-audit-icon"><i class="fas ${icon}" aria-hidden="true"></i></div>
         <div class="dp-audit-body">
           <div class="dp-audit-action">${escapeHTML(e.actor_name || 'System')} ${roleBadge(e.actor_role)}</div>
-          <div class="dp-audit-description" style="font-size:0.85rem;color:var(--text-secondary);margin:var(--s1) 0">${desc}</div>
-          <div class="dp-audit-meta" style="font-size:0.75rem;color:var(--text-muted)">${escapeHTML(formatDate(e.created_at))}</div>
+          <div class="dp-audit-description" data-csp-style="profile-7658f09f4074">${desc}</div>
+          <div class="dp-audit-meta" data-csp-style="profile-4416f979f7e2">${escapeHTML(formatDate(e.created_at))}</div>
         </div>
       </div>`;
     }).join('');
@@ -490,6 +587,24 @@ async function loadProfileAudit() {
 
 /* ── PROFILE ACTIONS ────────────────────────────────────── */
 
+function populateDoctorProfileDepartmentSelect(select, currentDepartmentId) {
+  if (!select) return;
+
+  select.replaceChildren(new Option("Select department", ""));
+  const selectedId = safePositiveId(currentDepartmentId);
+  const departments = Array.isArray(_profileDepartments) ? _profileDepartments : [];
+
+  departments.forEach(department => {
+    if (!department || typeof department !== "object" || Array.isArray(department)) return;
+    const departmentId = safePositiveId(department.id);
+    if (!departmentId || typeof department.name !== "string") return;
+
+    const option = new Option(department.name, String(departmentId));
+    option.selected = departmentId === selectedId;
+    select.add(option);
+  });
+}
+
 function editCurrentDoctor() {
   if (!_currentDoctorData) return;
   const doc = _currentDoctorData.doctor;
@@ -499,12 +614,7 @@ function editCurrentDoctor() {
   document.getElementById("dp-edit-phone").value = doc.phone || "";
 
   const deptSelect = document.getElementById("dp-edit-department");
-  if (deptSelect) {
-    deptSelect.innerHTML = '<option value="">Select department</option>';
-    _profileDepartments.forEach(dept => {
-      deptSelect.innerHTML += `<option value="${dept.id}"${dept.id == doc.department_id ? ' selected' : ''}>${escapeHTML(dept.name)}</option>`;
-    });
-  }
+  populateDoctorProfileDepartmentSelect(deptSelect, doc.department_id);
   const modal = document.getElementById("dp-edit-modal");
   if (modal) modal.classList.add("open");
 }
@@ -521,12 +631,7 @@ function reassignCurrentDoctorDepartment() {
   document.getElementById("dp-reassign-name").textContent = doc.name;
 
   const deptSelect = document.getElementById("dp-reassign-department");
-  if (deptSelect) {
-    deptSelect.innerHTML = '<option value="">Select department</option>';
-    _profileDepartments.forEach(dept => {
-      deptSelect.innerHTML += `<option value="${dept.id}"${dept.id == doc.department_id ? ' selected' : ''}>${escapeHTML(dept.name)}</option>`;
-    });
-  }
+  populateDoctorProfileDepartmentSelect(deptSelect, doc.department_id);
   const modal = document.getElementById("dp-reassign-modal");
   if (modal) modal.classList.add("open");
 }
@@ -541,7 +646,7 @@ async function toggleCurrentDoctorStatus() {
   const doc = _currentDoctorData.doctor;
   const isActive = doc.is_active == 1;
   const msg = isActive
-    ? `Deactivate Dr. ${doc.name}? They will not be able to log in.`
+    ? `Deactivate Dr. ${doc.name}? Sign-in will be revoked, not-started appointments will be cancelled, and an active clinical visit must be completed first.`
     : `Activate Dr. ${doc.name}?`;
   if (!confirm(msg)) return;
 
@@ -563,19 +668,19 @@ async function toggleCurrentDoctorStatus() {
 async function deleteCurrentDoctor() {
   if (!_currentDoctorData) return;
   const doc = _currentDoctorData.doctor;
-  if (!confirm(`Delete Dr. ${doc.name}? This will also cancel all their pending and confirmed appointments.`)) return;
+  if (!confirm(`Archive Dr. ${doc.name}? Sign-in will be disabled and not-started appointments will be cancelled. Clinical and audit history will be retained.`)) return;
 
   const result = await apiFetch((getBasePath() + "api/doctors/delete.php"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id: doc.id }),
-  }, "Delete failed.");
+  }, "Archive failed.");
 
   if (result.data?.success) {
-    showToast(`Dr. ${doc.name} has been deleted.`, "success");
+    showToast(`Dr. ${doc.name} has been archived. Clinical and audit history was retained.`, "success");
     window.location.href = getBasePath() + "pages/admin/admin.html#doctors";
   } else {
-    showToast(result.data?.message || "Delete failed.", "error");
+    showToast(result.data?.message || "Archive failed.", "error");
   }
 }
 
@@ -649,8 +754,7 @@ function toggleBookAppointmentModal() {
     document.getElementById("admin-book-form")?.reset();
     const dateInput = document.getElementById("admin-appt-date");
     if (dateInput) dateInput.min = new Date().toISOString().split("T")[0];
-    loadAdminDoctorDropdown();
-    loadDepartmentsForBooking();
+    return Promise.all([loadAdminDoctorDropdown(), loadDepartmentsForBooking()]);
   }
 }
 
@@ -661,8 +765,16 @@ async function loadAdminDoctorDropdown() {
   try {
     const res = await fetch((getBasePath() + "api/doctors/get.php"));
     const result = await res.json();
-    adminDoctorsList = result.doctors || result || [];
-  } catch { adminDoctorsList = []; }
+    adminDoctorsList = Array.isArray(result.doctors)
+      ? result.doctors.filter(doctor => doctor && typeof doctor === "object" && !Array.isArray(doctor))
+      : [];
+    if (!Array.isArray(result.doctors)) {
+      throw new Error("The doctor directory returned an invalid response.");
+    }
+  } catch {
+    adminDoctorsList = [];
+    showToast("Doctor list could not be loaded. Please try again.", "error");
+  }
   renderAdminDoctorOptions();
   if (deptSelect) {
     deptSelect.removeEventListener("change", renderAdminDoctorOptions);
@@ -674,30 +786,56 @@ async function loadDepartmentsForBooking() {
   const deptSelect = document.getElementById("admin-appt-department");
   if (!deptSelect) return;
   const deptResult = await apiFetch((getBasePath() + "api/departments/get.php"), {}, "Failed to load departments.");
-  if (deptResult.ok && deptResult.data?.departments) {
-    deptSelect.innerHTML = '<option value="">Select department</option>';
-    deptResult.data.departments.forEach(dept => {
-      if (dept.status === 'active') {
-        deptSelect.innerHTML += `<option value="${dept.id}">${escapeHTML(dept.name)}</option>`;
-      }
+  if (deptResult.ok && Array.isArray(deptResult.data?.departments)) {
+    const departments = deptResult.data.departments.filter(department =>
+      department && typeof department === "object" && !Array.isArray(department)
+      && department.status === "active"
+      && safePositiveId(department.id) > 0
+      && typeof department.name === "string"
+    );
+    deptSelect.replaceChildren(new Option("Select department", ""));
+    departments.forEach(department => {
+      deptSelect.add(new Option(department.name, String(safePositiveId(department.id))));
     });
   }
 }
 
 function renderAdminDoctorOptions() {
   const doctorSelect = document.getElementById("admin-appt-doctor");
-  const deptId = document.getElementById("admin-appt-department")?.value || "";
+  const departmentSelect = document.getElementById("admin-appt-department");
+  const deptId = departmentSelect?.value || "";
   if (!doctorSelect) return;
-  doctorSelect.innerHTML = '<option value="">Select a doctor</option>';
+  doctorSelect.replaceChildren(new Option("Select a doctor", ""));
+  const departmentName = departmentSelect?.selectedOptions[0]?.textContent?.trim() || "";
+  const selectedDepartmentId = safePositiveId(deptId);
+  const doctorObjects = Array.isArray(adminDoctorsList)
+    ? adminDoctorsList.filter(doctor => doctor && typeof doctor === "object" && !Array.isArray(doctor))
+    : [];
   const filtered = deptId
-    ? adminDoctorsList.filter((d) => d.department_id == deptId)
-    : adminDoctorsList;
-  filtered.forEach((d) => {
-    const label = `${d.name} — ${d.specialty}${d.available == 0 ? " (Not available)" : ""}`;
-    const opt = new Option(label, d.name);
-    opt.disabled = d.available == 0;
-    doctorSelect.add(opt);
+    ? (selectedDepartmentId
+      ? doctorObjects.filter((doctor) => {
+          const doctorDepartmentId = safePositiveId(doctor.department_id);
+          if (doctorDepartmentId) return doctorDepartmentId === selectedDepartmentId;
+          const specialty = typeof doctor.specialty === "string" ? doctor.specialty.trim() : "";
+          return specialty.toLowerCase() === departmentName.toLowerCase();
+        })
+      : [])
+    : doctorObjects;
+  const eligibleDoctors = filtered.filter((doctor) => safePositiveId(doctor.user_id) > 0);
+  eligibleDoctors.forEach((doctor) => {
+    const doctorId = safePositiveId(doctor.user_id);
+    const doctorName = typeof doctor.name === "string" && doctor.name ? doctor.name : "Unnamed doctor";
+    const specialty = typeof doctor.specialty === "string" ? doctor.specialty : "";
+    const label = `${doctorName} — ${specialty}${doctor.available == 0 ? " (Not available)" : ""}`;
+    const option = new Option(label, String(doctorId));
+    option.disabled = doctor.available == 0;
+    doctorSelect.add(option);
   });
+  if (eligibleDoctors.length === 0) {
+    const option = new Option("No bookable doctors found for this department", "");
+    option.disabled = true;
+    doctorSelect.add(option);
+  }
 }
 
 function initBookAppointmentModal() {
@@ -709,9 +847,12 @@ function initBookAppointmentModal() {
     const patientIdInput = document.getElementById("admin-appt-patient-id");
     const patientId = patientIdInput ? parseInt(patientIdInput.value || "0") : 0;
 
+    const selectedDoctorId = Number.parseInt(document.getElementById("admin-appt-doctor")?.value || "0", 10);
+    const selectedDoctor = adminDoctorsList.find((doctor) => Number(doctor.user_id) === selectedDoctorId);
     const data = {
       department_id: document.getElementById("admin-appt-department")?.value.trim() || "",
-      doctor: document.getElementById("admin-appt-doctor")?.value.trim() || "",
+      doctor_id: selectedDoctorId,
+      doctor: selectedDoctor?.name || "",
       date: document.getElementById("admin-appt-date")?.value.trim() || "",
       time: document.getElementById("admin-appt-time")?.value.trim() || "",
       patientName: document.getElementById("admin-appt-patient")?.value.trim() || "",
@@ -719,7 +860,7 @@ function initBookAppointmentModal() {
       patient_id: patientId,
     };
 
-    if (!data.department || !data.doctor || !data.date || !data.time || !data.patientName) {
+    if (!data.department_id || !data.doctor_id || !data.doctor || !data.date || !data.time || !data.patientName) {
       showToast("Please fill in all required fields.", "error");
       return;
     }
@@ -748,31 +889,40 @@ function initBookAppointmentModal() {
   });
 }
 
-function openBookingForDoctor() {
+async function openBookingForDoctor() {
   const doc = window._currentDoctorProfile;
   if (!doc) return;
   document.getElementById("admin-appt-context-id").value = doc.id;
-  document.getElementById("book-modal-title").innerHTML =
-    `<i class="fas fa-calendar-days" aria-hidden="true"></i> Book Appointment with Dr. ${escapeHTML(doc.name)}`;
-  toggleBookAppointmentModal();
+  const title = document.getElementById("book-modal-title");
+  if (title) {
+    const icon = document.createElement("i");
+    icon.className = "fas fa-calendar-days";
+    icon.setAttribute("aria-hidden", "true");
+    const doctorName = typeof doc.name === "string" ? doc.name : "Unknown";
+    title.replaceChildren(icon, document.createTextNode(" Book Appointment with Dr. " + doctorName));
+  }
 
-  requestAnimationFrame(() => {
-    const deptSel = document.getElementById("admin-appt-department");
-    if (deptSel && doc.department_id) {
-      deptSel.value = doc.department_id;
-      deptSel.dispatchEvent(new Event("change"));
-    }
-    setTimeout(() => {
-      const doctorSel = document.getElementById("admin-appt-doctor");
-      if (doctorSel) {
-        const opt = [...doctorSel.options].find((o) => o.text.startsWith(doc.name));
-        if (opt) doctorSel.value = opt.value;
-      }
-    }, 400);
-  });
+  // Wait for the department and doctor options before applying profile defaults.
+  await toggleBookAppointmentModal();
+
+  const departmentSelect = document.getElementById("admin-appt-department");
+  const departmentId = safePositiveId(doc.department_id);
+  if (departmentSelect && departmentId) {
+    departmentSelect.value = String(departmentId);
+    departmentSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  const doctorSelect = document.getElementById("admin-appt-doctor");
+  const doctorId = safePositiveId(doc.id);
+  if (doctorSelect && doctorId) {
+    const option = [...doctorSelect.options].find((candidate) =>
+      candidate.value === String(doctorId) && !candidate.disabled
+    );
+    if (option) doctorSelect.value = option.value;
+  }
 }
 
-// Expose to global scope for HTML onclick attributes
+// Preserve legacy global entry points for other page integrations.
 window.switchDoctorTab = switchDoctorTab;
 window.editCurrentDoctor = editCurrentDoctor;
 window.closeDoctorEditModal = closeDoctorEditModal;

@@ -15,15 +15,39 @@ require_once __DIR__ . '/../../services/PrescriptionService.php';
 header('Content-Type: application/json');
 
 $user = requireAuth();
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $currentUserId = (int)$user['id'];
 $currentRole   = $user['role'];
 
+if (!in_array($currentRole, ['admin', 'doctor', 'patient'], true)) {
+    http_response_code(403);
+    jsonResponse(false, ['message' => 'You do not have permission to view prescriptions.']);
+}
+
+// Optional single-record reads must not silently fall through to a list request.
+$prescriptionId = 0;
+if (array_key_exists('id', $_GET)) {
+    $idValue = $_GET['id'];
+    $normalizedId = is_string($idValue) ? ltrim($idValue, '0') : '';
+    $parsedId = is_string($idValue) && ctype_digit($idValue) ? (int)$idValue : 0;
+
+    if ($parsedId < 1 || (string)$parsedId !== $normalizedId) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Prescription ID must be a positive integer.']);
+    }
+
+    $prescriptionId = $parsedId;
+}
+
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db);
-
-    // Optional: get single prescription details
-    $prescriptionId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
 
     if ($prescriptionId > 0) {
         // Get single prescription with items
@@ -48,20 +72,60 @@ try {
         jsonResponse(true, ['prescription' => $prescription]);
     }
 
-    // List prescriptions based on role with optional search/filter
+    // List prescriptions based on role with validated optional filters.
     $filters = [];
 
-    if (isset($_GET['status']) && !empty($_GET['status'])) {
-        $filters['status'] = $_GET['status'];
+    $status = $_GET['status'] ?? null;
+    if ($status !== null && $status !== '') {
+        $allowedStatuses = ['Active', 'Completed', 'Cancelled'];
+        if (!is_string($status) || !in_array($status, $allowedStatuses, true)) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Invalid prescription status filter.']);
+        }
+        $filters['status'] = $status;
     }
-    if (isset($_GET['search']) && !empty($_GET['search'])) {
-        $filters['search'] = $_GET['search'];
+
+    $search = $_GET['search'] ?? null;
+    if ($search !== null && $search !== '') {
+        if (!is_string($search) || mb_strlen(trim($search)) > 100) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Prescription search must be text no longer than 100 characters.']);
+        }
+        $search = trim($search);
+        if ($search !== '') {
+            $filters['search'] = $search;
+        }
     }
-    if (isset($_GET['date_from']) && !empty($_GET['date_from'])) {
-        $filters['date_from'] = $_GET['date_from'];
+
+    foreach (['date_from', 'date_to'] as $dateField) {
+        $dateValue = $_GET[$dateField] ?? null;
+        if ($dateValue === null || $dateValue === '') {
+            continue;
+        }
+
+        if (
+            !is_string($dateValue)
+            || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateValue)
+        ) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Prescription date filters must use YYYY-MM-DD format.']);
+        }
+
+        [$year, $month, $day] = array_map('intval', explode('-', $dateValue));
+        if (!checkdate($month, $day, $year)) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Prescription date filters must contain a valid calendar date.']);
+        }
+
+        $filters[$dateField] = $dateValue;
     }
-    if (isset($_GET['date_to']) && !empty($_GET['date_to'])) {
-        $filters['date_to'] = $_GET['date_to'];
+
+    if (
+        isset($filters['date_from'], $filters['date_to'])
+        && $filters['date_from'] > $filters['date_to']
+    ) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'The start date cannot be later than the end date.']);
     }
 
     $prescriptions = [];
@@ -78,7 +142,7 @@ try {
 
     jsonResponse(true, ['prescriptions' => $prescriptions]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get Prescriptions Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to load prescriptions.']);

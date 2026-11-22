@@ -8,9 +8,12 @@
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
+  bindAuthDemoAccounts();
   initLoginForm();
+  initLoginVerificationResend();
   initForgotPassword();
   initRegistrationWizard();
+  initRegistrationVerificationResend();
 
   // Auto-switch to signup tab if URL has #signup (backward compatibility)
   if (window.location.hash === "#signup") {
@@ -19,6 +22,34 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+/**
+ * Demo shortcuts map fixed role identifiers to fixed local demo credentials.
+ * No executable handler strings or credentials are stored in markup.
+ */
+function bindAuthDemoAccounts() {
+  if (window._hbAuthDemoActionsBound) return;
+
+  const demoAccounts = Object.freeze({
+    admin: "admin@healthbridge.com",
+    patient: "patient@healthbridge.com",
+    doctor: "ahmed.hassan@healthbridge.com",
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest("[data-demo-account]");
+    if (!button) return;
+
+    event.preventDefault();
+    const email = demoAccounts[button.dataset.demoAccount];
+    if (email && typeof window.fillDemo === "function") {
+      window.fillDemo(email, "password");
+    }
+  });
+
+  window._hbAuthDemoActionsBound = true;
+}
+
 /* ============================================================
    LOGIN FORM
    ============================================================ */
@@ -26,13 +57,28 @@ function initLoginForm() {
   const loginForm = document.getElementById("login-form");
   if (!loginForm) return;
 
+  const emailInput = loginForm.querySelector('[name="email"]');
+  const rememberMeInput = document.getElementById("remember-me");
+
+  // Remember only the email address, never the password or server session.
+  try {
+    const rememberedEmail = localStorage.getItem("hb_remember_email");
+    if (rememberedEmail && emailInput && !emailInput.value) {
+      emailInput.value = rememberedEmail;
+      if (rememberMeInput) rememberMeInput.checked = true;
+    }
+    localStorage.removeItem("hb_remember");
+  } catch {
+    // Authentication remains available when browser storage is disabled.
+  }
+
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const submitBtn = document.getElementById("login-submit");
-    const email = loginForm.querySelector('[name="email"]')?.value.trim() || "";
+    const email = emailInput?.value.trim() || "";
     const password = loginForm.querySelector('[name="password"]')?.value || "";
-    const rememberMe = document.getElementById("remember-me")?.checked || false;
+    const rememberMe = rememberMeInput?.checked || false;
 
     // Clear previous errors
     clearFieldError("login-email-error");
@@ -69,8 +115,18 @@ function initLoginForm() {
       const result = await res.json();
 
       if (!result.success) {
-        showToast(result.message || "Login failed.", "error");
-        showFieldError("login-password-error", result.message || "Invalid credentials.");
+        if (result.code === "EMAIL_VERIFICATION_REQUIRED") {
+          showToast(result.message || "Please verify your email before signing in.", "error");
+          showFieldError("login-password-error", result.message || "Email verification is required.");
+
+          const resendPanel = document.getElementById("login-verification-resend");
+          const resendEmail = document.getElementById("login-verification-resend-email");
+          if (resendPanel) resendPanel.classList.remove("is-hidden");
+          if (resendEmail && email) resendEmail.value = email;
+        } else {
+          showToast(result.message || "Login failed.", "error");
+          showFieldError("login-password-error", result.message || "Invalid credentials.");
+        }
         submitBtn.classList.remove("loading");
         submitBtn.disabled = false;
         return;
@@ -79,12 +135,15 @@ function initLoginForm() {
       // Save user data
       saveUser(result.user);
 
-      // Handle "Remember me" - extend session persistence
-      if (rememberMe) {
-        // The server-side session already handles this; we just save the preference
-        localStorage.setItem("hb_remember", "true");
-      } else {
-        localStorage.removeItem("hb_remember");
+      // Remember only the email address when explicitly selected.
+      try {
+        if (rememberMe) {
+          localStorage.setItem("hb_remember_email", email);
+        } else {
+          localStorage.removeItem("hb_remember_email");
+        }
+      } catch {
+        // The server-side session does not depend on browser storage.
       }
 
       showToast(`Welcome back, ${result.user.name}!`, "success");
@@ -122,17 +181,17 @@ function initForgotPassword() {
 
   // Show forgot panel
   openBtn.addEventListener("click", () => {
-    if (mainAuth) mainAuth.style.display = "none";
-    forgotPanel.style.display = "block";
-    resultWrap.style.display = "none";
-    forgotForm.style.display = "";
+    if (mainAuth) mainAuth.classList.add("is-hidden");
+    forgotPanel.classList.remove("is-hidden");
+    resultWrap.classList.add("is-hidden");
+    forgotForm.classList.remove("is-hidden");
     forgotForm.reset();
   });
 
   // Back to login
   backBtn?.addEventListener("click", () => {
-    forgotPanel.style.display = "none";
-    if (mainAuth) mainAuth.style.display = "";
+    forgotPanel.classList.add("is-hidden");
+    if (mainAuth) mainAuth.classList.remove("is-hidden");
   });
 
   // Forgot form submission
@@ -165,17 +224,20 @@ function initForgotPassword() {
       }
 
       // Hide form, show result
-      forgotForm.style.display = "none";
+      forgotForm.classList.add("is-hidden");
       resultMsg.textContent = result.message;
 
-      if (result.reset_url) {
-        resetLink.href = result.reset_url;
-        resetLink.style.display = "";
+      const safeResetUrl = safeSameOriginUrl(result.reset_url, "");
+      if (safeResetUrl) {
+        resetLink.href = safeResetUrl;
+        resetLink.rel = "noopener noreferrer";
+        resetLink.classList.remove("is-hidden");
       } else {
-        resetLink.style.display = "none";
+        resetLink.removeAttribute("href");
+        resetLink.classList.add("is-hidden");
       }
 
-      resultWrap.style.display = "block";
+      resultWrap.classList.remove("is-hidden");
       submitBtn.classList.remove("loading");
       submitBtn.disabled = false;
     } catch {
@@ -240,37 +302,34 @@ function initRegistrationWizard() {
     }
   });
 
-  // ── Live validation: Email uniqueness (debounced) ──
+  // ── Live validation: Email format (debounced) ──
   const emailInput = document.getElementById("reg-email");
-  emailInput?.addEventListener("input", debounce(async () => {
+  emailInput?.addEventListener("input", debounce(() => {
     const email = emailInput.value.trim();
     if (!email || !isValidEmail(email)) return;
-    await checkAvailability("email", email, "email-error", "email-success");
+    clearFieldError("email-error");
   }, 500));
 
-  // ── Live validation: Phone format + uniqueness (debounced) ──
+  // ── Live validation: Phone format (debounced) ──
   const phoneInput = document.getElementById("reg-phone");
-  phoneInput?.addEventListener("input", debounce(async () => {
+  phoneInput?.addEventListener("input", debounce(() => {
     const phone = phoneInput.value.trim();
     if (!phone) {
       clearFieldError("phone-error");
-      clearFieldSuccess("phone-success");
       return;
     }
     const cleanPhone = phone.replace(/\s/g, "");
-    // Format validation first
     if (!/^01[0125]\d{8}$/.test(cleanPhone)) {
       if (phone.length >= 11) {
         showFieldError("phone-error", "Please enter a valid Egyptian phone number.");
       } else {
         clearFieldError("phone-error");
       }
-      clearFieldSuccess("phone-success");
       return;
     }
-    // Format is valid — check uniqueness
+
+    // Uniqueness is checked generically when the registration is submitted.
     clearFieldError("phone-error");
-    const result = await checkAvailability("phone", cleanPhone, "phone-error", "phone-success");
   }, 500));
 
   // ── Live validation: Emergency contact phone format ──
@@ -297,22 +356,19 @@ function initRegistrationWizard() {
 
   // ── Live validation: National ID format ──
   const nidInput = document.getElementById("reg-national-id");
-  nidInput?.addEventListener("input", debounce(async () => {
+  nidInput?.addEventListener("input", debounce(() => {
     const nid = nidInput.value.trim();
     if (!nid) {
       clearFieldError("national-id-error");
-      clearFieldSuccess("national-id-success");
       return;
     }
     if (nid.length === 14 && /^\d{14}$/.test(nid)) {
-      // Check availability
-      await checkAvailability("national_id", nid, "national-id-error", "national-id-success");
+      // Uniqueness is checked generically on registration submit.
+      clearFieldError("national-id-error");
     } else if (nid.length >= 14) {
       showFieldError("national-id-error", "National ID must be exactly 14 digits.");
-      clearFieldSuccess("national-id-success");
     } else {
       clearFieldError("national-id-error");
-      clearFieldSuccess("national-id-success");
     }
   }, 500));
 
@@ -416,10 +472,21 @@ async function handleStep1Submit() {
     hasError = true;
   }
 
-  // Validate password
+  // Validate password against the same four-of-five rule as the server.
   const pwChecks = checkPasswordStrength(password);
   if (!pwChecks.valid) {
-    showFieldError("password-error", "Password does not meet all requirements.");
+    const unmetRules = [
+      !pwChecks.checks.min_length && "8 or more characters",
+      !pwChecks.checks.has_uppercase && "an uppercase letter",
+      !pwChecks.checks.has_lowercase && "a lowercase letter",
+      !pwChecks.checks.has_number && "a number",
+      !pwChecks.checks.has_special && "a character other than A–Z, a–z, or 0–9",
+    ].filter(Boolean);
+
+    showFieldError(
+      "password-error",
+      `Password must meet at least 4 of these 5 checks. Not met: ${unmetRules.join(", ")}.`
+    );
     hasError = true;
   }
 
@@ -626,11 +693,14 @@ async function handleStep2Submit() {
       return;
     }
 
-    // Clear stored step 1 data
+    // Preserve only the submitted email for the verification/resend screen.
+    const registrationEmail = step1Data.email || "";
+
+    // Clear passwords and every other step-1 field from memory.
     step1Data = {};
 
-    // Show success screen
-    showSuccessScreen(result.patient_number);
+    // Show the verification-first success screen.
+    showSuccessScreen(registrationEmail);
   } catch {
     showToast("Registration service unavailable. Please ensure XAMPP is running.", "error");
     submitBtn.classList.remove("loading");
@@ -639,27 +709,154 @@ async function handleStep2Submit() {
 }
 
 /* ── Success Screen ───────────────────────────────────────── */
-function showSuccessScreen(patientNumber) {
+function showSuccessScreen(registrationEmail = "") {
   // Hide wizard steps
   const ws1 = document.getElementById("wizard-step-1");
   if (ws1) ws1.classList.remove("active");
   const ws2 = document.getElementById("wizard-step-2");
   if (ws2) ws2.classList.remove("active");
   const wp = document.getElementById("wizard-progress");
-  if (wp) wp.style.display = "none";
+  if (wp) wp.classList.add("is-hidden");
   const afh = document.querySelector(".auth-form-header");
-  if (afh) afh.style.display = "none";
+  if (afh) afh.classList.add("is-hidden");
 
-  // Show success
+  // Keep the same neutral acknowledgment for new and duplicate outcomes.
   const successEl = document.getElementById("reg-success");
-  const numberDisplay = document.getElementById("patient-number-display");
-  if (numberDisplay) numberDisplay.textContent = patientNumber;
   if (successEl) successEl.classList.add("show");
 
-  // Auto-redirect after 5 seconds
-  setTimeout(() => {
-    window.location.href = getBasePath() + "pages/auth/login.html";
-  }, 5000);
+  const verificationEmail = document.getElementById("registration-verification-email");
+  if (verificationEmail && isValidEmail(registrationEmail)) {
+    verificationEmail.value = registrationEmail;
+  }
+
+  // Do not auto-redirect. A patient must confirm the email link before the
+  // registration worker is allowed to create the account and medical profile.
+}
+
+/* ── Login-page verification resend ─────────────────────── */
+function initLoginVerificationResend() {
+  const form = document.getElementById("login-verification-resend-form");
+  const panel = document.getElementById("login-verification-resend");
+  const openButton = document.getElementById("open-login-verification-resend");
+  const emailInput = document.getElementById("login-verification-resend-email");
+  const loginEmail = document.getElementById("login-email");
+  const submitBtn = document.getElementById("login-verification-resend-submit");
+  const message = document.getElementById("login-verification-resend-message");
+  if (!form || !panel) return;
+
+  const openPanel = () => {
+    panel.classList.remove("is-hidden");
+    if (emailInput && loginEmail?.value.trim()) {
+      emailInput.value = loginEmail.value.trim();
+    }
+    emailInput?.focus();
+  };
+
+  openButton?.addEventListener("click", openPanel);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const email = emailInput?.value.trim() || "";
+    if (!email || !isValidEmail(email)) {
+      if (message) {
+        message.textContent = "Enter a valid email address.";
+        message.className = "verification-resend-message error";
+      }
+      emailInput?.focus();
+      return;
+    }
+
+    submitBtn?.classList.add("loading");
+    if (submitBtn) submitBtn.disabled = true;
+    if (message) {
+      message.textContent = "";
+      message.className = "verification-resend-message";
+    }
+
+    try {
+      const response = await fetch(getBasePath() + "api/auth/resend-registration-verification.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to process the resend request.");
+      }
+
+      if (message) {
+        message.textContent = result.message || "If a registration is waiting for verification, a new email will be sent.";
+        message.className = "verification-resend-message success";
+      }
+    } catch (error) {
+      if (message) {
+        message.textContent = error.message || "Verification email service is temporarily unavailable.";
+        message.className = "verification-resend-message error";
+      }
+    } finally {
+      submitBtn?.classList.remove("loading");
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+}
+
+/* ── Registration verification resend ────────────────────── */
+function initRegistrationVerificationResend() {
+  const form = document.getElementById("registration-verification-resend-form");
+  if (!form) return;
+
+  const emailInput = document.getElementById("registration-verification-email");
+  const submitBtn = document.getElementById("registration-verification-resend-submit");
+  const message = document.getElementById("registration-verification-resend-message");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const email = emailInput?.value.trim() || "";
+    if (!email || !isValidEmail(email)) {
+      if (message) {
+        message.textContent = "Enter a valid email address.";
+        message.className = "verification-resend-message error";
+      }
+      emailInput?.focus();
+      return;
+    }
+
+    submitBtn?.classList.add("loading");
+    if (submitBtn) submitBtn.disabled = true;
+    if (message) {
+      message.textContent = "";
+      message.className = "verification-resend-message";
+    }
+
+    try {
+      const response = await fetch(getBasePath() + "api/auth/resend-registration-verification.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to process the resend request.");
+      }
+
+      if (message) {
+        message.textContent = result.message || "If a registration is waiting for verification, a new email will be sent.";
+        message.className = "verification-resend-message success";
+      }
+    } catch (error) {
+      if (message) {
+        message.textContent = error.message || "Verification email service is temporarily unavailable.";
+        message.className = "verification-resend-message error";
+      }
+    } finally {
+      submitBtn?.classList.remove("loading");
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
 }
 
 /* ============================================================
@@ -725,51 +922,58 @@ function checkPasswordStrength(password) {
 }
 
 /* ============================================================
-   AVAILABILITY CHECK
-   ============================================================ */
-async function checkAvailability(field, value, errorId, successId) {
-  try {
-    const res = await fetch(getBasePath() + "api/auth/check-availability.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ field, value }),
-    });
-    const result = await res.json();
-
-    if (!result.success) {
-      clearFieldError(errorId);
-      clearFieldSuccess(successId);
-      return;
-    }
-
-    if (result.available) {
-      clearFieldError(errorId);
-      showFieldSuccess(successId, result.message);
-    } else {
-      clearFieldSuccess(successId);
-      showFieldError(errorId, result.message);
-    }
-  } catch {
-    // Silently fail - don't block registration
-    clearFieldError(errorId);
-    clearFieldSuccess(successId);
-  }
-}
-
-/* ============================================================
    LOCATIONS (Governorates & Cities)
    ============================================================ */
+let governoratesPromise = null;
+
+function getGovernorates() {
+  if (!governoratesPromise) {
+    governoratesPromise = fetch(getBasePath() + "api/auth/locations.php?type=governorates")
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load governorates.");
+        return response.json();
+      })
+      .then((result) => {
+        if (!result.success || !Array.isArray(result.governorates)) {
+          throw new Error("Invalid governorates response.");
+        }
+
+        const validGovernorates = result.governorates
+          .filter((governorate) =>
+            governorate &&
+            typeof governorate === "object" &&
+            !Array.isArray(governorate) &&
+            safePositiveId(governorate.id) > 0 &&
+            typeof governorate.name === "string" &&
+            governorate.name.trim() !== ""
+          )
+          .map((governorate) => ({
+            id: safePositiveId(governorate.id),
+            name: governorate.name.trim().slice(0, 80),
+          }));
+
+        if (validGovernorates.length === 0) {
+          throw new Error("No valid governorates were returned.");
+        }
+        return validGovernorates;
+      })
+      .catch((error) => {
+        governoratesPromise = null;
+        throw error;
+      });
+  }
+
+  return governoratesPromise;
+}
+
 async function loadGovernorates() {
   const select = document.getElementById("reg-governorate");
   if (!select) return;
 
   try {
-    const res = await fetch(getBasePath() + "api/auth/locations.php?type=governorates");
-    const result = await res.json();
+    const governorates = await getGovernorates();
 
-    if (!result.success || !result.governorates) return;
-
-    result.governorates.forEach((gov) => {
+    governorates.forEach((gov) => {
       const option = document.createElement("option");
       option.value = gov.name;
       option.textContent = gov.name;
@@ -793,7 +997,10 @@ async function loadGovernorates() {
   }
 }
 
+let cityLoadRequestId = 0;
+
 async function loadCities(governorateName) {
+  const requestId = ++cityLoadRequestId;
   const citySelect = document.getElementById("reg-city");
   if (!citySelect) return;
 
@@ -803,38 +1010,43 @@ async function loadCities(governorateName) {
 
   if (!governorateName) return;
 
-  // Try to find governorate ID from the select options
-  const govSelect = document.getElementById("reg-governorate");
-  const selectedOption = Array.from(govSelect?.options || []).find(
-    (opt) => opt.value === governorateName
-  );
-
-  // We need the governorate ID, so we'll fetch cities by name
+  // Reuse the cached lookup rather than fetching all governorates again.
   try {
-    // First get governorates to find the ID
-    const govRes = await fetch(getBasePath() + "api/auth/locations.php?type=governorates");
-    const govResult = await govRes.json();
-    if (!govResult.success) return;
+    const governorates = await getGovernorates();
+    if (requestId !== cityLoadRequestId) return;
 
-    const gov = govResult.governorates.find((g) => g.name === governorateName);
+    const gov = governorates.find((g) => g.name === governorateName);
     if (!gov) return;
 
     const res = await fetch(
       getBasePath() + `api/auth/locations.php?type=cities&governorate_id=${gov.id}`
     );
     const result = await res.json();
+    if (requestId !== cityLoadRequestId) return;
 
-    if (!result.success || !result.cities) return;
+    if (!result.success || !Array.isArray(result.cities)) return;
 
-    result.cities.forEach((city) => {
+    const validCities = result.cities
+      .filter((city) =>
+        city &&
+        typeof city === "object" &&
+        !Array.isArray(city) &&
+        typeof city.name === "string" &&
+        city.name.trim() !== ""
+      )
+      .map((city) => city.name.trim().slice(0, 80));
+
+    validCities.forEach((cityName) => {
       const option = document.createElement("option");
-      option.value = city.name;
-      option.textContent = city.name;
+      option.value = cityName;
+      option.textContent = cityName;
       citySelect.appendChild(option);
     });
 
     citySelect.disabled = false;
   } catch {
+    if (requestId !== cityLoadRequestId) return;
+
     // Fallback: enable free text entry
     citySelect.disabled = false;
     citySelect.innerHTML = '<option value="">Type your city</option>';

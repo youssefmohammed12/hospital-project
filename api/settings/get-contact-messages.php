@@ -5,10 +5,14 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Admin access required.']);
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
+
+$user = requireRole('admin');
 
 try {
     $db = getDB();

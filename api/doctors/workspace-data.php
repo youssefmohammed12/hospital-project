@@ -8,40 +8,45 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/ClinicalAccessService.php';
 require_once __DIR__ . '/../../services/VisitWorkflowService.php';
+require_once __DIR__ . '/../../services/PrescriptionService.php';
+require_once __DIR__ . '/../../services/PatientPortalService.php';
+require_once __DIR__ . '/../../includes/AppointmentTime.php';
 
-$user = requireAuth();
+$user = requireRole('doctor');
 $currentUserId = (int)$user['id'];
-$currentRole   = $user['role'];
+$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA');
 
-if ($currentRole !== 'doctor') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Only doctors can access this endpoint.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-$patientId = (int)($_GET['patient_id'] ?? 0);
-$appointmentId = (int)($_GET['appointment_id'] ?? 0);
+$patientId = parsePositiveInt($_GET['patient_id'] ?? null);
+$hasAppointmentId = array_key_exists('appointment_id', $_GET);
+$appointmentId = $hasAppointmentId ? parsePositiveInt($_GET['appointment_id']) : null;
 
-if (!$patientId) {
+if ($patientId === null) {
     http_response_code(400);
-    jsonResponse(false, ['message' => 'Patient ID is required.']);
+    jsonResponse(false, ['message' => 'A valid patient ID is required.']);
+}
+
+if ($hasAppointmentId && $appointmentId === null) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'A valid appointment ID is required.']);
 }
 
 try {
     $db = getDB();
+    $workflowService = new VisitWorkflowService($db, $schema);
 
-    // ── Authorization: doctor must have treated this patient ──
-    $authStmt = $db->prepare(
-        "SELECT COUNT(*) as cnt FROM appointments
-         WHERE doctor_id = ? AND user_id = ? AND status IN ('Confirmed','Cancelled')
-         LIMIT 1"
-    );
-    $authStmt->execute([$currentUserId, $patientId]);
-    $authRow = $authStmt->fetch();
-    if ((int)$authRow['cnt'] === 0) {
+    // Use the same encounter-evidence policy as every other doctor EMR route.
+    $clinicalAccess = new ClinicalAccessService($db, $schema);
+    if (!$clinicalAccess->doctorCanAccessPatient($currentUserId, $patientId)) {
         http_response_code(403);
-        jsonResponse(false, ['message' => 'You can only view records of patients you have treated.']);
+        jsonResponse(false, ['message' => 'You can only view records of patients with a confirmed appointment or documented clinical encounter.']);
     }
 
     // ── 1. Patient Info ──
@@ -58,15 +63,38 @@ try {
     }
 
     // ── 2. Medical Record ──
-    $mrStmt = $db->prepare("SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1");
-    $mrStmt->execute([$patientId]);
-    $medicalRecord = $mrStmt->fetch();
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $mrStmt = $db->prepare("SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1");
+        $mrStmt->execute([$patientId]);
+        $medicalRecord = $mrStmt->fetch();
+    } else {
+        $profile = (new PatientPortalService($db, $schema))->getMedicalProfile($patientId);
+        $medicalRecord = [
+            'id' => null,
+            'patient_id' => $patientId,
+            'blood_type' => $profile['blood_type'] ?? null,
+            'height_cm' => $profile['height_cm'] ?? null,
+            'weight_kg' => $profile['weight_kg'] ?? null,
+            'date_of_birth' => $profile['date_of_birth'] ?? null,
+            'gender' => $profile['gender'] ?? null,
+            'allergies' => $profile['allergies'] ?? null,
+            'chronic_diseases' => $profile['chronic_diseases'] ?? null,
+            'current_medications' => $profile['current_medications'] ?? null,
+            'previous_surgeries' => $profile['previous_surgeries'] ?? null,
+            'family_history' => $profile['family_history'] ?? null,
+            'emergency_contact_name' => $profile['emergency_contact']['name'] ?? null,
+            'emergency_contact_rel' => $profile['emergency_contact']['relationship'] ?? null,
+            'emergency_contact_phone' => $profile['emergency_contact']['phone'] ?? null,
+            'medical_notes' => $profile['medical_notes'] ?? null,
+            'created_at' => null,
+            'updated_at' => null,
+        ];
+    }
 
     if (!$medicalRecord) {
-        $insertStmt = $db->prepare("INSERT INTO medical_records (patient_id) VALUES (?)");
-        $insertStmt->execute([$patientId]);
+        // Workspace loading is read-only; explicit clinical edits create the record.
         $medicalRecord = [
-            'id' => (int)$db->lastInsertId(),
+            'id' => null,
             'patient_id' => $patientId,
             'blood_type' => null, 'height_cm' => null, 'weight_kg' => null,
             'date_of_birth' => null, 'gender' => null,
@@ -76,7 +104,7 @@ try {
             'emergency_contact_name' => null, 'emergency_contact_rel' => null,
             'emergency_contact_phone' => null,
             'medical_notes' => null,
-            'created_at' => date('Y-m-d H:i:s'), 'updated_at' => null,
+            'created_at' => null, 'updated_at' => null,
         ];
     }
 
@@ -88,160 +116,207 @@ try {
         $age = $dob->diff($now)->y;
     }
 
+    // V2 appointment read projection maps normalized columns to the existing
+    // doctor-workspace DTO. Conditions appended below are fixed server literals.
+    $v2AppointmentSelect = "
+        SELECT a.id,a.patient_user_id AS user_id,a.patient_name_snapshot AS patient_name,
+               a.doctor_user_id AS doctor_id,a.doctor_name_snapshot AS doctor,
+               a.department_id,a.department_name_snapshot AS department,
+               DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
+               TIME_FORMAT(a.starts_at,'%H:%i') AS time,
+               a.source_time_snapshot,a.source_time_range_snapshot,
+               a.source_time_range_snapshot AS appointment_time_range,
+               a.duration_minutes,a.notes,a.created_at,
+               ce.workflow_status,
+               CASE
+                 WHEN rr.request_status IN ('requested','suggested') THEN 'Reschedule Requested'
+                 WHEN a.booking_status='pending' THEN 'Pending'
+                 WHEN a.booking_status='confirmed' THEN 'Confirmed'
+                 ELSE 'Cancelled'
+               END AS status,
+               u.name AS doctor_user_name
+        FROM appointments a
+        LEFT JOIN users u ON u.id=a.doctor_user_id
+        LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
+        LEFT JOIN appointment_reschedule_requests rr
+          ON rr.id=(
+            SELECT MAX(rr2.id) FROM appointment_reschedule_requests rr2
+            WHERE rr2.appointment_id=a.id
+          )
+    ";
+
     // ── 3. Current Visit (the appointment) ──
     $currentVisit = null;
     if ($appointmentId) {
-        $visitStmt = $db->prepare(
-            "SELECT a.*, u.name as doctor_user_name, vw.status as workflow_status, 
-                    vw.started_at as workflow_started_at, vw.completed_at as workflow_completed_at
-             FROM appointments a
-             LEFT JOIN users u ON a.doctor_id = u.id
-             LEFT JOIN visit_workflow vw ON a.id = vw.appointment_id
-             WHERE a.id = ? AND a.user_id = ? AND a.doctor_id = ?"
-        );
+        if ($schema === PatientPortalService::SCHEMA_V1) {
+            $visitStmt = $db->prepare(
+                "SELECT a.*, u.name AS doctor_user_name
+                 FROM appointments a
+                 LEFT JOIN users u ON a.doctor_id=u.id
+                 WHERE a.id=? AND a.user_id=? AND a.doctor_id=?"
+            );
+        } else {
+            $visitStmt = $db->prepare(
+                $v2AppointmentSelect . " WHERE a.id=? AND a.patient_user_id=? AND a.doctor_user_id=?"
+            );
+        }
         $visitStmt->execute([$appointmentId, $patientId, $currentUserId]);
         $currentVisit = $visitStmt->fetch();
-        
-        if ($currentVisit && empty($currentVisit['appointment_time_range'])) {
-            $duration = getAppointmentDuration((int)$currentVisit['doctor_id']);
-            $currentVisit['appointment_time_range'] = computeAppointmentTimeRange($currentVisit['time'], $duration);
+
+        if ($currentVisit) {
+            if ($schema === PatientPortalService::SCHEMA_V2) {
+                $sourceTime = (string)($currentVisit['source_time_snapshot'] ?? '');
+                if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$currentVisit['time'])) {
+                    $currentVisit['time'] = $sourceTime;
+                    $rangeSnapshot = $currentVisit['source_time_range_snapshot'] ?? null;
+                    $currentVisit['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                        ? $rangeSnapshot
+                        : AppointmentTime::range((string)$currentVisit['time'], max(1, (int)($currentVisit['duration_minutes'] ?? 30)));
+                } else {
+                    $currentVisit['appointment_time_range'] = AppointmentTime::range(
+                        (string)$currentVisit['time'],
+                        max(1, (int)($currentVisit['duration_minutes'] ?? 30))
+                    );
+                }
+            } elseif (empty($currentVisit['appointment_time_range'])) {
+                $currentVisit['appointment_time_range'] = computeAppointmentTimeRange(
+                    $currentVisit['time'],
+                    getAppointmentDuration((int)$currentVisit['doctor_id'])
+                );
+            }
         }
 
-        // Build visit_workflow object from LEFT JOIN data
-        if ($currentVisit && !empty($currentVisit['workflow_status'])) {
-            $currentVisit['visit_workflow'] = [
-                'appointment_id' => (int)$currentVisit['id'],
-                'status' => $currentVisit['workflow_status'],
-                'started_at' => $currentVisit['workflow_started_at'],
-                'completed_at' => $currentVisit['workflow_completed_at'],
-            ];
+        $currentWorkflow = $currentVisit ? $workflowService->get((int)$currentVisit['id']) : null;
+        if ($currentVisit) {
+            $currentVisit['visit_workflow'] = $currentWorkflow;
         }
-
-        // Check if there's already a visit note for this appointment
-        $noteStmt = $db->prepare(
-            "SELECT * FROM visit_notes WHERE appointment_id = ? AND patient_id = ? LIMIT 1"
-        );
-        $noteStmt->execute([$appointmentId, $patientId]);
-        $currentVisitNote = $noteStmt->fetch() ?: null;
+        $currentVisitNote = $currentVisit ? $workflowService->getNote((int)$currentVisit['id']) : null;
     } else {
-        // No specific appointment: get latest confirmed
-        $visitStmt = $db->prepare(
-            "SELECT a.*, u.name as doctor_user_name, vw.status as workflow_status, 
-                    vw.started_at as workflow_started_at, vw.completed_at as workflow_completed_at
-             FROM appointments a
-             LEFT JOIN users u ON a.doctor_id = u.id
-             LEFT JOIN visit_workflow vw ON a.id = vw.appointment_id
-             WHERE a.user_id = ? AND a.doctor_id = ? AND a.status = 'Confirmed'
-             ORDER BY a.date DESC LIMIT 1"
-        );
+        // No specific appointment: get the latest confirmed appointment with this doctor.
+        if ($schema === PatientPortalService::SCHEMA_V1) {
+            $visitStmt = $db->prepare(
+                "SELECT a.*, u.name AS doctor_user_name
+                 FROM appointments a
+                 LEFT JOIN users u ON a.doctor_id=u.id
+                 WHERE a.user_id=? AND a.doctor_id=? AND a.status='Confirmed'
+                 ORDER BY a.date DESC,a.time DESC LIMIT 1"
+            );
+        } else {
+            $visitStmt = $db->prepare(
+                $v2AppointmentSelect . " WHERE a.patient_user_id=? AND a.doctor_user_id=?
+                                         AND a.booking_status='confirmed'
+                                         ORDER BY a.starts_at DESC LIMIT 1"
+            );
+        }
         $visitStmt->execute([$patientId, $currentUserId]);
         $currentVisit = $visitStmt->fetch();
-        
-        if ($currentVisit && empty($currentVisit['appointment_time_range'])) {
-            $duration = getAppointmentDuration((int)$currentVisit['doctor_id']);
-            $currentVisit['appointment_time_range'] = computeAppointmentTimeRange($currentVisit['time'], $duration);
-        }
 
-        // Build visit_workflow object from LEFT JOIN data
-        if ($currentVisit && !empty($currentVisit['workflow_status'])) {
-            $currentVisit['visit_workflow'] = [
-                'appointment_id' => (int)$currentVisit['id'],
-                'status' => $currentVisit['workflow_status'],
-                'started_at' => $currentVisit['workflow_started_at'],
-                'completed_at' => $currentVisit['workflow_completed_at'],
-            ];
-        }
-
-        $currentVisitNote = null;
         if ($currentVisit) {
-            $noteStmt = $db->prepare(
-                "SELECT * FROM visit_notes WHERE appointment_id = ? AND patient_id = ? LIMIT 1"
-            );
-            $noteStmt->execute([$currentVisit['id'], $patientId]);
-            $currentVisitNote = $noteStmt->fetch() ?: null;
+            if ($schema === PatientPortalService::SCHEMA_V2) {
+                $sourceTime = (string)($currentVisit['source_time_snapshot'] ?? '');
+                if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$currentVisit['time'])) {
+                    $currentVisit['time'] = $sourceTime;
+                    $rangeSnapshot = $currentVisit['source_time_range_snapshot'] ?? null;
+                    $currentVisit['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                        ? $rangeSnapshot
+                        : AppointmentTime::range((string)$currentVisit['time'], max(1, (int)($currentVisit['duration_minutes'] ?? 30)));
+                } else {
+                    $currentVisit['appointment_time_range'] = AppointmentTime::range(
+                        (string)$currentVisit['time'],
+                        max(1, (int)($currentVisit['duration_minutes'] ?? 30))
+                    );
+                }
+            } elseif (empty($currentVisit['appointment_time_range'])) {
+                $currentVisit['appointment_time_range'] = computeAppointmentTimeRange(
+                    $currentVisit['time'],
+                    getAppointmentDuration((int)$currentVisit['doctor_id'])
+                );
+            }
         }
+
+        $currentWorkflow = $currentVisit ? $workflowService->get((int)$currentVisit['id']) : null;
+        if ($currentVisit) {
+            $currentVisit['visit_workflow'] = $currentWorkflow;
+        }
+        $currentVisitNote = $currentVisit ? $workflowService->getNote((int)$currentVisit['id']) : null;
     }
 
-    // ── 4. All Appointments (for timeline) - Phase 5.4.1: LEFT JOIN visit_workflow ──
-    $apptStmt = $db->prepare(
-        "SELECT a.*, u.name as doctor_user_name, vw.status as workflow_status, 
-                vw.started_at as workflow_started_at, vw.completed_at as workflow_completed_at
-         FROM appointments a
-         LEFT JOIN users u ON a.doctor_id = u.id
-         LEFT JOIN visit_workflow vw ON a.id = vw.appointment_id
-         WHERE a.user_id = ?
-         ORDER BY a.date DESC, a.time DESC"
-    );
+    // ── 4. All Appointments (for timeline) ──
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $apptStmt = $db->prepare(
+            "SELECT a.*, u.name AS doctor_user_name
+             FROM appointments a
+             LEFT JOIN users u ON a.doctor_id=u.id
+             WHERE a.user_id=?
+             ORDER BY a.date DESC,a.time DESC"
+        );
+    } else {
+        $apptStmt = $db->prepare($v2AppointmentSelect . " WHERE a.patient_user_id=? ORDER BY a.starts_at DESC");
+    }
     $apptStmt->execute([$patientId]);
     $appointments = $apptStmt->fetchAll();
 
-    // Phase 5.4.1: Use LEFT JOIN data only - no auto-creation to preserve workflow state
-    $apptIds = [];
+    // Read workflow DTOs through the shared repository. A missing workflow stays null;
+    // workspace reads must never create one.
+    $apptIds = array_map(static fn(array $appt): int => (int)$appt['id'], $appointments);
+    $workflowByAppointment = $workflowService->getForAppointments($apptIds);
     foreach ($appointments as &$appt) {
-        $apptIds[] = (int)$appt['id'];
-        
-        if (empty($appt['appointment_time_range'])) {
-            $duration = getAppointmentDuration((int)$appt['doctor_id']);
-            $appt['appointment_time_range'] = computeAppointmentTimeRange($appt['time'], $duration);
+        if ($schema === PatientPortalService::SCHEMA_V2) {
+            $sourceTime = (string)($appt['source_time_snapshot'] ?? '');
+            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$appt['time'])) {
+                $appt['time'] = $sourceTime;
+                $rangeSnapshot = $appt['source_time_range_snapshot'] ?? null;
+                $appt['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                    ? $rangeSnapshot
+                    : AppointmentTime::range((string)$appt['time'], max(1, (int)($appt['duration_minutes'] ?? 30)));
+            } else {
+                $appt['appointment_time_range'] = AppointmentTime::range(
+                    (string)$appt['time'],
+                    max(1, (int)($appt['duration_minutes'] ?? 30))
+                );
+            }
+        } elseif (empty($appt['appointment_time_range'])) {
+            $appt['appointment_time_range'] = computeAppointmentTimeRange(
+                $appt['time'],
+                getAppointmentDuration((int)$appt['doctor_id'])
+            );
         }
 
-        // Build visit_workflow object from LEFT JOIN data only
-        if ($appt['workflow_status']) {
-            $appt['visit_workflow'] = [
-                'appointment_id' => (int)$appt['id'],
-                'status' => $appt['workflow_status'],
-                'started_at' => $appt['workflow_started_at'],
-                'completed_at' => $appt['workflow_completed_at'],
-            ];
-        } else {
-            $appt['visit_workflow'] = null;
-        }
+        $appt['visit_workflow'] = $workflowByAppointment[(int)$appt['id']] ?? null;
     }
     unset($appt);
 
     // ── 5. Prescriptions ──
-    $rxStmt = $db->prepare(
-        "SELECT p.*, u.name as doctor_name, a.date as appt_date, a.department,
-                (SELECT COUNT(*) FROM prescription_items WHERE prescription_id = p.id) as item_count
-         FROM prescriptions p
-         JOIN users u ON p.doctor_id = u.id
-         JOIN appointments a ON p.appointment_id = a.id
-         WHERE p.patient_id = ?
-         ORDER BY p.created_at DESC"
+    $prescriptionService = new PrescriptionService($db, $schema);
+    $prescriptions = $prescriptionService->attachItems(
+        $prescriptionService->getByPatient($patientId),
+        'item_count'
     );
-    $rxStmt->execute([$patientId]);
-    $prescriptions = $rxStmt->fetchAll();
-
-    $rxItemStmt = $db->prepare(
-        "SELECT * FROM prescription_items WHERE prescription_id = ? ORDER BY sort_order"
-    );
-    foreach ($prescriptions as &$rx) {
-        $rxItemStmt->execute([$rx['id']]);
-        $rx['items'] = $rxItemStmt->fetchAll();
-    }
-    unset($rx);
 
     // ── 6. Visit Notes (for timeline) ──
-    $visitNoteStmt = $db->prepare(
-        "SELECT vn.*, a.date as appt_date, a.time as appt_time, a.department,
-                u.name as doctor_name
-         FROM visit_notes vn
-         JOIN appointments a ON vn.appointment_id = a.id
-         LEFT JOIN users u ON vn.doctor_id = u.id
-         WHERE vn.patient_id = ?
-         ORDER BY vn.created_at DESC"
-    );
-    $visitNoteStmt->execute([$patientId]);
-    $visitNotes = $visitNoteStmt->fetchAll();
+    $visitNotes = $workflowService->getNotesForPatient($patientId);
 
-    // ── 6.5. Medical History Updates (for timeline) - Phase 5.3.2 ──
-    $mhUpdateStmt = $db->prepare(
-        "SELECT mhu.*, u.name as doctor_name
-         FROM medical_history_updates mhu
-         LEFT JOIN users u ON mhu.doctor_id = u.id
-         WHERE mhu.patient_id = ?
-         ORDER BY mhu.created_at DESC"
-    );
+    // ── 6.5. Medical History Updates (for timeline) ──
+    if ($schema === PatientPortalService::SCHEMA_V1) {
+        $mhUpdateStmt = $db->prepare(
+            "SELECT mhu.*,u.name AS doctor_name
+             FROM medical_history_updates mhu
+             LEFT JOIN users u ON mhu.doctor_id=u.id
+             WHERE mhu.patient_id=?
+             ORDER BY mhu.created_at DESC"
+        );
+    } else {
+        $mhUpdateStmt = $db->prepare(
+            "SELECT mhe.id,mhe.patient_user_id AS patient_id,
+                    mhe.doctor_user_id AS doctor_id,mhe.field_name,
+                    mhe.old_value,mhe.new_value,mhe.created_at,
+                    u.name AS doctor_name
+             FROM medical_history_events mhe
+             LEFT JOIN users u ON mhe.doctor_user_id=u.id
+             WHERE mhe.patient_user_id=?
+             ORDER BY mhe.created_at DESC,mhe.id DESC"
+        );
+    }
     $mhUpdateStmt->execute([$patientId]);
     $medicalHistoryUpdates = $mhUpdateStmt->fetchAll();
 
@@ -280,7 +355,7 @@ try {
         'can_edit'             => true,
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get Doctor Workspace Data Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to load patient workspace data.']);

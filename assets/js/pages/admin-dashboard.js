@@ -81,6 +81,7 @@ function getGridColor() {
 async function initAdminDashboard() {
   if (AdminDashboard.initialized) return;
   AdminDashboard.initialized = true;
+  bindAdminDashboardActions();
 
   // Load Chart.js from CDN if not already loaded
   if (typeof Chart === "undefined") {
@@ -100,6 +101,87 @@ async function initAdminDashboard() {
 }
 
 /**
+ * Dispatch one fixed Admin Overview quick action.
+ */
+function dispatchAdminQuickAction(action) {
+  switch (action) {
+    case "add-doctor":
+      if (typeof window.toggleAddDoctorModal === "function") window.toggleAddDoctorModal();
+      break;
+    case "add-patient":
+      if (typeof window.toggleAddPatientModal === "function") window.toggleAddPatientModal();
+      break;
+    case "add-department":
+      if (typeof window.toggleAddDepartmentModal === "function") window.toggleAddDepartmentModal();
+      break;
+    case "audit-log":
+      document.querySelector('.sidebar-nav a[href="#audit-log"]')?.click();
+      break;
+    case "system-settings":
+      document.querySelector('.sidebar-nav a[href="#system-settings"]')?.click();
+      break;
+    case "refresh":
+      if (typeof window.refreshAdminDashboard === "function") window.refreshAdminDashboard();
+      break;
+  }
+}
+
+/**
+ * Delegate dashboard refresh and chart-export controls through fixed actions.
+ * This module is initialized by the authenticated Admin page.
+ */
+function bindAdminDashboardActions() {
+  if (window._hbAdminDashboardActionsBound) return;
+
+  const chartIds = ["weekly", "monthly", "status", "gender", "age", "highestRated", "departments"];
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const quickAction = target.closest("[data-admin-quick-action]");
+    if (quickAction) {
+      event.preventDefault();
+      dispatchAdminQuickAction(quickAction.dataset.adminQuickAction);
+      return;
+    }
+
+    const refreshControl = target.closest('[data-admin-dashboard-action="refresh"]');
+    if (refreshControl) {
+      event.preventDefault();
+      if (typeof window.refreshAdminDashboard === "function") {
+        window.refreshAdminDashboard();
+      }
+      return;
+    }
+
+    const chartControl = target.closest("[data-chart-export]");
+    if (!chartControl) return;
+
+    event.preventDefault();
+    const chartId = chartControl.dataset.chartId;
+    const format = chartControl.dataset.chartExport;
+    if (!chartIds.includes(chartId)) return;
+
+    if (format === "png" && typeof window.exportChartPNG === "function") {
+      window.exportChartPNG(chartId);
+    } else if (format === "csv" && typeof window.exportChartCSV === "function") {
+      window.exportChartCSV(chartId);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const quickAction = target?.closest("[data-admin-quick-action]");
+    if (!quickAction || (event.key !== "Enter" && event.key !== " ")) return;
+
+    event.preventDefault();
+    dispatchAdminQuickAction(quickAction.dataset.adminQuickAction);
+  });
+
+  window._hbAdminDashboardActionsBound = true;
+}
+
+/**
  * Dynamically load Chart.js from CDN.
  */
 function loadChartJS() {
@@ -111,15 +193,21 @@ function loadChartJS() {
     const script = document.createElement("script");
     script.src =
       "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+    script.integrity = "sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4";
     script.crossOrigin = "anonymous";
-    script.onload = () => {
-      // Register the Chart.js plugin for chart export
-      resolve();
-    };
-    script.onerror = () => {
-      console.error("Failed to load Chart.js");
-      reject(new Error("Chart.js load failed"));
-    };
+    script.addEventListener(
+      "load",
+      () => resolve(),
+      { once: true },
+    );
+    script.addEventListener(
+      "error",
+      () => {
+        console.error("Failed to load integrity-verified Chart.js.");
+        reject(new Error("Chart.js load failed"));
+      },
+      { once: true },
+    );
     document.head.appendChild(script);
   });
 }
@@ -140,8 +228,129 @@ async function loadDashboardData() {
     return;
   }
 
-  AdminDashboard.data = result.data;
+  AdminDashboard.data = normalizeDashboardPayload(result.data);
   renderDashboard();
+}
+
+function isDashboardRecord(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function dashboardRows(value) {
+  return Array.isArray(value) ? value.filter(isDashboardRecord) : [];
+}
+
+function dashboardText(value, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function dashboardDecimal(value, maximum) {
+  if (typeof value !== "number" && typeof value !== "string") return 0;
+  const normalized = typeof value === "string" ? value.trim() : value;
+  if (typeof normalized === "string" && !/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(normalized)) return 0;
+
+  const number = Number(normalized);
+  return Number.isFinite(number) && number >= 0 && number <= maximum
+    ? Math.round(number * 10) / 10
+    : 0;
+}
+
+function dashboardRating(value) {
+  return dashboardDecimal(value, 5);
+}
+
+function dashboardPercent(value) {
+  return dashboardDecimal(value, 100);
+}
+
+function normalizeDashboardPayload(value) {
+  const source = isDashboardRecord(value) ? value : {};
+  const rawKpi = isDashboardRecord(source.kpi) ? source.kpi : {};
+  const rawAppointments = isDashboardRecord(source.appointment_analytics)
+    ? source.appointment_analytics : {};
+  const rawPatients = isDashboardRecord(source.patient_analytics)
+    ? source.patient_analytics : {};
+  const rawDoctors = isDashboardRecord(source.doctor_analytics)
+    ? source.doctor_analytics : {};
+  const rawSystem = isDashboardRecord(source.system_status)
+    ? source.system_status : {};
+
+  return {
+    kpi: {
+      total_patients: safeCount(rawKpi.total_patients),
+      total_doctors: safeCount(rawKpi.total_doctors),
+      total_departments: safeCount(rawKpi.total_departments),
+      today_appointments: safeCount(rawKpi.today_appointments),
+      pending_appointments: safeCount(rawKpi.pending_appointments),
+      confirmed_appointments: safeCount(rawKpi.confirmed_appointments),
+      active_doctors: safeCount(rawKpi.active_doctors),
+      avg_rating: dashboardRating(rawKpi.avg_rating),
+      new_patients_this_month: safeCount(rawKpi.new_patients_this_month),
+    },
+    appointment_analytics: {
+      weekly: dashboardRows(rawAppointments.weekly).map((row) => ({
+        day: dashboardText(row.day, "N/A"),
+        count: safeCount(row.count),
+      })),
+      monthly: dashboardRows(rawAppointments.monthly).map((row) => ({
+        month: dashboardText(row.month, "N/A"),
+        count: safeCount(row.count),
+      })),
+      status_distribution: dashboardRows(rawAppointments.status_distribution).map((row) => ({
+        status: dashboardText(row.status, "Unknown"),
+        count: safeCount(row.count),
+      })),
+      completion_rate: dashboardPercent(rawAppointments.completion_rate),
+    },
+    patient_analytics: {
+      gender_distribution: dashboardRows(rawPatients.gender_distribution).map((row) => ({
+        gender: dashboardText(row.gender, "Unknown"),
+        count: safeCount(row.count),
+      })),
+      age_distribution: dashboardRows(rawPatients.age_distribution).map((row) => ({
+        age_range: dashboardText(row.age_range, "Unknown"),
+        count: safeCount(row.count),
+      })),
+      most_active: dashboardRows(rawPatients.most_active).map((row) => ({
+        name: dashboardText(row.name, "—"),
+        email: dashboardText(row.email, "—"),
+        appointment_count: safeCount(row.appointment_count),
+      })),
+    },
+    doctor_analytics: {
+      highest_rated: dashboardRows(rawDoctors.highest_rated).map((row) => ({
+        name: dashboardText(row.name, "N/A"),
+        rating: dashboardRating(row.rating),
+      })),
+      busiest_doctors: dashboardRows(rawDoctors.busiest_doctors).map((row) => ({
+        name: dashboardText(row.name, "—"),
+        specialty: dashboardText(row.specialty, "—"),
+        appointment_count: safeCount(row.appointment_count),
+      })),
+      available_today: safeCount(rawDoctors.available_today),
+      unavailable_today: safeCount(rawDoctors.unavailable_today),
+    },
+    department_analytics: dashboardRows(source.department_analytics).map((row) => ({
+      name: dashboardText(row.name, "—"),
+      status: dashboardText(row.status, "unknown"),
+      doctor_count: safeCount(row.doctor_count),
+      patient_count: safeCount(row.patient_count),
+      appointment_count: safeCount(row.appointment_count),
+    })),
+    recent_activity: dashboardRows(source.recent_activity).map((row) => ({
+      action: dashboardText(row.action),
+      entity_type: dashboardText(row.entity_type),
+      description: dashboardText(row.description),
+      actor_name: dashboardText(row.actor_name, "System"),
+      time_ago: dashboardText(row.time_ago),
+    })),
+    system_status: {
+      is_open: rawSystem.is_open === true || rawSystem.is_open === 1 || rawSystem.is_open === "1",
+      current_time_formatted: dashboardText(rawSystem.current_time_formatted),
+      unread_count: safeCount(rawSystem.unread_count),
+      hospital_name: dashboardText(rawSystem.hospital_name, "HealthBridge"),
+    },
+  };
 }
 
 // ─── Rendering ─────────────────────────────────────────────
@@ -178,7 +387,7 @@ function renderGreeting(data) {
     ? '<span class="greeting-success">Open</span>'
     : '<span class="greeting-danger">Closed</span>';
 
-  const unavailableCount = data.doctor_analytics?.unavailable_today ?? 0;
+  const unavailableCount = safeCount(data.doctor_analytics?.unavailable_today);
   const unavailableText =
     unavailableCount > 0
       ? `<span class="greeting-warning">${unavailableCount} doctors unavailable</span>`
@@ -187,8 +396,8 @@ function renderGreeting(data) {
   container.innerHTML = `
     <h2><i class="fas fa-sparkles" aria-hidden="true"></i> ${greeting}, Admin</h2>
     <p>
-      Today there are <span class="greeting-highlight">${kpi.today_appointments} appointments</span>,
-      <span class="greeting-warning">${kpi.pending_appointments} pending approvals</span>,
+      Today there are <span class="greeting-highlight">${safeCount(kpi.today_appointments)} appointments</span>,
+      <span class="greeting-warning">${safeCount(kpi.pending_appointments)} pending approvals</span>,
       ${unavailableText}, and the hospital is ${openStatus}.
     </p>
   `;
@@ -263,8 +472,8 @@ function renderKPIs(kpi) {
     if (!el) return;
 
     const trendHtml =
-      card.id === "kpi-patients" && kpi.new_patients_this_month > 0
-        ? `<div class="kpi-trend"><i class="fas fa-user-plus" aria-hidden="true"></i> ${kpi.new_patients_this_month} new this month</div>`
+      card.id === "kpi-patients" && safeCount(kpi.new_patients_this_month) > 0
+        ? `<div class="kpi-trend"><i class="fas fa-user-plus" aria-hidden="true"></i> ${safeCount(kpi.new_patients_this_month)} new this month</div>`
         : "";
 
     el.innerHTML = `
@@ -417,7 +626,10 @@ function renderCompletionRate(rate, statusData) {
   const container = document.getElementById("completion-rate-content");
   if (!container) return;
 
-  const completionRate = rate || 0;
+  const rawRate = Number(rate);
+  const completionRate = Number.isFinite(rawRate)
+    ? Math.min(100, Math.max(0, rawRate))
+    : 0;
   const circumference = 2 * Math.PI * 54; // r=54
   const offset = circumference - (completionRate / 100) * circumference;
 
@@ -427,7 +639,7 @@ function renderCompletionRate(rate, statusData) {
   if (statusData?.length) {
     statusData.forEach((d) => {
       const s = (d.status || "").toLowerCase();
-      if (s === "confirmed") confirmed = parseInt(d.count) || 0;
+      if (s === "confirmed") confirmed = safeCount(d.count);
     });
   }
   completed = Math.round((completionRate / 100) * confirmed);
@@ -731,6 +943,9 @@ function renderDoctorAvailability(available, unavailable) {
   const container = document.getElementById("doctor-availability-content");
   if (!container) return;
 
+  available = safeCount(available);
+  unavailable = safeCount(unavailable);
+
   container.innerHTML = `
     <div class="status-widgets">
       <div class="status-widget">
@@ -974,39 +1189,37 @@ function renderQuickActions() {
       icon: "fa-user-doctor",
       label: "Add Doctor",
       desc: "Register a new doctor",
-      onclick: "toggleAddDoctorModal()",
+      action: "add-doctor",
     },
     {
       icon: "fa-user-plus",
       label: "Add Patient",
       desc: "Create a new patient",
-      onclick: "toggleAddPatientModal()",
+      action: "add-patient",
     },
     {
       icon: "fa-building",
       label: "Add Department",
       desc: "Create a department",
-      onclick: "toggleAddDepartmentModal()",
+      action: "add-department",
     },
     {
       icon: "fa-clock-rotate-left",
       label: "Audit Log",
       desc: "View system activity",
-      onclick:
-        "document.querySelector('.sidebar-nav a[href=\\'#audit-log\\']')?.click()",
+      action: "audit-log",
     },
     {
       icon: "fa-sliders",
       label: "Settings",
       desc: "Hospital configuration",
-      onclick:
-        "document.querySelector('.sidebar-nav a[href=\\'#system-settings\\']')?.click()",
+      action: "system-settings",
     },
     {
       icon: "fa-arrows-rotate",
       label: "Refresh",
       desc: "Reload dashboard data",
-      onclick: "refreshAdminDashboard()",
+      action: "refresh",
     },
   ];
 
@@ -1015,8 +1228,7 @@ function renderQuickActions() {
       ${actions
         .map(
           (a) => `
-        <div class="quick-action-card" onclick="${a.onclick}" role="button" tabindex="0"
-             onkeydown="if(event.key==='Enter'||event.key===' '){${a.onclick};event.preventDefault();}"
+        <div class="quick-action-card" data-admin-quick-action="${a.action}" role="button" tabindex="0"
              aria-label="${escapeHTML(a.label)}">
           <div class="quick-action-icon"><i class="fas ${a.icon}" aria-hidden="true"></i></div>
           <p class="quick-action-label">${escapeHTML(a.label)}</p>
@@ -1295,10 +1507,18 @@ function exportChartCSV(chartId) {
 
 function escapeCSV(value) {
   const str = String(value ?? "");
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-    return '"' + str.replace(/"/g, '""') + '"';
+
+  // CSV quoting protects delimiters, not spreadsheet formulas. Prefix text
+  // cells whose first non-whitespace/control character is a formula marker.
+  // The export passes labels here; chart series values remain numeric.
+  const safeStr = /^[\u0000-\u0020\u00A0\uFEFF]*[=+\-@]/u.test(str)
+    ? "'" + str
+    : str;
+
+  if (safeStr.includes(",") || safeStr.includes('"') || safeStr.includes("\n") || safeStr.includes("\r")) {
+    return '"' + safeStr.replace(/"/g, '""') + '"';
   }
-  return str;
+  return safeStr;
 }
 
 // ─── Chart Management ──────────────────────────────────────
@@ -1327,22 +1547,24 @@ function recreateAllCharts() {
 // ─── Skeleton Loaders ──────────────────────────────────────
 
 function showSkeletons() {
-  // Show skeleton containers, hide real content
-  document
-    .querySelectorAll(".skeleton-container")
-    .forEach((el) => (el.style.display = ""));
-  document
-    .querySelectorAll(".dashboard-content-container")
-    .forEach((el) => (el.style.display = "none"));
+  // Show skeleton containers, hide real content with presentation classes.
+  document.querySelectorAll(".skeleton-container").forEach((el) => {
+    el.classList.add("is-visible");
+  });
+  document.querySelectorAll(".dashboard-content-container").forEach((el) => {
+    el.classList.add("is-hidden");
+  });
+  document.getElementById("dashboard-error")?.classList.remove("is-visible");
 }
 
 function hideSkeletons() {
-  document
-    .querySelectorAll(".skeleton-container")
-    .forEach((el) => (el.style.display = "none"));
-  document
-    .querySelectorAll(".dashboard-content-container")
-    .forEach((el) => (el.style.display = ""));
+  document.querySelectorAll(".skeleton-container").forEach((el) => {
+    el.classList.remove("is-visible");
+  });
+  document.querySelectorAll(".dashboard-content-container").forEach((el) => {
+    el.classList.remove("is-hidden");
+  });
+  document.getElementById("dashboard-error")?.classList.remove("is-visible");
 }
 
 // ─── Error State ───────────────────────────────────────────
@@ -1352,7 +1574,7 @@ function showErrorState(message) {
 
   const errorEl = document.getElementById("dashboard-error");
   if (errorEl) {
-    errorEl.style.display = "";
+    errorEl.classList.add("is-visible");
     errorEl.querySelector("p").textContent =
       message || "An unexpected error occurred.";
   }

@@ -190,3 +190,102 @@
 [data-theme="light"] .main-content {
   background: linear-gradient(135deg, transparent 0%, rgba(8, 145, 178, 0.02) 100%);
 }
+
+
+/* CSP-safe Patient Dashboard visibility and component utilities */
+.dashboard-hero-skeleton {
+  height: 220px;
+  border-radius: var(--r-xl);
+}
+
+.dashboard-widget-skeleton {
+  height: 120px;
+}
+
+.dashboard-snapshot-error {
+  text-align: center;
+  padding: var(--s4);
+}
+
+.dashboard-snapshot-error__message {
+  color: var(--text-muted);
+}
+
+.dashboard-appointment-modal {
+  max-width: 560px;
+}
+
+.modal-overlay[hidden] {
+  display: none !important;
+}
+
+.kpi-card.kpi-primary .kpi-icon-wrap {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.kpi-card.kpi-success .kpi-icon-wrap {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.kpi-card.kpi-warning .kpi-icon-wrap {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+.kpi-card.kpi-info .kpi-icon-wrap {
+  color: var(--info);
+  background: color-mix(in srgb, var(--info) 12%, transparent);
+}
+
+.kpi-card.kpi-danger .kpi-icon-wrap {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+
+/* Closed color variants used by dashboard data renderers */
+.activity-line-dot--primary { --dot-color: var(--primary); }
+.activity-line-dot--success { --dot-color: var(--success); }
+.activity-line-dot--danger { --dot-color: var(--danger); }
+.activity-line-dot--warning { --dot-color: var(--warning); }
+.activity-line-dot--info { --dot-color: var(--info); }
+.activity-line-dot--muted { --dot-color: var(--text-muted); }
+
+.activity-avatar--primary { color: var(--primary); background: var(--primary-subtle); }
+.activity-avatar--success { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.activity-avatar--danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.activity-avatar--warning { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); }
+.activity-avatar--info { color: var(--info); background: color-mix(in srgb, var(--info) 12%, transparent); }
+.activity-avatar--muted { color: var(--text-muted); background: var(--bg-surface); }
+
+.insights-mini-trend--neutral { color: var(--text-muted); }
+.insights-mini-trend--up { color: var(--success); }
+.insights-mini-trend--down { color: var(--danger); }
+
+.appt-status-pill--confirmed {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.appt-status-pill--completed {
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 20%, transparent);
+}
+.appt-status-pill--cancelled {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
+}
+.appt-status-pill--missed {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.appt-status-pill--pending {
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 20%, transparent);
+}

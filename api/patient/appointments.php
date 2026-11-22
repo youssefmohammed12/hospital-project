@@ -9,7 +9,7 @@
  * Query Params:
  *   - page: Page number (default 1)
  *   - limit: Items per page (default 10, max 50)
- *   - status: Filter by status (upcoming|confirmed|completed|cancelled|missed|all)
+ *   - status: Filter by status (upcoming|confirmed|reschedule_requested|completed|cancelled|missed|all)
  *   - search: Search term (doctor name, department, appointment ID)
  *
  * Response:
@@ -34,30 +34,53 @@ require_once __DIR__ . '/../../services/PatientPortalService.php';
 
 // ── Authentication & Authorization ────────────────────────
 $user = requireAuth();
-$userId = (int)$user['id'];
-$role = $user['role'] ?? '';
 
-// Only patients can access their appointments
-if ($role !== 'patient') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Patient access required.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
+$user = assertRole($user, 'patient');
+$userId = (int)$user['id'];
+
 // ── Parse Query Parameters ─────────────────────────────────
-$page = max(1, (int)($_GET['page'] ?? 1));
-$limit = min(50, max(1, (int)($_GET['limit'] ?? 10)));
-$status = trim($_GET['status'] ?? 'all');
-$search = trim($_GET['search'] ?? '');
+$pageValue = filter_var($_GET['page'] ?? '1', FILTER_VALIDATE_INT);
+$limitValue = filter_var($_GET['limit'] ?? '10', FILTER_VALIDATE_INT);
+$statusValue = $_GET['status'] ?? 'all';
+$searchValue = $_GET['search'] ?? '';
 
-$offset = ($page - 1) * $limit;
+if ($pageValue === false || $limitValue === false || !is_string($statusValue) || !is_string($searchValue)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Invalid appointment filters.']);
+}
 
-// ── Response Caching Headers ─────────────────────────────
-header('Cache-Control: private, max-age=30, must-revalidate');
-header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 30) . ' GMT');
+$page = max(1, (int)$pageValue);
+$limit = min(50, max(1, (int)$limitValue));
+$pageIndex = $page - 1;
+
+// Prevent integer overflow when a valid but unreasonably large page is multiplied by the page size.
+if ($pageIndex > intdiv(PHP_INT_MAX, $limit)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Page value is too large.']);
+}
+
+$status = trim($statusValue);
+$search = trim($searchValue);
+$allowedStatuses = ['all', 'upcoming', 'confirmed', 'reschedule_requested', 'completed', 'cancelled', 'missed'];
+
+if (!in_array($status, $allowedStatuses, true)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Invalid appointment status filter.']);
+}
+
+$offset = $pageIndex * $limit;
+
+// Patient appointment data is private; keep the shared no-store response policy.
 
 // ── Execute ──────────────────────────────────────────────
-withDB(function (PDO $db) use ($userId, $status, $search, $limit, $offset) {
-    $portal = new PatientPortalService($db);
+withDB(function (PDO $db) use ($userId, $status, $search, $page, $limit, $offset) {
+    $portal = new PatientPortalService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA'));
     
     // Get all appointments with full details
     $timeline = $portal->getAppointmentTimeline($userId);

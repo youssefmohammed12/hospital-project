@@ -10,6 +10,14 @@
 
 "use strict";
 
+function isPrescriptionRecord(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function prescriptionText(value, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
 /**
  * Prescriptions — Namespace for all prescription functionality.
  */
@@ -31,37 +39,42 @@ const Prescriptions = {
   // ── Doctor: Issue Prescription ───────────────────────────
 
   openIssueModal(appointmentId, doctorName, apptDate, patientName) {
+    const safeAppointmentId = safePositiveId(appointmentId);
+    if (!safeAppointmentId) {
+      showToast("A valid appointment ID is required to issue a prescription.", "error");
+      return;
+    }
     let modal = document.getElementById("rx-issue-modal");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "rx-issue-modal";
       modal.className = "modal-overlay";
       modal.innerHTML = `
-        <div class="modal" style="max-width:700px;width:min(700px,100%);max-height:90vh;overflow-y:auto">
-          <div class="flex-between" style="margin-bottom:var(--s6)">
+        <div class="modal rx-modal--large">
+          <div class="flex-between rx-modal-header">
             <h3><i class="fas fa-prescription" aria-hidden="true"></i> Issue Prescription</h3>
-            <button class="btn btn-outline btn-sm" type="button" onclick="Prescriptions.closeIssueModal()">Close</button>
+            <button class="btn btn-outline btn-sm" type="button" data-prescription-action="close-issue">Close</button>
           </div>
           <form id="rx-issue-form" novalidate>
             <input type="hidden" id="rx-appointment-id" />
-            <div style="background:var(--bg-surface);padding:var(--s4);border-radius:var(--r-md);border:1px solid var(--border-light);margin-bottom:var(--s5)">
-              <p style="margin:0;font-size:0.88rem">
+            <div class="rx-appointment-context">
+              <p class="rx-appointment-context-text">
                 <strong>Appointment:</strong> <span id="rx-doctor-name"></span>
                 &middot; <span id="rx-appt-date"></span>
                 &middot; Patient: <span id="rx-patient-name"></span>
               </p>
             </div>
             <div id="rx-items-container"></div>
-            <button type="button" class="btn btn-outline btn-sm" onclick="Prescriptions.addMedicationItem()" style="margin-bottom:var(--s5)">
+            <button type="button" class="btn btn-outline btn-sm rx-add-medication-action" data-prescription-action="add-medication" data-container-id="rx-items-container">
               <i class="fas fa-plus" aria-hidden="true"></i> Add Another Medication
             </button>
             <div class="form-group">
               <label for="rx-notes">Prescription Notes (Optional)</label>
-              <textarea id="rx-notes" placeholder="General instructions or notes for the patient..." maxlength="2000" style="min-height:80px"></textarea>
+              <textarea id="rx-notes" placeholder="General instructions or notes for the patient..." maxlength="2000" class="rx-textarea--short"></textarea>
             </div>
-            <div style="display:flex;gap:var(--s3);margin-top:var(--s2)">
+            <div class="rx-form-actions">
               <button type="submit" class="btn btn-primary">Issue Prescription</button>
-              <button type="button" class="btn btn-outline" onclick="Prescriptions.closeIssueModal()">Cancel</button>
+              <button type="button" class="btn btn-outline" data-prescription-action="close-issue">Cancel</button>
             </div>
           </form>
         </div>
@@ -75,12 +88,10 @@ const Prescriptions = {
         });
     }
 
-    document.getElementById("rx-appointment-id").value = appointmentId;
-    document.getElementById("rx-doctor-name").textContent =
-      doctorName || "Doctor";
-    document.getElementById("rx-appt-date").textContent = apptDate || "";
-    document.getElementById("rx-patient-name").textContent =
-      patientName || "Patient";
+    document.getElementById("rx-appointment-id").value = String(safeAppointmentId);
+    document.getElementById("rx-doctor-name").textContent = prescriptionText(doctorName, "Doctor");
+    document.getElementById("rx-appt-date").textContent = prescriptionText(apptDate);
+    document.getElementById("rx-patient-name").textContent = prescriptionText(patientName, "Patient");
     document.getElementById("rx-notes").value = "";
 
     const container = document.getElementById("rx-items-container");
@@ -103,25 +114,23 @@ const Prescriptions = {
     const index = container.children.length + 1;
     const itemDiv = document.createElement("div");
     itemDiv.className = "rx-medication-item";
-    itemDiv.style.cssText =
-      "background:var(--bg-surface);border:1px solid var(--border-light);border-radius:var(--r-md);padding:var(--s4);margin-bottom:var(--s4)";
 
     itemDiv.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s3)">
-        <strong style="color:var(--text-primary)"><i class="fas fa-capsules" aria-hidden="true"></i> Medication #${index}</strong>
-        ${index > 1 ? `<button type="button" class="btn btn-outline btn-sm" onclick="this.closest('.rx-medication-item').remove()" style="color:var(--danger);border-color:rgba(252,165,165,0.3)"><i class="fas fa-trash" aria-hidden="true"></i> Remove</button>` : ""}
+      <div class="rx-medication-item-header">
+        <strong class="rx-medication-item-title"><i class="fas fa-capsules" aria-hidden="true"></i> Medication #${index}</strong>
+        ${index > 1 ? `<button type="button" class="btn btn-outline btn-sm rx-medication-remove-button" data-prescription-action="remove-medication"><i class="fas fa-trash" aria-hidden="true"></i> Remove</button>` : ""}
       </div>
-      <div class="grid-2" style="gap:var(--s3)">
-        <div class="form-group" style="margin-bottom:var(--s3)"><label>Medication Name *</label><input type="text" class="rx-med-name" placeholder="e.g. Amoxicillin" required maxlength="200" /></div>
-        <div class="form-group" style="margin-bottom:var(--s3)"><label>Strength *</label><input type="text" class="rx-med-strength" placeholder="e.g. 500 mg" required maxlength="100" /></div>
+      <div class="grid-2 rx-medication-grid">
+        <div class="form-group rx-medication-field"><label>Medication Name *</label><input type="text" class="rx-med-name" placeholder="e.g. Amoxicillin" required maxlength="200" /></div>
+        <div class="form-group rx-medication-field"><label>Strength *</label><input type="text" class="rx-med-strength" placeholder="e.g. 500 mg" required maxlength="100" /></div>
       </div>
-      <div class="grid-2" style="gap:var(--s3)">
-        <div class="form-group" style="margin-bottom:var(--s3)"><label>Dosage *</label><input type="text" class="rx-med-dosage" placeholder="e.g. 1 tablet" required maxlength="100" /></div>
-        <div class="form-group" style="margin-bottom:var(--s3)"><label>Frequency *</label><input type="text" class="rx-med-frequency" placeholder="e.g. 3 times daily" required maxlength="100" /></div>
+      <div class="grid-2 rx-medication-grid">
+        <div class="form-group rx-medication-field"><label>Dosage *</label><input type="text" class="rx-med-dosage" placeholder="e.g. 1 tablet" required maxlength="100" /></div>
+        <div class="form-group rx-medication-field"><label>Frequency *</label><input type="text" class="rx-med-frequency" placeholder="e.g. 3 times daily" required maxlength="100" /></div>
       </div>
-      <div class="grid-2" style="gap:var(--s3)">
-        <div class="form-group" style="margin-bottom:var(--s3)"><label>Duration *</label><input type="text" class="rx-med-duration" placeholder="e.g. 7 days" required maxlength="100" /></div>
-        <div class="form-group" style="margin-bottom:0"><label>Instructions</label><input type="text" class="rx-med-instructions" placeholder="e.g. Take after meals" maxlength="500" /></div>
+      <div class="grid-2 rx-medication-grid">
+        <div class="form-group rx-medication-field"><label>Duration *</label><input type="text" class="rx-med-duration" placeholder="e.g. 7 days" required maxlength="100" /></div>
+        <div class="form-group rx-medication-field--last"><label>Instructions</label><input type="text" class="rx-med-instructions" placeholder="e.g. Take after meals" maxlength="500" /></div>
       </div>
     `;
     container.appendChild(itemDiv);
@@ -158,7 +167,7 @@ const Prescriptions = {
   },
 
   async submitPrescription() {
-    const appointmentId = document.getElementById("rx-appointment-id")?.value;
+    const appointmentId = safePositiveId(document.getElementById("rx-appointment-id")?.value);
     const notes = document.getElementById("rx-notes")?.value.trim() || "";
     const items = this.collectMedicationItems();
 
@@ -208,7 +217,7 @@ const Prescriptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          appointment_id: parseInt(appointmentId),
+          appointment_id: appointmentId,
           notes,
           items,
         }),
@@ -235,8 +244,14 @@ const Prescriptions = {
   // ── View Prescription Detail ─────────────────────────────
 
   async openViewModal(prescriptionId) {
+    const safePrescriptionId = safePositiveId(prescriptionId);
+    if (!safePrescriptionId) {
+      showToast("Invalid prescription ID.", "error");
+      return;
+    }
+
     const result = await apiFetch(
-      `${getBasePath()}api/prescriptions/get.php?id=${prescriptionId}`,
+      `${getBasePath()}api/prescriptions/get.php?id=${safePrescriptionId}`,
       {},
       "Failed to load prescription details.",
     );
@@ -248,8 +263,8 @@ const Prescriptions = {
       return;
     }
     const rx = result.data.prescription;
-    if (!rx) {
-      showToast("Prescription not found.", "error");
+    if (!isPrescriptionRecord(rx) || !safePositiveId(rx.id)) {
+      showToast("Prescription response was invalid or not found.", "error");
       return;
     }
 
@@ -259,7 +274,7 @@ const Prescriptions = {
       modal = document.createElement("div");
       modal.id = "rx-view-modal";
       modal.className = "modal-overlay";
-      modal.innerHTML = `<div class="modal" style="max-width:750px;width:min(750px,100%);max-height:90vh;overflow-y:auto"><div class="flex-between" style="margin-bottom:var(--s6)"><h3><i class="fas fa-prescription" aria-hidden="true"></i> Prescription Details</h3><button class="btn btn-outline btn-sm" type="button" onclick="Prescriptions.closeViewModal()">Close</button></div><div id="rx-view-content"></div></div>`;
+      modal.innerHTML = `<div class="modal rx-modal--view"><div class="flex-between rx-modal-header"><h3><i class="fas fa-prescription" aria-hidden="true"></i> Prescription Details</h3><button class="btn btn-outline btn-sm" type="button" data-prescription-action="close-view">Close</button></div><div id="rx-view-content"></div></div>`;
       document.body.appendChild(modal);
     }
     const user = getUser();
@@ -283,35 +298,49 @@ const Prescriptions = {
    */
   printPrescription() {
     const rx = this.detail;
-    if (!rx || !rx.id) {
+    const prescriptionId = safePositiveId(rx?.id);
+    if (!prescriptionId) {
       showToast("No prescription to print.", "error");
       return;
     }
-    window.open(`${getBasePath()}api/prescriptions/print.php?id=${rx.id}`, "_blank");
+    window.open(
+      `${getBasePath()}api/prescriptions/print.php?id=${prescriptionId}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   },
 
   /**
    * Format a prescription ID professionally: RX-2026-000001
    */
   formatPrescriptionId(id) {
+    const prescriptionId = safePositiveId(id);
+    if (!prescriptionId) return "RX-UNKNOWN";
     const year = new Date().getFullYear();
-    const padded = String(id).padStart(6, "0");
+    const padded = String(prescriptionId).padStart(6, "0");
     return `RX-${year}-${padded}`;
   },
 
   renderDetail(rx, role) {
-    const statusClass = (rx.status || "active").toLowerCase();
-    const items = rx.items || [];
-    const isEditable = this.isEditable(rx.status);
+    if (!isPrescriptionRecord(rx)) {
+      return '<div class="rx-empty-state"><h3>Prescription details are unavailable.</h3></div>';
+    }
+    const status = prescriptionText(rx.status);
+    const statusClass = safeClassToken(status || "active");
+    const prescriptionId = safePositiveId(rx.id);
+    const items = Array.isArray(rx.items)
+      ? rx.items.filter(isPrescriptionRecord)
+      : [];
+    const isEditable = this.isEditable(status);
     const isDoctor = role === "doctor";
     const rxIdFormatted = this.formatPrescriptionId(rx.id);
 
     // Action buttons for doctor lifecycle management
     let actionButtons = "";
-    if (isDoctor && isEditable) {
-      actionButtons = `<div class="rx-print-btn-container"><button class="btn btn-primary btn-sm" onclick="Prescriptions.openEditModal(${rx.id})"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button><button class="btn btn-success btn-sm" onclick="Prescriptions.confirmComplete(${rx.id})"><i class="fas fa-check-circle" aria-hidden="true"></i> Complete</button><button class="btn btn-danger btn-sm" onclick="Prescriptions.openCancelModal(${rx.id})"><i class="fas fa-ban" aria-hidden="true"></i> Cancel</button><button class="btn btn-outline btn-sm" onclick="Prescriptions.printPrescription()"><i class="fas fa-print" aria-hidden="true"></i> Print</button></div>`;
+    if (isDoctor && isEditable && prescriptionId) {
+      actionButtons = `<div class="rx-print-btn-container"><button class="btn btn-primary btn-sm" data-prescription-action="open-edit" data-prescription-id="${prescriptionId}"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button><button class="btn btn-success btn-sm" data-prescription-action="complete" data-prescription-id="${prescriptionId}"><i class="fas fa-check-circle" aria-hidden="true"></i> Complete</button><button class="btn btn-danger btn-sm" data-prescription-action="open-cancel" data-prescription-id="${prescriptionId}"><i class="fas fa-ban" aria-hidden="true"></i> Cancel</button><button class="btn btn-outline btn-sm" data-prescription-action="print"><i class="fas fa-print" aria-hidden="true"></i> Print</button></div>`;
     } else {
-      actionButtons = `<div class="rx-print-btn-container"><button class="btn btn-outline btn-sm" onclick="Prescriptions.printPrescription()"><i class="fas fa-print" aria-hidden="true"></i> Print</button></div>`;
+      actionButtons = `<div class="rx-print-btn-container"><button class="btn btn-outline btn-sm" data-prescription-action="print"><i class="fas fa-print" aria-hidden="true"></i> Print</button></div>`;
     }
 
     // Cancellation reason banner
@@ -369,7 +398,7 @@ const Prescriptions = {
       : "";
 
     // Doctor specialty (placeholder - extendable)
-    const doctorSpecialty = rx.appt_department || "Medical Department";
+    const doctorSpecialty = prescriptionText(rx.appt_department, "Medical Department");
 
     return `
       ${actionButtons}
@@ -391,13 +420,13 @@ const Prescriptions = {
           <div class="rx-meta-row">
             <div class="rx-meta-left">
               <span class="rx-id">${escapeHTML(rxIdFormatted)}</span>
-              <span style="font-size:0.82rem;color:var(--text-muted);margin-top:var(--s1)">
+              <span class="rx-meta-issued">
                 <i class="fas fa-calendar" aria-hidden="true"></i> Issued: ${escapeHTML(formatDate(rx.created_at))}
                 ${rx.updated_at && rx.updated_at !== rx.created_at ? `&middot; Updated: ${escapeHTML(formatDate(rx.updated_at))}` : ""}
               </span>
             </div>
             <div class="rx-meta-right">
-              <span class="status status-${statusClass}">${rx.status}</span>
+              <span class="status status-${statusClass}">${escapeHTML(rx.status || "")}</span>
             </div>
           </div>
 
@@ -423,7 +452,7 @@ const Prescriptions = {
 
           <!-- Medications -->
           <div class="rx-meds-section">
-            <div class="rx-meds-title"><i class="fas fa-capsules" aria-hidden="true"></i> Prescribed Medications <span style="font-weight:400;font-size:0.8rem;color:var(--text-muted)">(${items.length} item${items.length !== 1 ? "s" : ""})</span></div>
+            <div class="rx-meds-title"><i class="fas fa-capsules" aria-hidden="true"></i> Prescribed Medications <span class="rx-meds-count">(${items.length} item${items.length !== 1 ? "s" : ""})</span></div>
             ${medsHtml}
           </div>
 
@@ -439,7 +468,7 @@ const Prescriptions = {
               <div class="rx-signature-line">Electronic Signature</div>
             </div>
             <div class="rx-signature-right">
-              <div style="font-size:0.78rem;color:var(--text-muted)">
+              <div class="rx-signature-code">
                 <i class="fas fa-qrcode" aria-hidden="true"></i><br>
                 ${escapeHTML(rxIdFormatted)}
               </div>
@@ -453,8 +482,13 @@ const Prescriptions = {
   // ── Doctor: Edit Prescription ────────────────────────────
 
   async openEditModal(prescriptionId) {
+    const safePrescriptionId = safePositiveId(prescriptionId);
+    if (!safePrescriptionId) {
+      showToast("Invalid prescription ID.", "error");
+      return;
+    }
     const result = await apiFetch(
-      `${getBasePath()}api/prescriptions/get.php?id=${prescriptionId}`,
+      `${getBasePath()}api/prescriptions/get.php?id=${safePrescriptionId}`,
       {},
       "Failed to load prescription.",
     );
@@ -463,13 +497,17 @@ const Prescriptions = {
       return;
     }
     const rx = result.data.prescription;
+    if (!isPrescriptionRecord(rx) || safePositiveId(rx.id) !== safePrescriptionId) {
+      showToast("Prescription response was invalid.", "error");
+      return;
+    }
 
     let modal = document.getElementById("rx-edit-modal");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "rx-edit-modal";
       modal.className = "modal-overlay";
-      modal.innerHTML = `<div class="modal" style="max-width:700px;width:min(700px,100%);max-height:90vh;overflow-y:auto"><div class="flex-between" style="margin-bottom:var(--s6)"><h3><i class="fas fa-pen" aria-hidden="true"></i> Edit Prescription</h3><button class="btn btn-outline btn-sm" type="button" onclick="Prescriptions.closeEditModal()">Close</button></div><form id="rx-edit-form" novalidate><input type="hidden" id="rx-edit-id" /><div id="rx-edit-items-container"></div><button type="button" class="btn btn-outline btn-sm" onclick="Prescriptions.addMedicationItem('rx-edit-items-container')" style="margin-bottom:var(--s5)"><i class="fas fa-plus" aria-hidden="true"></i> Add Another Medication</button><div class="form-group"><label for="rx-edit-notes">Prescription Notes (Optional)</label><textarea id="rx-edit-notes" placeholder="General instructions or notes for the patient..." maxlength="2000" style="min-height:80px"></textarea></div><div style="display:flex;gap:var(--s3);margin-top:var(--s2)"><button type="submit" class="btn btn-primary">Save Changes</button><button type="button" class="btn btn-outline" onclick="Prescriptions.closeEditModal()">Cancel</button></div></form></div>`;
+      modal.innerHTML = `<div class="modal rx-modal--large"><div class="flex-between rx-modal-header"><h3><i class="fas fa-pen" aria-hidden="true"></i> Edit Prescription</h3><button class="btn btn-outline btn-sm" type="button" data-prescription-action="close-edit">Close</button></div><form id="rx-edit-form" novalidate><input type="hidden" id="rx-edit-id" /><div id="rx-edit-items-container"></div><button type="button" class="btn btn-outline btn-sm rx-add-medication-action" data-prescription-action="add-medication" data-container-id="rx-edit-items-container"><i class="fas fa-plus" aria-hidden="true"></i> Add Another Medication</button><div class="form-group"><label for="rx-edit-notes">Prescription Notes (Optional)</label><textarea id="rx-edit-notes" placeholder="General instructions or notes for the patient..." maxlength="2000" class="rx-textarea--short"></textarea></div><div class="rx-form-actions"><button type="submit" class="btn btn-primary">Save Changes</button><button type="button" class="btn btn-outline" data-prescription-action="close-edit">Cancel</button></div></form></div>`;
       document.body.appendChild(modal);
       document
         .getElementById("rx-edit-form")
@@ -479,18 +517,17 @@ const Prescriptions = {
         });
     }
 
-    document.getElementById("rx-edit-id").value = rx.id;
-    document.getElementById("rx-edit-notes").value = rx.notes || "";
+    document.getElementById("rx-edit-id").value = String(safePrescriptionId);
+    document.getElementById("rx-edit-notes").value = prescriptionText(rx.notes);
 
     const container = document.getElementById("rx-edit-items-container");
     container.innerHTML = "";
-    (rx.items || []).forEach((item, i) => {
+    const editItems = Array.isArray(rx.items) ? rx.items.filter(isPrescriptionRecord) : [];
+    editItems.forEach((item, i) => {
       const index = i + 1;
       const itemDiv = document.createElement("div");
       itemDiv.className = "rx-medication-item";
-      itemDiv.style.cssText =
-        "background:var(--bg-surface);border:1px solid var(--border-light);border-radius:var(--r-md);padding:var(--s4);margin-bottom:var(--s4)";
-      itemDiv.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s3)"><strong style="color:var(--text-primary)"><i class="fas fa-capsules" aria-hidden="true"></i> Medication #${index}</strong>${index > 1 ? `<button type="button" class="btn btn-outline btn-sm" onclick="this.closest('.rx-medication-item').remove()" style="color:var(--danger);border-color:rgba(252,165,165,0.3)"><i class="fas fa-trash" aria-hidden="true"></i> Remove</button>` : ""}</div><div class="grid-2" style="gap:var(--s3)"><div class="form-group" style="margin-bottom:var(--s3)"><label>Medication Name *</label><input type="text" class="rx-med-name" value="${escapeHTML(item.medication_name)}" required maxlength="200" /></div><div class="form-group" style="margin-bottom:var(--s3)"><label>Strength *</label><input type="text" class="rx-med-strength" value="${escapeHTML(item.strength)}" required maxlength="100" /></div></div><div class="grid-2" style="gap:var(--s3)"><div class="form-group" style="margin-bottom:var(--s3)"><label>Dosage *</label><input type="text" class="rx-med-dosage" value="${escapeHTML(item.dosage)}" required maxlength="100" /></div><div class="form-group" style="margin-bottom:var(--s3)"><label>Frequency *</label><input type="text" class="rx-med-frequency" value="${escapeHTML(item.frequency)}" required maxlength="100" /></div></div><div class="grid-2" style="gap:var(--s3)"><div class="form-group" style="margin-bottom:var(--s3)"><label>Duration *</label><input type="text" class="rx-med-duration" value="${escapeHTML(item.duration)}" required maxlength="100" /></div><div class="form-group" style="margin-bottom:0"><label>Instructions</label><input type="text" class="rx-med-instructions" value="${escapeHTML(item.instructions || "")}" maxlength="500" /></div></div>`;
+      itemDiv.innerHTML = `<div class="rx-medication-item-header"><strong class="rx-medication-item-title"><i class="fas fa-capsules" aria-hidden="true"></i> Medication #${index}</strong>${index > 1 ? `<button type="button" class="btn btn-outline btn-sm rx-medication-remove-button" data-prescription-action="remove-medication"><i class="fas fa-trash" aria-hidden="true"></i> Remove</button>` : ""}</div><div class="grid-2 rx-medication-grid"><div class="form-group rx-medication-field"><label>Medication Name *</label><input type="text" class="rx-med-name" value="${escapeHTML(item.medication_name)}" required maxlength="200" /></div><div class="form-group rx-medication-field"><label>Strength *</label><input type="text" class="rx-med-strength" value="${escapeHTML(item.strength)}" required maxlength="100" /></div></div><div class="grid-2 rx-medication-grid"><div class="form-group rx-medication-field"><label>Dosage *</label><input type="text" class="rx-med-dosage" value="${escapeHTML(item.dosage)}" required maxlength="100" /></div><div class="form-group rx-medication-field"><label>Frequency *</label><input type="text" class="rx-med-frequency" value="${escapeHTML(item.frequency)}" required maxlength="100" /></div></div><div class="grid-2 rx-medication-grid"><div class="form-group rx-medication-field"><label>Duration *</label><input type="text" class="rx-med-duration" value="${escapeHTML(item.duration)}" required maxlength="100" /></div><div class="form-group rx-medication-field--last"><label>Instructions</label><input type="text" class="rx-med-instructions" value="${escapeHTML(item.instructions || "")}" maxlength="500" /></div></div>`;
       container.appendChild(itemDiv);
     });
 
@@ -503,7 +540,7 @@ const Prescriptions = {
   },
 
   async submitEdit() {
-    const prescriptionId = document.getElementById("rx-edit-id")?.value;
+    const prescriptionId = safePositiveId(document.getElementById("rx-edit-id")?.value);
     const notes = document.getElementById("rx-edit-notes")?.value.trim() || "";
     const items = this.collectMedicationItems("rx-edit-items-container");
 
@@ -526,7 +563,7 @@ const Prescriptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prescription_id: parseInt(prescriptionId),
+          prescription_id: prescriptionId,
           notes,
           items,
         }),
@@ -537,8 +574,11 @@ const Prescriptions = {
     if (result.data?.success) {
       showToast("Prescription updated successfully.", "success");
       this.closeEditModal();
-      if (typeof loadDoctorPrescriptions === "function")
+      if (typeof window.refreshWS === "function") {
+        await window.refreshWS();
+      } else if (typeof loadDoctorPrescriptions === "function") {
         loadDoctorPrescriptions();
+      }
     } else {
       showToast(
         result.data?.message || "Failed to update prescription.",
@@ -551,20 +591,24 @@ const Prescriptions = {
   // ── Doctor: Complete Prescription ────────────────────────
 
   confirmComplete(prescriptionId) {
+    const safePrescriptionId = safePositiveId(prescriptionId);
+    if (!safePrescriptionId) return;
     if (
       !confirm("Mark this prescription as Completed? It will become read-only.")
     )
       return;
-    this.completePrescription(prescriptionId);
+    this.completePrescription(safePrescriptionId);
   },
 
   async completePrescription(prescriptionId) {
+    const safePrescriptionId = safePositiveId(prescriptionId);
+    if (!safePrescriptionId) return;
     const result = await apiFetch(
       (getBasePath() + "api/prescriptions/complete.php"),
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prescription_id: prescriptionId }),
+        body: JSON.stringify({ prescription_id: safePrescriptionId }),
       },
       "Failed to complete prescription.",
     );
@@ -572,8 +616,11 @@ const Prescriptions = {
     if (result.data?.success) {
       showToast("Prescription marked as completed.", "success");
       this.closeViewModal();
-      if (typeof loadDoctorPrescriptions === "function")
+      if (typeof window.refreshWS === "function") {
+        await window.refreshWS();
+      } else if (typeof loadDoctorPrescriptions === "function") {
         loadDoctorPrescriptions();
+      }
     } else {
       showToast(
         result.data?.message || "Failed to complete prescription.",
@@ -585,12 +632,14 @@ const Prescriptions = {
   // ── Doctor: Cancel Prescription ──────────────────────────
 
   openCancelModal(prescriptionId) {
+    const safePrescriptionId = safePositiveId(prescriptionId);
+    if (!safePrescriptionId) return;
     let modal = document.getElementById("rx-cancel-modal");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "rx-cancel-modal";
       modal.className = "modal-overlay";
-      modal.innerHTML = `<div class="modal" style="max-width:500px;width:min(500px,100%)"><div class="flex-between" style="margin-bottom:var(--s6)"><h3><i class="fas fa-ban" aria-hidden="true"></i> Cancel Prescription</h3><button class="btn btn-outline btn-sm" type="button" onclick="Prescriptions.closeCancelModal()">Close</button></div><form id="rx-cancel-form" novalidate><input type="hidden" id="rx-cancel-id" /><p style="margin-bottom:var(--s4);color:var(--text-secondary)">Please provide a reason for cancelling this prescription.</p><div class="form-group"><label for="rx-cancel-reason">Cancellation Reason *</label><textarea id="rx-cancel-reason" placeholder="Explain why this prescription is being cancelled..." required maxlength="2000" style="min-height:100px"></textarea></div><div style="display:flex;gap:var(--s3);margin-top:var(--s2)"><button type="submit" class="btn btn-danger">Cancel Prescription</button><button type="button" class="btn btn-outline" onclick="Prescriptions.closeCancelModal()">Go Back</button></div></form></div>`;
+      modal.innerHTML = `<div class="modal rx-modal--compact"><div class="flex-between rx-modal-header"><h3><i class="fas fa-ban" aria-hidden="true"></i> Cancel Prescription</h3><button class="btn btn-outline btn-sm" type="button" data-prescription-action="close-cancel">Close</button></div><form id="rx-cancel-form" novalidate><input type="hidden" id="rx-cancel-id" /><p class="rx-cancel-description">Please provide a reason for cancelling this prescription.</p><div class="form-group"><label for="rx-cancel-reason">Cancellation Reason *</label><textarea id="rx-cancel-reason" placeholder="Explain why this prescription is being cancelled..." required maxlength="2000" class="rx-textarea--medium"></textarea></div><div class="rx-form-actions"><button type="submit" class="btn btn-danger">Cancel Prescription</button><button type="button" class="btn btn-outline" data-prescription-action="close-cancel">Go Back</button></div></form></div>`;
       document.body.appendChild(modal);
       document
         .getElementById("rx-cancel-form")
@@ -599,7 +648,7 @@ const Prescriptions = {
           await Prescriptions.submitCancel();
         });
     }
-    document.getElementById("rx-cancel-id").value = prescriptionId;
+    document.getElementById("rx-cancel-id").value = String(safePrescriptionId);
     document.getElementById("rx-cancel-reason").value = "";
     modal.classList.add("open");
   },
@@ -610,7 +659,7 @@ const Prescriptions = {
   },
 
   async submitCancel() {
-    const prescriptionId = document.getElementById("rx-cancel-id")?.value;
+    const prescriptionId = safePositiveId(document.getElementById("rx-cancel-id")?.value);
     const reason =
       document.getElementById("rx-cancel-reason")?.value.trim() || "";
 
@@ -633,7 +682,7 @@ const Prescriptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prescription_id: parseInt(prescriptionId),
+          prescription_id: prescriptionId,
           reason,
         }),
       },
@@ -644,8 +693,11 @@ const Prescriptions = {
       showToast("Prescription cancelled.", "success");
       this.closeCancelModal();
       this.closeViewModal();
-      if (typeof loadDoctorPrescriptions === "function")
+      if (typeof window.refreshWS === "function") {
+        await window.refreshWS();
+      } else if (typeof loadDoctorPrescriptions === "function") {
         loadDoctorPrescriptions();
+      }
     } else {
       showToast(
         result.data?.message || "Failed to cancel prescription.",
@@ -661,15 +713,22 @@ const Prescriptions = {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
 
-    if (!prescriptions || prescriptions.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${role === "admin" ? 8 : 7}" class="text-center" style="padding:var(--s8);color:var(--text-muted)">No prescriptions found.</td></tr>`;
+    const rows = Array.isArray(prescriptions)
+      ? prescriptions.filter(isPrescriptionRecord)
+      : [];
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="${role === "admin" ? 8 : 7}" class="text-center rx-empty-cell">No prescriptions found.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = prescriptions
+    tbody.innerHTML = rows
       .map((rx) => {
-        const statusClass = (rx.status || "active").toLowerCase();
-        const viewBtn = `<button class="btn btn-outline btn-sm" onclick="Prescriptions.openViewModal(${rx.id})"><i class="fas fa-eye" aria-hidden="true"></i> View</button>`;
+        const statusClass = safeClassToken(rx.status || "active");
+        const prescriptionId = safePositiveId(rx.id);
+        const itemCount = safeCount(rx.items_count, 0);
+        const viewBtn = prescriptionId
+          ? `<button class="btn btn-outline btn-sm" data-prescription-action="open-view" data-prescription-id="${prescriptionId}"><i class="fas fa-eye" aria-hidden="true"></i> View</button>`
+          : '<span class="text-muted">Unavailable</span>';
 
         let extraCols = "";
         if (role === "admin") {
@@ -680,13 +739,84 @@ const Prescriptions = {
 
         const colSpan = role === "admin" ? 8 : 7;
 
-        return `<tr><td>${escapeHTML(formatDate(rx.created_at))}</td>${extraCols}<td>${escapeHTML(formatDate(rx.appt_date))}</td><td>${escapeHTML(rx.appt_department || "")}</td><td><span class="status status-${statusClass}">${rx.status}</span></td><td><span style="color:var(--text-secondary)">${rx.items_count || 0} item${(rx.items_count || 0) !== 1 ? "s" : ""}</span></td><td>${viewBtn}</td></tr>`;
+        return `<tr><td>${escapeHTML(formatDate(rx.created_at))}</td>${extraCols}<td>${escapeHTML(formatDate(rx.appt_date))}</td><td>${escapeHTML(rx.appt_department || "")}</td><td><span class="status status-${statusClass}">${escapeHTML(rx.status || "")}</span></td><td><span class="rx-list-item-count">${itemCount} item${itemCount !== 1 ? "s" : ""}</span></td><td>${viewBtn}</td></tr>`;
       })
       .join("");
   },
 };
 
+/**
+ * Delegate shared Prescription module controls through a fixed action allowlist.
+ * Modal/form methods continue to enforce role, ID and state checks.
+ */
+function bindPrescriptionDelegatedActions() {
+  if (window._hbPrescriptionDelegatedActionsBound) return;
+
+  const medicationContainers = new Set([
+    "rx-items-container",
+    "rx-edit-items-container",
+  ]);
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const control = target?.closest("[data-prescription-action]");
+    if (!control) return;
+
+    const action = control.dataset.prescriptionAction;
+    const prescriptionId = safePositiveId(control.dataset.prescriptionId);
+    event.preventDefault();
+
+    switch (action) {
+      case "close-issue":
+        Prescriptions.closeIssueModal();
+        break;
+      case "add-medication": {
+        const containerId = control.dataset.containerId;
+        if (medicationContainers.has(containerId)) {
+          Prescriptions.addMedicationItem(containerId);
+        }
+        break;
+      }
+      case "remove-medication": {
+        const item = control.closest(".rx-medication-item");
+        const container = item?.parentElement;
+        if (item && container && medicationContainers.has(container.id)) {
+          item.remove();
+        }
+        break;
+      }
+      case "close-view":
+        Prescriptions.closeViewModal();
+        break;
+      case "open-view":
+        if (prescriptionId) Prescriptions.openViewModal(prescriptionId);
+        break;
+      case "open-edit":
+        if (prescriptionId) Prescriptions.openEditModal(prescriptionId);
+        break;
+      case "close-edit":
+        Prescriptions.closeEditModal();
+        break;
+      case "complete":
+        if (prescriptionId) Prescriptions.confirmComplete(prescriptionId);
+        break;
+      case "open-cancel":
+        if (prescriptionId) Prescriptions.openCancelModal(prescriptionId);
+        break;
+      case "close-cancel":
+        Prescriptions.closeCancelModal();
+        break;
+      case "print":
+        Prescriptions.printPrescription();
+        break;
+    }
+  });
+
+  window._hbPrescriptionDelegatedActionsBound = true;
+}
+
 // Expose to global scope
 window.Prescriptions = Prescriptions;
+bindPrescriptionDelegatedActions();
 
 

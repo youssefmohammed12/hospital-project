@@ -15,27 +15,47 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/PrintOutputContext.php';
 require_once __DIR__ . '/../../services/PrescriptionService.php';
+require_once __DIR__ . '/../../services/HospitalSettingsService.php';
 
 // Override Content-Type from application/json (set by auth_middleware's sendCorsHeaders)
 // to text/html since this is a standalone printable page, not an API endpoint.
 header('Content-Type: text/html; charset=utf-8');
 
 $user = requireAuth();
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    echo '<h1>405 Method Not Allowed</h1><p>This document is available with GET requests only.</p>';
+    exit;
+}
+
 $currentUserId = (int)$user['id'];
 $currentRole   = $user['role'];
 
-$prescriptionId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if (!in_array($currentRole, ['admin', 'doctor', 'patient'], true)) {
+    http_response_code(403);
+    echo '<h1>403 Forbidden</h1><p>You do not have permission to view prescriptions.</p>';
+    exit;
+}
+header('Cache-Control: no-store, private');
+header('Pragma: no-cache');
 
-if (!$prescriptionId) {
+$idValue = $_GET['id'] ?? null;
+$normalizedId = is_string($idValue) ? ltrim($idValue, '0') : '';
+$prescriptionId = is_string($idValue) && ctype_digit($idValue) ? (int)$idValue : 0;
+
+if ($prescriptionId < 1 || (string)$prescriptionId !== $normalizedId) {
     http_response_code(400);
-    echo '<h1>400 Bad Request</h1><p>Prescription ID is required.</p>';
+    echo '<h1>400 Bad Request</h1><p>A valid positive prescription ID is required.</p>';
     exit;
 }
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db);
+    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
     $rx = $ps->get($prescriptionId);
 
     if (!$rx) {
@@ -59,9 +79,26 @@ try {
 
     // ── Format data ──
     $rxIdFormatted = 'RX-' . date('Y') . '-' . str_pad($rx['id'], 6, '0', STR_PAD_LEFT);
-    $statusClass = strtolower($rx['status'] ?? 'active');
+    $statusClass = PrintOutputContext::prescriptionStatusClass($rx['status'] ?? null);
     $items = $rx['items'] ?? [];
     $doctorSpecialty = $rx['appt_department'] ?? 'Medical Department';
+    $hospitalSettings = (new HospitalSettingsService(
+        $db,
+        HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_HOSPITAL_SCHEMA')
+    ))->getSettings();
+    $hospitalName = trim((string)($hospitalSettings['hospital_name'] ?? '')) ?: 'HealthBridge Hospital';
+    $hospitalAddress = trim((string)($hospitalSettings['hospital_address'] ?? ''));
+    $hospitalPhone = trim((string)($hospitalSettings['hospital_phone'] ?? ''));
+    $hospitalEmail = trim((string)($hospitalSettings['hospital_email'] ?? ''));
+    $hospitalContactParts = array_filter([
+        $hospitalAddress,
+        $hospitalPhone !== '' ? 'Tel: ' . $hospitalPhone : '',
+        $hospitalEmail !== '' ? 'Email: ' . $hospitalEmail : '',
+    ], static fn(string $value): bool => $value !== '');
+    $hospitalContactLine = implode(' · ', array_map(
+        static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8'),
+        $hospitalContactParts
+    ));
     $issueDate = date('F j, Y', strtotime($rx['created_at']));
     $updatedDate = $rx['updated_at'] && $rx['updated_at'] !== $rx['created_at'] 
         ? date('F j, Y', strtotime($rx['updated_at'])) 
@@ -82,7 +119,7 @@ try {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g" crossorigin="anonymous">
     <link rel="stylesheet" href="../../assets/css/modules/print-prescription.css">
 </head>
 <body>
@@ -93,8 +130,8 @@ try {
             <i class="fas fa-hospital" aria-hidden="true"></i>
         </div>
         <div class="print-logo-text">
-            <h1>HealthBridge Hospital</h1>
-            <p>123 Healthcare Avenue, Medical District &middot; Tel: +1 (555) 123-4567 &middot; Email: info@healthbridge.com</p>
+            <h1><?php echo htmlspecialchars($hospitalName, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p><?php echo $hospitalContactLine !== '' ? $hospitalContactLine : 'Hospital contact details are not configured.'; ?></p>
         </div>
     </div>
 
@@ -108,7 +145,7 @@ try {
             <?php endif; ?>
         </div>
         <div>
-            <span class="print-status print-status-<?php echo htmlspecialchars($statusClass); ?>">
+            <span class="print-status print-status-<?php echo htmlspecialchars($statusClass, ENT_QUOTES, 'UTF-8'); ?>">
                 <?php echo htmlspecialchars($rx['status']); ?>
             </span>
         </div>
@@ -167,22 +204,23 @@ try {
     <div class="print-meds-section">
         <div class="print-meds-title">
             <i class="fas fa-capsules" aria-hidden="true"></i> Prescribed Medications
-            <span style="font-weight:400;font-size:9pt;color:#666"> (<?php echo count($items); ?> item<?php echo count($items) !== 1 ? 's' : ''; ?>)</span>
+            <span class="print-meds-count"> (<?php echo count($items); ?> item<?php echo count($items) !== 1 ? 's' : ''; ?>)</span>
         </div>
 
         <?php if (empty($items)): ?>
-            <p style="color:#666;font-size:9pt;padding:12px 0;text-align:center">No medication items found.</p>
+            <p class="print-empty-message">No medication items found.</p>
         <?php else: ?>
+            <div class="print-meds-table-wrapper">
             <table class="print-meds-table">
                 <thead>
                     <tr>
-                        <th style="width:5%">#</th>
-                        <th style="width:22%">Medication</th>
-                        <th style="width:12%">Strength</th>
-                        <th style="width:12%">Dosage</th>
-                        <th style="width:15%">Frequency</th>
-                        <th style="width:10%">Duration</th>
-                        <th style="width:24%">Instructions</th>
+                        <th class="print-meds-col print-meds-col--number">#</th>
+                        <th class="print-meds-col print-meds-col--medication">Medication</th>
+                        <th class="print-meds-col print-meds-col--strength">Strength</th>
+                        <th class="print-meds-col print-meds-col--dosage">Dosage</th>
+                        <th class="print-meds-col print-meds-col--frequency">Frequency</th>
+                        <th class="print-meds-col print-meds-col--duration">Duration</th>
+                        <th class="print-meds-col print-meds-col--instructions">Instructions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -199,6 +237,7 @@ try {
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
         <?php endif; ?>
     </div>
 
@@ -216,11 +255,11 @@ try {
             <h3><i class="fas fa-pen" aria-hidden="true"></i> Prescribing Doctor</h3>
             <div class="print-signature-name"><?php echo htmlspecialchars($rx['doctor_name'] ?? $rx['appt_doctor_name'] ?? 'N/A'); ?></div>
             <div class="print-signature-details"><?php echo htmlspecialchars($doctorSpecialty); ?></div>
-            <div class="print-signature-line">Electronic Signature</div>
+            <div class="print-signature-line">Prescriber recorded on this prescription</div>
         </div>
         <div class="print-signature-right">
-            <i class="fas fa-qrcode" style="font-size:18pt" aria-hidden="true"></i><br>
-            <?php echo htmlspecialchars($rxIdFormatted); ?>
+            <span>Document reference</span><br>
+            <strong><?php echo htmlspecialchars($rxIdFormatted, ENT_QUOTES, 'UTF-8'); ?></strong>
         </div>
     </div>
 
@@ -230,36 +269,12 @@ try {
         <p>If the window did not close automatically, click the button above.</p>
     </div>
 
-    <script>
-    // Auto-print on load
-    window.onload = function() {
-        setTimeout(function() {
-            window.print();
-        }, 300);
-    };
-
-    // Auto-close after printing
-    window.onafterprint = function() {
-        // Try to close the window (only works for windows opened via window.open)
-        window.close();
-    };
-
-    // Fallback: if afterprint doesn't fire, listen for matchMedia change
-    var printMedia = window.matchMedia('print');
-    printMedia.addEventListener('change', function(e) {
-        if (!e.matches) {
-            // Print dialog was closed — try to close window
-            setTimeout(function() {
-                window.close();
-            }, 200);
-        }
-    });
-    </script>
+        <script src="../../assets/js/pages/print/prescription-print.js"></script>
 
 </body>
 </html>
 <?php
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Print Prescription Error: ' . $e->getMessage());
     http_response_code(500);
     echo '<h1>500 Internal Server Error</h1><p>Failed to load prescription for printing.</p>';

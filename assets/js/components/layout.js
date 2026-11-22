@@ -14,6 +14,42 @@
  *   </script>
  */
 
+/**
+ * Read only the expected local HTML fragment. A fetch that is redirected,
+ * served from another origin/path, or returned with a non-HTML MIME type
+ * must never become an HTML insertion source.
+ *
+ * @param {Response} response
+ * @param {string} requestedPath
+ * @returns {Promise<string>}
+ */
+async function readTrustedLayoutFragment(response, requestedPath) {
+  if (!response || !response.ok) {
+    throw new Error("Layout fragment request failed.");
+  }
+  if (response.redirected) {
+    throw new Error("Redirected layout fragments are not accepted.");
+  }
+
+  const contentType = response.headers?.get?.("content-type") || "";
+  if (!/^text\/html(?:\s*;|$)/i.test(contentType.trim())) {
+    throw new Error("Layout fragment response must be HTML.");
+  }
+
+  const expectedUrl = new URL(requestedPath, window.location.href);
+  const finalUrl = new URL(response.url, window.location.href);
+  if (
+    expectedUrl.origin !== window.location.origin ||
+    finalUrl.origin !== expectedUrl.origin ||
+    finalUrl.pathname !== expectedUrl.pathname ||
+    finalUrl.search !== expectedUrl.search
+  ) {
+    throw new Error("Unexpected layout fragment response URL.");
+  }
+
+  return response.text();
+}
+
 const Layout = {
   /** @type {Object|null} Current user data */
   user: null,
@@ -94,10 +130,9 @@ const Layout = {
     }
 
     try {
-      const response = await fetch(`${this.basePath}includes/fragments/navbar.html`);
-      if (!response.ok) throw new Error('Failed to load navbar');
-
-      const html = await response.text();
+      const fragmentPath = `${this.basePath}includes/fragments/navbar.html`;
+      const response = await fetch(fragmentPath);
+      const html = await readTrustedLayoutFragment(response, fragmentPath);
       navbarContainer.innerHTML = html;
 
       // Update auth links based on user state
@@ -130,10 +165,9 @@ const Layout = {
     }
 
     try {
-      const response = await fetch(`${this.basePath}includes/fragments/sidebar.html`);
-      if (!response.ok) throw new Error('Failed to load sidebar');
-
-      const html = await response.text();
+      const fragmentPath = `${this.basePath}includes/fragments/sidebar.html`;
+      const response = await fetch(fragmentPath);
+      const html = await readTrustedLayoutFragment(response, fragmentPath);
       sidebarContainer.innerHTML = html;
     } catch (error) {
       console.error('Error loading sidebar:', error);
@@ -161,14 +195,14 @@ const Layout = {
         </a>
         <button class="nav-icon-btn" id="notif-bell-btn" title="Notifications" aria-label="Notifications">
           <i class="fas fa-bell"></i>
-          <span class="notification-badge" id="notif-badge" style="display:none">0</span>
+          <span class="notification-badge" id="notif-badge" hidden>0</span>
         </button>
         <span class="nav-user-name">${this.escapeHTML(user.name)}</span>
         <a href="${dashboardUrl}" class="nav-dashboard-link" title="Dashboard" aria-label="Open dashboard">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8v9.7a.5.5 0 0 1-.5.5h-5.2a.5.5 0 0 1-.5-.5v-5.4H9.2v5.4a.5.5 0 0 1-.5.5H3.5a.5.5 0 0 1-.5-.5v-9.7Z"></path></svg>
           <span>Dashboard</span>
         </a>
-        <button class="btn btn-outline btn-sm" onclick="Layout.logout()">Logout</button>
+        <button class="btn btn-outline btn-sm" data-navbar-action="logout">Logout</button>
       `;
 
       // Initialize notification service for the bell
@@ -185,7 +219,7 @@ const Layout = {
       // User is not logged in
       authLinks.innerHTML = `
         <a href="${this.basePath}pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
-        <a href="${this.basePath}pages/auth/login.html#signup" class="btn btn-primary btn-sm">Sign Up</a>
+        <a href="${this.basePath}pages/auth/register.html" class="btn btn-primary btn-sm">Sign Up</a>
       `;
     }
   },
@@ -208,12 +242,16 @@ const Layout = {
     const avatar = document.querySelector('.sidebar-avatar');
 
     if (this.user) {
-      if (nameEl) nameEl.textContent = this.user.name || 'Patient';
-      if (emailEl) emailEl.textContent = this.user.email || '';
+      const rawName = typeof this.user.name === 'string' ? this.user.name.trim() : '';
+      const displayName = rawName || 'Patient';
+      const displayEmail = typeof this.user.email === 'string' ? this.user.email : '';
 
-      if (avatar && this.user.name) {
-        const initials = this.user.name
-          .split(' ')
+      if (nameEl) nameEl.textContent = displayName;
+      if (emailEl) emailEl.textContent = displayEmail;
+
+      if (avatar && rawName) {
+        const initials = rawName
+          .split(/\s+/)
           .map(n => n[0])
           .join('')
           .substring(0, 2)
@@ -261,18 +299,7 @@ const Layout = {
     return div.innerHTML;
   },
 
-  /**
-   * Handle logout
-   */
-  logout() {
-    localStorage.removeItem('hb_user');
-    localStorage.removeItem('hb_token');
-    window.location.href = this.basePath + 'pages/auth/login.html';
-  }
 };
-
-// Expose logout function globally for onclick handlers
-window.logoutUser = () => Layout.logout();
 
 // Auto-initialize if DOM is ready
 if (document.readyState === 'loading') {

@@ -1,331 +1,240 @@
 <?php
 /**
  * HealthBridge — Book Appointment
- * Creates a new appointment with schedule validation and notifies relevant parties.
  *
- * Features:
- * - Validates against doctor's schedule (working days, hours, break, availability)
- * - Prevents double booking (race-condition safe)
- * - Notifies doctor (and patient if booked by admin)
- * - Supports patient self-booking and admin-assisted booking
- * - Backward-compatible: accepts legacy `department` (name) or new `department_id`
- *
- * The schedule validation is done BEFORE inserting the appointment,
- * ensuring only valid slots can be booked regardless of frontend state.
+ * HTTP boundary accepts modern IDs and older name-only client payloads.
+ * All authoritative department/doctor/patient checks, locking, schedule and
+ * overlap validation, inserts, audit, and outbox writes live in the
+ * schema-aware AppointmentBookingRepository.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../services/AuditService.php';
-require_once __DIR__ . '/../../services/ScheduleService.php';
+require_once __DIR__ . '/../../services/Repositories/AppointmentBookingRepository.php';
+require_once __DIR__ . '/../../includes/AppointmentTime.php';
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 $user = requireAuth();
-$userId = (int)$user['id'];
-$userRole = $user['role'] ?? '';
+$actorUserId = (int)$user['id'];
+$actorRole = (string)($user['role'] ?? '');
+
+if (!in_array($actorRole, ['patient', 'admin'], true)) {
+    http_response_code(403);
+    jsonResponse(false, ['message' => 'Only patients and administrators can book appointments.']);
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 $input = json_decode(file_get_contents('php://input'), true);
-if (!$input) {
+if (!is_array($input)) {
     $input = $_POST;
 }
-
-// ── Extract input fields ──
-$departmentName = trim($input['department'] ?? '');
-$departmentId   = (int)($input['department_id'] ?? 0);
-$doctorName     = trim($input['doctor'] ?? '');
-$doctorId       = (int)($input['doctor_id'] ?? 0);
-$date           = trim($input['date'] ?? '');
-$time           = trim($input['time'] ?? '');
-$patientName    = trim($input['patientName'] ?? '');
-$notes          = trim($input['notes'] ?? '');
-$patientId      = (int)($input['patient_id'] ?? 0);
-
-// ── Validate required fields (doctor, date, time, patientName are always required) ──
-if (!$doctorName || !$date || !$time || !$patientName) {
+if (!is_array($input)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'All required fields must be filled.']);
-    exit;
+    jsonResponse(false, ['message' => 'Invalid booking request payload.']);
 }
 
-// ── Department Resolution Logic ──
-// At least one of department (name) or department_id must be provided.
-if (!$departmentName && !$departmentId) {
+$departmentName = is_string($input['department'] ?? null) ? trim($input['department']) : '';
+$doctorName = is_string($input['doctor'] ?? null) ? trim($input['doctor']) : '';
+$patientName = is_string($input['patientName'] ?? null) ? trim($input['patientName']) : '';
+$date = is_string($input['date'] ?? null) ? trim($input['date']) : '';
+$time = is_string($input['time'] ?? null) ? trim($input['time']) : '';
+$notesValue = $input['notes'] ?? '';
+if (!is_string($input['notes'] ?? '') && ($input['notes'] ?? null) !== null) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Department information is required.']);
-    exit;
+    jsonResponse(false, ['message' => 'Appointment notes must be text.']);
+}
+$notes = is_string($notesValue) ? trim($notesValue) : '';
+
+$departmentId = 0;
+if (($input['department_id'] ?? null) !== null && ($input['department_id'] ?? '') !== '') {
+    $departmentId = parsePositiveInt($input['department_id']);
+    if ($departmentId === null) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Department ID must be a positive integer.']);
+    }
+}
+$doctorId = 0;
+if (($input['doctor_id'] ?? null) !== null && ($input['doctor_id'] ?? '') !== '') {
+    $doctorId = parsePositiveInt($input['doctor_id']);
+    if ($doctorId === null) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Doctor ID must be a positive integer.']);
+    }
+}
+$requestedPatientId = 0;
+if (($input['patient_id'] ?? null) !== null && ($input['patient_id'] ?? '') !== '' && ($input['patient_id'] ?? '') !== '0') {
+    $requestedPatientId = parsePositiveInt($input['patient_id']);
+    if ($requestedPatientId === null) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Patient ID must be a positive integer.']);
+    }
+}
+
+if ((!$doctorId && $doctorName === '') || $date === '' || $time === '' || $patientName === '') {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'All required fields must be filled.']);
+}
+if (!$departmentId && $departmentName === '') {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Department information is required.']);
+}
+if (mb_strlen($notes) > 10000) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Appointment notes are too long.']);
 }
 
 try {
     $db = getDB();
+    // The current HTTP runtime is V1. V2 booking has already been exercised
+    // through the same repository's disposable-fixture contract.
+    $schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA');
 
-    // Resolve department: determine the authoritative department_id and department name
-    $resolvedDeptId = 0;
-    $resolvedDeptName = '';
-
-    if ($departmentId > 0 && $departmentName !== '') {
-        // Both provided: validate they refer to the same department
-        $deptStmt = $db->prepare("SELECT id, name, status FROM departments WHERE id = ? AND name = ? LIMIT 1");
-        $deptStmt->execute([$departmentId, $departmentName]);
-        $deptRow = $deptStmt->fetch();
-
-        if (!$deptRow) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'The provided department ID and department name do not match.']);
-            exit;
-        }
-
-        if ($deptRow['status'] !== 'active') {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'This department is not currently accepting bookings.']);
-            exit;
-        }
-
-        $resolvedDeptId = (int)$deptRow['id'];
-        $resolvedDeptName = $deptRow['name'];
-
-    } elseif ($departmentId > 0) {
-        // Only department_id provided (admin.js, patient-emr.js flow)
-        $deptStmt = $db->prepare("SELECT id, name, status FROM departments WHERE id = ? LIMIT 1");
-        $deptStmt->execute([$departmentId]);
-        $deptRow = $deptStmt->fetch();
-
-        if (!$deptRow) {
+    // Resolve a legacy department-name payload into the canonical department ID.
+    if ($departmentId > 0) {
+        $departmentStmt = $db->prepare('SELECT id,name,status FROM departments WHERE id=? LIMIT 1');
+        $departmentStmt->execute([$departmentId]);
+        $department = $departmentStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$department) {
             http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Department not found.']);
-            exit;
+            jsonResponse(false, ['message' => 'Department not found.']);
         }
-
-        if ($deptRow['status'] !== 'active') {
+        if ($departmentName !== '' && (string)$department['name'] !== $departmentName) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'This department is not currently accepting bookings.']);
-            exit;
+            jsonResponse(false, ['message' => 'The provided department ID and department name do not match.']);
         }
-
-        $resolvedDeptId = (int)$deptRow['id'];
-        $resolvedDeptName = $deptRow['name'];
-
     } else {
-        // Only department name provided (dashboard.js patient self-booking flow)
-        $deptStmt = $db->prepare("SELECT id, name, status FROM departments WHERE name = ? LIMIT 1");
-        $deptStmt->execute([$departmentName]);
-        $deptRow = $deptStmt->fetch();
-
-        if (!$deptRow) {
+        $departmentStmt = $db->prepare('SELECT id,name,status FROM departments WHERE name=? LIMIT 1');
+        $departmentStmt->execute([$departmentName]);
+        $department = $departmentStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$department) {
             http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Department not found.']);
-            exit;
+            jsonResponse(false, ['message' => 'Department not found.']);
         }
-
-        if ($deptRow['status'] !== 'active') {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'This department is not currently accepting bookings.']);
-            exit;
-        }
-
-        $resolvedDeptId = (int)$deptRow['id'];
-        $resolvedDeptName = $deptRow['name'];
+        $departmentId = (int)$department['id'];
     }
-
-    // If doctor_id not provided, look up by name
-    if (!$doctorId) {
-        $stmt = $db->prepare("SELECT id FROM users WHERE name = ? AND role = 'doctor' LIMIT 1");
-        $stmt->execute([$doctorName]);
-        $doctorRow = $stmt->fetch();
-        if (!$doctorRow) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Doctor not found.']);
-            exit;
-        }
-        $doctorId = (int)$doctorRow['id'];
-    }
-
-    // ── Schedule Validation (Phase 2) ──
-    // Normalize time to 24-hour format for schedule validation
-    $normalizedTime = normalizeBookingTime($time);
-
-    $ss = new ScheduleService($db);
-    $validationError = $ss->validateBookingSlot($doctorId, $date, $normalizedTime);
-    
-    // ── Hospital Hours Enforcement (Defense-in-Depth) ──
-    // Independently validate that the appointment fits within current hospital
-    // operating hours. This is a hard global boundary that cannot be bypassed
-    // even if the doctor's schedule is stale.
-    $hospitalHours = $ss->getHospitalHours();
-    $hospitalOpen = $hospitalHours['open'];
-    $hospitalClose = $hospitalHours['close'];
-    
-    if ($normalizedTime < $hospitalOpen) {
+    if ((string)$department['status'] !== 'active') {
         http_response_code(409);
-        echo json_encode(['success' => false, 'message' => 'Selected time is before hospital opening (' . $hospitalOpen . ').']);
-        exit;
+        jsonResponse(false, ['message' => 'This department is not currently accepting bookings.']);
     }
-    
-    // Ensure the entire appointment fits within hospital closing time
-    $bookingDuration = getAppointmentDuration((int)$doctorId);
-    $timeMinutes = (function($t) {
-        $parts = explode(':', $t);
-        return (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
-    })($normalizedTime);
-    $closeMinutes = (function($t) {
-        $parts = explode(':', $t);
-        return (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
-    })($hospitalClose);
-    
-    if ($timeMinutes + $bookingDuration > $closeMinutes) {
-        $latestStart = sprintf('%02d:%02d', (int)(($closeMinutes - $bookingDuration) / 60), ($closeMinutes - $bookingDuration) % 60);
-        http_response_code(409);
-        echo json_encode(['success' => false, 'message' => 'This appointment would end after hospital closing (' . $hospitalClose . '). Latest start time is ' . $latestStart . '.']);
-        exit;
-    }
-    // ── End Hospital Hours Enforcement ──
+    $departmentName = (string)$department['name'];
 
-    if ($validationError !== null) {
-        http_response_code(409); // Conflict — slot unavailable
-        echo json_encode(['success' => false, 'message' => $validationError]);
-        exit;
-    }
-
-    // ── Double-Booking Prevention (Race Condition Guard) ──
-    // Check again inside a transaction to prevent concurrent bookings at the same time
-    $db->beginTransaction();
-
-    try {
-        // Lock the appointments table for this doctor/date/time to prevent race conditions
-        $checkStmt = $db->prepare(
-            "SELECT id FROM appointments
-             WHERE doctor_id = ? AND date = ? AND time = ? AND status IN ('Pending', 'Confirmed')
-             FOR UPDATE"
-        );
-        $checkStmt->execute([$doctorId, $date, $time]);
-        $existing = $checkStmt->fetch();
-
-        if ($existing) {
-            $db->rollBack();
+    // Legacy clients may send a doctor display name without an ID. Resolve only
+    // an unambiguous active doctor from the selected department.
+    if ($doctorId <= 0) {
+        if ($schema === AppointmentBookingRepository::SCHEMA_V1) {
+            $doctorSql = "SELECT u.id,u.name
+                FROM users u JOIN doctors d ON d.user_id=u.id
+                WHERE u.name=? AND u.role='doctor' AND u.is_active=1
+                  AND (d.department_id=? OR (
+                    d.department_id IS NULL
+                    AND LOWER(TRIM(d.specialty))=LOWER(TRIM(?))
+                  ))
+                ORDER BY u.id LIMIT 2";
+        } else {
+            $doctorSql = "SELECT u.id,u.name
+                FROM users u JOIN doctor_profiles d ON d.doctor_user_id=u.id
+                WHERE u.name=? AND u.role='doctor' AND u.is_active=1
+                  AND (d.department_id=? OR (
+                    d.department_id IS NULL
+                    AND LOWER(TRIM(d.specialty))=LOWER(TRIM(?))
+                  ))
+                ORDER BY u.id LIMIT 2";
+        }
+        $doctorStmt = $db->prepare($doctorSql);
+        $doctorStmt->execute([$doctorName, $departmentId, $departmentName]);
+        $matches = $doctorStmt->fetchAll(PDO::FETCH_ASSOC);
+        if (count($matches) > 1) {
             http_response_code(409);
-            echo json_encode(['success' => false, 'message' => 'This time slot was just booked by someone else. Please choose another.']);
-            exit;
+            jsonResponse(false, ['message' => 'More than one doctor has that name in this department. Please select the doctor again.']);
         }
-
-        // ── Admin Booking Logic ──
-        $appointmentUserId = $userId;
-        $actualPatientName = $patientName;
-
-        if ($userRole === 'admin') {
-            if ($patientId > 0) {
-                $stmt = $db->prepare("SELECT id, name FROM users WHERE id = ? AND role = 'patient' LIMIT 1");
-                $stmt->execute([$patientId]);
-                $patientRow = $stmt->fetch();
-                if ($patientRow) {
-                    $appointmentUserId = (int)$patientRow['id'];
-                    $actualPatientName = $patientRow['name'];
-                }
-            } else {
-                $stmt = $db->prepare("SELECT id, name FROM users WHERE name = ? AND role = 'patient' LIMIT 1");
-                $stmt->execute([$patientName]);
-                $patientRow = $stmt->fetch();
-                if ($patientRow) {
-                    $appointmentUserId = (int)$patientRow['id'];
-                    $actualPatientName = $patientRow['name'];
-                }
-            }
+        if (!$matches) {
+            http_response_code(404);
+            jsonResponse(false, ['message' => 'The selected doctor is not available in this department.']);
         }
-
-        // Generate and store the appointment_time_range at booking time
-        // so it stays fixed even if the doctor changes their duration later
-        $bookingDuration = getAppointmentDuration((int)$doctorId);
-        $storedTimeRange = computeAppointmentTimeRange($time, $bookingDuration);
-
-        // Insert appointment
-        $stmt = $db->prepare(
-            'INSERT INTO appointments (doctor_id, user_id, patient_name, department, department_id, doctor, date, time, appointment_time_range, notes, status, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending", NOW())'
-        );
-        $stmt->execute([$doctorId, $appointmentUserId, $actualPatientName, $resolvedDeptName, $resolvedDeptId, $doctorName, $date, $time, $storedTimeRange, $notes]);
-        $appointmentId = (int)$db->lastInsertId();
-
-        $db->commit();
-
-    } catch (Exception $e) {
-        $db->rollBack();
-        throw $e;
+        $doctorId = (int)$matches[0]['id'];
     }
 
-    // ── Notifications ──
-    $ns = new NotificationService($db);
-    
-    // Generate time range for notification messages
-    $duration = getAppointmentDuration((int)$doctorId);
-    $timeRangeStr = computeAppointmentTimeRange($time, $duration);
-
-    // Always notify the doctor
-    $notifMessage = "{$actualPatientName} booked an appointment on {$date} ({$timeRangeStr}) for {$resolvedDeptName}.";
-    $ns->create(
-        $doctorId,
-        NotificationService::TYPE_APPOINTMENT_REQUEST,
-        'New Booking Request',
-        $notifMessage,
-        'appointment',
-        $appointmentId
-    );
-
-    // If an admin booked for a patient, also notify the patient
-    if ($userRole === 'admin' && $appointmentUserId !== $userId) {
-        $patientNotifMessage = "An appointment has been booked for you with Dr. {$doctorName} on {$date} ({$timeRangeStr}) for {$resolvedDeptName}.";
-        $ns->create(
-            $appointmentUserId,
-            NotificationService::TYPE_APPOINTMENT_REQUEST,
-            'Appointment Booked for You',
-            $patientNotifMessage,
-            'appointment',
-            $appointmentId
+    // Patient self-booking is always tied to the authenticated account.
+    // Admin-assisted booking must resolve to a real active patient account.
+    if ($actorRole === 'patient') {
+        if ($requestedPatientId > 0 && $requestedPatientId !== $actorUserId) {
+            http_response_code(403);
+            jsonResponse(false, ['message' => 'Patients can only book appointments for their own account.']);
+        }
+        $patientId = $actorUserId;
+    } elseif ($requestedPatientId > 0) {
+        $patientId = $requestedPatientId;
+    } else {
+        $patientStmt = $db->prepare(
+            "SELECT id FROM users WHERE name=? AND role='patient' AND is_active=1 ORDER BY id LIMIT 2"
         );
+        $patientStmt->execute([$patientName]);
+        $matches = $patientStmt->fetchAll(PDO::FETCH_COLUMN);
+        if (count($matches) > 1) {
+            http_response_code(409);
+            jsonResponse(false, ['message' => 'More than one patient has that name. Please select the patient again.']);
+        }
+        if (!$matches) {
+            http_response_code(404);
+            jsonResponse(false, ['message' => 'The selected patient account was not found.']);
+        }
+        $patientId = (int)$matches[0];
     }
 
-    // Log to audit
-    $audit = new AuditService($db, (int)$user['id'], $user['role']);
-    $audit->log('book', 'appointment', $appointmentId, null, 
-        ['doctor_id' => $doctorId, 'patient_id' => $appointmentUserId, 'date' => $date, 'time' => $time],
-        "Appointment booked: $actualPatientName with $doctorName on $date at $time", $appointmentUserId, $doctorId);
+    $booking = new AppointmentBookingRepository($db, $schema);
+    $appointmentId = $booking->book([
+        'doctor_user_id' => $doctorId,
+        'patient_user_id' => $patientId,
+        'department_id' => $departmentId,
+        'date' => $date,
+        'time' => AppointmentTime::normalize($time),
+        'notes' => $notes,
+        'actor_user_id' => $actorUserId,
+        'actor_role' => $actorRole,
+    ]);
 
-    echo json_encode([
-        'success' => true,
+    // Booking and outbox writes have committed together. Dispatch is best-effort.
+    $notifications = new NotificationService($db);
+    try {
+        $notifications->processOutbox(50);
+    } catch (Throwable $notificationError) {
+        error_log('Book Appointment Outbox Dispatch Error: ' . get_class($notificationError));
+    }
+
+    jsonResponse(true, [
         'message' => 'Appointment booked successfully!',
         'appointment_id' => $appointmentId,
     ]);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    if (str_contains($message, 'only book appointments for their own account')) {
+        http_response_code(403);
+    } elseif (str_contains($message, 'not found')) {
+        http_response_code(404);
+    } elseif (str_contains($message, 'not available') || str_contains($message, 'does not belong')
+        || str_contains($message, 'overlap') || str_contains($message, 'slot')) {
+        http_response_code(409);
+    } else {
+        http_response_code(400);
+    }
+    jsonResponse(false, ['message' => $message]);
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    if (isset($db) && $db instanceof PDO && $db->inTransaction()) {
+        $db->rollBack();
+    }
+    if (isDuplicateKeyViolation($e)) {
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'The selected appointment time is no longer available.']);
+    }
     error_log('Book Appointment Error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Failed to book appointment.']);
-}
-
-/**
- * Normalize a time string to 24-hour HH:MM format for schedule validation.
- * Handles both "09:00 AM" (12-hour) and "09:00" (24-hour) formats.
- *
- * @param string $time
- * @return string
- */
-function normalizeBookingTime(string $time): string
-{
-    // If already in 24-hour format
-    if (preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $time)) {
-        return $time;
-    }
-
-    // Try 12-hour format (e.g., "09:00 AM", "2:00 PM")
-    $parsed = date_parse_from_format('h:i A', strtoupper($time));
-    if ($parsed['error_count'] === 0 && $parsed['warning_count'] === 0) {
-        return sprintf('%02d:%02d', $parsed['hour'], $parsed['minute']);
-    }
-
-    // Try alternative format "h:iA" (no space)
-    $parsed = date_parse_from_format('h:iA', strtoupper($time));
-    if ($parsed['error_count'] === 0 && $parsed['warning_count'] === 0) {
-        return sprintf('%02d:%02d', $parsed['hour'], $parsed['minute']);
-    }
-
-    // Return as-is if we can't parse it
-    return $time;
+    jsonResponse(false, ['message' => 'Failed to book appointment.']);
 }

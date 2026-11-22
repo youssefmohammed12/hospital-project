@@ -382,3 +382,188 @@
 [data-theme="light"] .toggle-slider {
   background: var(--bg-surface);
 }
+
+
+/* CSP-safe settings page, modal, and password-strength states */
+.settings-page-tabs {
+  display: flex;
+  gap: var(--s2);
+  margin-bottom: var(--s6);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border-light);
+  flex-wrap: wrap;
+}
+
+.settings-page-tabs [hidden],
+#settings-tab-doctor[hidden],
+#settings-tab-admin[hidden],
+main.main-content section[id][hidden] {
+  display: none !important;
+}
+
+.settings-heading-reset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-readonly-field {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.settings-danger-icon,
+.settings-delete-modal-title {
+  color: var(--danger);
+}
+
+.settings-danger-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: var(--s4);
+}
+
+.settings-password-strength {
+  margin-top: var(--s1);
+}
+
+.settings-help-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding-top: var(--s2);
+}
+
+.settings-delete-modal-content {
+  max-width: 440px;
+}
+
+.settings-delete-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--s6);
+}
+
+.settings-delete-modal-title {
+  margin: 0;
+}
+
+.settings-delete-modal-description {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--s6);
+  line-height: 1.6;
+}
+
+body.settings-modal-open {
+  overflow: hidden;
+}
+
+.settings-modal-overlay--top-aligned {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px var(--s6) var(--s6);
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.settings-modal-overlay--top-aligned[hidden] {
+  display: none !important;
+}
+
+.pw-strength-fill--level-0 { width: 0%; background: transparent; }
+.pw-strength-fill--level-1 { width: 20%; background: var(--danger); }
+.pw-strength-fill--level-2 { width: 40%; background: #f87171; }
+.pw-strength-fill--level-3 { width: 60%; background: var(--warning); }
+.pw-strength-fill--level-4 { width: 80%; background: #86efac; }
+.pw-strength-fill--level-5 { width: 100%; background: var(--success); }
+
+.pw-strength-label--level-0 { color: var(--text-muted); }
+.pw-strength-label--level-1 { color: var(--danger); }
+.pw-strength-label--level-2 { color: #f87171; }
+.pw-strength-label--level-3 { color: var(--warning); }
+.pw-strength-label--level-4 { color: #84cc16; }
+.pw-strength-label--level-5 { color: var(--success); }
+
+/* ── Per-weekday doctor schedule editor (V2 settings DTO) ── */
+.weekly-schedule-editor {
+  margin-top: var(--s4);
+  padding: var(--s4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+}
+
+.weekly-schedule-heading h4 {
+  margin: 0 0 var(--s1);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.weekly-schedule-days {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.weekly-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(100px, 0.7fr) minmax(210px, 1.5fr);
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-md);
+}
+
+.weekly-schedule-day {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+}
+
+.weekly-schedule-working {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.weekly-schedule-times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.weekly-schedule-times label {
+  display: grid;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.weekly-schedule-times input {
+  width: 100%;
+  min-width: 0;
+}
+
+.weekly-schedule-times input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .weekly-schedule-row {
+    grid-template-columns: 1fr auto;
+    gap: var(--s2);
+  }
+
+  .weekly-schedule-times {
+    grid-column: 1 / -1;
+  }
+}

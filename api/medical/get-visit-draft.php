@@ -6,36 +6,50 @@
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/VisitDraftService.php';
+require_once __DIR__ . '/../../services/VisitWorkflowService.php';
+require_once __DIR__ . '/../../services/Repositories/ClinicalEncounterRepository.php';
 
 header('Content-Type: application/json');
 
-$user = requireAuth();
+$user = requireRole('doctor');
+$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
-if ($user['role'] !== 'doctor') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Only doctors can access visit drafts.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-$appointmentId = (int)($_GET['appointment_id'] ?? 0);
+$appointmentId = parsePositiveInt($_GET['appointment_id'] ?? null);
 
-if ($appointmentId <= 0) {
-    jsonResponse(false, ['message' => 'Appointment ID is required.']);
+if ($appointmentId === null) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'A valid appointment ID is required.']);
 }
 
 try {
     $db = getDB();
     
-    // Verify appointment belongs to this doctor
-    $stmt = $db->prepare(
-        "SELECT id FROM appointments WHERE id = ? AND doctor_id = ? LIMIT 1"
-    );
-    $stmt->execute([$appointmentId, (int)$user['id']]);
-    if (!$stmt->fetch()) {
+    // Resolve appointment ownership through the schema-aware context adapter.
+    $encounters = new ClinicalEncounterRepository($db, $schema);
+    $appointment = $encounters->getAppointmentContext($appointmentId);
+    if (
+        !$appointment
+        || (int)$appointment['doctor_user_id'] !== (int)$user['id']
+        || $appointment['status'] !== 'confirmed'
+        || $appointment['patient_user_id'] === null
+    ) {
         http_response_code(403);
-        jsonResponse(false, ['message' => 'You can only access drafts for your own appointments.']);
+        jsonResponse(false, ['message' => 'You can only access drafts for your own confirmed appointments.']);
     }
 
-    $draftService = new VisitDraftService($db);
+    $workflow = (new VisitWorkflowService($db, $schema))->get($appointmentId);
+    if (($workflow['status'] ?? null) === VisitWorkflowService::STATUS_COMPLETED) {
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'Completed visits no longer have editable drafts.']);
+    }
+
+    $draftService = new VisitDraftService($db, $schema);
     $draft = $draftService->get($appointmentId);
 
     jsonResponse(true, ['draft' => $draft]);

@@ -1,99 +1,112 @@
 <?php
 /**
- * HealthBridge — Visit Workflow Transition Endpoint (Phase 5.3.2)
+ * HealthBridge — Visit Workflow Transition Endpoint
  * Handles workflow state transitions separate from appointment booking status.
- *
- * Workflow states: Waiting, In Progress, Ready to Complete, Completed
- * Appointment status: Pending, Confirmed, Cancelled (unchanged)
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/NotificationService.php';
 require_once __DIR__ . '/../../services/VisitWorkflowService.php';
+require_once __DIR__ . '/../../services/ClinicalAccessService.php';
+require_once __DIR__ . '/../../services/Repositories/ClinicalEncounterRepository.php';
 
 header('Content-Type: application/json');
 
-$user = requireAuth();
-$input = getJsonInput();
-$appointmentId = (int)($input['appointment_id'] ?? 0);
-$newStatus = trim($input['status'] ?? '');
+$user = requireRole('doctor');
+$doctorId = (int)$user['id'];
+$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
-if ($appointmentId <= 0) {
-    jsonResponse(false, ['message' => 'Invalid appointment ID.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-if (!$newStatus) {
+$input = getJsonInput();
+$appointmentId = parsePositiveInt($input['appointment_id'] ?? null);
+$statusValue = $input['status'] ?? '';
+if (!is_string($statusValue)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Workflow status must be text.']);
+}
+$newStatus = trim($statusValue);
+
+if ($appointmentId === null) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'A valid appointment ID is required.']);
+}
+if ($newStatus === '') {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Status is required.']);
 }
 
-// Validate workflow status
 $validStatuses = [
-    VisitWorkflowService::STATUS_WAITING,
     VisitWorkflowService::STATUS_IN_PROGRESS,
     VisitWorkflowService::STATUS_READY_TO_COMPLETE,
-    VisitWorkflowService::STATUS_COMPLETED
 ];
-
-if (!in_array($newStatus, $validStatuses)) {
+if (!in_array($newStatus, $validStatuses, true)) {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Invalid workflow status.']);
 }
 
+$db = null;
+
 try {
     $db = getDB();
+    $db->beginTransaction();
 
-    // Verify appointment exists and belongs to the doctor (if doctor)
-    $stmt = $db->prepare(
-        "SELECT a.*, u.id AS patient_user_id 
-         FROM appointments a 
-         LEFT JOIN users u ON a.user_id = u.id 
-         WHERE a.id = ?"
-    );
-    $stmt->execute([$appointmentId]);
-    $appt = $stmt->fetch();
-
-    if (!$appt) {
-        jsonResponse(false, ['message' => 'Appointment not found.']);
+    $encounters = new ClinicalEncounterRepository($db, $schema);
+    $identity = $encounters->getAppointmentContext($appointmentId);
+    if (
+        !$identity
+        || (int)$identity['doctor_user_id'] !== $doctorId
+        || $identity['patient_user_id'] === null
+    ) {
+        $db->rollBack();
+        http_response_code(404);
+        jsonResponse(false, ['message' => 'Appointment not found or not assigned to you.']);
     }
 
-    // Authorization check
-    if ($user['role'] === 'doctor') {
-        if ((int)$appt['doctor_id'] !== (int)$user['id']) {
-            http_response_code(403);
-            jsonResponse(false, ['message' => 'You can only manage workflow for your own appointments.']);
-        }
+    // Account rows are locked before appointment/workflow rows.
+    $accountLocks = new ClinicalAccessService($db, $schema);
+    if (!$accountLocks->lockDoctorAndPatient($doctorId, (int)$identity['patient_user_id'])) {
+        $db->rollBack();
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'The appointment account relationship is no longer available.']);
     }
 
-    // Phase 5.4.1: Ensure workflow exists before transition (self-healing)
-    $wfService = new VisitWorkflowService($db);
-    $wfService->getOrCreateWorkflow($appointmentId);
-    
-    // Perform workflow transition
-    $wfService->transition($appointmentId, $newStatus);
-    
-    // Get the updated workflow to return to frontend
-    $updatedWorkflow = $wfService->get($appointmentId);
-
-    // Notify patient when visit is completed
-    if ($newStatus === VisitWorkflowService::STATUS_COMPLETED && !empty($appt['patient_user_id'])) {
-        $ns = new NotificationService($db);
-        $ns->create(
-            (int)$appt['patient_user_id'],
-            NotificationService::TYPE_APPOINTMENT_COMPLETED,
-            'Visit Completed',
-            "Your appointment with {$appt['doctor']} on {$appt['date']} at {$appt['time']} has been completed.",
-            'appointment',
-            $appointmentId
-        );
+    $appointment = $encounters->lockAppointmentContext($appointmentId);
+    if (
+        !$appointment
+        || (int)$appointment['doctor_user_id'] !== $doctorId
+        || (int)($appointment['patient_user_id'] ?? 0) !== (int)$identity['patient_user_id']
+        || $appointment['status'] !== 'confirmed'
+    ) {
+        $db->rollBack();
+        http_response_code(404);
+        jsonResponse(false, ['message' => 'Appointment not found or not assigned to you.']);
     }
 
+    // The service owns the workflow lock and validates the transition graph.
+    $workflowService = new VisitWorkflowService($db, $schema);
+    $workflowService->transition($appointmentId, $newStatus);
+    $updatedWorkflow = $workflowService->get($appointmentId);
+
+    $db->commit();
     jsonResponse(true, [
         'message' => 'Workflow updated successfully.',
-        'workflow' => $updatedWorkflow
+        'workflow' => $updatedWorkflow,
     ]);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    if ($db instanceof PDO && $db->inTransaction()) {
+        $db->rollBack();
+    }
+    http_response_code(409);
+    jsonResponse(false, ['message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    if ($db instanceof PDO && $db->inTransaction()) {
+        $db->rollBack();
+    }
     error_log('Transition Workflow Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to update workflow.']);
 }
-

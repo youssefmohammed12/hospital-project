@@ -73,13 +73,13 @@ const Dashboard = {
   },
 
   /** Show/hide helper using cached elements */
-  _show(id, displayType = "") {
+  _show(id) {
     const el = this._el[id] || document.getElementById(id);
-    if (el) el.style.display = displayType;
+    if (el) el.hidden = false;
   },
   _hide(id) {
     const el = this._el[id] || document.getElementById(id);
-    if (el) el.style.display = "none";
+    if (el) el.hidden = true;
   },
 
   /** Show all skeleton placeholders */
@@ -216,7 +216,7 @@ const Dashboard = {
     const ms = this._el["member-since"];   if (ms) ms.textContent = ov.member_since ? this._fmtDate(ov.member_since) : "—";
     const hs = this._el["hospital-status"];
     if (hs) {
-      const status = ov.hospital?.status || "Unknown";
+      const status = typeof ov.hospital?.status === "string" ? ov.hospital.status : "Unknown";
       hs.textContent = status;
       hs.className = "chip-value " + (status.toLowerCase() === "open" ? "chip-value--open" : "chip-value--closed");
     }
@@ -225,7 +225,7 @@ const Dashboard = {
     const pd = ov.primary_doctor;
     const pdRow = this._el["primary-doctor-row"];
     if (pd?.name && pdRow) {
-      pdRow.style.display = "";
+      pdRow.hidden = false;
       const pda = this._el["primary-doc-avatar"];
       if (pda) pda.textContent = this._getInitials(pd.name);
       const pdn = this._el["primary-doctor-name"];
@@ -233,7 +233,7 @@ const Dashboard = {
       const pds = this._el["primary-doctor-specialty"];
       if (pds) pds.textContent = pd.specialty || "General Practice";
     } else if (pdRow) {
-      pdRow.style.display = "none";
+      pdRow.hidden = true;
     }
 
     this._renderNextAppointment(ov.next_appointment);
@@ -245,14 +245,14 @@ const Dashboard = {
     const viewBtn = this._el["view-appointment-btn"];
 
     if (!appt) {
-      if (heroEl)  heroEl.style.display  = "none";
-      if (emptyEl) emptyEl.style.display = "";
-      if (viewBtn) viewBtn.style.display = "none";
+      if (heroEl) heroEl.hidden = true;
+      if (emptyEl) emptyEl.hidden = false;
+      if (viewBtn) viewBtn.hidden = true;
       return;
     }
 
-    if (heroEl)  heroEl.style.display  = "";
-    if (emptyEl) emptyEl.style.display = "none";
+    if (heroEl) heroEl.hidden = false;
+    if (emptyEl) emptyEl.hidden = true;
 
     const isPending = appt.reschedule_status === "pending";
 
@@ -289,16 +289,22 @@ const Dashboard = {
     // Title
     const titleEl = this._el["next-appt-title"];
     if (titleEl) {
-      if (isPending) titleEl.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i> Reschedule Pending';
-      else titleEl.innerHTML = '<i class="fas fa-calendar-days" aria-hidden="true"></i> Next Appointment';
+      const icon = document.createElement("i");
+      icon.className = isPending ? "fas fa-clock" : "fas fa-calendar-days";
+      icon.setAttribute("aria-hidden", "true");
+      const title = isPending ? " Reschedule Pending" : " Next Appointment";
+      titleEl.replaceChildren(icon, document.createTextNode(title));
     }
 
-    if (viewBtn) {
-      viewBtn.style.display = "";
-      viewBtn.onclick = (e) => {
-        e.preventDefault();
-        window.location.href = `appointments.html?view=${appt.id}`;
-      };
+    const safeAppointmentId = safePositiveId(appt.id);
+    if (viewBtn && safeAppointmentId) {
+      viewBtn.hidden = false;
+      viewBtn.dataset.dashboardAction = "view-appointment";
+      viewBtn.dataset.appointmentId = String(safeAppointmentId);
+    } else if (viewBtn) {
+      viewBtn.hidden = true;
+      delete viewBtn.dataset.dashboardAction;
+      delete viewBtn.dataset.appointmentId;
     }
   },
 
@@ -307,12 +313,15 @@ const Dashboard = {
   // ══════════════════════════════════════════════════════════
 
   renderHealthAlerts() {
-    const alerts = this.data.health_alerts?.alerts || [];
+    const rawAlerts = this.data.health_alerts?.alerts;
+    const alerts = Array.isArray(rawAlerts)
+      ? rawAlerts.filter((alert) => alert && typeof alert === "object" && !Array.isArray(alert))
+      : [];
     const containerEl = this._el["health-alerts-container"];
     const alertsEl    = this._el["health-alerts"];
 
     if (!containerEl || !alertsEl) return;
-    containerEl.style.display = "";
+    containerEl.hidden = false;
 
     if (!alerts.length) {
       alertsEl.innerHTML = `
@@ -329,21 +338,29 @@ const Dashboard = {
     }
 
     alertsEl.innerHTML = alerts.map(alert => {
-      const missing = alert.missing_fields?.length
+      const missingFields = Array.isArray(alert.missing_fields)
+        ? alert.missing_fields.filter((field) => typeof field === "string")
+        : [];
+      const missing = missingFields.length
         ? `<div class="alert-missing">
              <span class="missing-label">Missing</span>
-             ${alert.missing_fields.map(f => `<span class="missing-badge">${this._escHTML(f)}</span>`).join("")}
+             ${missingFields.map(field => `<span class="missing-badge">${this._escHTML(field)}</span>`).join("")}
            </div>`
         : "";
-      let rawUrl = alert.action?.url || "#";
-      if (rawUrl.startsWith("#")) rawUrl = rawUrl.substring(1) + ".html";
-      const action = alert.action
-        ? `<a href="${this._escHTML(rawUrl)}" class="btn btn-primary btn-sm alert-card-action">${this._escHTML(alert.action.label)}</a>`
+      const rawActionUrl = typeof alert.action?.url === "string"
+        ? alert.action.url.trim()
+        : "";
+      const actionCandidate = rawActionUrl.startsWith("#")
+        ? (rawActionUrl.length > 1 ? rawActionUrl.substring(1) + ".html" : "")
+        : rawActionUrl;
+      const safeActionUrl = safeSameOriginUrl(actionCandidate, "");
+      const action = alert.action && safeActionUrl
+        ? `<a href="${this._escHTML(safeActionUrl)}" class="btn btn-primary btn-sm alert-card-action">${this._escHTML(alert.action.label)}</a>`
         : "";
       return `
-        <div class="health-alert-card health-alert-${this._escHTML(alert.severity || "warning")}">
+        <div class="health-alert-card health-alert-${safeClassToken(alert.severity || "warning", "warning")}">
           <div class="alert-card-left">
-            <div class="alert-card-icon"><i class="fas ${this._escHTML(alert.icon || "fa-exclamation")}" aria-hidden="true"></i></div>
+            <div class="alert-card-icon"><i class="fas ${safeClassToken(alert.icon || "fa-exclamation", "fa-exclamation")}" aria-hidden="true"></i></div>
           </div>
           <div class="alert-card-center">
             <h4 class="alert-card-title">${this._escHTML(alert.title)}</h4>
@@ -368,12 +385,14 @@ const Dashboard = {
 
     const contentEl = this._el["kpi-content"];
     if (!contentEl) return;
-    contentEl.style.display = "grid";
+    contentEl.hidden = false;
 
+    const rawProfileCompletion = safeCount(snap.profile_completion, 0);
+    const profileCompletion = Math.min(100, rawProfileCompletion);
     const kpis = [
       {
         label: "Upcoming",
-        value: snap.upcoming_appointments ?? 0,
+        value: safeCount(snap.upcoming_appointments, 0),
         icon: "fa-calendar-days",
         color: "--success",
         desc: "Scheduled visits",
@@ -381,7 +400,7 @@ const Dashboard = {
       },
       {
         label: "Total Visits",
-        value: snap.completed_appointments ?? 0,
+        value: safeCount(snap.completed_appointments, 0),
         icon: "fa-circle-check",
         color: "--primary",
         desc: "Completed appointments",
@@ -389,7 +408,7 @@ const Dashboard = {
       },
       {
         label: "Prescriptions",
-        value: snap.active_prescriptions ?? 0,
+        value: safeCount(snap.active_prescriptions, 0),
         icon: "fa-prescription-bottle-medical",
         color: "--warning",
         desc: "Active prescriptions",
@@ -397,7 +416,7 @@ const Dashboard = {
       },
       {
         label: "Doctors Seen",
-        value: snap.doctors_seen ?? 0,
+        value: safeCount(snap.doctors_seen, 0),
         icon: "fa-user-doctor",
         color: "--info",
         desc: "Unique providers",
@@ -405,7 +424,7 @@ const Dashboard = {
       },
       {
         label: "Unread",
-        value: snap.unread_notifications ?? 0,
+        value: safeCount(snap.unread_notifications, 0),
         icon: "fa-bell",
         color: "--danger",
         desc: "New notifications",
@@ -413,7 +432,7 @@ const Dashboard = {
       },
       {
         label: "Profile",
-        value: `${snap.profile_completion ?? 0}%`,
+        value: `${profileCompletion}%`,
         icon: "fa-user-pen",
         color: "--success",
         desc: "Profile completeness",
@@ -421,17 +440,31 @@ const Dashboard = {
       },
     ];
 
-    contentEl.innerHTML = kpis.map(k => `
-      <a href="${k.href}" class="kpi-card" role="listitem" aria-label="${k.label}: ${k.value}">
-        <div class="kpi-icon-wrap" style="--kpi-color:var(${k.color})">
-          <i class="fas ${k.icon}" aria-hidden="true"></i>
+    contentEl.innerHTML = kpis.map(k => {
+      const href = safeSameOriginUrl(getBasePath() + String(k.href || ""), "");
+      const icon = safeClassToken(k.icon, "fa-chart-pie");
+      if (!href) return "";
+
+      const colorClass = ({
+        "--success": "kpi-success",
+        "--primary": "kpi-primary",
+        "--warning": "kpi-warning",
+        "--info": "kpi-info",
+        "--danger": "kpi-danger",
+      })[k.color] || "kpi-primary";
+
+      return `
+      <a href="${this._escHTML(href)}" class="kpi-card ${colorClass}" role="listitem" aria-label="${this._escHTML(k.label)}: ${this._escHTML(k.value)}">
+        <div class="kpi-icon-wrap">
+          <i class="fas ${icon}" aria-hidden="true"></i>
         </div>
         <div class="kpi-body">
-          <div class="kpi-value">${k.value}</div>
-          <div class="kpi-label">${k.label}</div>
-          <div class="kpi-desc">${k.desc}</div>
+          <div class="kpi-value">${this._escHTML(k.value)}</div>
+          <div class="kpi-label">${this._escHTML(k.label)}</div>
+          <div class="kpi-desc">${this._escHTML(k.desc)}</div>
         </div>
-      </a>`).join("");
+      </a>`;
+    }).join("");
   },
 
   // ══════════════════════════════════════════════════════════
@@ -439,7 +472,11 @@ const Dashboard = {
   // ══════════════════════════════════════════════════════════
 
   renderCareTeam() {
-    const doctors = (this.data.favorite_doctors || []).slice(0, 3);
+    const doctors = (Array.isArray(this.data.favorite_doctors)
+      ? this.data.favorite_doctors.filter((doctor) =>
+          doctor && typeof doctor === "object" && !Array.isArray(doctor)
+        )
+      : []).slice(0, 3);
     this._hide("care-team-skeleton");
 
     if (!doctors.length) { this._show("care-team-empty"); return; }
@@ -451,9 +488,20 @@ const Dashboard = {
     if (!listEl) return;
 
     listEl.innerHTML = doctors.map(doc => {
-      const rating    = doc.rating ? parseFloat(doc.rating).toFixed(1) : "N/A";
-      const specialty = doc.specialty || doc.department || "General Practice";
-      const dept      = doc.department && doc.specialty && doc.department !== doc.specialty ? doc.department : "";
+      const rawRating = doc.rating;
+      const ratingValue = typeof rawRating === "number"
+        ? rawRating
+        : typeof rawRating === "string" && /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(rawRating.trim())
+          ? Number(rawRating.trim())
+          : Number.NaN;
+      const rating = Number.isFinite(ratingValue) && ratingValue >= 0 && ratingValue <= 5
+        ? ratingValue.toFixed(1)
+        : "N/A";
+      const specialty = typeof doc.specialty === "string" && doc.specialty
+        ? doc.specialty
+        : typeof doc.department === "string" && doc.department ? doc.department : "General Practice";
+      const dept = typeof doc.department === "string" && typeof doc.specialty === "string"
+        && doc.department !== doc.specialty ? doc.department : "";
       const badges    = [
         doc.is_primary    && "Primary Doctor",
         doc.last_visit_date && "Recently Visited",
@@ -493,8 +541,9 @@ const Dashboard = {
 
     this._hide("recent-activity-skeleton");
 
-    const events = raw.filter(Boolean)
-      .sort((a, b) => {
+    const events = raw.filter((event) =>
+        event && typeof event === "object" && !Array.isArray(event)
+      ).sort((a, b) => {
         const ta = Date.parse(`${a.date||a.created_at||""} ${a.time||""}`) || 0;
         const tb = Date.parse(`${b.date||b.created_at||""} ${b.time||""}`) || 0;
         return tb - ta;
@@ -509,17 +558,29 @@ const Dashboard = {
     if (!listEl) return;
 
     listEl.innerHTML = events.map(ev => {
-      const title    = ev.title || ev.doctor || "Activity";
-      const desc     = ev.description || ev.department || "";
-      const dateStr  = ev.date ? this._fmtDate(ev.date) : "";
-      const timeStr  = ev.time || ev.appointment_time_range || "";
-      const color    = ev.color || "var(--primary)";
-      const icon     = ev.icon  || "fa-clock";
+      const title = typeof ev.title === "string" && ev.title
+        ? ev.title
+        : typeof ev.doctor === "string" && ev.doctor ? ev.doctor : "Activity";
+      const desc = typeof ev.description === "string" ? ev.description
+        : typeof ev.department === "string" ? ev.department : "";
+      const dateStr = typeof ev.date === "string" && ev.date ? this._fmtDate(ev.date) : "";
+      const timeStr = typeof ev.time === "string" ? ev.time
+        : typeof ev.appointment_time_range === "string" ? ev.appointment_time_range : "";
+      const rawColor = safeCssColor(ev.color, "var(--primary)");
+      const colorVariant = ({
+        "var(--primary)": "primary",
+        "var(--success)": "success",
+        "var(--danger)": "danger",
+        "var(--warning)": "warning",
+        "var(--info)": "info",
+        "var(--text-muted)": "muted",
+      })[rawColor] || "primary";
+      const icon = safeClassToken(ev.icon, "fa-clock");
       const meta     = [dateStr, timeStr].filter(Boolean).join(" • ");
       return `
         <div class="activity-item" role="listitem">
-          <div class="activity-line-dot" style="--dot-color:${color}" aria-hidden="true"></div>
-          <div class="activity-avatar" style="background:${color}1a;color:${color}">
+          <div class="activity-line-dot activity-line-dot--${colorVariant}" aria-hidden="true"></div>
+          <div class="activity-avatar activity-avatar--${colorVariant}">
             <i class="fas ${icon}" aria-hidden="true"></i>
           </div>
           <div class="activity-content">
@@ -545,8 +606,13 @@ const Dashboard = {
     const cardEl = this._el["latest-rx-card"];
     if (!cardEl) return;
 
-    const items = rx.items || [];
-    const statusCls = (rx.status || "active").toLowerCase();
+    const prescription = rx && typeof rx === "object" && !Array.isArray(rx) ? rx : null;
+    if (!prescription) { this._show("latest-rx-empty"); return; }
+    const items = Array.isArray(prescription.items)
+      ? prescription.items.filter((item) => item && typeof item === "object" && !Array.isArray(item))
+      : [];
+    const statusText = typeof prescription.status === "string" ? prescription.status : "Active";
+    const statusCls = safeClassToken(statusText || "active");
 
     cardEl.innerHTML = `
       <div class="rx-preview-card">
@@ -555,22 +621,26 @@ const Dashboard = {
             <div class="rx-icon"><i class="fas fa-prescription-bottle-medical" aria-hidden="true"></i></div>
             <div>
               <div class="rx-card-label">Issued by</div>
-              <h4>${this._escHTML(rx.doctor_name || "Provider")}</h4>
+              <h4>${this._escHTML(typeof prescription.doctor_name === "string" ? prescription.doctor_name : "Provider")}</h4>
             </div>
           </div>
-          <span class="rx-status-badge rx-status-${statusCls}">${this._escHTML(rx.status || "Active")}</span>
+          <span class="rx-status-badge rx-status-${statusCls}">${this._escHTML(statusText)}</span>
         </div>
         <div class="rx-card-meta">
           <div class="rx-meta-item">
             <span class="rx-meta-label">Date Issued</span>
-            <strong>${typeof formatDate === "function" ? formatDate(rx.created_at) : rx.created_at || "—"}</strong>
+            <strong>${this._escHTML(typeof prescription.created_at === "string"
+              ? (typeof formatDate === "function" ? formatDate(prescription.created_at) : prescription.created_at)
+              : "—")}</strong>
           </div>
           <div class="rx-meta-item">
             <span class="rx-meta-label">Medications</span>
             <strong>${items.length}</strong>
           </div>
         </div>
-        ${rx.notes ? `<p class="rx-notes">${this._escHTML(rx.notes)}</p>` : ""}
+        ${typeof prescription.notes === "string" && prescription.notes
+          ? `<p class="rx-notes">${this._escHTML(prescription.notes)}</p>`
+          : ""}
         <div class="rx-card-actions">
           <a href="prescriptions.html" class="btn btn-outline btn-sm">View All Prescriptions</a>
         </div>
@@ -582,12 +652,20 @@ const Dashboard = {
   // ══════════════════════════════════════════════════════════
 
   renderRecentNotifications() {
-    const grouped = this.data.recent_notifications?.grouped;
+    const notificationData = this.data.recent_notifications;
+    const grouped = notificationData && typeof notificationData === "object"
+      && !Array.isArray(notificationData) && notificationData.grouped
+      && typeof notificationData.grouped === "object" && !Array.isArray(notificationData.grouped)
+      ? notificationData.grouped
+      : null;
     const rawList = grouped
-      ? Object.values(grouped).flat()
-      : (Array.isArray(this.data.recent_notifications) ? this.data.recent_notifications : []);
+      ? Object.values(grouped).flatMap((group) => Array.isArray(group) ? group : [])
+      : (Array.isArray(notificationData) ? notificationData : []);
+    const notifications = rawList.filter((notification) =>
+      notification && typeof notification === "object" && !Array.isArray(notification)
+    );
 
-    const sorted = rawList.slice()
+    const sorted = notifications.slice()
       .sort((a, b) => {
         const ar = a.is_read ? 1 : 0, br = b.is_read ? 1 : 0;
         if (ar !== br) return ar - br;
@@ -602,17 +680,21 @@ const Dashboard = {
     const listEl = this._el["recent-notif-list"];
     if (!listEl) return;
 
-    const iconForType = t => {
-      if (/appointment/i.test(t)) return "fa-calendar-check";
-      if (/prescription|medical|lab/i.test(t)) return "fa-prescription";
-      if (/record|note|rating/i.test(t)) return "fa-notes-medical";
-      if (/password|account|security/i.test(t)) return "fa-shield-alt";
+    const iconForType = (type) => {
+      const value = typeof type === "string" ? type : "";
+      if (/appointment/i.test(value)) return "fa-calendar-check";
+      if (/prescription|medical|lab/i.test(value)) return "fa-prescription";
+      if (/record|note|rating/i.test(value)) return "fa-notes-medical";
+      if (/password|account|security/i.test(value)) return "fa-shield-alt";
       return "fa-bell";
     };
 
-    listEl.innerHTML = sorted.map(n => `
+    listEl.innerHTML = sorted.map(n => {
+      const type = typeof n.type === "string" ? n.type
+        : typeof n.title === "string" ? n.title : "";
+      return `
       <div class="notif-preview-item${n.is_read ? "" : " notif-unread"}" role="listitem">
-        <div class="notif-preview-icon"><i class="fas ${iconForType(n.type || n.title || "")}" aria-hidden="true"></i></div>
+        <div class="notif-preview-icon"><i class="fas ${safeClassToken(iconForType(type), "fa-bell")}" aria-hidden="true"></i></div>
         <div class="notif-preview-body">
           <div class="notif-preview-header">
             <span class="notif-preview-title">${this._escHTML(n.title || "Notification")}</span>
@@ -621,7 +703,8 @@ const Dashboard = {
           <p class="notif-preview-msg">${this._escHTML(n.message || "")}</p>
         </div>
         ${!n.is_read ? '<span class="notif-unread-dot" aria-label="Unread"></span>' : ""}
-      </div>`).join("");
+      </div>`;
+    }).join("");
   },
 
   // ══════════════════════════════════════════════════════════
@@ -632,7 +715,13 @@ const Dashboard = {
     const dl = this.data.recent_downloads;
     this._hide("recent-dl-skeleton");
 
-    const all = [...(dl?.prescriptions || []), ...(dl?.visit_summaries || [])]
+    const prescriptions = Array.isArray(dl?.prescriptions)
+      ? dl.prescriptions.filter((item) => item && typeof item === "object" && !Array.isArray(item))
+      : [];
+    const summaries = Array.isArray(dl?.visit_summaries)
+      ? dl.visit_summaries.filter((item) => item && typeof item === "object" && !Array.isArray(item))
+      : [];
+    const all = [...prescriptions, ...summaries]
       .sort((a, b) => (Date.parse(b.date || b.created_at || "") || 0) - (Date.parse(a.date || a.created_at || "") || 0))
       .slice(0, 3);
 
@@ -643,34 +732,40 @@ const Dashboard = {
     if (!listEl) return;
 
     const iconFor = (label = "") => {
-      if (/prescription/i.test(label)) return "fa-prescription";
-      if (/visit|summary/i.test(label)) return "fa-notes-medical";
-      if (/lab/i.test(label)) return "fa-vial";
-      if (/referral/i.test(label)) return "fa-handshake-angle";
-      if (/invoice|bill/i.test(label)) return "fa-receipt";
+      const value = typeof label === "string" ? label : "";
+      if (/prescription/i.test(value)) return "fa-prescription";
+      if (/visit|summary/i.test(value)) return "fa-notes-medical";
+      if (/lab/i.test(value)) return "fa-vial";
+      if (/referral/i.test(value)) return "fa-handshake-angle";
+      if (/invoice|bill/i.test(value)) return "fa-receipt";
       return "fa-file-lines";
     };
 
     listEl.innerHTML = all.map(item => {
-      const icon    = iconFor(item.label || item.type || "");
-      const date    = typeof formatDate === "function" ? formatDate(item.date || item.created_at) : (item.date || "—");
-      const typeTxt = item.type ? ` • ${this._escHTML(item.type)}` : "";
-      const rawUrl  = item.url || "#";
-      const fullUrl = (rawUrl.startsWith("http") || rawUrl.startsWith("/") || rawUrl === "#")
-        ? rawUrl
-        : getBasePath() + rawUrl;
+      const label = typeof item.label === "string" ? item.label : "Document";
+      const type = typeof item.type === "string" ? item.type : "";
+      const icon = safeClassToken(iconFor(label || type), "fa-file-lines");
+      const rawDate = typeof item.date === "string" ? item.date
+        : typeof item.created_at === "string" ? item.created_at : "";
+      const date = typeof formatDate === "function" ? formatDate(rawDate) : (rawDate || "—");
+      const typeTxt = type ? ` • ${this._escHTML(type)}` : "";
+      const rawUrl = typeof item.url === "string" ? item.url.trim() : "";
+      const candidateUrl = safeSameOriginUrl(
+        rawUrl.startsWith("/") ? rawUrl : getBasePath() + rawUrl,
+        "",
+      );
+      const fullUrl = candidateUrl.startsWith("/api/") ? candidateUrl : "";
 
       return `
         <div class="dl-preview-item" role="listitem">
           <div class="dl-preview-icon"><i class="fas ${icon}" aria-hidden="true"></i></div>
           <div class="dl-preview-info">
             <div class="dl-preview-name">${this._escHTML(item.label || "Document")}</div>
-            <div class="dl-preview-meta">${date}${typeTxt}</div>
+            <div class="dl-preview-meta">${this._escHTML(date)}${typeTxt}</div>
           </div>
-          <a href="${this._escHTML(fullUrl)}" class="dl-preview-btn" target="_blank"
-             rel="noopener noreferrer" aria-label="Download ${this._escHTML(item.label || "document")}" title="Download / Print Document">
-            <i class="fas fa-download" aria-hidden="true"></i>
-          </a>
+          ${fullUrl
+            ? `<a href="${this._escHTML(fullUrl)}" class="dl-preview-btn" target="_blank" rel="noopener noreferrer" aria-label="Download ${this._escHTML(item.label || "document")}" title="Download / Print Document"><i class="fas fa-download" aria-hidden="true"></i></a>`
+            : `<button type="button" class="dl-preview-btn" disabled aria-label="Document unavailable"><i class="fas fa-lock" aria-hidden="true"></i></button>`}
         </div>`;
     }).join("");
   },
@@ -683,26 +778,30 @@ const Dashboard = {
     const ins = this.data.insights_preview;
     this._hide("insights-preview-skeleton");
 
-    if (!ins?.monthly_visits?.length) { this._show("insights-preview-empty"); return; }
+    const monthly = Array.isArray(ins?.monthly_visits)
+      ? ins.monthly_visits.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+      : [];
+    if (!monthly.length) { this._show("insights-preview-empty"); return; }
 
     this._show("insights-preview-content");
     const contentEl = this._el["insights-preview-content"];
     if (!contentEl) return;
 
-    const monthly       = ins.monthly_visits;
-    const currentMonth  = new Date().toISOString().substring(0, 7);
-    const thisMonth     = monthly.find(m => m.month?.startsWith(currentMonth))?.count || 0;
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    const thisMonthEntry = monthly.find((entry) =>
+      typeof entry.month === "string" && entry.month.startsWith(currentMonth)
+    );
+    const thisMonth = safeCount(thisMonthEntry?.count, 0);
     const lastMonthData = monthly[monthly.length - 2];
-    const lastMonth     = lastMonthData?.count ?? null;
+    const lastMonth = lastMonthData ? safeCount(lastMonthData.count, 0) : null;
 
     const trendIcon  = lastMonth === null ? "fa-minus"
       : thisMonth > lastMonth ? "fa-arrow-trend-up"
       : thisMonth < lastMonth ? "fa-arrow-trend-down"
       : "fa-minus";
-    const trendColor = lastMonth === null ? "var(--text-muted)"
-      : thisMonth > lastMonth ? "var(--success)"
-      : thisMonth < lastMonth ? "var(--danger)"
-      : "var(--text-muted)";
+    const trendVariant = lastMonth === null || thisMonth === lastMonth
+      ? "neutral"
+      : thisMonth > lastMonth ? "up" : "down";
     const trendText  = lastMonth === null ? "No prior data"
       : thisMonth > lastMonth ? "Higher than last month"
       : thisMonth < lastMonth ? "Lower than last month"
@@ -714,7 +813,7 @@ const Dashboard = {
           <div class="insights-stat-value">${this._escHTML(String(thisMonth))}</div>
           <div class="insights-stat-label">Visits This Month</div>
         </div>
-        <div class="insights-mini-trend" style="color:${trendColor}">
+        <div class="insights-mini-trend insights-mini-trend--${trendVariant}">
           <i class="fas ${trendIcon}" aria-hidden="true"></i>
           <span>${trendText}</span>
         </div>
@@ -731,37 +830,49 @@ const Dashboard = {
   // ══════════════════════════════════════════════════════════
 
   viewAppointmentDetails(id) {
-    const appt =
-      this.data?.appointments?.upcoming?.find(a => a.id === id) ||
-      this.data?.appointments?.completed?.find(a => a.id === id);
+    const appointmentId = safePositiveId(id);
+    if (!appointmentId) return;
+    const upcoming = Array.isArray(this.data?.appointments?.upcoming)
+      ? this.data.appointments.upcoming : [];
+    const completed = Array.isArray(this.data?.appointments?.completed)
+      ? this.data.appointments.completed : [];
+    const appt = [...upcoming, ...completed].find((entry) =>
+      entry && typeof entry === "object" && !Array.isArray(entry)
+      && safePositiveId(entry.id) === appointmentId
+    );
     if (!appt) return;
 
     const bodyEl = this._el["appointment-modal-body"];
     if (!bodyEl) return;
 
     const initials = this._getInitials(appt.doctor || "DR");
-    const statusBg  = this._statusColor(appt.status);
+    const statusVariant = ({
+      confirmed: "confirmed",
+      completed: "completed",
+      cancelled: "cancelled",
+      missed: "missed",
+    })[String(appt.status || "").toLowerCase()] || "pending";
 
     bodyEl.innerHTML = `
       <div class="appt-details">
         <div class="appt-detail-header">
-          <div class="appt-detail-avatar">${initials}</div>
+          <div class="appt-detail-avatar">${this._escHTML(initials)}</div>
           <div class="appt-detail-meta">
             <h4>${this._escHTML(appt.doctor || "Doctor")}</h4>
             <p>${this._escHTML(appt.department || "")}</p>
           </div>
-          <span class="appt-status-pill" style="background:${statusBg}1a;color:${statusBg};border:1px solid ${statusBg}33">
+          <span class="appt-status-pill appt-status-pill--${statusVariant}">
             ${this._escHTML(appt.status || "—")}
           </span>
         </div>
         <div class="appt-detail-body">
           <div class="appt-detail-row">
             <span class="appt-detail-label">Date &amp; Time</span>
-            <span class="appt-detail-value">${this._fmtDate(appt.date)} at ${appt.time_range || appt.time || "—"}</span>
+            <span class="appt-detail-value">${this._escHTML(this._fmtDate(appt.date))} at ${this._escHTML(appt.time_range || appt.time || "—")}</span>
           </div>
           <div class="appt-detail-row">
             <span class="appt-detail-label">Appointment ID</span>
-            <span class="appt-detail-value">#${this._escHTML(String(appt.id))}</span>
+            <span class="appt-detail-value">#${safePositiveId(appt.id)}</span>
           </div>
           ${appt.notes ? `
           <div class="appt-detail-row appt-notes-row">
@@ -770,8 +881,8 @@ const Dashboard = {
           </div>` : ""}
         </div>
         <div class="appt-detail-actions">
-          <button class="btn btn-outline" onclick="Dashboard.closeApptModal()">Close</button>
-          <button class="btn btn-primary" onclick="Dashboard.closeApptModal();window.location.href='appointments.html'">
+          <button type="button" class="btn btn-outline" data-dashboard-action="close-appointment">Close</button>
+          <button type="button" class="btn btn-primary" data-dashboard-action="view-all-appointments">
             View All Appointments
           </button>
         </div>
@@ -779,7 +890,7 @@ const Dashboard = {
 
     const modal = this._el["appointment-modal"];
     if (modal) {
-      modal.style.display = "flex";
+      modal.hidden = false;
       document.body.classList.add("modal-open");
       modal.classList.add("open");
     }
@@ -788,7 +899,7 @@ const Dashboard = {
   closeApptModal() {
     const modal = this._el["appointment-modal"];
     if (modal) {
-      modal.style.display = "none";
+      modal.hidden = true;
       modal.classList.remove("open");
       document.body.classList.remove("modal-open");
     }
@@ -803,6 +914,38 @@ const Dashboard = {
   // ── Event listeners ─────────────────────────────────────────
 
   _attachListeners() {
+    if (!window._hbPatientDashboardActionsBound) {
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const control = target?.closest("[data-dashboard-action]");
+        if (!control) return;
+
+        switch (control.dataset.dashboardAction) {
+          case "refresh":
+            this.refresh();
+            break;
+          case "open-booking":
+            this.openBookModal();
+            break;
+          case "close-appointment":
+            this.closeApptModal();
+            break;
+          case "view-all-appointments":
+            this.closeApptModal();
+            window.location.href = "appointments.html";
+            break;
+          case "view-appointment": {
+            const appointmentId = safePositiveId(control.dataset.appointmentId);
+            if (appointmentId) {
+              window.location.href = "appointments.html?view=" + appointmentId;
+            }
+            break;
+          }
+        }
+      });
+      window._hbPatientDashboardActionsBound = true;
+    }
+
     document.addEventListener("keydown", e => {
       if (e.key === "Escape") this.closeApptModal();
     });
@@ -825,8 +968,9 @@ const Dashboard = {
   },
 
   _getInitials(name) {
-    if (!name) return "??";
-    return name.split(" ").map(n => n[0] || "").join("").substring(0, 2).toUpperCase();
+    const safeName = typeof name === "string" ? name.trim() : "";
+    if (!safeName) return "??";
+    return safeName.split(/\s+/).map(part => part[0] || "").join("").substring(0, 2).toUpperCase();
   },
 
   _fmtDate(d) {
@@ -839,7 +983,7 @@ const Dashboard = {
   },
 
   _statusColor(status = "") {
-    const s = status.toLowerCase();
+    const s = typeof status === "string" ? status.toLowerCase() : "";
     if (s === "confirmed")  return "var(--primary)";
     if (s === "completed")  return "var(--success)";
     if (s === "cancelled")  return "var(--danger)";

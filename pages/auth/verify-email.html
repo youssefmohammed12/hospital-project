@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Confirm the email address for your HealthBridge demonstration account." />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>Confirm Email — HealthBridge</title>
+    <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
+    <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
+    <link rel="stylesheet" href="../../assets/css/pages/auth.css?v=6" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body class="auth-page" data-csp-page="auth">
+    <main class="auth-card verify-email-card">
+      <div class="auth-logo">
+        <span>HealthBridge</span>
+      </div>
+      <div class="reset-success-icon" aria-hidden="true">
+        <i class="fas fa-envelope"></i>
+      </div>
+      <h1 class="auth-alt-title">Verify your email address</h1>
+      <p id="verify-email-status" class="auth-alt-sub" role="status" aria-live="polite">
+        Confirm that you own this email address to complete your patient registration.
+        Opening this page does not verify the address.
+      </p>
+      <button type="button" class="btn-login" id="confirm-registration-email">
+        <span class="spinner"></span>
+        <span class="btn-text">Confirm Email Address</span>
+      </button>
+      <a href="login.html" class="btn-wizard-prev verify-email-login-link" id="verify-email-login-link">
+        Go to Login
+      </a>
+    </main>
+    <script src="../../assets/js/pages/verify-email.js?v=1"></script>
+  </body>
+</html>

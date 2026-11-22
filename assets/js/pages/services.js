@@ -1,109 +1,100 @@
 /**
- * HealthBridge — Services Page JavaScript
- * Handles category filtering and interactive FAQ accordion.
- *
- * Used by: services.html
+ * HealthBridge — Project capabilities page.
+ * Handles accessible workspace filtering and the project FAQ accordion.
  */
-
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
-  initServiceFilters();
-  initFaqAccordion();
+  initCapabilityFilters();
+  initProjectFaq();
   initBookingLinks();
 });
 
-/**
- * Update booking link targets dynamically if the user is already logged in
- */
+/** Keep the existing role-aware workspace destinations for signed-in users. */
 async function initBookingLinks() {
   let user = typeof getUser === "function" ? getUser() : null;
 
-  // If no local storage session, check server-side session sync
   if (!user && typeof getSessionUser === "function") {
     user = await getSessionUser();
   }
 
   if (!user) return;
 
-  const dashboardUrl = typeof getDashboardUrl === "function" 
-    ? getDashboardUrl(user.role) + (user.role === "patient" ? "#book" : "") 
-    : getBasePath() + "pages/patient/dashboard.html";
+  const basePath = typeof getBasePath === "function" ? getBasePath() : "";
+  const dashboardUrl = typeof getDashboardUrl === "function"
+    ? getDashboardUrl(user.role) + (user.role === "patient" ? "#book" : "")
+    : basePath + "pages/patient/dashboard.html";
 
-  // Select card links and CTA buttons that lead to login.html
-  const bookingLinks = document.querySelectorAll('.service-link, .services-cta .btn-primary');
-  bookingLinks.forEach((link) => {
+  document.querySelectorAll(".service-link, .services-bottom-cta .btn-primary").forEach((link) => {
     const href = link.getAttribute("href") || "";
-    if (href.includes(getBasePath() + "pages/auth/login.html")) {
-      link.setAttribute("href", dashboardUrl);
-      if (link.classList.contains("service-link")) {
-        link.innerHTML = "Book Now &rarr;";
+    if (href !== basePath + "pages/auth/login.html") return;
+
+    link.setAttribute("href", dashboardUrl);
+    link.textContent = link.classList.contains("service-link")
+      ? "Open your workspace"
+      : "Go to Dashboard";
+  });
+}
+
+function initCapabilityFilters() {
+  const filterButtons = Array.from(document.querySelectorAll(".filter-pill[data-filter]"));
+  const cards = Array.from(document.querySelectorAll("#capability-grid .service-card[data-category]"));
+  const status = document.getElementById("capability-status");
+
+  if (!filterButtons.length || !cards.length) return;
+
+  function applyFilter(category) {
+    let visibleCount = 0;
+
+    cards.forEach((card) => {
+      const matches = category === "all" || card.dataset.category === category;
+      card.hidden = !matches;
+      if (matches) visibleCount += 1;
+    });
+
+    filterButtons.forEach((button) => {
+      const isActive = button.dataset.filter === category;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+
+    if (status) {
+      if (category === "all") {
+        status.textContent = "Showing all " + visibleCount + " capabilities.";
       } else {
-        link.textContent = "Go to Dashboard";
+        status.textContent = "Showing " + visibleCount + " " + category + " " +
+          (visibleCount === 1 ? "capability." : "capabilities.");
       }
     }
+  }
+
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => applyFilter(button.dataset.filter || "all"));
   });
+
+  applyFilter("all");
 }
 
-/**
- * Initialize dynamic filtering of services by category
- */
-function initServiceFilters() {
-  const filterButtons = document.querySelectorAll(".filter-pill");
-  const serviceCards = document.querySelectorAll(".service-card");
+function initProjectFaq() {
+  const questions = Array.from(document.querySelectorAll(".faq-question[aria-controls]"));
+  if (!questions.length) return;
 
-  if (!filterButtons.length || !serviceCards.length) return;
+  questions.forEach((question) => {
+    question.addEventListener("click", () => {
+      const panelId = question.getAttribute("aria-controls");
+      const panel = panelId ? document.getElementById(panelId) : null;
+      if (!panel) return;
 
-  filterButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      // 1. Update active tab styling
-      filterButtons.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
+      const shouldOpen = question.getAttribute("aria-expanded") !== "true";
 
-      const category = btn.dataset.filter;
-
-      // 2. Filter service cards with smooth transitions
-      serviceCards.forEach((card) => {
-        const cardCategory = card.dataset.category;
-
-        if (category === "all" || cardCategory === category) {
-          card.classList.remove("hide");
-          card.classList.add("show");
-        } else {
-          card.classList.remove("show");
-          card.classList.add("hide");
-        }
+      questions.forEach((otherQuestion) => {
+        const otherPanelId = otherQuestion.getAttribute("aria-controls");
+        const otherPanel = otherPanelId ? document.getElementById(otherPanelId) : null;
+        const expanded = otherQuestion === question && shouldOpen;
+        otherQuestion.setAttribute("aria-expanded", String(expanded));
+        if (otherPanel) otherPanel.hidden = !expanded;
+        otherQuestion.closest(".faq-card")?.classList.toggle("open", expanded);
       });
     });
   });
 }
-
-/**
- * Initialize expandable FAQ items
- */
-function initFaqAccordion() {
-  const faqQuestions = document.querySelectorAll(".faq-question");
-
-  if (!faqQuestions.length) return;
-
-  faqQuestions.forEach((questionBtn) => {
-    questionBtn.addEventListener("click", () => {
-      const currentCard = questionBtn.closest(".faq-card");
-      if (!currentCard) return;
-
-      const isOpen = currentCard.classList.contains("open");
-
-      // Close all other FAQ cards (accordion behavior)
-      document.querySelectorAll(".faq-card").forEach((card) => {
-        if (card !== currentCard) {
-          card.classList.remove("open");
-        }
-      });
-
-      // Toggle current FAQ card
-      currentCard.classList.toggle("open", !isOpen);
-    });
-  });
-}
-
-

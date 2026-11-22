@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
+      body: JSON.stringify({ sections: ["medical_timeline"] })
     },
     "Failed to load medical history."
   );
@@ -37,7 +37,63 @@ document.addEventListener("DOMContentLoaded", async () => {
   container.innerHTML = "";
 
   if (result.ok && result.data?.success) {
-    const timeline = result.data.data?.medical_timeline || [];
+    const sourceTimeline = result.data.data?.medical_timeline;
+    const timeline = Array.isArray(sourceTimeline)
+      ? sourceTimeline
+          .filter((event) =>
+            event &&
+            typeof event === "object" &&
+            !Array.isArray(event)
+          )
+          .map((event) => {
+            const metadataSource = event.metadata;
+            const metadataRecord = metadataSource &&
+              typeof metadataSource === "object" &&
+              !Array.isArray(metadataSource)
+              ? metadataSource
+              : null;
+            const metadata = metadataRecord
+              ? {
+                  doctor: typeof metadataRecord.doctor === "string"
+                    ? metadataRecord.doctor.slice(0, 160)
+                    : "",
+                  department: typeof metadataRecord.department === "string"
+                    ? metadataRecord.department.slice(0, 160)
+                    : "",
+                  status: typeof metadataRecord.status === "string"
+                    ? metadataRecord.status.slice(0, 100)
+                    : "",
+                  diagnosis: typeof metadataRecord.diagnosis === "string"
+                    ? metadataRecord.diagnosis.slice(0, 500)
+                    : "",
+                }
+              : null;
+            const date = typeof event.date === "string"
+              ? event.date.trim().slice(0, 40)
+              : "";
+
+            return {
+              date: date && !Number.isNaN(Date.parse(date)) ? date : "",
+              title: typeof event.title === "string" && event.title.trim()
+                ? event.title.slice(0, 160)
+                : "Event",
+              description: typeof event.description === "string"
+                ? event.description.slice(0, 1200)
+                : "",
+              icon: typeof event.icon === "string"
+                ? event.icon.slice(0, 40)
+                : "fa-circle",
+              color: typeof event.color === "string"
+                ? event.color.slice(0, 40)
+                : "",
+              metadata: metadata && Object.values(metadata).some(Boolean)
+                ? metadata
+                : null,
+            };
+          })
+          // The service sorts oldest-first; retain the newest 200 events.
+          .slice(-200)
+      : [];
 
     if (timeline.length === 0) {
       container.innerHTML = `
@@ -54,15 +110,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sorted = timeline.slice().reverse();
 
     container.innerHTML = `
-      <div style="position:relative;padding-left:var(--s6);margin-top:var(--s4)">
-        
-        <!-- Timeline vertical spine line -->
-        <div style="position:absolute;left:18px;top:0;bottom:0;width:3px;background:var(--border-light);border-radius:2px"></div>
-
-        <div style="display:flex;flex-direction:column;gap:var(--s6)">
+      <div class="medical-timeline">
+        <div class="medical-timeline__spine" aria-hidden="true"></div>
+        <div class="medical-timeline__events">
           ${sorted.map(ev => renderTimelineEvent(ev)).join("")}
         </div>
-
       </div>`;
   } else {
     container.innerHTML = `
@@ -70,45 +122,53 @@ document.addEventListener("DOMContentLoaded", async () => {
         <div class="empty-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></div>
         <h4>Unable to Load Medical History</h4>
         <p>Please try again later.</p>
-        <button class="btn btn-outline btn-sm" onclick="location.reload()">Retry</button>
+        <button class="btn btn-outline btn-sm" data-page-action="retry">Retry</button>
       </div>`;
   }
 
   function renderTimelineEvent(ev) {
-    const color = ev.color || "var(--primary)";
-    const icon = ev.icon || "fa-circle";
-    const dateStr = formatDate(ev.date);
+    const colorKey = typeof ev.color === "string"
+      ? ev.color.trim().toLowerCase()
+      : "";
+    const colorVariant = ({
+      "var(--primary)": "primary",
+      "var(--primary-dark)": "primary-dark",
+      "var(--danger)": "danger",
+      "var(--success)": "success",
+      "var(--warning)": "warning",
+      "var(--text-muted)": "muted",
+      "#facc15": "rating",
+      "#8b5cf6": "suggestion",
+    })[colorKey] || "primary";
+    const icon = safeClassToken(ev.icon || "fa-circle", "fa-circle");
+    const dateStr = escapeHTML(formatDate(ev.date));
 
     return `
-      <div style="position:relative;display:flex;gap:var(--s4);align-items:flex-start">
-        
-        <!-- Icon Marker -->
-        <div style="position:absolute;left:-44px;top:2px;width:36px;height:36px;border-radius:50%;background:var(--bg-card);border:2px solid ${color};display:flex;align-items:center;justify-content:center;color:${color};font-size:0.95rem;box-shadow:var(--shadow-sm);z-index:2">
+      <div class="medical-timeline__event">
+        <div class="medical-timeline__marker medical-timeline__marker--${colorVariant}" aria-hidden="true">
           <i class="fas ${icon}"></i>
         </div>
 
-        <!-- Event Content Card -->
-        <div class="card" style="flex:1;padding:var(--s5);border:1px solid var(--border);border-left:4px solid ${color}">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--s2);margin-bottom:var(--s2)">
-            <h3 style="margin:0;font-size:1.05rem;color:var(--text-primary)">${escapeHTML(ev.title || "Event")}</h3>
-            <span style="font-size:0.78rem;color:var(--text-muted);font-weight:600">
-              <i class="fas fa-calendar" style="margin-right:4px"></i> ${dateStr}
+        <article class="card medical-timeline__card medical-timeline__card--${colorVariant}">
+          <div class="medical-timeline__header">
+            <h3 class="medical-timeline__title">${escapeHTML(ev.title || "Event")}</h3>
+            <span class="medical-timeline__date">
+              <i class="fas fa-calendar medical-timeline__date-icon" aria-hidden="true"></i> ${dateStr}
             </span>
           </div>
-          <p style="margin:0 0 var(--s3) 0;font-size:0.88rem;color:var(--text-secondary)">${escapeHTML(ev.description || "")}</p>
-          
+          <p class="medical-timeline__description">${escapeHTML(ev.description || "")}</p>
+
           ${
             ev.metadata
-              ? `<div style="display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s2)">
-                  ${ev.metadata.doctor ? `<span class="badge" style="background:var(--bg-surface);color:var(--text-secondary);font-size:0.75rem"><i class="fas fa-user-md"></i> ${escapeHTML(ev.metadata.doctor)}</span>` : ""}
-                  ${ev.metadata.department ? `<span class="badge" style="background:var(--bg-surface);color:var(--text-secondary);font-size:0.75rem"><i class="fas fa-building"></i> ${escapeHTML(ev.metadata.department)}</span>` : ""}
-                  ${ev.metadata.status ? `<span class="badge" style="background:var(--primary-subtle);color:var(--primary);font-size:0.75rem">${escapeHTML(ev.metadata.status)}</span>` : ""}
-                  ${ev.metadata.diagnosis ? `<span class="badge" style="background:rgba(34, 197, 94, 0.1);color:var(--success);font-size:0.75rem">Diagnosis: ${escapeHTML(ev.metadata.diagnosis)}</span>` : ""}
-                 </div>`
+              ? `<div class="medical-timeline__metadata">
+                  ${ev.metadata.doctor ? `<span class="badge medical-timeline__badge"><i class="fas fa-user-md" aria-hidden="true"></i> ${escapeHTML(ev.metadata.doctor)}</span>` : ""}
+                  ${ev.metadata.department ? `<span class="badge medical-timeline__badge"><i class="fas fa-building" aria-hidden="true"></i> ${escapeHTML(ev.metadata.department)}</span>` : ""}
+                  ${ev.metadata.status ? `<span class="badge medical-timeline__badge medical-timeline__badge--status">${escapeHTML(ev.metadata.status)}</span>` : ""}
+                  ${ev.metadata.diagnosis ? `<span class="badge medical-timeline__badge medical-timeline__badge--diagnosis">Diagnosis: ${escapeHTML(ev.metadata.diagnosis)}</span>` : ""}
+                </div>`
               : ""
           }
-        </div>
-
+        </article>
       </div>`;
   }
 });

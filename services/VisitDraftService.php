@@ -1,74 +1,44 @@
 <?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/Repositories/ClinicalEncounterRepository.php';
+
 /**
- * HealthBridge — Visit Draft Service (Phase 5.4)
- * Manages autosave drafts for visit notes in database.
- * Replaces localStorage-based draft system.
+ * Visit draft facade. Defaults to v1 for every existing endpoint.
  */
-
-class VisitDraftService {
+class VisitDraftService
+{
     private PDO $db;
+    private string $schema;
+    private ClinicalEncounterRepository $encounters;
 
-    public function __construct(PDO $db) {
+    public function __construct(PDO $db, string $schema = ClinicalEncounterRepository::SCHEMA_V1)
+    {
+        if (!in_array($schema, [ClinicalEncounterRepository::SCHEMA_V1, ClinicalEncounterRepository::SCHEMA_V2], true)) {
+            throw new InvalidArgumentException('VisitDraftService schema must be explicitly v1 or v2.');
+        }
         $this->db = $db;
+        $this->schema = $schema;
+        $this->encounters = new ClinicalEncounterRepository($db, $schema);
     }
 
-    /**
-     * Save or update a draft for an appointment.
-     */
-    public function save(int $appointmentId, int $doctorId, array $data): bool {
-        $stmt = $this->db->prepare(
-            "INSERT INTO visit_drafts 
-             (appointment_id, doctor_id, diagnosis, symptoms, treatment, doctor_notes, follow_up_instructions)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-             diagnosis = VALUES(diagnosis),
-             symptoms = VALUES(symptoms),
-             treatment = VALUES(treatment),
-             doctor_notes = VALUES(doctor_notes),
-             follow_up_instructions = VALUES(follow_up_instructions),
-             updated_at = NOW()"
-        );
-        
-        return $stmt->execute([
-            $appointmentId,
-            $doctorId,
-            $data['diagnosis'] ?? null,
-            $data['symptoms'] ?? null,
-            $data['treatment'] ?? null,
-            $data['doctor_notes'] ?? null,
-            $data['follow_up_instructions'] ?? null,
-        ]);
+    public function save(int $appointmentId, int $doctorId, array $data): bool
+    {
+        return $this->encounters->saveDraft($appointmentId, $doctorId, $data);
     }
 
-    /**
-     * Get draft for an appointment.
-     */
-    public function get(int $appointmentId): ?array {
-        $stmt = $this->db->prepare(
-            "SELECT * FROM visit_drafts WHERE appointment_id = ? LIMIT 1"
-        );
-        $stmt->execute([$appointmentId]);
-        return $stmt->fetch() ?: null;
+    public function get(int $appointmentId): ?array
+    {
+        return $this->encounters->getDraft($appointmentId);
     }
 
-    /**
-     * Delete draft for an appointment.
-     */
-    public function delete(int $appointmentId): bool {
-        $stmt = $this->db->prepare(
-            "DELETE FROM visit_drafts WHERE appointment_id = ?"
-        );
-        return $stmt->execute([$appointmentId]);
+    public function delete(int $appointmentId): bool
+    {
+        return $this->encounters->deleteDraft($appointmentId);
     }
 
-    /**
-     * Clean up old drafts (older than 7 days).
-     */
-    public function cleanupOld(): int {
-        $stmt = $this->db->prepare(
-            "DELETE FROM visit_drafts WHERE updated_at < DATE_SUB(NOW(), INTERVAL 7 DAY)"
-        );
-        $stmt->execute();
-        return $stmt->rowCount();
+    public function cleanupOld(): int
+    {
+        return $this->encounters->cleanupOldDrafts(7);
     }
 }

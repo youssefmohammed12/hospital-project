@@ -34,23 +34,57 @@
 require_once __DIR__ . '/ScheduleService.php';
 require_once __DIR__ . '/NotificationService.php';
 require_once __DIR__ . '/AuditService.php';
+require_once __DIR__ . '/../includes/AppointmentTime.php';
+require_once __DIR__ . '/Repositories/RescheduleTransactionRepository.php';
 
 class RescheduleService
 {
+    public const SCHEMA_V1 = 'v1';
+    public const SCHEMA_V2 = 'v2';
+
+    /**
+     * Resolve the opt-in schema for HTTP reschedule routes.
+     *
+     * Existing deployments remain on V1 unless the server environment
+     * explicitly sets HEALTHBRIDGE_RESCHEDULE_SCHEMA=v2. Invalid values fail
+     * closed instead of silently selecting a schema.
+     */
+    public static function schemaFromEnvironment(): string
+    {
+        $configured = $_ENV['HEALTHBRIDGE_RESCHEDULE_SCHEMA']
+            ?? $_SERVER['HEALTHBRIDGE_RESCHEDULE_SCHEMA']
+            ?? getenv('HEALTHBRIDGE_RESCHEDULE_SCHEMA');
+
+        if ($configured === false || $configured === null || trim((string)$configured) === '') {
+            return self::SCHEMA_V1;
+        }
+
+        $schema = strtolower(trim((string)$configured));
+        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
+            throw new InvalidArgumentException('HEALTHBRIDGE_RESCHEDULE_SCHEMA must be v1 or v2.');
+        }
+
+        return $schema;
+    }
+
     private PDO $db;
     private int $actorId;
     private string $actorRole;
+    private ?RescheduleTransactionRepository $repository = null;
 
-    public function __construct(PDO $db, int $actorId, string $actorRole = 'patient')
+    public function __construct(PDO $db, int $actorId, string $actorRole = 'patient', string $schema = self::SCHEMA_V1)
     {
+        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
+            throw new InvalidArgumentException('RescheduleService schema must be explicitly v1 or v2.');
+        }
+
         $this->db = $db;
         $this->actorId = $actorId;
         $this->actorRole = in_array($actorRole, ['patient', 'doctor', 'admin'], true) ? $actorRole : 'patient';
-    }
 
-    public function getDB(): PDO
-    {
-        return $this->db;
+        if ($schema === self::SCHEMA_V2) {
+            $this->repository = new RescheduleTransactionRepository($db, $schema);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -59,81 +93,102 @@ class RescheduleService
 
     public function requestReschedule(int $appointmentId, string $newDate, string $newTime, string $reason = ''): array
     {
+        if ($this->repository !== null) {
+            return $this->runRepositoryMutation(
+                fn(): array => $this->repository->requestReschedule($appointmentId, $this->actorId, $this->actorRole, $newDate, $newTime, $reason),
+                'Reschedule request submitted successfully. Awaiting doctor approval.',
+                'Failed to submit reschedule request.',
+                __FUNCTION__
+            );
+        }
         try {
-            $appt = $this->getAppointment($appointmentId);
-            if (!$appt) {
-                return ['success' => false, 'message' => 'Appointment not found.'];
-            }
-            if ($this->actorRole === 'patient' && (int)$appt['user_id'] !== $this->actorId) {
-                return ['success' => false, 'message' => 'This appointment does not belong to you.'];
-            }
-            if ($appt['status'] !== 'Confirmed') {
-                return ['success' => false, 'message' => 'Only confirmed appointments can be rescheduled.'];
-            }
-            if ($appt['reschedule_status'] === 'pending') {
-                return ['success' => false, 'message' => 'A reschedule request is already pending for this appointment.'];
+            if (!in_array($this->actorRole, ['patient', 'admin'], true)) {
+                return ['success' => false, 'message' => 'Only patients and administrators can request reschedules.'];
             }
 
-            $normalizedNewTime = $this->normalizeTime($newTime);
-            $normalizedCurrentTime = $this->normalizeTime($appt['time']);
+            $dateValue = DateTime::createFromFormat('!Y-m-d', $newDate);
+            if (!$dateValue || $dateValue->format('Y-m-d') !== $newDate) {
+                return ['success' => false, 'message' => 'Invalid date. Use YYYY-MM-DD.'];
+            }
+
+            $normalizedNewTime = AppointmentTime::normalize($newTime);
+            if (!preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $normalizedNewTime)) {
+                return ['success' => false, 'message' => 'Invalid time. Use HH:MM or a valid AM/PM time.'];
+            }
+
+            // Lock in a consistent order: doctor schedule row first, then appointment.
+            $appt = $this->beginLockedRescheduleAppointment($appointmentId);
+            if (!$appt) {
+                return ['success' => false, 'message' => 'Appointment or assigned doctor not found.'];
+            }
+
+            if ($this->actorRole === 'patient' && (int)$appt['user_id'] !== $this->actorId) {
+                return $this->rollbackFailure('This appointment does not belong to you.');
+            }
+            if ($appt['status'] !== 'Confirmed') {
+                return $this->rollbackFailure('Only confirmed appointments can be rescheduled.');
+            }
+            if (!in_array($appt['reschedule_status'], ['none', 'approved', 'rejected'], true)) {
+                return $this->rollbackFailure('A reschedule request is already active for this appointment.');
+            }
+
+            $normalizedCurrentTime = AppointmentTime::normalize((string)$appt['time']);
             if ($newDate === $appt['date'] && $normalizedNewTime === $normalizedCurrentTime) {
-                return ['success' => false, 'message' => 'The new appointment time must be different from the current time.'];
+                return $this->rollbackFailure('The new appointment time must be different from the current time.');
             }
 
             $ss = new ScheduleService($this->db);
             $doctorId = (int)$appt['doctor_id'];
-            $validationError = $ss->validateBookingSlot($doctorId, $newDate, $normalizedNewTime);
+            $validationError = $ss->validateBookingSlot($doctorId, $newDate, $normalizedNewTime, $appointmentId);
             if ($validationError !== null) {
-                return ['success' => false, 'message' => $validationError];
+                return $this->rollbackFailure($validationError);
             }
 
-            if ($newDate === $appt['date']) {
-                $duration = (int)($appt['appointment_duration'] ?? 30);
-                if (!$duration) {
-                    $schedule = $ss->getSchedule($doctorId);
-                    $duration = (int)($schedule['settings']['appointment_duration'] ?? 30);
-                }
-                $bookedRanges = $ss->getBookedRanges($doctorId, $newDate);
-                foreach ($bookedRanges as $range) {
-                    $currentStartMin = $this->timeToMinutes($normalizedCurrentTime);
-                    $currentEndMin = $currentStartMin + $duration;
-                    $newStartMin = $this->timeToMinutes($normalizedNewTime);
-                    $newEndMin = $newStartMin + $duration;
-                    if ($newStartMin < $currentEndMin && $newEndMin > $currentStartMin) {
-                        return ['success' => false, 'message' => 'You are already booked at this time. Please select a different slot.'];
-                    }
-                }
+            $stmt = $this->db->prepare(
+                "UPDATE appointments SET
+                    status = 'Reschedule Requested',
+                    reschedule_status = 'pending',
+                    pending_reschedule_date = ?,
+                    pending_reschedule_time = ?,
+                    requested_reschedule_date = ?,
+                    requested_reschedule_time = ?,
+                    reschedule_reason = ?,
+                    reschedule_requested_at = NOW(),
+                    reschedule_requested_by = ?,
+                    reschedule_responded_at = NULL,
+                    reschedule_responded_by = NULL,
+                    reschedule_response_notes = NULL
+                 WHERE id = ?
+                   AND status = 'Confirmed'
+                   AND reschedule_status IN ('none', 'approved', 'rejected')"
+            );
+            $stmt->execute([
+                $newDate,
+                $normalizedNewTime,
+                $newDate,
+                $normalizedNewTime,
+                $reason,
+                $this->actorId,
+                $appointmentId,
+            ]);
+
+            if ($stmt->rowCount() !== 1) {
+                return $this->rollbackFailure('The appointment changed before the request could be saved. Refresh and try again.');
             }
 
-            $this->db->beginTransaction();
-            try {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        status = 'Reschedule Requested',
-                        reschedule_status = 'pending',
-                        pending_reschedule_date = ?,
-                        pending_reschedule_time = ?,
-                        reschedule_reason = ?,
-                        reschedule_requested_at = NOW(),
-                        reschedule_requested_by = ?,
-                        reschedule_responded_at = NULL,
-                        reschedule_responded_by = NULL,
-                        reschedule_response_notes = NULL
-                     WHERE id = ?"
-                );
-                $stmt->execute([$newDate, $newTime, $reason, $this->actorId, $appointmentId]);
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
-            }
+                        $this->logRescheduleRequest($appt, $newDate, $normalizedNewTime, $reason);
 
-            $this->sendRescheduleRequestNotifications($appt, $newDate, $newTime, $reason);
-            $this->logRescheduleRequest($appt, $newDate, $newTime, $reason);
+            $this->sendRescheduleRequestNotifications($appt, $newDate, $normalizedNewTime, $reason);
+
+$this->db->commit();
+            $this->dispatchNotificationsAfterCommit('request reschedule');
 
             return ['success' => true, 'message' => 'Reschedule request submitted successfully. Awaiting doctor approval.'];
         } catch (\Throwable $e) {
-            error_log('RescheduleService::requestReschedule Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RescheduleService::requestReschedule Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to submit reschedule request.'];
         }
     }
@@ -155,52 +210,79 @@ class RescheduleService
      */
     public function suggestReschedule(int $appointmentId, string $suggestedDate, string $suggestedTime, string $notes = ''): array
     {
+        if ($this->repository !== null) {
+            return $this->runRepositoryMutation(
+                fn(): array => $this->repository->suggestReschedule($appointmentId, $this->actorId, $this->actorRole, $suggestedDate, $suggestedTime, $notes),
+                'Alternative time suggested. Awaiting patient response.',
+                'Failed to suggest alternative time.',
+                __FUNCTION__
+            );
+        }
         try {
-            $appt = $this->getAppointment($appointmentId);
-            if (!$appt) {
-                return ['success' => false, 'message' => 'Appointment not found.'];
+            if (!in_array($this->actorRole, ['doctor', 'admin'], true)) {
+                return ['success' => false, 'message' => 'Only doctors and administrators can suggest reschedule times.'];
             }
-            if ($appt['reschedule_status'] !== 'pending') {
-                return ['success' => false, 'message' => 'No pending reschedule request for this appointment.'];
+
+            $dateValue = DateTime::createFromFormat('!Y-m-d', $suggestedDate);
+            if (!$dateValue || $dateValue->format('Y-m-d') !== $suggestedDate) {
+                return ['success' => false, 'message' => 'Invalid suggested date. Use YYYY-MM-DD.'];
+            }
+
+            $normalizedTime = AppointmentTime::normalize($suggestedTime);
+            if (!preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $normalizedTime)) {
+                return ['success' => false, 'message' => 'Invalid suggested time. Use HH:MM or a valid AM/PM time.'];
+            }
+
+            $appt = $this->beginLockedRescheduleAppointment($appointmentId);
+            if (!$appt) {
+                return ['success' => false, 'message' => 'Appointment or assigned doctor not found.'];
+            }
+            if ($appt['status'] !== 'Reschedule Requested' || $appt['reschedule_status'] !== 'pending') {
+                return $this->rollbackFailure('No pending reschedule request for this appointment.');
             }
             if ($this->actorRole === 'doctor' && (int)$appt['doctor_id'] !== $this->actorId) {
-                return ['success' => false, 'message' => 'This appointment does not belong to you.'];
+                return $this->rollbackFailure('This appointment does not belong to you.');
             }
 
-            $normalizedTime = $this->normalizeTime($suggestedTime);
-            $ss = new ScheduleService($this->db);
             $doctorId = (int)$appt['doctor_id'];
-            $validationError = $ss->validateBookingSlot($doctorId, $suggestedDate, $normalizedTime);
+            $ss = new ScheduleService($this->db);
+            $validationError = $ss->validateBookingSlot($doctorId, $suggestedDate, $normalizedTime, $appointmentId);
             if ($validationError !== null) {
-                return ['success' => false, 'message' => 'Suggested time is not available: ' . $validationError];
+                return $this->rollbackFailure('Suggested time is not available: ' . $validationError);
             }
 
-            $this->db->beginTransaction();
-            try {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        pending_reschedule_date = ?,
-                        pending_reschedule_time = ?,
-                        reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?),
-                        reschedule_status = 'suggested',
-                        reschedule_responded_at = NOW(),
-                        reschedule_responded_by = ?
-                     WHERE id = ?"
-                );
-                $suggestionNote = ' | Doctor suggested: ' . $suggestedDate . ' ' . $normalizedTime . ($notes ? '. Notes: ' . $notes : '');
-                $stmt->execute([$suggestedDate, $normalizedTime, $suggestionNote, $this->actorId, $appointmentId]);
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
+            $suggestionNote = ' | Doctor suggested: ' . $suggestedDate . ' ' . $normalizedTime . ($notes ? '. Notes: ' . $notes : '');
+            $stmt = $this->db->prepare(
+                "UPDATE appointments SET
+                    pending_reschedule_date = ?,
+                    pending_reschedule_time = ?,
+                    reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?),
+                    reschedule_status = 'suggested',
+                    reschedule_responded_at = NOW(),
+                    reschedule_responded_by = ?
+                 WHERE id = ?
+                   AND status = 'Reschedule Requested'
+                   AND reschedule_status = 'pending'"
+            );
+            $stmt->execute([$suggestedDate, $normalizedTime, $suggestionNote, $this->actorId, $appointmentId]);
+
+            if ($stmt->rowCount() !== 1) {
+                return $this->rollbackFailure('The reschedule request changed before the suggestion could be saved.');
             }
+
+                        $this->logRescheduleSuggested($appt, $suggestedDate, $normalizedTime, $notes);
 
             $this->sendRescheduleSuggestedNotifications($appt, $suggestedDate, $normalizedTime, $notes);
-            $this->logRescheduleSuggested($appt, $suggestedDate, $normalizedTime, $notes);
+
+$this->db->commit();
+            $this->dispatchNotificationsAfterCommit('reschedule suggestion');
 
             return ['success' => true, 'message' => 'Alternative time suggested. Awaiting patient response.'];
         } catch (\Throwable $e) {
-            error_log('RescheduleService::suggestReschedule Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RescheduleService::suggestReschedule Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to suggest alternative time.'];
         }
     }
@@ -218,57 +300,81 @@ class RescheduleService
      */
     public function acceptRescheduleSuggestion(int $appointmentId): array
     {
+        if ($this->repository !== null) {
+            return $this->runRepositoryMutation(
+                fn(): array => $this->repository->acceptSuggestion($appointmentId, $this->actorId, $this->actorRole),
+                'Suggested time accepted. Appointment has been updated.',
+                'Failed to accept suggested time.',
+                __FUNCTION__
+            );
+        }
         try {
-            $appt = $this->getAppointment($appointmentId);
-            if (!$appt) {
-                return ['success' => false, 'message' => 'Appointment not found.'];
-            }
-            if ($appt['reschedule_status'] !== 'suggested') {
-                return ['success' => false, 'message' => 'No pending suggestion for this appointment.'];
-            }
-            if ($this->actorRole === 'patient' && (int)$appt['user_id'] !== $this->actorId) {
-                return ['success' => false, 'message' => 'This appointment does not belong to you.'];
+            if (!in_array($this->actorRole, ['patient', 'admin'], true)) {
+                return ['success' => false, 'message' => 'Only patients and administrators can accept suggestions.'];
             }
 
-            $newDate = $appt['pending_reschedule_date'];
-            $newTime = $appt['pending_reschedule_time'];
-            if (!$newDate || !$newTime) {
-                return ['success' => false, 'message' => 'Suggestion data is incomplete.'];
+            $appt = $this->beginLockedRescheduleAppointment($appointmentId);
+            if (!$appt) {
+                return ['success' => false, 'message' => 'Appointment or assigned doctor not found.'];
+            }
+            if ($appt['status'] !== 'Reschedule Requested' || $appt['reschedule_status'] !== 'suggested') {
+                return $this->rollbackFailure('No pending suggestion for this appointment.');
+            }
+            if ($this->actorRole === 'patient' && (int)$appt['user_id'] !== $this->actorId) {
+                return $this->rollbackFailure('This appointment does not belong to you.');
+            }
+
+            $newDate = (string)($appt['pending_reschedule_date'] ?? '');
+            $newTime = (string)($appt['pending_reschedule_time'] ?? '');
+            if ($newDate === '' || $newTime === '') {
+                return $this->rollbackFailure('Suggestion data is incomplete.');
             }
 
             $doctorId = (int)$appt['doctor_id'];
-            $normalizedTime = $this->normalizeTime($newTime);
-            $duration = $this->getAppointmentDuration($doctorId);
-            $newTimeRange = $this->computeTimeRange($newTime, $duration);
-
-            $this->db->beginTransaction();
-            try {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        date = ?,
-                        time = ?,
-                        appointment_time_range = ?,
-                        status = 'Confirmed',
-                        reschedule_status = 'approved',
-                        reschedule_responded_at = NOW(),
-                        reschedule_responded_by = ?,
-                        reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
-                     WHERE id = ?"
-                );
-                $acceptNote = ' | Patient accepted suggested time.';
-                $stmt->execute([$newDate, $newTime, $newTimeRange, $this->actorId, $acceptNote, $appointmentId]);
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
+            $normalizedTime = AppointmentTime::normalize($newTime);
+            $ss = new ScheduleService($this->db);
+            $validationError = $ss->validateBookingSlot($doctorId, $newDate, $normalizedTime, $appointmentId);
+            if ($validationError !== null) {
+                return $this->rollbackFailure('The suggested time is no longer available: ' . $validationError);
             }
 
-            $this->sendSuggestionAcceptedNotifications($appt, $newDate, $newTime);
-            $this->logSuggestionAccepted($appt, $newDate, $newTime);
+            $duration = AppointmentTime::duration($this->db, $doctorId);
+            $newTimeRange = AppointmentTime::range($normalizedTime, $duration);
+
+            $stmt = $this->db->prepare(
+                "UPDATE appointments SET
+                    date = ?,
+                    time = ?,
+                    appointment_time_range = ?,
+                    status = 'Confirmed',
+                    reschedule_status = 'approved',
+                    reschedule_responded_at = NOW(),
+                    reschedule_responded_by = ?,
+                    reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
+                 WHERE id = ?
+                   AND status = 'Reschedule Requested'
+                   AND reschedule_status = 'suggested'"
+            );
+            $acceptNote = ' | Patient accepted suggested time.';
+            $stmt->execute([$newDate, $normalizedTime, $newTimeRange, $this->actorId, $acceptNote, $appointmentId]);
+
+            if ($stmt->rowCount() !== 1) {
+                return $this->rollbackFailure('The suggestion changed before it could be accepted. Refresh and try again.');
+            }
+
+                        $this->logSuggestionAccepted($appt, $newDate, $normalizedTime);
+
+            $this->sendSuggestionAcceptedNotifications($appt, $newDate, $normalizedTime);
+
+$this->db->commit();
+            $this->dispatchNotificationsAfterCommit('accepted reschedule suggestion');
 
             return ['success' => true, 'message' => 'Suggested time accepted. Appointment has been updated.'];
         } catch (\Throwable $e) {
-            error_log('RescheduleService::acceptRescheduleSuggestion Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RescheduleService::acceptRescheduleSuggestion Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to accept suggested time.'];
         }
     }
@@ -286,40 +392,73 @@ class RescheduleService
      */
     public function declineRescheduleSuggestion(int $appointmentId): array
     {
+        if ($this->repository !== null) {
+            return $this->runRepositoryMutation(
+                fn(): array => $this->repository->declineSuggestion($appointmentId, $this->actorId, $this->actorRole),
+                'Suggested time declined. The original request is restored for the doctor to review.',
+                'Failed to decline suggestion.',
+                __FUNCTION__
+            );
+        }
         try {
-            $appt = $this->getAppointment($appointmentId);
-            if (!$appt) {
-                return ['success' => false, 'message' => 'Appointment not found.'];
+            if (!in_array($this->actorRole, ['patient', 'admin'], true)) {
+                return ['success' => false, 'message' => 'Only patients and administrators can decline suggestions.'];
             }
-            if ($appt['reschedule_status'] !== 'suggested') {
-                return ['success' => false, 'message' => 'No pending suggestion for this appointment.'];
+
+            $appt = $this->beginLockedRescheduleAppointment($appointmentId);
+            if (!$appt) {
+                return ['success' => false, 'message' => 'Appointment or assigned doctor not found.'];
+            }
+            if ($appt['status'] !== 'Reschedule Requested' || $appt['reschedule_status'] !== 'suggested') {
+                return $this->rollbackFailure('No pending suggestion for this appointment.');
             }
             if ($this->actorRole === 'patient' && (int)$appt['user_id'] !== $this->actorId) {
-                return ['success' => false, 'message' => 'This appointment does not belong to you.'];
+                return $this->rollbackFailure('This appointment does not belong to you.');
             }
 
-            $this->db->beginTransaction();
-            try {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        reschedule_status = 'pending',
-                        reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
-                     WHERE id = ?"
+            // Restore the patient's original request after declining the doctor's alternative.
+            // Legacy suggested rows may not have retained the original request; never
+            // misrepresent the suggestion itself as the patient's original request.
+            $originalDate = $appt['requested_reschedule_date'] ?? null;
+            $originalTime = $appt['requested_reschedule_time'] ?? null;
+            if (!$originalDate || !$originalTime) {
+                return $this->rollbackFailure(
+                    'The original requested time was not retained for this older suggestion. Cancel this request and submit a new one.'
                 );
-                $declineNote = ' | Patient declined suggested time.';
-                $stmt->execute([$declineNote, $appointmentId]);
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
             }
+
+            $declineNote = ' | Patient declined suggested time.';
+            $stmt = $this->db->prepare(
+                "UPDATE appointments SET
+                    pending_reschedule_date = ?,
+                    pending_reschedule_time = ?,
+                    reschedule_status = 'pending',
+                    reschedule_responded_at = NOW(),
+                    reschedule_responded_by = ?,
+                    reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
+                 WHERE id = ?
+                   AND status = 'Reschedule Requested'
+                   AND reschedule_status = 'suggested'"
+            );
+            $stmt->execute([$originalDate, $originalTime, $this->actorId, $declineNote, $appointmentId]);
+
+            if ($stmt->rowCount() !== 1) {
+                return $this->rollbackFailure('The suggestion changed before it could be declined. Refresh and try again.');
+            }
+
+                        $this->logSuggestionDeclined($appt);
 
             $this->sendSuggestionDeclinedNotifications($appt);
-            $this->logSuggestionDeclined($appt);
 
-            return ['success' => true, 'message' => 'Suggested time declined. The doctor can suggest another time.'];
+$this->db->commit();
+            $this->dispatchNotificationsAfterCommit('declined reschedule suggestion');
+
+            return ['success' => true, 'message' => 'Suggested time declined. The original request is restored for the doctor to review.'];
         } catch (\Throwable $e) {
-            error_log('RescheduleService::declineRescheduleSuggestion Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RescheduleService::declineRescheduleSuggestion Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to decline suggested time.'];
         }
     }
@@ -337,48 +476,66 @@ class RescheduleService
      */
     public function cancelRescheduleRequest(int $appointmentId): array
     {
+        if ($this->repository !== null) {
+            return $this->runRepositoryMutation(
+                fn(): array => $this->repository->cancelRequest($appointmentId, $this->actorId, $this->actorRole),
+                'Reschedule request cancelled. Appointment remains at original schedule.',
+                'Failed to cancel reschedule request.',
+                __FUNCTION__
+            );
+        }
         try {
-            $appt = $this->getAppointment($appointmentId);
-            if (!$appt) {
-                return ['success' => false, 'message' => 'Appointment not found.'];
+            if (!in_array($this->actorRole, ['patient', 'admin'], true)) {
+                return ['success' => false, 'message' => 'Only patients and administrators can cancel reschedule requests.'];
             }
-            if ($appt['reschedule_status'] === 'none' || $appt['reschedule_status'] === 'approved' || $appt['reschedule_status'] === 'rejected') {
-                return ['success' => false, 'message' => 'No active reschedule request to cancel.'];
+
+            $appt = $this->beginLockedRescheduleAppointment($appointmentId);
+            if (!$appt) {
+                return ['success' => false, 'message' => 'Appointment or assigned doctor not found.'];
+            }
+            if (
+                $appt['status'] !== 'Reschedule Requested'
+                || !in_array($appt['reschedule_status'], ['pending', 'suggested'], true)
+            ) {
+                return $this->rollbackFailure('No active reschedule request to cancel.');
             }
             if ($this->actorRole === 'patient' && (int)$appt['user_id'] !== $this->actorId) {
-                return ['success' => false, 'message' => 'This appointment does not belong to you.'];
+                return $this->rollbackFailure('This appointment does not belong to you.');
             }
 
-            $this->db->beginTransaction();
-            try {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        status = 'Confirmed',
-                        reschedule_status = 'none',
-                        pending_reschedule_date = NULL,
-                        pending_reschedule_time = NULL,
-                        reschedule_reason = NULL,
-                        reschedule_requested_at = NULL,
-                        reschedule_requested_by = NULL,
-                        reschedule_responded_at = NULL,
-                        reschedule_responded_by = NULL,
-                        reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
-                     WHERE id = ?"
-                );
-                $cancelNote = ' | Patient cancelled reschedule request.';
-                $stmt->execute([$cancelNote, $appointmentId]);
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
+            $cancelNote = ' | Patient cancelled reschedule request.';
+            $stmt = $this->db->prepare(
+                "UPDATE appointments SET
+                    status = 'Confirmed',
+                    reschedule_status = 'none',
+                    pending_reschedule_date = NULL,
+                    pending_reschedule_time = NULL,
+                    reschedule_responded_at = NOW(),
+                    reschedule_responded_by = ?,
+                    reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
+                 WHERE id = ?
+                   AND status = 'Reschedule Requested'
+                   AND reschedule_status IN ('pending', 'suggested')"
+            );
+            $stmt->execute([$this->actorId, $cancelNote, $appointmentId]);
+
+            if ($stmt->rowCount() !== 1) {
+                return $this->rollbackFailure('The reschedule request changed before it could be cancelled.');
             }
+
+                        $this->logRescheduleCancelled($appt);
 
             $this->sendRescheduleCancelledNotifications($appt);
-            $this->logRescheduleCancelled($appt);
+
+$this->db->commit();
+            $this->dispatchNotificationsAfterCommit('reschedule cancellation');
 
             return ['success' => true, 'message' => 'Reschedule request cancelled. Appointment remains at original schedule.'];
         } catch (\Throwable $e) {
-            error_log('RescheduleService::cancelRescheduleRequest Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RescheduleService::cancelRescheduleRequest Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to cancel reschedule request.'];
         }
     }
@@ -389,66 +546,89 @@ class RescheduleService
 
     public function approveReschedule(int $appointmentId, string $doctorNotes = ''): array
     {
+        if ($this->repository !== null) {
+            return $this->runRepositoryMutation(
+                fn(): array => $this->repository->approveRequest($appointmentId, $this->actorId, $this->actorRole, $doctorNotes),
+                'Reschedule request approved. Appointment has been updated.',
+                'Failed to approve reschedule request.',
+                __FUNCTION__
+            );
+        }
         try {
-            $appt = $this->getAppointment($appointmentId);
-            if (!$appt) {
-                return ['success' => false, 'message' => 'Appointment not found.'];
+            if (!in_array($this->actorRole, ['doctor', 'admin'], true)) {
+                return ['success' => false, 'message' => 'Only doctors and administrators can approve reschedules.'];
             }
-            if ($appt['reschedule_status'] !== 'pending' && $appt['reschedule_status'] !== 'suggested') {
-                return ['success' => false, 'message' => 'No pending reschedule request for this appointment.'];
+
+            $appt = $this->beginLockedRescheduleAppointment($appointmentId);
+            if (!$appt) {
+                return ['success' => false, 'message' => 'Appointment or assigned doctor not found.'];
+            }
+            if ($appt['status'] !== 'Reschedule Requested' || $appt['reschedule_status'] !== 'pending') {
+                if ($appt['reschedule_status'] === 'suggested') {
+                    return $this->rollbackFailure('The patient must accept or decline the suggested time before the reschedule can be approved.');
+                }
+                return $this->rollbackFailure('No pending reschedule request for this appointment.');
             }
             if ($this->actorRole === 'doctor' && (int)$appt['doctor_id'] !== $this->actorId) {
-                return ['success' => false, 'message' => 'This appointment does not belong to you.'];
+                return $this->rollbackFailure('This appointment does not belong to you.');
             }
 
-            $newDate = $appt['pending_reschedule_date'];
-            $newTime = $appt['pending_reschedule_time'];
-            if (!$newDate || !$newTime) {
-                return ['success' => false, 'message' => 'Reschedule data is incomplete.'];
+            $newDate = (string)($appt['pending_reschedule_date'] ?? '');
+            $newTime = (string)($appt['pending_reschedule_time'] ?? '');
+            if ($newDate === '' || $newTime === '') {
+                return $this->rollbackFailure('Reschedule data is incomplete.');
             }
 
-            $ss = new ScheduleService($this->db);
             $doctorId = (int)$appt['doctor_id'];
-            $normalizedNewTime = $this->normalizeTime($newTime);
-            $validationError = $ss->validateBookingSlot($doctorId, $newDate, $normalizedNewTime);
+            $normalizedNewTime = AppointmentTime::normalize($newTime);
+            $ss = new ScheduleService($this->db);
+            $validationError = $ss->validateBookingSlot($doctorId, $newDate, $normalizedNewTime, $appointmentId);
             if ($validationError !== null) {
-                $this->notifySlotNoLongerAvailable($appt, $newDate, $newTime);
+                $this->db->rollBack();
+                try {
+                    $this->notifySlotNoLongerAvailable($appt, $newDate, $newTime);
+                } catch (\Throwable $notificationError) {
+                    error_log('Could not notify about unavailable reschedule slot: ' . $notificationError->getMessage());
+                }
                 return ['success' => false, 'message' => 'The requested time slot is no longer available. Please ask the patient to request a new time.'];
             }
 
-            $this->db->beginTransaction();
-            try {
-                $duration = $this->getAppointmentDuration((int)$doctorId);
-                $newTimeRange = $this->computeTimeRange($newTime, $duration);
+            $duration = AppointmentTime::duration($this->db, $doctorId);
+            $newTimeRange = AppointmentTime::range($normalizedNewTime, $duration);
+            $approvalNote = ' | Approved: ' . ($doctorNotes ?: 'Approved by doctor.');
+            $stmt = $this->db->prepare(
+                "UPDATE appointments SET
+                    date = ?,
+                    time = ?,
+                    appointment_time_range = ?,
+                    status = 'Confirmed',
+                    reschedule_status = 'approved',
+                    reschedule_responded_at = NOW(),
+                    reschedule_responded_by = ?,
+                    reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
+                 WHERE id = ?
+                   AND status = 'Reschedule Requested'
+                   AND reschedule_status = 'pending'"
+            );
+            $stmt->execute([$newDate, $normalizedNewTime, $newTimeRange, $this->actorId, $approvalNote, $appointmentId]);
 
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        date = ?,
-                        time = ?,
-                        appointment_time_range = ?,
-                        status = 'Confirmed',
-                        reschedule_status = 'approved',
-                        reschedule_responded_at = NOW(),
-                        reschedule_responded_by = ?,
-                        reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?),
-                        reschedule_requested_at = reschedule_requested_at,
-                        reschedule_requested_by = reschedule_requested_by
-                     WHERE id = ?"
-                );
-                $approvalNote = ' | Approved: ' . ($doctorNotes ?: 'Approved by doctor.');
-                $stmt->execute([$newDate, $newTime, $newTimeRange, $this->actorId, $approvalNote, $appointmentId]);
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
+            if ($stmt->rowCount() !== 1) {
+                return $this->rollbackFailure('The reschedule request changed before approval. Refresh and try again.');
             }
 
-            $this->sendRescheduleApprovedNotifications($appt, $newDate, $newTime);
-            $this->logRescheduleApproved($appt, $newDate, $newTime);
+                        $this->logRescheduleApproved($appt, $newDate, $normalizedNewTime);
+
+            $this->sendRescheduleApprovedNotifications($appt, $newDate, $normalizedNewTime);
+
+$this->db->commit();
+            $this->dispatchNotificationsAfterCommit('reschedule approval');
 
             return ['success' => true, 'message' => 'Reschedule request approved. Appointment has been updated.'];
         } catch (\Throwable $e) {
-            error_log('RescheduleService::approveReschedule Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RescheduleService::approveReschedule Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to approve reschedule request.'];
         }
     }
@@ -459,43 +639,64 @@ class RescheduleService
 
     public function rejectReschedule(int $appointmentId, string $doctorNotes = ''): array
     {
+        if ($this->repository !== null) {
+            return $this->runRepositoryMutation(
+                fn(): array => $this->repository->rejectRequest($appointmentId, $this->actorId, $this->actorRole, $doctorNotes),
+                'Reschedule request rejected. The appointment remains at its original schedule.',
+                'Failed to reject reschedule request.',
+                __FUNCTION__
+            );
+        }
         try {
-            $appt = $this->getAppointment($appointmentId);
-            if (!$appt) {
-                return ['success' => false, 'message' => 'Appointment not found.'];
+            if (!in_array($this->actorRole, ['doctor', 'admin'], true)) {
+                return ['success' => false, 'message' => 'Only doctors and administrators can reject reschedules.'];
             }
-            if ($appt['reschedule_status'] !== 'pending' && $appt['reschedule_status'] !== 'suggested') {
-                return ['success' => false, 'message' => 'No pending reschedule request for this appointment.'];
+
+            $appt = $this->beginLockedRescheduleAppointment($appointmentId);
+            if (!$appt) {
+                return ['success' => false, 'message' => 'Appointment or assigned doctor not found.'];
+            }
+            if (
+                $appt['status'] !== 'Reschedule Requested'
+                || !in_array($appt['reschedule_status'], ['pending', 'suggested'], true)
+            ) {
+                return $this->rollbackFailure('No pending reschedule request for this appointment.');
             }
             if ($this->actorRole === 'doctor' && (int)$appt['doctor_id'] !== $this->actorId) {
-                return ['success' => false, 'message' => 'This appointment does not belong to you.'];
+                return $this->rollbackFailure('This appointment does not belong to you.');
             }
 
-            $this->db->beginTransaction();
-            try {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        status = 'Confirmed',
-                        reschedule_status = 'rejected',
-                        reschedule_responded_at = NOW(),
-                        reschedule_responded_by = ?,
-                        reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
-                     WHERE id = ?"
-                );
-                $rejectionNote = ' | Rejected: ' . ($doctorNotes ?: 'Rejected by doctor.');
-                $stmt->execute([$this->actorId, $rejectionNote, $appointmentId]);
-                $this->db->commit();
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
+            $rejectionNote = ' | Rejected: ' . ($doctorNotes ?: 'Rejected by doctor.');
+            $stmt = $this->db->prepare(
+                "UPDATE appointments SET
+                    status = 'Confirmed',
+                    reschedule_status = 'rejected',
+                    reschedule_responded_at = NOW(),
+                    reschedule_responded_by = ?,
+                    reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?)
+                 WHERE id = ?
+                   AND status = 'Reschedule Requested'
+                   AND reschedule_status IN ('pending', 'suggested')"
+            );
+            $stmt->execute([$this->actorId, $rejectionNote, $appointmentId]);
+
+            if ($stmt->rowCount() !== 1) {
+                return $this->rollbackFailure('The reschedule request changed before rejection. Refresh and try again.');
             }
+
+                        $this->logRescheduleRejected($appt, $doctorNotes);
 
             $this->sendRescheduleRejectedNotifications($appt, $doctorNotes);
-            $this->logRescheduleRejected($appt, $doctorNotes);
+
+$this->db->commit();
+            $this->dispatchNotificationsAfterCommit('reschedule rejection');
 
             return ['success' => true, 'message' => 'Reschedule request rejected. The appointment remains at its original schedule.'];
         } catch (\Throwable $e) {
-            error_log('RescheduleService::rejectReschedule Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('RescheduleService::rejectReschedule Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to reject reschedule request.'];
         }
     }
@@ -506,6 +707,9 @@ class RescheduleService
 
     public function getPendingRequestsForDoctor(int $doctorId): array
     {
+        if ($this->repository !== null) {
+            return $this->repository->getPendingRequestsForDoctor($doctorId);
+        }
         $stmt = $this->db->prepare(
             "SELECT a.*, u.name AS patient_name
              FROM appointments a
@@ -520,6 +724,9 @@ class RescheduleService
 
     public function getAllPendingRequests(): array
     {
+        if ($this->repository !== null) {
+            return $this->repository->getAllPendingRequests();
+        }
         $stmt = $this->db->query(
             "SELECT a.*, u.name AS patient_name, doc.name AS doctor_name
              FROM appointments a
@@ -533,10 +740,14 @@ class RescheduleService
 
     public function getRescheduleHistory(int $appointmentId): ?array
     {
+        if ($this->repository !== null) {
+            return $this->repository->getRescheduleHistory($appointmentId);
+        }
         $stmt = $this->db->prepare(
             "SELECT id, pending_reschedule_date, pending_reschedule_time,
-                    reschedule_reason, reschedule_requested_at,
-                    reschedule_status, reschedule_responded_at,
+                    requested_reschedule_date, requested_reschedule_time,
+                    reschedule_reason, reschedule_requested_at, reschedule_requested_by,
+                    reschedule_status, reschedule_responded_at, reschedule_responded_by,
                     reschedule_response_notes
              FROM appointments
              WHERE id = ?"
@@ -549,68 +760,139 @@ class RescheduleService
     //  INTERNAL HELPERS
     // ═══════════════════════════════════════════════════════════
 
-    private function getAppointment(int $appointmentId): ?array
+    /**
+     * Lock the doctor schedule row before the appointment row.
+     * Booking and reschedule mutations use the same order to serialize
+     * concurrent requests for a doctor without table-wide locks.
+     */
+    private function beginLockedRescheduleAppointment(int $appointmentId): ?array
     {
-        $stmt = $this->db->prepare(
-            "SELECT a.*, u.name AS patient_name
-             FROM appointments a
-             JOIN users u ON a.user_id = u.id
-             WHERE a.id = ?
-             LIMIT 1"
-        );
+        if ($this->db->inTransaction()) {
+            throw new RuntimeException('A reschedule operation cannot start inside an existing transaction.');
+        }
+
+        $lookup = $this->db->prepare('SELECT doctor_id FROM appointments WHERE id = ? LIMIT 1');
+        $lookup->execute([$appointmentId]);
+        $doctorId = (int)$lookup->fetchColumn();
+
+        if ($doctorId <= 0) {
+            return null;
+        }
+
+        $this->db->beginTransaction();
+
+        try {
+            $doctorLock = $this->db->prepare(
+                "SELECT id FROM users WHERE id = ? AND role = 'doctor' FOR UPDATE"
+            );
+            $doctorLock->execute([$doctorId]);
+            if (!$doctorLock->fetchColumn()) {
+                $this->db->rollBack();
+                return null;
+            }
+
+            $appointment = $this->getAppointment($appointmentId, true);
+            if (!$appointment || (int)$appointment['doctor_id'] !== $doctorId) {
+                $this->db->rollBack();
+                return null;
+            }
+
+            return $appointment;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    private function rollbackFailure(string $message): array
+    {
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+
+        return ['success' => false, 'message' => $message];
+    }
+
+    /**
+     * Run a V2 repository mutation through the legacy HTTP response contract.
+     * The repository queues notifications transactionally; dispatch only after
+     * its transaction has committed. A caller-owned transaction remains pending
+     * for its owner and is never dispatched from this facade.
+     */
+    private function runRepositoryMutation(callable $operation, string $successMessage, string $failureMessage, string $operationName): array
+    {
+        $ownsTransaction = !$this->db->inTransaction();
+
+        try {
+            $result = $operation();
+            if (!is_array($result) || ($result['success'] ?? false) !== true) {
+                throw new RuntimeException('The reschedule repository returned an invalid result.');
+            }
+
+            if ($ownsTransaction && !$this->db->inTransaction()) {
+                try {
+                    (new NotificationService($this->db))->processOutbox(50);
+                } catch (Throwable $dispatchError) {
+                    error_log('RescheduleService notification dispatch deferred after ' . $operationName . ': ' . $dispatchError->getMessage());
+                }
+            }
+
+            return ['success' => true, 'message' => $successMessage];
+        } catch (DomainException | InvalidArgumentException $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        } catch (Throwable $e) {
+            error_log('RescheduleService::' . $operationName . ' Error: ' . $e->getMessage());
+            return ['success' => false, 'message' => $failureMessage];
+        }
+    }
+    private function getAppointment(int $appointmentId, bool $forUpdate = false): ?array
+    {
+        // Lock only the appointment row. A locking JOIN to users would also lock
+        // the patient account, reversing the patient-archive order (patient, then
+        // appointments) and allowing a reschedule/archive deadlock.
+        $sql = "SELECT a.*
+                FROM appointments a
+                WHERE a.id = ?
+                LIMIT 1";
+        if ($forUpdate) {
+            $sql .= ' FOR UPDATE';
+        }
+
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([$appointmentId]);
-        return $stmt->fetch() ?: null;
-    }
-
-    private function normalizeTime(string $time): string
-    {
-        if (preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $time)) {
-            return $time;
+        $appointment = $stmt->fetch();
+        if (!$appointment) {
+            return null;
         }
-        $parsed = date_parse_from_format('h:i A', strtoupper($time));
-        if ($parsed['error_count'] === 0 && $parsed['warning_count'] === 0) {
-            return sprintf('%02d:%02d', $parsed['hour'], $parsed['minute']);
-        }
-        $parsed = date_parse_from_format('h:iA', strtoupper($time));
-        if ($parsed['error_count'] === 0 && $parsed['warning_count'] === 0) {
-            return sprintf('%02d:%02d', $parsed['hour'], $parsed['minute']);
-        }
-        return $time;
-    }
 
-    private function timeToMinutes(string $time): int
-    {
-        $parts = explode(':', $time);
-        return (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
-    }
+        // The display name is informational; read it without taking a patient
+        // account lock so appointment mutations do not acquire cross-account locks.
+        $patientStmt = $this->db->prepare('SELECT name FROM users WHERE id = ? LIMIT 1');
+        $patientStmt->execute([(int)$appointment['user_id']]);
+        $appointment['patient_name'] = (string)($patientStmt->fetchColumn() ?: '');
 
-    private function getAppointmentDuration(int $doctorId): int
-    {
-        $stmt = $this->db->prepare("SELECT appointment_duration FROM doctor_schedule_settings WHERE doctor_id = ? LIMIT 1");
-        $stmt->execute([$doctorId]);
-        $duration = $stmt->fetchColumn();
-        return $duration ? (int)$duration : 30;
-    }
-
-    private function computeTimeRange(string $time, int $duration): string
-    {
-        $parts = explode(':', $time);
-        $startMin = (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
-        $endMin = $startMin + $duration;
-        $endH = (int)($endMin / 60) % 24;
-        $endM = $endMin % 60;
-        $ampm1 = (int)$parts[0] >= 12 ? 'PM' : 'AM';
-        $h1 = (int)$parts[0] % 12;
-        if ($h1 === 0) $h1 = 12;
-        $startStr = "{$h1}:" . str_pad($parts[1] ?? '00', 2, '0', STR_PAD_LEFT) . " {$ampm1}";
-        $ampm2 = $endH >= 12 ? 'PM' : 'AM';
-        $h2 = $endH % 12;
-        if ($h2 === 0) $h2 = 12;
-        $endStr = "{$h2}:" . str_pad($endM, 2, '0', STR_PAD_LEFT) . " {$ampm2}";
-        return "{$startStr} – {$endStr}";
+        return $appointment;
     }
 
     // ═══════════════════════════════════════════════════════════
+    /**
+     * Dispatch notification events only after the reschedule transaction commits.
+     * Enqueue failures occur before commit and therefore roll back the appointment
+     * mutation; dispatch failures leave the committed outbox events for the worker.
+     */
+    private function dispatchNotificationsAfterCommit(string $operation): void
+    {
+        try {
+            (new NotificationService($this->db))->processOutbox(50);
+        } catch (\Throwable $error) {
+            error_log(
+                'Reschedule ' . $operation . ' committed; outbox dispatch deferred ('
+                . get_class($error) . ').'
+            );
+        }
+    }
     //  NOTIFICATIONS
     // ═══════════════════════════════════════════════════════════
 
@@ -620,11 +902,11 @@ class RescheduleService
         $appointmentId = (int)$appt['id'];
         $patientId = (int)$appt['user_id'];
         $doctorId = (int)$appt['doctor_id'];
-        $patientName = $appt['patient_name'] ?? $appt['patient_name'];
+        $patientName = $appt['patient_name'] ?? 'Patient';
         $oldDateFormatted = date('M j', strtotime($appt['date']));
-        $oldTimeFormatted = $this->formatTimeForDisplay($appt['time']);
+        $oldTimeFormatted = AppointmentTime::formatDisplay($appt['time']);
         $newDateFormatted = date('M j', strtotime($newDate));
-        $newTimeFormatted = $this->formatTimeForDisplay($newTime);
+        $newTimeFormatted = AppointmentTime::formatDisplay($newTime);
 
         $doctorMessage = "{$patientName} requested to reschedule Appointment #{$appointmentId} from {$oldDateFormatted} {$oldTimeFormatted} to {$newDateFormatted} {$newTimeFormatted}.";
         if ($reason) $doctorMessage .= " Reason: {$reason}";
@@ -645,7 +927,7 @@ class RescheduleService
         $doctorId = (int)$appt['doctor_id'];
         $doctorName = $this->getUserName($doctorId);
         $newDateFormatted = date('M j, Y', strtotime($suggestedDate));
-        $newTimeFormatted = $this->formatTimeForDisplay($suggestedTime);
+        $newTimeFormatted = AppointmentTime::formatDisplay($suggestedTime);
 
         $patientMessage = "Dr. {$doctorName} suggested a new appointment time: {$newDateFormatted} at {$newTimeFormatted}.";
         if ($notes) $patientMessage .= " Note: {$notes}";
@@ -664,7 +946,7 @@ class RescheduleService
         $doctorName = $this->getUserName($doctorId);
         $patientName = $appt['patient_name'] ?? 'Patient';
         $newDateFormatted = date('M j, Y', strtotime($newDate));
-        $newTimeFormatted = $this->formatTimeForDisplay($newTime);
+        $newTimeFormatted = AppointmentTime::formatDisplay($newTime);
 
         $doctorMessage = "{$patientName} accepted your suggested time for Appointment #{$appointmentId}: {$newDateFormatted} at {$newTimeFormatted}.";
         $ns->create($doctorId, NotificationService::TYPE_RESCHEDULE_SUGGESTION_ACCEPTED, 'Patient Accepted Suggested Time', $doctorMessage, 'appointment', $appointmentId);
@@ -712,7 +994,7 @@ class RescheduleService
         $doctorId = (int)$appt['doctor_id'];
         $doctorName = $this->getUserName($doctorId);
         $newDateFormatted = date('M j, Y', strtotime($newDate));
-        $newTimeFormatted = $this->formatTimeForDisplay($newTime);
+        $newTimeFormatted = AppointmentTime::formatDisplay($newTime);
 
         $patientMessage = "Your reschedule request for Appointment #{$appointmentId} has been approved. New appointment: {$newDateFormatted} at {$newTimeFormatted}.";
         $ns->create($patientId, NotificationService::TYPE_RESCHEDULE_APPROVED, 'Reschedule Approved', $patientMessage, 'appointment', $appointmentId);
@@ -769,17 +1051,6 @@ class RescheduleService
         }
     }
 
-    private function formatTimeForDisplay(string $time): string
-    {
-        $normalized = $this->normalizeTime($time);
-        $parts = explode(':', $normalized);
-        $hour = (int)$parts[0];
-        $min = $parts[1] ?? '00';
-        $ampm = $hour >= 12 ? 'PM' : 'AM';
-        $displayHour = $hour % 12;
-        if ($displayHour === 0) $displayHour = 12;
-        return "{$displayHour}:{$min} {$ampm}";
-    }
 
     // ═══════════════════════════════════════════════════════════
     //  AUDIT LOGGING
@@ -788,70 +1059,126 @@ class RescheduleService
     private function logRescheduleRequest(array $appt, string $newDate, string $newTime, string $reason): void
     {
         $audit = new AuditService($this->db, $this->actorId, $this->actorRole);
-        $audit->log('reschedule_request', 'appointment', (int)$appt['id'],
+        $logged = $audit->log(
+            'reschedule_request',
+            'appointment',
+            (int)$appt['id'],
             ['date' => $appt['date'], 'time' => $appt['time']],
             ['date' => $newDate, 'time' => $newTime, 'reason' => $reason],
             "Patient requested appointment reschedule. Old: {$appt['date']} {$appt['time']}. New: {$newDate} {$newTime}.",
-            (int)$appt['user_id'], (int)$appt['doctor_id']);
+            (int)$appt['user_id'],
+            (int)$appt['doctor_id']
+        );
+        if (!$logged) {
+            throw new RuntimeException('Could not record the reschedule request audit event.');
+        }
     }
 
     private function logRescheduleSuggested(array $appt, string $date, string $time, string $notes): void
     {
         $audit = new AuditService($this->db, $this->actorId, $this->actorRole);
-        $audit->log('reschedule_suggested', 'appointment', (int)$appt['id'],
+        $logged = $audit->log(
+            'reschedule_suggested',
+            'appointment',
+            (int)$appt['id'],
             ['date' => $appt['pending_reschedule_date'], 'time' => $appt['pending_reschedule_time']],
             ['suggested_date' => $date, 'suggested_time' => $time, 'notes' => $notes],
             "Doctor suggested alternative time. New: {$date} {$time}.",
-            (int)$appt['user_id'], (int)$appt['doctor_id']);
+            (int)$appt['user_id'],
+            (int)$appt['doctor_id']
+        );
+        if (!$logged) {
+            throw new RuntimeException('Could not record the reschedule suggestion audit event.');
+        }
     }
 
     private function logSuggestionAccepted(array $appt, string $newDate, string $newTime): void
     {
         $audit = new AuditService($this->db, $this->actorId, $this->actorRole);
-        $audit->log('reschedule_suggestion_accepted', 'appointment', (int)$appt['id'],
+        $logged = $audit->log(
+            'reschedule_suggestion_accepted',
+            'appointment',
+            (int)$appt['id'],
             ['date' => $appt['date'], 'time' => $appt['time']],
             ['date' => $newDate, 'time' => $newTime],
             "Patient accepted doctor's suggested reschedule time.",
-            (int)$appt['user_id'], (int)$appt['doctor_id']);
+            (int)$appt['user_id'],
+            (int)$appt['doctor_id']
+        );
+        if (!$logged) {
+            throw new RuntimeException('Could not record the accepted suggestion audit event.');
+        }
     }
 
     private function logSuggestionDeclined(array $appt): void
     {
         $audit = new AuditService($this->db, $this->actorId, $this->actorRole);
-        $audit->log('reschedule_suggestion_declined', 'appointment', (int)$appt['id'],
+        $logged = $audit->log(
+            'reschedule_suggestion_declined',
+            'appointment',
+            (int)$appt['id'],
             ['suggested_date' => $appt['pending_reschedule_date'], 'suggested_time' => $appt['pending_reschedule_time']],
             ['status' => 'pending'],
             "Patient declined doctor's suggested reschedule time.",
-            (int)$appt['user_id'], (int)$appt['doctor_id']);
+            (int)$appt['user_id'],
+            (int)$appt['doctor_id']
+        );
+        if (!$logged) {
+            throw new RuntimeException('Could not record the declined suggestion audit event.');
+        }
     }
 
     private function logRescheduleCancelled(array $appt): void
     {
         $audit = new AuditService($this->db, $this->actorId, $this->actorRole);
-        $audit->log('reschedule_cancelled', 'appointment', (int)$appt['id'],
+        $logged = $audit->log(
+            'reschedule_cancelled',
+            'appointment',
+            (int)$appt['id'],
             ['reschedule_status' => $appt['reschedule_status'], 'requested_date' => $appt['pending_reschedule_date']],
             ['status' => 'cancelled_by_patient'],
             "Patient cancelled the reschedule request.",
-            (int)$appt['user_id'], (int)$appt['doctor_id']);
+            (int)$appt['user_id'],
+            (int)$appt['doctor_id']
+        );
+        if (!$logged) {
+            throw new RuntimeException('Could not record the reschedule cancellation audit event.');
+        }
     }
 
     private function logRescheduleApproved(array $appt, string $newDate, string $newTime): void
     {
         $audit = new AuditService($this->db, $this->actorId, $this->actorRole);
-        $audit->log('reschedule_approved', 'appointment', (int)$appt['id'],
+        $logged = $audit->log(
+            'reschedule_approved',
+            'appointment',
+            (int)$appt['id'],
             ['date' => $appt['date'], 'time' => $appt['time']],
             ['date' => $newDate, 'time' => $newTime],
             "Doctor approved appointment reschedule.",
-            (int)$appt['user_id'], (int)$appt['doctor_id']);
+            (int)$appt['user_id'],
+            (int)$appt['doctor_id']
+        );
+        if (!$logged) {
+            throw new RuntimeException('Could not record the reschedule approval audit event.');
+        }
     }
 
     private function logRescheduleRejected(array $appt, string $doctorNotes): void
     {
         $audit = new AuditService($this->db, $this->actorId, $this->actorRole);
-        $audit->log('reschedule_rejected', 'appointment', (int)$appt['id'],
+        $logged = $audit->log(
+            'reschedule_rejected',
+            'appointment',
+            (int)$appt['id'],
             ['date' => $appt['date'], 'time' => $appt['time']],
             ['status' => 'rejected'],
-            "Doctor rejected appointment reschedule.",
-            (int)$appt['user_id'], (int)$appt['doctor_id']);
+            "Doctor rejected appointment reschedule. Notes: {$doctorNotes}",
+            (int)$appt['user_id'],
+            (int)$appt['doctor_id']
+        );
+        if (!$logged) {
+            throw new RuntimeException('Could not record the reschedule rejection audit event.');
+        }
     }
 }

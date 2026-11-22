@@ -6,6 +6,13 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../services/Repositories/DoctorSettingsRepository.php';
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 $user = requireAuth();
 $userId = $user['id'];
@@ -24,24 +31,60 @@ try {
         jsonResponse(false, ['message' => 'User not found.']);
     }
 
-    // Get or create preferences
+    // Read preferences without mutating state. Defaults are created by the explicit update path.
     $prefStmt = $db->prepare('SELECT * FROM user_preferences WHERE user_id = ? LIMIT 1');
     $prefStmt->execute([$userId]);
     $preferences = $prefStmt->fetch();
 
     if (!$preferences) {
-        // Auto-create preferences
-        $db->prepare('INSERT INTO user_preferences (user_id) VALUES (?)')->execute([$userId]);
-        $prefStmt->execute([$userId]);
-        $preferences = $prefStmt->fetch();
+        $preferences = [
+            'id' => null,
+            'user_id' => (int)$userId,
+            'theme' => 'system',
+            'notif_appointment' => 1,
+            'notif_ratings' => 1,
+            'notif_messages' => 1,
+            'notif_announcements' => 1,
+            'notif_email' => 0,
+            'accept_new_patients' => 1,
+            'consultation_duration' => 30,
+            'working_hours_start' => '09:00',
+            'working_hours_end' => '17:00',
+            'profile_visible' => 1,
+            'admin_default_tab' => 'overview',
+            'created_at' => null,
+            'updated_at' => null,
+        ];
     }
 
-    // Get doctor-specific data
+    // V1 remains the default; V2 is enabled only by explicit server configuration.
+    $schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_SETTINGS_SCHEMA');
     $doctorData = null;
+    $weeklySchedule = null;
     if ($role === 'doctor') {
-        $docStmt = $db->prepare('SELECT * FROM doctors WHERE user_id = ? LIMIT 1');
+        $doctorSettings = new DoctorSettingsRepository($db, $schema);
+        $practice = $doctorSettings->getDoctorSettings((int)$userId);
+        $preferences = array_merge($preferences, $practice['preferences']);
+
+        if ($schema === DoctorSettingsRepository::SCHEMA_V1) {
+            $docStmt = $db->prepare('SELECT * FROM doctors WHERE user_id = ? LIMIT 1');
+        } else {
+            $docStmt = $db->prepare(
+                'SELECT doctor_user_id AS user_id, department_id, specialty,
+                        experience_years AS exp, accepts_new_patients AS available,
+                        profile_visible
+                 FROM doctor_profiles WHERE doctor_user_id=? LIMIT 1'
+            );
+        }
         $docStmt->execute([$userId]);
         $doctorData = $docStmt->fetch();
+        $weeklySchedule = $practice['weekly_schedule'];
+    }
+
+    if ($role === 'admin' && $schema === DoctorSettingsRepository::SCHEMA_V2) {
+        $adminPrefStmt = $db->prepare('SELECT default_tab FROM admin_preferences WHERE admin_user_id=? LIMIT 1');
+        $adminPrefStmt->execute([$userId]);
+        $preferences['admin_default_tab'] = $adminPrefStmt->fetchColumn() ?: 'overview';
     }
 
     // Get unread notification count from unified table
@@ -53,6 +96,7 @@ try {
         'profile'     => $profile,
         'preferences' => $preferences,
         'doctor'      => $doctorData,
+        'weekly_schedule' => $weeklySchedule,
         'unread_notifications' => $unreadNotif,
     ]);
 

@@ -1,13 +1,20 @@
 <?php
 /**
  * HealthBridge — Get Patient Notifications
- * Returns recent notifications for the logged-in patient, plus unread count.
+ * Returns recent notifications for the authenticated account, plus unread count.
+ * Legacy patient-facing route; row scope remains bound to the current user ID.
  * Uses the unified notifications table.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
 
 $userId = requireAuth()['id'];
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 try {
     $db = getDB();

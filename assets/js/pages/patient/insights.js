@@ -25,7 +25,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
+      body: JSON.stringify({
+        sections: [
+          "insights",
+          "health_snapshot",
+          "profile_completion",
+          "medical_timeline",
+          "prescriptions"
+        ]
+      })
     },
     "Failed to load health insights."
   );
@@ -33,127 +41,149 @@ document.addEventListener("DOMContentLoaded", async () => {
   container.innerHTML = "";
 
   if (result.ok && result.data?.success) {
-    const data = result.data.data;
-    const insights = data?.insights || {};
-    const snapshot = data?.health_snapshot || {};
-    const completion = data?.profile_completion || { percentage: 80, missing_fields: [] };
-    const timeline = data?.medical_timeline || [];
-    const prescriptions = data?.prescriptions?.active_medications || [];
+    const data = result.data.data && typeof result.data.data === "object"
+      && !Array.isArray(result.data.data) ? result.data.data : {};
+    const insights = data.insights && typeof data.insights === "object" && !Array.isArray(data.insights)
+      ? data.insights : {};
+    const snapshot = data.health_snapshot && typeof data.health_snapshot === "object"
+      && !Array.isArray(data.health_snapshot) ? data.health_snapshot : {};
+    const rawCompletion = data.profile_completion && typeof data.profile_completion === "object"
+      && !Array.isArray(data.profile_completion) ? data.profile_completion : {};
+    const completionPercentage = Math.min(100, safeCount(rawCompletion.percentage, 80));
+    const missingFields = Array.isArray(rawCompletion.missing_fields)
+      ? rawCompletion.missing_fields.filter((field) => typeof field === "string")
+      : [];
+    const completion = { percentage: completionPercentage, missing_fields: missingFields };
+    const timeline = Array.isArray(data.medical_timeline)
+      ? data.medical_timeline.filter((event) => event && typeof event === "object" && !Array.isArray(event))
+      : [];
+    const rawMedications = data.prescriptions?.active_medications;
+    const prescriptions = Array.isArray(rawMedications)
+      ? rawMedications.filter((medication) => medication && typeof medication === "object" && !Array.isArray(medication))
+      : [];
+    const monthlyVisits = Array.isArray(insights.monthly_visits)
+      ? insights.monthly_visits.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+      : [];
+    const departmentDistribution = Array.isArray(insights.department_distribution)
+      ? insights.department_distribution.filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+      : [];
 
-    const totalVisits = insights.total_visits || snapshot.total_appointments || 0;
-    const completedVisits = insights.completed_visits || snapshot.completed_appointments || 0;
-    const cancelledVisits = insights.cancelled_visits || snapshot.cancelled_appointments || 0;
-    const missedVisits = snapshot.missed_appointments || 0;
-    const activeRx = snapshot.active_prescriptions || 0;
+    const totalVisits = safeCount(insights.total_visits ?? snapshot.total_appointments, 0);
+    const completedVisits = safeCount(insights.completed_visits ?? snapshot.completed_appointments, 0);
+    const cancelledVisits = safeCount(insights.cancelled_visits ?? snapshot.cancelled_appointments, 0);
+    const missedVisits = safeCount(snapshot.missed_appointments, 0);
+    const activeRx = safeCount(snapshot.active_prescriptions, 0);
+    const rawCompletionRate = Number(insights.appointment_completion_rate);
+    const completionRate = Number.isFinite(rawCompletionRate) && rawCompletionRate >= 0 && rawCompletionRate <= 100
+      ? `${Math.round(rawCompletionRate * 10) / 10}%`
+      : "100%";
 
     container.innerHTML = `
       <!-- Health Record Completion Bar -->
-      <div class="card" style="padding:var(--s5);margin-bottom:var(--s6);border:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s2);flex-wrap:wrap">
-          <h3 style="margin:0;font-size:1.05rem;display:flex;align-items:center;gap:var(--s2)">
-            <i class="fas fa-clipboard-check" style="color:var(--primary)"></i> Medical Profile Completion
+      <section class="card insights-completion">
+        <div class="insights-completion__header">
+          <h3 class="insights-section-title">
+            <i class="fas fa-clipboard-check insights-section-title__icon" aria-hidden="true"></i> Medical Profile Completion
           </h3>
-          <span style="font-weight:700;font-size:1.1rem;color:var(--primary)">${completion.percentage}%</span>
+          <span class="insights-completion__percentage">${completion.percentage}%</span>
         </div>
-        <div style="width:100%;height:10px;background:var(--bg-surface);border-radius:var(--r-full);overflow:hidden;margin-bottom:var(--s3);border:1px solid var(--border-light)">
-          <div style="width:${completion.percentage}%;height:100%;background:linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);transition:width 0.6s ease"></div>
-        </div>
+        <progress class="insights-completion__progress" max="100" value="${completion.percentage}" aria-label="Medical profile completion"></progress>
         ${
           completion.missing_fields && completion.missing_fields.length > 0
-            ? `<div style="font-size:0.8rem;color:var(--text-muted)">
-                <i class="fas fa-info-circle" style="color:var(--info)"></i> Tip: Complete your <strong>${escapeHTML(completion.missing_fields.join(", "))}</strong> to reach 100%.
+            ? `<div class="insights-completion__hint">
+                <i class="fas fa-info-circle insights-completion__hint-icon" aria-hidden="true"></i> Tip: Complete your <strong>${escapeHTML(completion.missing_fields.join(", "))}</strong> to reach 100%.
                </div>`
-            : `<div style="font-size:0.8rem;color:var(--success)"><i class="fas fa-check-circle"></i> Your medical profile is 100% complete!</div>`
+            : `<div class="insights-completion__complete"><i class="fas fa-check-circle" aria-hidden="true"></i> Your medical profile is 100% complete!</div>`
         }
-      </div>
+      </section>
 
       <!-- Health Summary Stats Grid -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:var(--s4);margin-bottom:var(--s6)">
-        <div class="card" style="padding:var(--s4);text-align:center;border:1px solid var(--border)">
-          <div style="font-size:1.5rem;color:var(--primary);margin-bottom:var(--s1)"><i class="fas fa-calendar-check"></i></div>
-          <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary)">${totalVisits}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted)">Total Bookings</div>
+      <div class="insights-stats-grid">
+        <div class="card insights-stat-card">
+          <div class="insights-stat-card__icon insights-stat-card__icon--primary"><i class="fas fa-calendar-check"></i></div>
+          <div class="insights-stat-card__value">${totalVisits}</div>
+          <div class="insights-stat-card__label">Total Bookings</div>
         </div>
-        <div class="card" style="padding:var(--s4);text-align:center;border:1px solid var(--border)">
-          <div style="font-size:1.5rem;color:var(--success);margin-bottom:var(--s1)"><i class="fas fa-circle-check"></i></div>
-          <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary)">${completedVisits}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted)">Completed Visits</div>
+        <div class="card insights-stat-card">
+          <div class="insights-stat-card__icon insights-stat-card__icon--success"><i class="fas fa-circle-check"></i></div>
+          <div class="insights-stat-card__value">${completedVisits}</div>
+          <div class="insights-stat-card__label">Completed Visits</div>
         </div>
-        <div class="card" style="padding:var(--s4);text-align:center;border:1px solid var(--border)">
-          <div style="font-size:1.5rem;color:var(--danger);margin-bottom:var(--s1)"><i class="fas fa-circle-xmark"></i></div>
-          <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary)">${missedVisits + cancelledVisits}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted)">Missed / Cancelled</div>
+        <div class="card insights-stat-card">
+          <div class="insights-stat-card__icon insights-stat-card__icon--danger"><i class="fas fa-circle-xmark"></i></div>
+          <div class="insights-stat-card__value">${safeCount(missedVisits + cancelledVisits, 0)}</div>
+          <div class="insights-stat-card__label">Missed / Cancelled</div>
         </div>
-        <div class="card" style="padding:var(--s4);text-align:center;border:1px solid var(--border)">
-          <div style="font-size:1.5rem;color:var(--warning);margin-bottom:var(--s1)"><i class="fas fa-prescription"></i></div>
-          <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary)">${activeRx}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted)">Active Prescriptions</div>
+        <div class="card insights-stat-card">
+          <div class="insights-stat-card__icon insights-stat-card__icon--warning"><i class="fas fa-prescription"></i></div>
+          <div class="insights-stat-card__value">${activeRx}</div>
+          <div class="insights-stat-card__label">Active Prescriptions</div>
         </div>
-        <div class="card" style="padding:var(--s4);text-align:center;border:1px solid var(--border)">
-          <div style="font-size:1.5rem;color:var(--info);margin-bottom:var(--s1)"><i class="fas fa-percent"></i></div>
-          <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary)">${insights.appointment_completion_rate !== null ? insights.appointment_completion_rate + "%" : "100%"}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted)">Completion Rate</div>
+        <div class="card insights-stat-card">
+          <div class="insights-stat-card__icon insights-stat-card__icon--info"><i class="fas fa-percent"></i></div>
+          <div class="insights-stat-card__value">${completionRate}</div>
+          <div class="insights-stat-card__label">Completion Rate</div>
         </div>
       </div>
 
       <!-- Charts Grid -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:var(--s6);margin-bottom:var(--s6)">
+      <div class="insights-charts-grid">
         
         <!-- Monthly Visit Trends Bar Chart -->
-        <div class="card" style="padding:var(--s6);border:1px solid var(--border)">
-          <h3 style="margin-bottom:var(--s4);font-size:1.05rem;display:flex;align-items:center;gap:var(--s2)">
-            <i class="fas fa-chart-line" style="color:var(--primary)"></i> Monthly Visit Trends
+        <div class="card insights-chart-card">
+          <h3 class="insights-section-title">
+            <i class="fas fa-chart-line insights-section-title__icon" aria-hidden="true"></i> Monthly Visit Trends
           </h3>
-          <div style="height:260px;position:relative">
+          <div class="insights-chart-frame">
             <canvas id="insights-visits-chart"></canvas>
           </div>
         </div>
 
         <!-- Department Distribution Pie Chart -->
-        <div class="card" style="padding:var(--s6);border:1px solid var(--border)">
-          <h3 style="margin-bottom:var(--s4);font-size:1.05rem;display:flex;align-items:center;gap:var(--s2)">
-            <i class="fas fa-chart-pie" style="color:var(--primary)"></i> Department Visits Breakdown
+        <div class="card insights-chart-card">
+          <h3 class="insights-section-title">
+            <i class="fas fa-chart-pie insights-section-title__icon" aria-hidden="true"></i> Department Visits Breakdown
           </h3>
-          <div style="height:260px;position:relative">
+          <div class="insights-chart-frame">
             <canvas id="insights-dept-chart"></canvas>
           </div>
         </div>
       </div>
 
       <!-- Current Medications & Recent Activity Timeline -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:var(--s6)">
+      <div class="insights-activity-grid">
         
         <!-- Current Active Medications List -->
-        <div class="card" style="padding:var(--s5);border:1px solid var(--border)">
-          <h3 style="margin-bottom:var(--s4);font-size:1.05rem;display:flex;align-items:center;gap:var(--s2)">
-            <i class="fas fa-pills" style="color:var(--primary)"></i> Active Medication Tracker
+        <section class="card insights-activity-card">
+          <h3 class="insights-section-title">
+            <i class="fas fa-pills insights-section-title__icon" aria-hidden="true"></i> Active Medication Tracker
           </h3>
           ${
             prescriptions.length > 0
-              ? `<div style="display:flex;flex-direction:column;gap:var(--s3)">
+              ? `<div class="insights-vertical-list">
                   ${prescriptions
                     .map(
                       (m) => `
-                    <div style="background:var(--bg-surface);padding:var(--s3) var(--s4);border-radius:var(--r-md);border:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center">
+                    <div class="insights-medication-item">
                       <div>
-                        <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary)">${escapeHTML(m.medication || "")} ${m.strength ? `(${escapeHTML(m.strength)})` : ""}</div>
-                        <div style="font-size:0.78rem;color:var(--text-muted)">${escapeHTML(m.dosage || "")} • ${escapeHTML(m.frequency || "")}</div>
+                        <div class="insights-medication-item__name">${escapeHTML(m.medication || "")} ${m.strength ? `(${escapeHTML(m.strength)})` : ""}</div>
+                        <div class="insights-medication-item__details">${escapeHTML(m.dosage || "")} • ${escapeHTML(m.frequency || "")}</div>
                       </div>
-                      <span class="status-badge active" style="padding:2px 8px;font-size:0.75rem">Active</span>
+                      <span class="status-badge active insights-medication-item__status">Active</span>
                     </div>`
                     )
                     .join("")}
                  </div>`
-              : `<div class="empty-state" style="padding:var(--s4)"><p style="color:var(--text-muted);font-size:0.85rem">No active medications recorded.</p></div>`
+              : `<div class="empty-state insights-empty"><p class="insights-empty__message">No active medications recorded.</p></div>`
           }
-        </div>
+        </section>
 
         <!-- Recent Events Timeline -->
-        <div class="card" style="padding:var(--s5);border:1px solid var(--border)">
-          <h3 style="margin-bottom:var(--s4);font-size:1.05rem;display:flex;align-items:center;gap:var(--s2)">
-            <i class="fas fa-clock-rotate-left" style="color:var(--primary)"></i> Recent Health Activity
+        <section class="card insights-activity-card">
+          <h3 class="insights-section-title">
+            <i class="fas fa-clock-rotate-left insights-section-title__icon" aria-hidden="true"></i> Recent Health Activity
           </h3>
-          <div style="display:flex;flex-direction:column;gap:var(--s3)">
+          <div class="insights-vertical-list">
             ${
               timeline.length > 0
                 ? timeline
@@ -161,22 +191,22 @@ document.addEventListener("DOMContentLoaded", async () => {
                     .reverse()
                     .map(
                       (ev) => `
-                    <div style="display:flex;align-items:flex-start;gap:var(--s3);padding-bottom:var(--s3);border-bottom:1px solid var(--border-light)">
-                      <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-subtle);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:0.85rem;flex-shrink:0">
-                        <i class="fas ${ev.icon || "fa-circle"}"></i>
+                    <div class="insights-recent-item">
+                      <div class="insights-recent-item__avatar">
+                        <i class="fas ${safeClassToken(ev.icon || "fa-circle", "fa-circle")}"></i>
                       </div>
                       <div>
-                        <div style="font-weight:600;font-size:0.88rem;color:var(--text-primary)">${escapeHTML(ev.title || "")}</div>
-                        <div style="font-size:0.8rem;color:var(--text-secondary)">${escapeHTML(ev.description || "")}</div>
-                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${formatDate(ev.date)}</div>
+                        <div class="insights-recent-item__title">${escapeHTML(ev.title || "")}</div>
+                        <div class="insights-recent-item__description">${escapeHTML(ev.description || "")}</div>
+                        <div class="insights-recent-item__date">${escapeHTML(formatDate(ev.date))}</div>
                       </div>
                     </div>`
                     )
                     .join("")
-                : `<p style="color:var(--text-muted);font-size:0.85rem">No recent activity.</p>`
+                : `<p class="insights-empty__message">No recent activity.</p>`
             }
           </div>
-        </div>
+        </section>
       </div>`;
 
     // Initialize Chart.js charts
@@ -187,15 +217,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Monthly Visits Bar Chart
       const visitsCtx = document.getElementById("insights-visits-chart");
-      if (visitsCtx && insights.monthly_visits) {
+      if (visitsCtx && monthlyVisits.length > 0) {
         new Chart(visitsCtx, {
           type: "bar",
           data: {
-            labels: insights.monthly_visits.map((m) => m.month),
+            labels: monthlyVisits.map((m) => typeof m.month === "string" ? m.month : ""),
             datasets: [
               {
                 label: "Completed Visits",
-                data: insights.monthly_visits.map((m) => m.count),
+                data: monthlyVisits.map((m) => safeCount(m.count, 0)),
                 backgroundColor: "rgba(6, 182, 212, 0.7)",
                 borderColor: "#06b6d4",
                 borderWidth: 1,
@@ -203,7 +233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               },
               {
                 label: "Cancelled",
-                data: insights.monthly_visits.map((m) => m.cancelled),
+                data: monthlyVisits.map((m) => safeCount(m.cancelled, 0)),
                 backgroundColor: "rgba(239, 68, 68, 0.5)",
                 borderColor: "#ef4444",
                 borderWidth: 1,
@@ -225,14 +255,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Department Distribution Pie Chart
       const deptCtx = document.getElementById("insights-dept-chart");
-      if (deptCtx && insights.department_distribution && insights.department_distribution.length > 0) {
+      if (deptCtx && departmentDistribution.length > 0) {
         new Chart(deptCtx, {
           type: "doughnut",
           data: {
-            labels: insights.department_distribution.map((d) => d.name),
+            labels: departmentDistribution.map((entry) => typeof entry.name === "string" ? entry.name : ""),
             datasets: [
               {
-                data: insights.department_distribution.map((d) => d.count),
+                data: departmentDistribution.map((entry) => safeCount(entry.count, 0)),
                 backgroundColor: [
                   "rgba(6, 182, 212, 0.8)",
                   "rgba(59, 130, 246, 0.8)",
@@ -260,7 +290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <div class="empty-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></div>
         <h4>Unable to Load Health Insights</h4>
         <p>Please try again later.</p>
-        <button class="btn btn-outline btn-sm" onclick="location.reload()">Retry</button>
+        <button class="btn btn-outline btn-sm" data-page-action="retry">Retry</button>
       </div>`;
   }
 });

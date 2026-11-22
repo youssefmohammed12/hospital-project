@@ -17,20 +17,26 @@ require_once __DIR__ . '/../../services/ScheduleService.php';
 require_once __DIR__ . '/../../services/AuditService.php';
 
 $user = requireAuth();
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $input = getJsonInput();
 
-// Determine target doctor
-$doctorId = (int)($input['doctor_id'] ?? 0);
+// Determine target doctor. Doctors are always bound to their own account;
+// an admin must provide a strictly positive target doctor ID.
+$doctorId = 0;
 
 if ($user['role'] === 'doctor') {
-    // Doctors can only edit their own schedule
-    $doctorId = $user['id'];
+    $doctorId = (int)$user['id'];
 } elseif ($user['role'] === 'admin') {
-    // Admin must specify a doctor_id
-    if ($doctorId <= 0) {
+    $doctorId = parsePositiveInt($input['doctor_id'] ?? null);
+    if ($doctorId === null) {
         http_response_code(400);
-        jsonResponse(false, ['message' => 'Doctor ID is required for admin updates.']);
-        exit;
+        jsonResponse(false, ['message' => 'A valid doctor ID is required for admin updates.']);
     }
 } else {
     http_response_code(403);
@@ -47,13 +53,72 @@ if (!$stmt->fetch()) {
     exit;
 }
 
-// Validate weekly data
+// Validate request structure before passing values to typed service validators.
 $weekly = $input['weekly'] ?? [];
 $settings = $input['settings'] ?? [];
 
+if (!is_array($weekly) || !is_array($settings)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Weekly schedule and settings must be arrays.']);
+}
+
+foreach ($weekly as $day) {
+    if (!is_array($day)) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Each weekly schedule entry must be an object.']);
+    }
+
+    foreach (['day_of_week', 'is_working'] as $integerField) {
+        if (array_key_exists($integerField, $day)) {
+            $value = $day[$integerField];
+            if ((!is_int($value) && !is_string($value)) || filter_var($value, FILTER_VALIDATE_INT) === false) {
+                http_response_code(400);
+                jsonResponse(false, ['message' => 'Weekly schedule day values must be integers.']);
+            }
+            if ($integerField === 'is_working' && !in_array((int)$value, [0, 1], true)) {
+                http_response_code(400);
+                jsonResponse(false, ['message' => 'Working-day values must be 0 or 1.']);
+            }
+        }
+    }
+
+    foreach (['start_time', 'end_time'] as $timeField) {
+        if (array_key_exists($timeField, $day) && !is_string($day[$timeField])) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Schedule times must be text in HH:MM format.']);
+        }
+    }
+}
+
+foreach (['appointment_duration', 'max_appointments_per_day', 'is_available'] as $integerField) {
+    if (array_key_exists($integerField, $settings)) {
+        $value = $settings[$integerField];
+        if ((!is_int($value) && !is_string($value)) || filter_var($value, FILTER_VALIDATE_INT) === false) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Schedule setting values must be integers.']);
+        }
+        if ($integerField === 'is_available' && !in_array((int)$value, [0, 1], true)) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Availability must be 0 or 1.']);
+        }
+        if ($integerField === 'max_appointments_per_day' && ((int)$value < 1 || (int)$value > 100)) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Maximum appointments per day must be between 1 and 100.']);
+        }
+    }
+}
+
+foreach (['break_start', 'break_end'] as $timeField) {
+    if (array_key_exists($timeField, $settings) && $settings[$timeField] !== null && !is_string($settings[$timeField])) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Break times must be text in HH:MM format.']);
+    }
+}
+
 // Load hospital hours for boundary validation
 $db = getDB();
-$ss = new ScheduleService($db);
+$schema = ScheduleService::schemaFromEnvironment();
+$ss = new ScheduleService($db, $schema);
 $hospitalHours = $ss->getHospitalHours();
 
 $validationError = ScheduleService::validateWeekly($weekly, $hospitalHours['open'], $hospitalHours['close']);
@@ -93,7 +158,7 @@ try {
     // Log schedule update to audit using universal AuditService
     // This captures both admin and doctor role changes
     try {
-        $audit = new AuditService($db, (int)$user['id'], $user['role']);
+        $audit = new AuditService($db, (int)$user['id'], $user['role'], $schema);
         $audit->logScheduleChange($doctorId, $oldSchedule, [
             'weekly' => $weekly,
             'settings' => $settings

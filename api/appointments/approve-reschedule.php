@@ -25,6 +25,11 @@ require_once __DIR__ . '/../../services/ScheduleService.php';
 header('Content-Type: application/json');
 
 $user = requireAuth();
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 $userId = (int)$user['id'];
 $userRole = $user['role'] ?? '';
 
@@ -36,22 +41,25 @@ if ($userRole !== 'doctor' && $userRole !== 'admin') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
-if (!$input) {
+if (!is_array($input)) {
     $input = $_POST;
 }
+if (!is_array($input)) {
+    $input = [];
+}
 
-$appointmentId = (int)($input['appointment_id'] ?? 0);
-$notes = trim($input['notes'] ?? '');
-
-if (!$appointmentId) {
+$appointmentId = parsePositiveInt($input['appointment_id'] ?? null);
+$notesInput = $input['notes'] ?? '';
+if ($appointmentId === null || !is_string($notesInput)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Appointment ID is required.']);
+    echo json_encode(['success' => false, 'message' => 'Appointment ID and notes must be valid values.']);
     exit;
 }
+$notes = trim($notesInput);
 
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole);
+    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
 
     $result = $rs->approveReschedule($appointmentId, $notes);
 

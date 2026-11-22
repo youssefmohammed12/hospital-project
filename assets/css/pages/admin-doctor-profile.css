@@ -614,3 +614,51 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* CSP-safe Admin Doctor Profile styles extracted from static and generated markup. */
+
+.admin-profile-inline-scope [data-csp-style="profile-0035580c7512"] { margin-top: var(--s6) }
+
+.admin-profile-inline-scope [data-csp-style="profile-1e8f47ba0c0b"] { font-size:0.85rem }
+
+.admin-profile-inline-scope [data-csp-style="profile-24b7541320e5"] { background: var(--primary-glow); border-color: var(--border) }
+
+.admin-profile-inline-scope [data-csp-style="profile-312d54ef958b"] { max-width:300px;word-break:break-word }
+
+.admin-profile-inline-scope [data-csp-style="profile-4416f979f7e2"] { font-size:0.75rem;color:var(--text-muted) }
+
+.admin-profile-inline-scope [data-csp-style="profile-52df2b00a094"] { color:var(--warning) }
+
+.admin-profile-inline-scope [data-csp-style="profile-538fe96a1e62"] { max-width: 480px; width: min(480px, 100%) }
+
+.admin-profile-inline-scope [data-csp-style="profile-5872de20d564"] { color:var(--text-muted) }
+
+.admin-profile-inline-scope [data-csp-style="profile-5a74e195054b"] { font-weight:600;color:var(--primary);text-decoration:none }
+
+.admin-profile-inline-scope [data-csp-style="profile-6b99de8b696f"] { display:none }
+
+.admin-profile-inline-scope [data-csp-style="profile-7658f09f4074"] { font-size:0.85rem;color:var(--text-secondary);margin:var(--s1) 0 }
+
+.admin-profile-inline-scope [data-csp-style="profile-7cfa2c6a3431"] { max-width: 520px; width: min(520px, 100%) }
+
+.admin-profile-inline-scope [data-csp-style="profile-8ec865d6d321"] { border-top:1px solid var(--border-light);padding-top:var(--s3) }
+
+.admin-profile-inline-scope [data-csp-style="profile-8f6dff55b10d"] { max-width: 580px; width: min(580px, 100%) }
+
+.admin-profile-inline-scope [data-csp-style="profile-994017e0ad17"] { margin:0; border:none; padding:0 }
+
+.admin-profile-inline-scope [data-csp-style="profile-99bda4f95b52"] { font-size:0.7rem;padding:1px 8px;border-radius:var(--r-full);background:var(--success-light, #e8f5e9);color:var(--success, #2e7d32) }
+
+.admin-profile-inline-scope [data-csp-style="profile-af88b74636a8"] { font-size:0.7rem;padding:1px 8px;border-radius:var(--r-full);background:var(--primary-light);color:var(--primary) }
+
+.admin-profile-inline-scope [data-csp-style="profile-c9565925f3a7"] { font-size:0.8rem }
+
+.admin-profile-inline-scope [data-csp-style="profile-dc40fb6c6e1d"] { font-size:0.88rem; color:var(--text-secondary); margin-bottom: var(--s4) }
+
+.admin-profile-inline-scope [data-csp-style="profile-e0086d5c9f97"] { color:var(--text-muted);font-style:italic }
+
+.admin-profile-inline-scope [data-csp-style="profile-eed0f8fb89cd"] { font-weight:600 }
+
+
+/* Profile visibility is controlled through state classes. */
+.admin-profile-inline-scope .is-hidden { display: none; }

@@ -1,66 +1,57 @@
 <?php
 /**
  * HealthBridge — Admin Decline Appointment
- * Cancels a pending appointment and notifies the patient.
+ * Cancels a pending booking and retains the optional decline reason in audit
+ * and patient notification records.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/AuditService.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/Repositories/AppointmentLifecycleRepository.php';
 
-header('Content-Type: application/json');
+$admin = requireRole('admin');
 
-$user = requireAuth();
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $input = getJsonInput();
-$appointmentId = (int)($input['id'] ?? 0);
-$reason = trim($input['reason'] ?? '');
+$appointmentId = is_array($input) ? parsePositiveInt($input['id'] ?? null) : null;
+$reason = is_array($input) ? ($input['reason'] ?? '') : null;
 
-if ($appointmentId <= 0) {
+if ($appointmentId === null || $appointmentId <= 0) {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Invalid appointment ID.']);
+}
+if (!is_string($reason)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Decline reason must be text.']);
+}
+$reason = trim($reason);
+if (mb_strlen($reason) > 2000) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Decline reason must not exceed 2000 characters.']);
 }
 
 try {
     $db = getDB();
+    $lifecycle = new AppointmentLifecycleRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA'));
+    $lifecycle->transitionPending($appointmentId, (int)$admin['id'], 'admin', 'cancelled', $reason);
 
-    $stmt = $db->prepare("SELECT a.*, u.id AS patient_user_id FROM appointments a LEFT JOIN users u ON a.user_id = u.id WHERE a.id = ?");
-    $stmt->execute([$appointmentId]);
-    $appt = $stmt->fetch();
-
-    if (!$appt) {
-        jsonResponse(false, ['message' => 'Appointment not found.']);
+    $notifications = new NotificationService($db);
+    try {
+        $notifications->processOutbox(50);
+    } catch (Throwable $notificationError) {
+        error_log('Decline Appointment Outbox Dispatch Error: ' . get_class($notificationError));
     }
-
-    $stmt = $db->prepare("UPDATE appointments SET status = 'Cancelled' WHERE id = ?");
-    $stmt->execute([$appointmentId]);
-
-    // Notify patient
-    if (!empty($appt['patient_user_id'])) {
-        $message = "Your appointment with {$appt['doctor']} on {$appt['date']} at {$appt['time']} has been declined.";
-        if ($reason) $message .= " Reason: {$reason}";
-
-        $ns = new NotificationService($db);
-        $ns->create(
-            (int)$appt['patient_user_id'],
-            NotificationService::TYPE_APPOINTMENT_DECLINED,
-            'Appointment Declined',
-            $message,
-            'appointment',
-            $appointmentId
-        );
-    }
-
-    
-    // Log to audit (patient_id for EMR context; doctor_id from appointment)
-    $audit = new AuditService($db, (int)$_SESSION['user_id'], $_SESSION['role']);
-    $doctorUserId = (int)($appt['doctor_id'] ?? 0);
-    $patientUserId = (int)($appt['patient_user_id'] ?? $appt['user_id'] ?? 0);
-    $auditDesc = "Appointment on {$appt['date']} at {$appt['time']} declined: Pending → Cancelled" . ($reason ? ". Reason: {$reason}" : '');
-    $audit->log('decline', 'appointment', $appointmentId, 'Pending', 'Cancelled', $auditDesc, $patientUserId ?: null, $doctorUserId ?: null);
-
-    
     jsonResponse(true, ['message' => 'Appointment declined successfully.']);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    http_response_code($message === 'Appointment not found.' ? 404 : 409);
+    jsonResponse(false, ['message' => $message]);
+} catch (Throwable $e) {
     error_log('Decline Appointment Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to decline appointment.']);

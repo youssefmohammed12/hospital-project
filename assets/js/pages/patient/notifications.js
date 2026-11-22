@@ -24,9 +24,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadNotifications() {
     container.innerHTML = `
       <div class="skeleton-loader">
-        <div class="skeleton skeleton-card" style="height: 60px; margin-bottom: var(--s3);"></div>
-        <div class="skeleton skeleton-card" style="height: 60px; margin-bottom: var(--s3);"></div>
-        <div class="skeleton skeleton-card" style="height: 60px;"></div>
+        <div class="skeleton skeleton-card patient-notifications-skeleton"></div>
+        <div class="skeleton skeleton-card patient-notifications-skeleton"></div>
+        <div class="skeleton skeleton-card patient-notifications-skeleton"></div>
       </div>`;
 
     const result = await apiFetch(
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({})
+        body: JSON.stringify({ sections: ["notifications"] })
       },
       "Failed to load notifications."
     );
@@ -42,21 +42,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.innerHTML = "";
 
     if (result.ok && result.data?.success) {
-      const notifData = result.data.data?.notifications || {};
-      const grouped = notifData.grouped || {};
-      const unreadCount = notifData.unread_count || 0;
+      const rawNotifData = result.data.data?.notifications;
+      const notifData = rawNotifData && typeof rawNotifData === "object" && !Array.isArray(rawNotifData)
+        ? rawNotifData
+        : {};
+      const rawGrouped = notifData.grouped;
+      const grouped = rawGrouped && typeof rawGrouped === "object" && !Array.isArray(rawGrouped)
+        ? rawGrouped
+        : {};
+      const unreadCount = safeCount(notifData.unread_count, 0);
 
       if (markAllBtn) {
-        markAllBtn.style.display = unreadCount > 0 ? "inline-flex" : "none";
-        markAllBtn.onclick = async () => {
-          await apiFetch(getBasePath() + "api/notifications/notifications.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "mark_all_read" })
+        markAllBtn.hidden = unreadCount <= 0;
+
+        // Preserve the former onclick replacement semantics across repeated loads:
+        // bind once, rather than stacking another handler on every refresh.
+        if (markAllBtn.dataset.markAllReadBound !== "true") {
+          markAllBtn.addEventListener("click", async () => {
+            await apiFetch(getBasePath() + "api/notifications/notifications.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "mark_all_read" })
+            });
+            showToast("All notifications marked as read", "success");
+            loadNotifications();
           });
-          showToast("All notifications marked as read", "success");
-          loadNotifications();
-        };
+          markAllBtn.dataset.markAllReadBound = "true";
+        }
       }
 
       const groupLabels = {
@@ -67,55 +79,92 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
 
       let totalCount = 0;
+      const maxDisplayedNotifications = 20;
 
       Object.entries(groupLabels).forEach(([key, label]) => {
-        const items = grouped[key] || [];
+        const rawItems = grouped[key];
+        const remaining = Math.max(0, maxDisplayedNotifications - totalCount);
+        if (remaining === 0) return;
+
+        const items = (Array.isArray(rawItems) ? rawItems : [])
+          .filter(notification =>
+            notification && typeof notification === "object" && !Array.isArray(notification)
+          )
+          .slice(0, remaining)
+          .map(notification => {
+            const title = typeof notification.title === "string"
+              ? notification.title.slice(0, 200)
+              : "Notification";
+            return {
+              id: safePositiveId(notification.id),
+              title,
+              message: typeof notification.message === "string" ? notification.message.slice(0, 1000) : "",
+              time_ago: typeof notification.time_ago === "string" ? notification.time_ago.slice(0, 80) : "",
+              type: typeof notification.type === "string" ? notification.type.slice(0, 80) : title.slice(0, 80),
+              is_read: notification.is_read === true || notification.is_read === 1 || notification.is_read === "1",
+            };
+          });
+
         if (items.length === 0) return;
         totalCount += items.length;
 
         const groupEl = document.createElement("div");
-        groupEl.style.marginBottom = "var(--s5)";
+        groupEl.className = "patient-notification-group";
         groupEl.innerHTML = `
-          <h3 style="margin:var(--s4) 0 var(--s3) 0;font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">
+          <h3 class="patient-notification-group__title">
             ${escapeHTML(label)} (${items.length})
           </h3>
-          <div class="notif-items-wrap" style="display:flex;flex-direction:column;gap:var(--s2)"></div>`;
+          <div class="notif-items-wrap patient-notification-items"></div>`;
 
         const itemsWrap = groupEl.querySelector(".notif-items-wrap");
         items.forEach(n => {
           const itemEl = document.createElement("div");
-          itemEl.className = `card notif-item ${!n.is_read ? "unread" : ""}`;
-          itemEl.style.cssText = `padding:var(--s4);display:flex;align-items:flex-start;gap:var(--s4);cursor:pointer;border:1px solid ${!n.is_read ? "var(--primary-subtle)" : "var(--border-light)"};background:${!n.is_read ? "var(--bg-surface)" : "var(--bg-card)"}`;
+          itemEl.className = `card notif-item patient-notification-item ${!n.is_read ? "unread is-unread" : "read is-read"}`;
           
-          const icon = getNotifIcon(n.type || n.title || "");
+          const iconSource = typeof n.type === "string"
+            ? n.type
+            : typeof n.title === "string" ? n.title : "";
+          const icon = safeClassToken(getNotifIcon(iconSource), "fa-bell");
           itemEl.innerHTML = `
-            <div style="width:40px;height:40px;border-radius:50%;background:${!n.is_read ? "var(--primary-subtle)" : "var(--bg-surface)"};display:flex;align-items:center;justify-content:center;color:${!n.is_read ? "var(--primary)" : "var(--text-muted)"};font-size:1.1rem;flex-shrink:0">
-              <i class="fas ${icon}"></i>
+            <div class="patient-notification-item__icon ${!n.is_read ? "is-unread" : "is-read"}">
+              <i class="fas ${icon}" aria-hidden="true"></i>
             </div>
-            <div style="flex:1">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s2)">
-                <h4 style="margin:0;font-size:0.95rem;font-weight:${!n.is_read ? "700" : "600"};color:var(--text-primary)">
-                  ${!n.is_read ? `<span class="unread-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary);margin-right:var(--s2)"></span>` : ""}
-                  ${escapeHTML(n.title)}
+            <div class="patient-notification-item__content">
+              <div class="patient-notification-item__header">
+                <h4 class="patient-notification-item__title ${!n.is_read ? "is-unread" : "is-read"}">
+                  ${!n.is_read ? `<span class="unread-dot patient-notification-item__unread-dot" aria-hidden="true"></span>` : ""}
+                  <span class="notif-title-text">${escapeHTML(n.title)}</span>
                 </h4>
-                <span style="font-size:0.75rem;color:var(--text-muted)">${escapeHTML(n.time_ago || "")}</span>
+                <span class="patient-notification-item__time">${escapeHTML(n.time_ago || "")}</span>
               </div>
-              <p style="margin:var(--s1) 0 0 0;font-size:0.85rem;color:var(--text-secondary)">${escapeHTML(n.message)}</p>
+              <p class="patient-notification-item__message">${escapeHTML(n.message)}</p>
             </div>`;
 
           itemEl.addEventListener("click", async () => {
+            const notificationId = safePositiveId(n.id);
+            if (!notificationId) return;
+
             if (!n.is_read) {
               n.is_read = 1;
-              itemEl.classList.remove("unread");
-              itemEl.style.background = "var(--bg-card)";
-              itemEl.style.borderColor = "var(--border-light)";
+              itemEl.classList.remove("unread", "is-unread");
+              itemEl.classList.add("read", "is-read");
+              const icon = itemEl.querySelector(".patient-notification-item__icon");
+              if (icon) {
+                icon.classList.remove("is-unread");
+                icon.classList.add("is-read");
+              }
+              const title = itemEl.querySelector(".patient-notification-item__title");
+              if (title) {
+                title.classList.remove("is-unread");
+                title.classList.add("is-read");
+              }
               const dot = itemEl.querySelector(".unread-dot");
               if (dot) dot.remove();
 
               apiFetch(getBasePath() + "api/notifications/notifications.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "mark_read", id: n.id })
+                body: JSON.stringify({ action: "mark_read", id: notificationId })
               }).then(res => {
                 if (window.NotificationService && typeof window.NotificationService.refresh === "function") {
                   window.NotificationService.refresh();
@@ -145,35 +194,38 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="empty-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></div>
           <h4>Unable to Load Notifications</h4>
           <p>Please try again later.</p>
-          <button class="btn btn-outline btn-sm" onclick="location.reload()">Retry</button>
+          <button class="btn btn-outline btn-sm" data-page-action="retry">Retry</button>
         </div>`;
     }
   }
 
   function renderNotifItem(n) {
     const isUnread = !n.is_read;
-    const icon = getNotifIcon(n.type || n.title || "");
+    const iconSource = typeof n?.type === "string"
+      ? n.type
+      : typeof n?.title === "string" ? n.title : "";
+    const icon = safeClassToken(getNotifIcon(iconSource), "fa-bell");
 
     return `
-      <div class="card notif-item ${isUnread ? "unread" : ""}" style="padding:var(--s4);display:flex;align-items:flex-start;gap:var(--s4);border:1px solid ${isUnread ? "var(--primary-subtle)" : "var(--border-light)"};background:${isUnread ? "var(--bg-surface)" : "var(--bg-card)"}">
-        <div style="width:40px;height:40px;border-radius:50%;background:${isUnread ? "var(--primary-subtle)" : "var(--bg-surface)"};display:flex;align-items:center;justify-content:center;color:${isUnread ? "var(--primary)" : "var(--text-muted)"};font-size:1.1rem;flex-shrink:0">
-          <i class="fas ${icon}"></i>
+      <div class="card notif-item patient-notification-item ${isUnread ? "unread is-unread" : "read is-read"}">
+        <div class="patient-notification-item__icon ${isUnread ? "is-unread" : "is-read"}">
+          <i class="fas ${icon}" aria-hidden="true"></i>
         </div>
-        <div style="flex:1">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s2)">
-            <h4 style="margin:0;font-size:0.95rem;font-weight:${isUnread ? "700" : "600"};color:var(--text-primary)">
-              ${isUnread ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary);margin-right:var(--s2)"></span>` : ""}
+        <div class="patient-notification-item__content">
+          <div class="patient-notification-item__header">
+            <h4 class="patient-notification-item__title ${isUnread ? "is-unread" : "is-read"}">
+              ${isUnread ? `<span class="unread-dot patient-notification-item__unread-dot" aria-hidden="true"></span>` : ""}
               ${escapeHTML(n.title)}
             </h4>
-            <span style="font-size:0.75rem;color:var(--text-muted)">${escapeHTML(n.time_ago || "")}</span>
+            <span class="patient-notification-item__time">${escapeHTML(n.time_ago || "")}</span>
           </div>
-          <p style="margin:var(--s1) 0 0 0;font-size:0.85rem;color:var(--text-secondary)">${escapeHTML(n.message)}</p>
+          <p class="patient-notification-item__message">${escapeHTML(n.message)}</p>
         </div>
       </div>`;
   }
 
   function getNotifIcon(type) {
-    if (!type) return "fa-bell";
+    if (typeof type !== "string" || !type) return "fa-bell";
     const t = type.toLowerCase();
     if (t.includes("appointment")) return "fa-calendar-check";
     if (t.includes("prescription")) return "fa-prescription-bottle-medical";

@@ -6,10 +6,13 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![CSS3](https://img.shields.io/badge/CSS3-Modular-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen?style=for-the-badge)]()
+[![Status](https://img.shields.io/badge/Status-Active%20Hardening-orange?style=for-the-badge)]()
 
-**A modern, enterprise-grade healthcare management platform featuring a Patient Portal, Clinical Doctor Workspace, and Administrative Analytics Engine.**
+**A full-stack healthcare management portfolio project with a patient portal, doctor workspace, appointment workflows, electronic medical records, and administrative tools.**
+
+**Project status:** Active repair and refactoring. This is a portfolio/demo project, not a production clinical system or a claim of healthcare regulatory compliance. Demo records are synthetic.
+
+**Engineering scope:** [Portfolio refactor and maintenance plan](docs/HEALTHBRIDGE_PORTFOLIO_REFACTOR_SCOPE.md).
 
 **🌐 Live Demo: https://youssefhealthbridge.freehosting.dev/**
 
@@ -21,7 +24,7 @@
 
 ## 📖 Overview
 
-**HealthBridge** is a comprehensive, responsive healthcare information system designed to bridge the gap between patients, medical practitioners, and hospital administrators. Built with modern Vanilla JavaScript (ES6+), modular CSS3 design tokens, and a secure PHP 8+ object-oriented backend with PDO, HealthBridge provides real-time appointment scheduling, clinical encounters, EMR management, multi-step rescheduling workflows, notifications, and granular audit trails.
+**HealthBridge** is a comprehensive, responsive healthcare information system designed to bridge the gap between patients, medical practitioners, and hospital administrators. Built with Vanilla JavaScript (ES6+), modular CSS3, and a PHP 8+ object-oriented backend using PDO, HealthBridge brings together appointment scheduling, clinical encounters, EMR management, multi-step rescheduling workflows, notifications, and audit logging.
 
 ---
 
@@ -94,7 +97,7 @@ Hospital administrators monitor real-time hospital KPIs (patient traffic, revenu
 * **Electronic Medical Records (EMR)**: Complete access to personal diagnosis history, visit summaries, lab reports, and doctor notes.
 * **Prescription Manager**: Active/completed medication tracker with dosage schedules, instructions, and 1-click printable Rx summaries.
 * **Notification Center**: Real-time alert feed with categorized badge counts and unread state management.
-* **Settings & Preferences**: Personal profile management, notification settings, and security controls.
+* **Settings & Preferences**: Personal profile management, notification settings, security controls, and account deactivation that retains medical and audit history.
 
 ### 🩺 2. Doctor Workspace
 * **Real-time Queue & Schedule**: Filter today''s appointments by status (`Confirmed`, `In-Progress`, `Completed`, `Reschedule Requested`).
@@ -108,7 +111,7 @@ Hospital administrators monitor real-time hospital KPIs (patient traffic, revenu
 * **Hospital Analytics Dashboard**: Live metrics for patient volume, revenue estimation, department load, and appointment completion rates.
 * **Staff & Doctor Directory**: Register, edit, activate/deactivate medical staff, and assign specialists to hospital departments.
 * **Department Management**: Create, update, and manage specialty departments (Cardiology, Dermatology, Pediatrics, etc.).
-* **Comprehensive Audit Trail**: Tamper-evident logging of authentication events, clinical edits, appointment shifts, and administrative actions.
+* **Comprehensive Audit Trail**: Records authentication events, clinical edits, appointment changes, and administrative actions. Database retention safeguards prevent routine account/appointment deletion from cascading into clinical and audit history; a cryptographic tamper-evident chain is not currently implemented.
 * **Hospital Settings & Messaging**: Manage clinic metadata, working hours, contact info, and patient inquiry responses.
 
 ---
@@ -140,7 +143,7 @@ flowchart TD
     end
 
     subgraph DataLayer["Database Layer"]
-        MySQL[("MySQL / MariaDB<br/>healthbridge (utf8mb4)")]
+        MariaDB[("MariaDB<br/>healthbridge_v2 (active local)<br/>healthbridge (V1 rollback)")]
     end
 
     Client -->|REST API JSON Requests| Middleware
@@ -181,12 +184,9 @@ healthbridge/
 │       ├── modules/                 # Prescriptions, notifications, schedule
 │       └── pages/                   # Page controllers (admin, doctor, patient)
 │
-├── database/                        # Database Schemas & Migrations
-│   ├── healthbridge.sql             # Consolidated Master Schema + Demo Seed
-│   ├── healthbridge_empty.sql       # Clean production schema + lookups
-│   ├── healthbridge_demo_data.sql   # Standalone demo seed data
-│   └── archive/                     # Historical migration scripts (Phases 6-10)
-│
+├── database/                        # Active V2 schema and validation assets
+│   ├── .htaccess                    # Denies direct web access
+│   └── v2/                          # V2 schema, migrations, compatibility and QA tools
 ├── docs/
 │   └── screenshots/                 # High-resolution application screenshots
 │
@@ -239,19 +239,19 @@ git clone https://github.com/youssefmohammed12/hospital-project.git healthbridge
 
 ---
 
-### Step 2: Database Setup
+### Step 2: Database and runtime status
 
-1. Start **Apache** and **MySQL** in your server environment (e.g., XAMPP Control Panel).
-2. Open **phpMyAdmin** (`http://localhost/phpmyadmin`) or connect via MySQL CLI:
+**Local XAMPP/Apache is now running on V2.** The ordinary local website at http://127.0.0.1/optimized/ connects to the canonical MariaDB database healthbridge_v2. Its source data was migrated from the preserved local V1 database healthbridge; the V2 database passed the local table, foreign-key, backup/restore, service-read and HTTP smoke checks recorded in docs/HEALTHBRIDGE_LOCAL_V2_CUTOVER_20261120.md.
 
-```bash
-mysql -u root -p < database/healthbridge.sql
-```
+The original V1 database healthbridge remains intact as the rollback source. The former V1 fresh-install SQL files, Phase 10?17 migration bundle, archived migration SQL and V1-only CLI migration/demo PHP helpers have been moved to a local migration archive outside the repository and web root. That archive includes a README and SHA-256 manifest. Those files are retained for historical reference only; do not execute them against the active V2 database. Their former paths under database/ and tools/ are no longer active.
 
-> **Note**: `database/healthbridge.sql` creates the database `healthbridge`, builds all 25 indexed tables, constraints, foreign keys, and pre-populates demo accounts and lookup data.
+The current database/v2/ folder contains the V2 schema and its migration/validation tools. Some of those runners are fixture-specific QA tools, not a generic fresh-install installer. Do not import 001_schema.sql into an existing database or run prototype/ETL scripts against healthbridge_v2. A clean fresh-install/recovery procedure for V2 requires its own separately verified backup/restore and migration plan.
 
----
+The local Apache V2 override is stored in the local project-root .htaccess and is intentionally excluded from version control; it must never be deployed to the hosted environment. The .env file was not changed for cutover; the actual CLI runtime still selects V1, and the registration worker entrypoint explicitly uses SCHEMA_V1. Both local scheduled worker tasks are currently disabled pending V2-specific worker entrypoints/configuration and separately approved mail-delivery validation. Do not re-enable them yet. The canonical V2 admin/doctor/patient login, authorization and logout/session-invalidation matrix passed on 20 November 2026. Milestone 3 is now in progress and its M3.0 page/source, responsive, accessibility and performance baseline is complete. The technology decision is to retain the PHP-rendered application and vanilla JS/CSS, progressively modularizing only where justified; no frontend framework or new dependency is being added. See `docs/HEALTHBRIDGE_MILESTONE_3_PLAN.md`, `docs/HEALTHBRIDGE_MILESTONE_3_AUDIT_20261120.md`, `docs/HEALTHBRIDGE_MILESTONE_3_UX_ARCHITECTURE_20261120.md` and `docs/HEALTHBRIDGE_MILESTONE_3_VISUAL_SYSTEM_20261120.md`. The first three isolated Patient Dashboard, Doctor Dashboard and Admin Overview prototypes and their evidence are stored in a local migration-backups folder outside the web root. This is not production/deployment approval and hosted P0*/P1 gates remain open. See docs/HEALTHBRIDGE_ROLE_LOGIN_AND_WORKER_READINESS_20261120.md.
 
+For the full migration provenance, selected row counts, verification results, rollback instructions and open gates, read docs/HEALTHBRIDGE_LOCAL_V2_CUTOVER_20261120.md.
+
+**Local database cleanup (20 November 2026):** Fourteen unused HealthBridge QA/ETL/restore schemas were first exported, SHA-256 verified, then dropped. Their complete SQL dumps, manifests and restore instructions remain in a local database-retirement backup folder outside the web root. A restored V2 dump passed 37/37 `CHECK TABLE` checks. The online database set now comprises `healthbridge` (V1 rollback), `healthbridge_v2` (active local website), and four retained QA fixtures referenced by current tools. No other project or hosted databases were touched.
 ### Step 3: Environment Configuration (Optional)
 
 HealthBridge works out of the box with standard local development defaults (`127.0.0.1`, user `root`, empty password). For custom setups:
@@ -287,22 +287,32 @@ The application provides demo accounts pre-configured for evaluation. You can al
 | Role | Email | Password | Access Area |
 | :--- | :--- | :--- | :--- |
 | **Administrator** | `admin@healthbridge.com` | `password` | `/pages/admin/admin.html` |
-| **Doctor** | `dr.sarah@healthbridge.com` | `password` | `/pages/doctor/doctor-dashboard.html` |
-| **Patient** | `ahmed.hassan@healthbridge.com` | `password` | `/pages/patient/dashboard.html` |
+| **Doctor** | `ahmed.hassan@healthbridge.com` | `password` | `/pages/doctor/doctor-dashboard.html` |
+| **Patient** | `patient@healthbridge.com` | `password` | `/pages/patient/dashboard.html` |
+
+---
+
+All 10 original demo accounts (the administrator, patient, and eight doctors) retain the shared demo password `password`. Three additional original patient accounts are also present.
+
+The expanded local seed adds:
+- Patients: `patient001@demo.healthbridge.test` through `patient120@demo.healthbridge.test`
+- Doctors: `doctor001@demo.healthbridge.test` through `doctor024@demo.healthbridge.test`
+- Password for these synthetic accounts: `password`
+
+All generated profiles and clinical entries are fictional software-demo data, not real patients, medical histories, or prescriptions. Do not use them for clinical decisions.
 
 ---
 
 ## 📡 API Endpoints Overview
 
-HealthBridge uses a unified, RESTful JSON architecture. All requests return a standard JSON structure:
-`{"success": true|false, "data": {...}, "message": "..."}`.
+HealthBridge APIs return JSON with a `success` flag and endpoint-specific fields at the top level. The payload shape varies by endpoint; fields are **not** universally nested under `data`. For example, an appointments response may contain `success`, `appointments`, and `total` as sibling fields.
 
 | Category | Endpoint | Method | Description |
 | :--- | :--- | :--- | :--- |
 | **Auth** | `/api/auth/login.php` | `POST` | Authenticate user & start session |
 | **Auth** | `/api/auth/logout.php` | `POST` | Destroy session & logout |
 | **Auth** | `/api/auth/current_user.php` | `GET` | Get authenticated user info |
-| **Appointments** | `/api/appointments/get-available-slots.php` | `GET` | Calculate available doctor slots |
+| **Appointments** | `/api/appointments/get-available-slots.php` | `POST` | Calculate available doctor slots from JSON input |
 | **Appointments** | `/api/appointments/book.php` | `POST` | Book a new patient appointment |
 | **Appointments** | `/api/appointments/request-reschedule.php` | `POST` | Patient requests new time slot |
 | **Appointments** | `/api/appointments/approve-reschedule.php` | `POST` | Doctor confirms reschedule request |
@@ -317,34 +327,50 @@ HealthBridge uses a unified, RESTful JSON architecture. All requests return a st
 
 ## 🧪 Developer CLI Verification & Tests
 
-HealthBridge includes built-in diagnostic and health check scripts:
+The shared testing toolkit at D:\dev-toolkit is the primary runner for new HealthBridge unit tests, Chromium browser E2E, axe accessibility, mobile accessibility and Lighthouse audits. Read docs/HEALTHBRIDGE_TESTING_TOOLKIT.md before adding tests. Keep test specs in D:\dev-toolkit\tests\unit\healthbridge and D:\dev-toolkit\tests\e2e\healthbridge; do not add duplicate test packages to this application. Generic toolkit self-checks are not HealthBridge workflow acceptance.
 
-```bash
-# Run Patient Portal service & endpoint diagnostics
+Run the Patient Portal service diagnostics only against a disposable local test database. In PowerShell, set the local test connection and explicit opt-in first:
+
+```powershell
+$env:DB_HOST = "127.0.0.1"
+$env:DB_PORT = "3306"
+$env:DB_NAME = "healthbridge_repair_test"
+$env:DB_USER = "root"
+$env:DB_PASS = ""
+$env:HB_ALLOW_LOCAL_DB_DIAGNOSTICS = "1"
 php tools/test_dashboard_api.php
-
-# Run end-to-end data integrity verification
-php tools/verify_patient_portal.php
 ```
+
+The script refuses to connect unless the opt-in is set, the DB host is loopback, and the database name ends in `_test` or `_qa`. The previous `verify_patient_portal.php` structural verifier was removed because it targeted an obsolete dashboard implementation and produced misleading failures against the current UI. Add current behavior-based browser/API tests in the shared toolkit's HealthBridge test folders instead of creating another ad-hoc structural verifier.
 
 ---
 
 ## 🔒 Security Architecture
 
-- **Prepared Statements**: 100% of database interactions utilize PDO prepared statements with strict parameter binding to eliminate SQL injection risks.
-- **Role-Based Access Control (RBAC)**: Enforced centrally via `includes/auth.php` and `includes/permissions.php`.
-- **Input Sanitization**: Multi-layer input validation via `includes/validation.php`.
-- **Session Protection**: Strict session cookies with `HttpOnly` and `SameSite` compliance.
-- **Audit Logging**: Immutable tracking of critical state changes across clinical, administrative, and appointment events.
+- **Database Access**: API and service database operations should use PDO prepared statements and parameter binding; continue auditing legacy query paths.
+- **Role-Based Access Control (RBAC)**: Protected endpoints use shared authentication/role guards, with resource ownership checks for patient and doctor data.
+- **Input Validation**: Request validation and sanitization are centralized in `includes/validation.php` and applied at API boundaries.
+- **Session Protection**: Session IDs rotate at login; cookies use HttpOnly and SameSite=Lax, Secure on HTTPS, with 30-minute idle and 8-hour absolute timeouts. Protected requests recheck account status and role.
+- **Request Origin**: Browser API requests use a same-origin policy; wildcard CORS is not enabled.
+- **Authentication Abuse Controls**: Public registration and sign-in are throttled by source IP and HMACs of submitted identifiers using a host-local lock file under the system temporary directory, outside the document root. Registration limits are step-specific (20/IP/10 min and 5/identifier/hour for step 1; 10/IP/hour and 3/identifier/hour for step 2); login allows 10 attempts/email and 60/IP per 15 min. The limiter trusts `REMOTE_ADDR` only; deployments behind a reverse proxy must configure a trusted client-IP strategy. Multi-host deployments must replace the local file store with shared Redis/database storage.
+- **Audit Logging**: Critical clinical, administrative, and appointment actions are recorded in audit services; transactional consistency and retention policies remain subject to ongoing review.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+No explicit project license is currently included. Obtain permission from the repository owner before reusing or redistributing this project.
 
 <div align="center">
 
 Made with ❤️ for modern, accessible healthcare management.
 
 </div>
+
+## Notification delivery reliability
+
+Runtime notification producers enqueue events into notification_outbox within their owning business transactions. Reviewed coverage includes appointment lifecycle, all seven reschedule transitions, prescription mutations, clinical visit completion and updates, patient/doctor account lifecycle and creation, patient profile/password updates, ratings, settings profile/deactivation, and support replies. The reviewed route coverage and test evidence are summarized in `docs/HEALTHBRIDGE_QA_EVIDENCE_INDEX.md` and `docs/HEALTHBRIDGE_FINDINGS_REGISTER.md`.
+
+The CLI worker entrypoint is tools/process_notification_outbox.php and the PowerShell wrapper is tools/run_notification_outbox_worker.ps1. The Windows Scheduled Task was configured for a five-minute repetition under the configured local Windows account, but it is currently Disabled. The CLI runtime selects healthbridge (V1), and this worker does not assert a V2 database target. Do not run the worker manually or re-enable its schedule until V2-specific target/schema guards and retry/retention behavior are accepted. See docs/HEALTHBRIDGE_ROLE_LOGIN_AND_WORKER_READINESS_20261120.md.
+
+Historical automatic task runs observed before the pause returned exit code 0 with zero delivered, skipped, retried, terminal-failed, or pending events. This is not proof of end-to-end delivery under load. The worker also performs a 30-day retention delete of delivered/skipped rows; the effect of those historical automatic runs was not separately fingerprinted. No external alerting is configured. Never expose outbox payloads or personal/clinical information in operational logs.

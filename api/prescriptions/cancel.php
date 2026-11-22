@@ -5,26 +5,33 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../services/AuditService.php';
 require_once __DIR__ . '/../../services/PrescriptionService.php';
 
 header('Content-Type: application/json');
 
-$user = requireAuth();
+$user = requireRole('doctor');
 $currentUserId = (int)$user['id'];
-$currentRole   = $user['role'];
 
-if ($currentRole !== 'doctor') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Only doctors can cancel prescriptions.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
 $input = getJsonInput();
-$prescriptionId = (int)($input['prescription_id'] ?? 0);
-$reason         = trim($input['reason'] ?? '');
+$prescriptionId = parsePositiveInt($input['prescription_id'] ?? null);
+$reasonInput    = $input['reason'] ?? null;
+if (!is_string($reasonInput)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Cancellation reason must be text.']);
+}
+$reason = trim($reasonInput);
+if (mb_strlen($reason) > 2000) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Cancellation reason must not exceed 2000 characters.']);
+}
 
-if (!$prescriptionId) {
+if ($prescriptionId === null) {
     http_response_code(400);
     jsonResponse(false, ['message' => 'Prescription ID is required.']);
 }
@@ -36,7 +43,7 @@ if (empty($reason)) {
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db);
+    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
 
     $cancelled = $ps->cancel($prescriptionId, $currentUserId, $reason);
 
@@ -45,26 +52,9 @@ try {
         jsonResponse(false, ['message' => 'Cannot cancel this prescription. It may not exist, is not Active, or was created by another doctor.']);
     }
 
-    $rx = $ps->get($prescriptionId);
-    if ($rx && !empty($rx['patient_id'])) {
-        $ns = new NotificationService($db);
-        $ns->create(
-            (int)$rx['patient_id'],
-            NotificationService::TYPE_PRESCRIPTION_CANCELLED,
-            'Prescription Cancelled',
-            "Your prescription has been cancelled by Dr. {$rx['appt_doctor_name']}. Reason: {$reason}",
-            'prescription',
-            $prescriptionId
-        );
-    }
-
-    // Log to audit (patient_id + doctor_id for EMR and Doctor Profile context)
-    $audit = new AuditService($db, (int)$user['id'], $user['role']);
-    $audit->log('cancel', 'prescription', $prescriptionId, 'Active', 'Cancelled', "Prescription cancelled: {$reason}", $rx['patient_id'] ?? null, $currentUserId);
-
     jsonResponse(true, ['message' => 'Prescription cancelled successfully.', 'prescription_id' => $prescriptionId]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Cancel Prescription Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to cancel prescription.']);

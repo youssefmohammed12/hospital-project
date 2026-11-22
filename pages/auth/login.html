@@ -1,75 +1,82 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Log in to your HealthBridge account to book appointments with top doctors and manage your healthcare."
+      content="Sign in to the HealthBridge demonstration to access the workspace associated with your account."
     />
-    <title>Login — HealthBridge</title>
-    <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-    <link rel="stylesheet" href="../../assets/css/style.css?v=2" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
-    />
-    <link rel="stylesheet" href="../../assets/css/pages/auth.css?v=3" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    />
+    <title>Sign In — HealthBridge</title>
+    <link rel="icon" type="image/svg+xml" href="../../favicon.svg?v=2" />
+    <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
+    <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+    <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+    <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11" />
+    <link rel="stylesheet" href="../../assets/public-v2/css/pages/auth.css?v=6" />
+    <link rel="stylesheet" href="../../assets/public-v2/css/footer.css?v=4" />
+    <script defer src="../../assets/public-v2/js/core/footer.js?v=3"></script>
   </head>
-  <body>
+  <body class="auth-entry-page auth-login-page" data-csp-page="auth">
     <!-- Simple Navbar for Auth Pages -->
     <nav class="navbar" id="navbar">
       <div class="nav-container">
         <a href="../../index.html" class="logo">
-          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-          <span>HealthBridge</span>
+          <div class="logo-icon"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h16v17M8 8h2m4 0h2M8 12h2m4 0h2M9 21v-4h6v4M12 1v5m-3-3h6"></path></svg></div>
+          <span class="hb-wordmark"><span class="hb-wordmark__letter" data-letter="H">H</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__letter" data-letter="a">a</span><span class="hb-wordmark__letter" data-letter="l">l</span><span class="hb-wordmark__letter" data-letter="t">t</span><span class="hb-wordmark__letter" data-letter="h">h</span><span class="hb-wordmark__letter" data-letter="B">B</span><span class="hb-wordmark__letter" data-letter="r">r</span><span class="hb-wordmark__letter" data-letter="i">i</span><span class="hb-wordmark__letter" data-letter="d">d</span><span class="hb-wordmark__letter" data-letter="g">g</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__shimmer" aria-hidden="true">HealthBridge</span></span>
         </a>
-        <div class="nav-actions" style="gap: var(--s2)">
+        <div class="nav-actions" data-csp-style="auth-57149f6be737">
+          <button type="button" class="theme-toggle" aria-label="Switch to light mode" title="Light mode"></button>
           <a href="../../index.html" class="btn btn-outline btn-sm">← Back to Home</a>
         </div>
       </div>
     </nav>
 
-    <div class="auth-page">
+    <main class="auth-page">
       <!-- Two-panel auth container -->
       <div class="auth-container">
         <!-- Left: Branding Panel -->
         <div class="auth-brand">
           <div class="auth-brand-content">
+            <div class="register-aurora" aria-hidden="true">
+              <span class="register-aurora__glow register-aurora__glow--gold"></span>
+              <span class="register-aurora__glow register-aurora__glow--teal"></span>
+            </div>
             <div class="auth-brand-logo">
-              <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-              <span>HealthBridge</span>
+              <div class="logo-icon"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h16v17M8 8h2m4 0h2M8 12h2m4 0h2M9 21v-4h6v4M12 1v5m-3-3h6"></path></svg></div>
+              <span class="hb-wordmark"><span class="hb-wordmark__letter" data-letter="H">H</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__letter" data-letter="a">a</span><span class="hb-wordmark__letter" data-letter="l">l</span><span class="hb-wordmark__letter" data-letter="t">t</span><span class="hb-wordmark__letter" data-letter="h">h</span><span class="hb-wordmark__letter" data-letter="B">B</span><span class="hb-wordmark__letter" data-letter="r">r</span><span class="hb-wordmark__letter" data-letter="i">i</span><span class="hb-wordmark__letter" data-letter="d">d</span><span class="hb-wordmark__letter" data-letter="g">g</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__shimmer" aria-hidden="true">HealthBridge</span></span>
             </div>
 
-            <h2>Welcome Back</h2>
-            <p>Sign in to your HealthBridge account to manage appointments, access medical records, and connect with your healthcare team.</p>
+            <h1>Better connected, <em>by design.</em></h1>
+            <p>Explore the patient, doctor and admin journeys inside this student-built hospital-management demonstration.</p>
+            <div class="auth-brand-diagram" aria-hidden="true">
+              <div class="auth-diagram-roles"><span>Patient</span><span>Doctor</span><span>Admin</span></div>
+              <div class="auth-diagram-link"><span class="auth-diagram-signal"></span></div>
+              <div class="auth-diagram-hub"><span class="auth-diagram-hub-mark">+</span><span>ONE CONNECTED SYSTEM</span></div>
+            </div>
 
             <div class="auth-features">
               <div class="auth-feature-item">
-                <i class="fas fa-calendar-check" aria-hidden="true"></i>
-                <span>Book appointments with top specialists</span>
+                <svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-13 5 2 2 4-4"/></svg>
+                <span>Review your appointment information</span>
               </div>
               <div class="auth-feature-item">
-                <i class="fas fa-file-medical" aria-hidden="true"></i>
-                <span>Access your medical records securely</span>
+                <svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6m-3-3v6m-3 3h6"/></svg>
+                <span>Review the profile details available to your account</span>
               </div>
               <div class="auth-feature-item">
-                <i class="fas fa-bell" aria-hidden="true"></i>
-                <span>Get reminders & health notifications</span>
+                <svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+                <span>See account and appointment updates</span>
               </div>
               <div class="auth-feature-item">
-                <i class="fas fa-shield-halved" aria-hidden="true"></i>
-                <span>Secure & HIPAA-compliant platform</span>
+                <svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+                <span>Separate workspaces for each account role</span>
               </div>
             </div>
 
-            <p style="margin-top: var(--s8); font-size: 0.78rem; color: var(--text-muted);">
+            <p data-csp-style="auth-15c6e99c4e3d">
               Don't have an account?
-              <a href="register.html" style="color: var(--primary); font-weight: 600; text-decoration: none;">
+              <a href="register.html" data-csp-style="auth-aeb534f5aa8a">
                 Create one here
               </a>
             </p>
@@ -78,30 +85,31 @@
 
         <!-- Right: Login Form Panel -->
         <div class="auth-form-panel">
-          <!-- ─── Standard Auth Card (for standalone card mode when container not used) ─── -->
+          <!-- â”€â”€â”€ Standard Auth Card (for standalone card mode when container not used) â”€â”€â”€ -->
           <div id="main-auth">
             <!-- Demo Accounts -->
             <div class="demo-section">
-              <p class="demo-label"><i class="fas fa-bolt" aria-hidden="true"></i> Quick Demo Login</p>
+              <p class="demo-label"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6m-5 0v6l-5.5 9.2A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.8L14 9V3M8 15h8"/></svg> Demo access Â· test accounts</p>
+              <p class="demo-description">Choose a role to fill its demo credentials and automatically start sign-in.</p>
               <div class="demo-buttons">
-                <button type="button" onclick="fillDemo('admin@healthbridge.com', 'password')" class="demo-btn demo-admin">
-                  <i class="fas fa-shield-halved" aria-hidden="true"></i> Admin
+                <button type="button" data-demo-account="patient" class="demo-btn demo-patient">
+                  <svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg> Patient
                 </button>
-                <button type="button" onclick="fillDemo('patient@healthbridge.com', 'password')" class="demo-btn demo-patient">
-                  <i class="fas fa-user" aria-hidden="true"></i> Patient
+                <button type="button" data-demo-account="doctor" class="demo-btn demo-doctor">
+                  <svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6m-3-3h6"/></svg> Doctor
                 </button>
-                <button type="button" onclick="fillDemo('ahmed.hassan@healthbridge.com', 'password')" class="demo-btn demo-doctor">
-                  <i class="fas fa-user-doctor" aria-hidden="true"></i> Doctor
+                <button type="button" data-demo-account="admin" class="demo-btn demo-admin">
+                  <svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg> Admin
                 </button>
               </div>
             </div>
 
             <div class="auth-divider">
-              <span>or login with your account</span>
+              <span>or sign in with your account</span>
             </div>
 
             <div class="auth-form-header">
-              <h3>Sign In</h3>
+              <h3>Sign in</h3>
               <p>Enter your credentials to access your account</p>
             </div>
 
@@ -137,7 +145,7 @@
                   <button
                     type="button"
                     class="pw-toggle"
-                    onclick="togglePasswordVisibility(this)"
+                    data-password-toggle="true"
                     aria-label="Show password"
                     title="Show password"
                   >
@@ -153,7 +161,7 @@
               <div class="flex-between">
                 <label class="remember-label">
                   <input type="checkbox" id="remember-me" />
-                  Remember me
+                  Remember email on this device
                 </label>
                 <button type="button" id="open-forgot" class="auth-link-btn">
                   Forgot Password?
@@ -165,10 +173,37 @@
                 <span class="btn-text">Sign In</span>
               </button>
             </form>
+
+            <button type="button" id="open-login-verification-resend" class="auth-link-btn verification-resend-open">
+              Resend verification email
+            </button>
+
+            <section id="login-verification-resend" class="verification-login-resend is-hidden" aria-labelledby="login-verification-resend-title">
+              <h4 id="login-verification-resend-title">Resend your verification email</h4>
+              <p>Use this if you completed registration but did not receive your verification link. Weâ€™ll send a new message if a registration is waiting for this address.</p>
+              <form id="login-verification-resend-form" novalidate>
+                <div class="form-group">
+                  <label for="login-verification-resend-email">Email Address</label>
+                  <input
+                    type="email"
+                    id="login-verification-resend-email"
+                    name="email"
+                    autocomplete="email"
+                    required
+                    aria-required="true"
+                  />
+                </div>
+                <button type="submit" class="btn-login" id="login-verification-resend-submit">
+                  <span class="spinner"></span>
+                  <span class="btn-text">Resend Verification Email</span>
+                </button>
+                <p id="login-verification-resend-message" class="verification-resend-message" aria-live="polite"></p>
+              </form>
+            </section>
           </div>
 
-          <!-- ─── FORGOT PASSWORD PANEL ─── -->
-          <div id="panel-forgot" class="auth-alt-panel" style="display: none">
+          <!-- â”€â”€â”€ FORGOT PASSWORD PANEL â”€â”€â”€ -->
+          <div id="panel-forgot" class="auth-alt-panel is-hidden">
             <button type="button" id="back-to-login" class="auth-back-btn">
               ← Back to Login
             </button>
@@ -198,25 +233,23 @@
 
             <div
               id="forgot-result"
-              class="auth-reset-result"
-              style="display: none"
+              class="auth-reset-result is-hidden"
             >
-              <div class="reset-success-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div>
+              <div class="reset-success-icon"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg></div>
               <p id="forgot-result-msg"></p>
               <a
                 id="forgot-reset-link"
                 href="#"
                 class="btn btn-outline btn-block"
-                style="margin-top: var(--s4); text-align: center"
-                >Open Reset Page</a
+                 data-csp-style="auth-1d9f4fbc197c">Open Reset Page</a
               >
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
 
-    <script src="../../assets/js/core/main.js?v=2"></script>
-    <script src="../../assets/js/core/auth.js?v=3"></script>
+    <div data-shared-footer aria-busy="true"></div>
+    <script defer src="../../assets/public-v2/js/pages/auth-entry.js?v=3"></script>
   </body>
 </html>

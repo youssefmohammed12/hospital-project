@@ -19,6 +19,11 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/RescheduleService.php';
 
 $user = requireAuth();
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 $userId = (int)$user['id'];
 $userRole = $user['role'] ?? '';
 
@@ -29,21 +34,35 @@ if ($userRole !== 'doctor' && $userRole !== 'admin') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
+if (!is_array($input)) {
+    $input = [];
+}
 
-if (!$input || empty($input['appointment_id']) || empty($input['suggested_date']) || empty($input['suggested_time'])) {
+$appointmentId = parsePositiveInt($input['appointment_id'] ?? null);
+$dateInput = $input['suggested_date'] ?? null;
+$timeInput = $input['suggested_time'] ?? null;
+$notesInput = $input['notes'] ?? '';
+
+if (
+    $appointmentId === null
+    || !is_string($dateInput)
+    || !is_string($timeInput)
+    || !is_string($notesInput)
+    || trim($dateInput) === ''
+    || trim($timeInput) === ''
+) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Missing required fields: appointment_id, suggested_date, suggested_time.']);
+    echo json_encode(['success' => false, 'message' => 'Appointment ID, suggested date, and suggested time must be valid values.']);
     exit;
 }
 
-$appointmentId = (int)$input['appointment_id'];
-$suggestedDate = trim($input['suggested_date']);
-$suggestedTime = trim($input['suggested_time']);
-$notes = trim($input['notes'] ?? '');
+$suggestedDate = trim($dateInput);
+$suggestedTime = trim($timeInput);
+$notes = trim($notesInput);
 
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole);
+    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
     $result = $rs->suggestReschedule($appointmentId, $suggestedDate, $suggestedTime, $notes);
     echo json_encode($result);
 } catch (Exception $e) {

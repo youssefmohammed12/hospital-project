@@ -1134,3 +1134,47 @@ input:checked + .slider::before {
   border-color: rgba(8, 145, 178, 0.45);
   box-shadow: 0 0 12px rgba(8, 145, 178, 0.12);
 }
+
+
+/* ============================================================
+   ADMIN APPOINTMENT MANAGEMENT
+   ============================================================ */
+
+.admin-appointment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2, 0.5rem);
+  min-width: 9rem;
+}
+
+.admin-appointment-actions .btn {
+  white-space: nowrap;
+}
+
+#appointments .table-controls {
+  align-items: flex-end;
+}
+
+#appointments .table-controls .search-box {
+  flex: 1 1 280px;
+}
+
+#appointments .table-controls .filter-group {
+  flex: 0 1 220px;
+}
+
+#appointments .text-muted {
+  margin: 0 0 var(--s4, 1rem);
+}
+
+@media (max-width: 640px) {
+  .admin-appointment-actions {
+    min-width: 0;
+  }
+
+  #appointments .table-controls .search-box,
+  #appointments .table-controls .filter-group {
+    flex-basis: 100%;
+  }
+}

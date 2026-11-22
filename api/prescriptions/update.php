@@ -5,27 +5,39 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../services/AuditService.php';
 require_once __DIR__ . '/../../services/PrescriptionService.php';
 
 header('Content-Type: application/json');
 
-$user = requireAuth();
+$user = requireRole('doctor');
 $currentUserId = (int)$user['id'];
-$currentRole   = $user['role'];
 
-if ($currentRole !== 'doctor') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Only doctors can update prescriptions.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
 $input = getJsonInput();
-$prescriptionId = (int)($input['prescription_id'] ?? 0);
-$notes          = trim($input['notes'] ?? '');
+$prescriptionId = parsePositiveInt($input['prescription_id'] ?? null);
+$notesInput     = $input['notes'] ?? '';
 $items          = $input['items'] ?? [];
 
-if (!$prescriptionId) {
+if (!is_string($notesInput)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Prescription notes must be text.']);
+}
+$notes = trim($notesInput);
+if (mb_strlen($notes) > 5000) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Prescription notes must not exceed 5000 characters.']);
+}
+if (!is_array($items)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Medication items must be provided as a list.']);
+}
+
+if ($prescriptionId === null) {
     http_response_code(400);
     jsonResponse(false, ['message' => 'Prescription ID is required.']);
 }
@@ -38,7 +50,7 @@ if ($validationError) {
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db);
+    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
 
     $updated = $ps->update($prescriptionId, $items, $notes ?: null, $currentUserId);
 
@@ -47,26 +59,9 @@ try {
         jsonResponse(false, ['message' => 'Cannot update this prescription. It may not exist, is not Active, or was created by another doctor.']);
     }
 
-    $rx = $ps->get($prescriptionId);
-    if ($rx && !empty($rx['patient_id'])) {
-        $ns = new NotificationService($db);
-        $ns->create(
-            (int)$rx['patient_id'],
-            NotificationService::TYPE_PRESCRIPTION_UPDATED,
-            'Prescription Updated',
-            "Your prescription has been updated by Dr. {$rx['appt_doctor_name']}. Please review the changes in your Prescriptions section.",
-            'prescription',
-            $prescriptionId
-        );
-    }
-
-    // Log to audit (patient_id + doctor_id for EMR and Doctor Profile context)
-    $audit = new AuditService($db, (int)$user['id'], $user['role']);
-    $audit->log('update', 'prescription', $prescriptionId, null, null, "Prescription updated", $rx['patient_id'] ?? null, $currentUserId);
-
     jsonResponse(true, ['message' => 'Prescription updated successfully.', 'prescription_id' => $prescriptionId]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Update Prescription Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to update prescription.']);

@@ -8,32 +8,44 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/ScheduleService.php';
 
-$userId = requireRole('doctor')['id'];
+$userId = (int)requireRole('doctor')['id'];
+$schema = ScheduleService::schemaFromEnvironment();
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 try {
     $db = getDB();
 
     // Read from new schedule settings (single source of truth)
-    $ss = new ScheduleService($db);
+    $ss = new ScheduleService($db, $schema);
     $schedule = $ss->getSchedule($userId);
 
     if ($schedule) {
         $available = (int)$schedule['settings']['is_available'];
     } else {
-        // Fallback to old doctors table
-        $stmt = $db->prepare('SELECT available FROM doctors WHERE user_id = ? LIMIT 1');
-        $stmt->execute([$userId]);
-        $doctor = $stmt->fetch();
-        if (!$doctor) {
+        if ($schema === DoctorScheduleRepository::SCHEMA_V1) {
+            // Legacy fallback only; V2 stores availability in schedule settings.
+            $stmt = $db->prepare('SELECT available FROM doctors WHERE user_id = ? LIMIT 1');
+            $stmt->execute([$userId]);
+            $doctor = $stmt->fetch();
+            if (!$doctor) {
+                http_response_code(404);
+                jsonResponse(false, ['message' => 'Doctor profile not found.']);
+            }
+            $available = (int)$doctor['available'];
+        } else {
             http_response_code(404);
-            jsonResponse(false, ['message' => 'Doctor profile not found.']);
+            jsonResponse(false, ['message' => 'Doctor schedule profile not found.']);
         }
-        $available = (int)$doctor['available'];
     }
 
     jsonResponse(true, ['available' => $available]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get Doctor Availability Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to load availability status.']);
