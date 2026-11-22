@@ -258,8 +258,27 @@ html[data-theme="light"] body.doctors-page .nav-toggle {
   height: 38px;
   border: 1px solid var(--public-border-dark);
   border-radius: 9px;
-  color: var(--public-text);
+  color: #edf3ee;
   transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+/* The public header is always dark green chrome, in both themes, so
+   its controls keep one light treatment on every page. These
+   ID-scoped rules exist because several page stylesheets restyle
+   header anchors and the theme toggle per page, which made the
+   settings icon inherit the dark page ink (invisible on the dark
+   header) and gave the toggle a different hover per page/theme. */
+#navbar .nav-quick-icons > a,
+#navbar .nav-quick-bell {
+  color: #edf3ee;
+}
+#navbar .theme-toggle {
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+#navbar .theme-toggle:hover {
+  color: #e8d1a8;
+  border-color: rgba(212, 180, 126, 0.55);
+  background: rgba(255, 255, 255, 0.07);
 }
 .nav-quick-icons > a:hover,
 .nav-quick-bell:hover {

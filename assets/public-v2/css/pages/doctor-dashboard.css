@@ -1117,3 +1117,132 @@ body.doctor-workspace .main-content.doctor-shell-ready {
   .doctor-overview > .doctor-overview-grid { animation: none; }
   .doctor-stat { transition: none; }
 }
+
+/* Doctor Phase 1 polish — the overview speaks the site's design
+   language: aurora greeting, gold-italic serif accent, icon chips. */
+.doctor-intro {
+  position: relative;
+  overflow: hidden;
+}
+.doctor-intro::before,
+.doctor-intro::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  filter: blur(38px);
+  pointer-events: none;
+}
+.doctor-intro::before {
+  right: 4%;
+  width: min(360px, 75%);
+  height: 200px;
+  background: radial-gradient(ellipse at center, rgba(212, 180, 126, 0.20), transparent 65%);
+  animation: doctor-aurora-a 20s ease-in-out infinite alternate;
+}
+.doctor-intro::after {
+  left: 3%;
+  width: min(300px, 65%);
+  height: 170px;
+  background: radial-gradient(ellipse at center, rgba(42, 138, 129, 0.20), transparent 65%);
+  animation: doctor-aurora-b 22s ease-in-out infinite alternate;
+}
+html[data-theme="light"] .doctor-intro::before {
+  background: radial-gradient(ellipse at center, rgba(169, 132, 79, 0.40), transparent 65%);
+}
+html[data-theme="light"] .doctor-intro::after {
+  background: radial-gradient(ellipse at center, rgba(23, 100, 95, 0.24), transparent 65%);
+}
+.doctor-intro > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes doctor-aurora-a {
+  from { transform: translate3d(0, -50%, 0) scale(1); }
+  to { transform: translate3d(-18px, calc(-50% + 9px), 0) scale(1.08); }
+}
+@keyframes doctor-aurora-b {
+  from { transform: translate3d(0, -50%, 0) scale(1.06); }
+  to { transform: translate3d(16px, calc(-50% - 7px), 0) scale(0.96); }
+}
+.doctor-intro h1 em {
+  font-style: italic;
+  color: var(--doctor-gold);
+}
+.doctor-availability__dot {
+  animation: doctor-dot-pulse 2.6s ease-in-out infinite;
+}
+@keyframes doctor-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(63, 164, 106, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(63, 164, 106, 0); }
+}
+.doctor-availability.is-off .doctor-availability__dot {
+  animation: none;
+}
+.doctor-stat {
+  position: relative;
+}
+.doctor-stat__icon {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(212, 180, 126, 0.14);
+  color: var(--doctor-gold);
+}
+html[data-theme="light"] .doctor-stat__icon {
+  background: rgba(169, 132, 79, 0.14);
+}
+.doctor-stat__icon svg {
+  width: 18px;
+  height: 18px;
+}
+.doctor-stat:hover {
+  box-shadow: 0 12px 26px rgba(16, 43, 43, 0.10);
+}
+.doctor-queue-row {
+  padding-right: 10px;
+  padding-left: 10px;
+  margin-right: -10px;
+  margin-left: -10px;
+  border-radius: 10px;
+  transition: background 160ms ease;
+}
+.doctor-queue-row:hover {
+  background: rgba(212, 180, 126, 0.06);
+}
+html[data-theme="light"] .doctor-queue-row:hover {
+  background: rgba(169, 132, 79, 0.07);
+}
+.doctor-panel__head a {
+  transition: color 160ms ease;
+}
+.doctor-panel__head a:hover {
+  color: var(--doctor-text);
+}
+.doctor-consult-btn {
+  position: relative;
+  overflow: hidden;
+}
+.doctor-consult-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 600ms ease;
+  pointer-events: none;
+}
+.doctor-consult-btn:hover::after {
+  transform: translateX(120%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .doctor-intro::before,
+  .doctor-intro::after,
+  .doctor-availability__dot { animation: none; }
+  .doctor-consult-btn::after { transition: none; }
+}

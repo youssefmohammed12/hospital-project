@@ -157,7 +157,9 @@
     if (greeting) {
       const hour = now.getHours();
       const dayPart = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-      greeting.textContent = doctorName ? dayPart + ", " + doctorName : dayPart;
+      greeting.innerHTML = doctorName
+        ? dayPart + ", <em>" + esc(doctorName) + "</em>"
+        : dayPart;
     }
 
     const today = todayStr();
