@@ -10,12 +10,12 @@ body.contact-page {
   --contact-sage: #e2eee9;
   --contact-ivory: #f6f7f3;
   --contact-brass: #b89563;
-  --contact-accent: #d9bf96;
-  --contact-canvas: #102b2b;
-  --contact-surface: #163734;
-  --contact-raised: #1a403b;
+  --contact-accent: #d4b47e;
+  --contact-canvas: #0b1918;
+  --contact-surface: #132725;
+  --contact-raised: #19332f;
   --contact-copy: #edf3ee;
-  --contact-muted: #c1d1c9;
+  --contact-muted: #b2c4bb;
   --contact-line: rgba(226, 238, 233, 0.17);
   --contact-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --contact-ease: cubic-bezier(0.2, 0.7, 0.2, 1);

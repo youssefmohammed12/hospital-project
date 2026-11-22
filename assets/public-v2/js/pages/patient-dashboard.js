@@ -165,6 +165,7 @@
         "next-appointment-time", "next-appointment-change",
         "health-alerts-section", "health-alerts-list",
         "snapshot-completed", "snapshot-prescriptions", "snapshot-profile",
+        "profile-completion-section", "profile-completion-bar", "profile-completion-fill", "profile-completion-text",
         "recent-activity-list", "recent-activity-empty",
       ].forEach((id) => { this.elements[id] = $(id); });
     },
@@ -246,6 +247,7 @@
       this.renderNextAppointment();
       this.renderAlerts();
       this.renderSnapshot();
+      this.renderProfileCompletion();
       this.renderActivity();
     },
 
@@ -421,6 +423,22 @@
       animateCount(this.elements["snapshot-completed"], safeCount(snapshot.completed_appointments));
       animateCount(this.elements["snapshot-prescriptions"], safeCount(snapshot.active_prescriptions));
       animateCount(this.elements["snapshot-profile"], Math.min(100, safeCount(snapshot.profile_completion)), "%");
+    },
+
+    // Phase 5: the Health Insights merge — profile completeness now lives
+    // here (the detailed missing-fields view), the Insights tab is retired.
+    renderProfileCompletion() {
+      const completion = this.data?.profile_completion;
+      const section = this.elements["profile-completion-section"];
+      if (!section || !completion || typeof completion.percentage !== "number") return;
+      const pct = Math.max(0, Math.min(100, Math.round(completion.percentage)));
+      const missing = Array.isArray(completion.missing_fields) ? completion.missing_fields : [];
+      this.elements["profile-completion-bar"].setAttribute("aria-valuenow", String(pct));
+      this.elements["profile-completion-fill"].style.width = pct + "%";
+      this.elements["profile-completion-text"].textContent = missing.length
+        ? pct + "% complete — still missing: " + missing.map((f) => f.label || f.field).join(", ") + "."
+        : pct + "% complete — everything is filled in, so your care team has the full picture.";
+      section.hidden = false;
     },
 
     renderActivity() {

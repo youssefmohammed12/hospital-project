@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=10" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=11" />
   <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
-  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=4"></script>
-  <script defer src="../../assets/public-v2/js/pages/patient-dashboard.js?v=5"></script>
+  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=5"></script>
+  <script defer src="../../assets/public-v2/js/pages/patient-dashboard.js?v=6"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -159,6 +159,22 @@
               </article>
             </div>
             <p class="snapshot-disclaimer">These are account-record summaries, not a medical assessment.</p>
+          </section>
+
+          <section class="dashboard-section" id="profile-completion-section" aria-labelledby="profile-completion-heading" hidden>
+            <div class="dashboard-section__heading">
+              <div>
+                <p class="dashboard-section__eyebrow">YOUR MEDICAL PROFILE</p>
+                <h2 id="profile-completion-heading">Profile completeness</h2>
+              </div>
+              <a class="dashboard-text-link" href="profile.html">View profile</a>
+            </div>
+            <div class="profile-completion">
+              <div class="profile-completion__bar" role="progressbar" aria-label="Medical profile completeness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="profile-completion-bar">
+                <span id="profile-completion-fill"></span>
+              </div>
+              <p class="profile-completion__text" id="profile-completion-text"></p>
+            </div>
           </section>
 
           <section class="dashboard-section" aria-labelledby="quick-actions-heading">

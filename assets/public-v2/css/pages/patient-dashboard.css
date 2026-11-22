@@ -1258,3 +1258,34 @@ body.patient-workspace #dashboard-main .dashboard-section:nth-of-type(7) { anima
   body.patient-workspace #dashboard-main .dashboard-intro,
   body.patient-workspace #dashboard-main .dashboard-section { animation: none; }
 }
+
+/* Profile completeness (Phase 5 — the Health Insights merge). */
+body.patient-workspace #dashboard-main .profile-completion {
+  border: 1px solid var(--patient-border);
+  border-radius: 14px;
+  background: var(--patient-surface);
+  padding: 18px 20px;
+}
+body.patient-workspace #dashboard-main .profile-completion__bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--patient-surface-raised);
+  overflow: hidden;
+}
+body.patient-workspace #dashboard-main .profile-completion__bar > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--patient-gold);
+  transition: width 700ms ease;
+}
+body.patient-workspace #dashboard-main .profile-completion__text {
+  margin: 12px 0 0;
+  color: var(--patient-muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.patient-workspace #dashboard-main .profile-completion__bar > span { transition: none; }
+}

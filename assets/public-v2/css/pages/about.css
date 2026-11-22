@@ -5,14 +5,14 @@
  */
 
 body.about-page {
-  --about-canvas: #102b2b;
-  --about-surface: #163734;
-  --about-raised: #1a403b;
+  --about-canvas: #0b1918;
+  --about-surface: #132725;
+  --about-raised: #19332f;
   --about-copy: #edf3ee;
-  --about-muted: #c1d1c9;
+  --about-muted: #b2c4bb;
   --about-line: rgba(226, 238, 233, 0.17);
   --about-brass: #b89563;
-  --about-accent: #d9bf96;
+  --about-accent: #d4b47e;
   --about-teal: #17645f;
   --about-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --about-ease: cubic-bezier(0.2, 0.7, 0.2, 1);

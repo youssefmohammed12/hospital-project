@@ -5,16 +5,16 @@
  */
 
 body.auth-entry-page {
-  --auth-canvas: #102b2b;
-  --auth-surface: #173431;
-  --auth-surface-raised: #1b3d38;
-  --auth-input: #102e2b;
+  --auth-canvas: #0b1918;
+  --auth-surface: #132725;
+  --auth-surface-raised: #19332f;
+  --auth-input: #0b1918;
   --auth-text: #f1f5ef;
-  --auth-muted: #b8c9c0;
+  --auth-muted: #b2c4bb;
   --auth-faint: #8fa79b;
   --auth-line: rgba(226, 238, 233, 0.15);
   --auth-line-strong: rgba(226, 238, 233, 0.25);
-  --auth-accent: #d9bf96;
+  --auth-accent: #d4b47e;
   --auth-accent-deep: #8c6b3d;
   --auth-action: #1b746b;
   --auth-action-hover: #22877a;

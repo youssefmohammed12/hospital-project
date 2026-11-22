@@ -10,12 +10,12 @@ body.doctors-page {
   --doc-sage: #e2eee9;
   --doc-ivory: #f6f7f3;
   --doc-brass: #b89563;
-  --doc-accent: #d9bf96;
-  --doc-canvas: #102b2b;
-  --doc-surface: #163734;
-  --doc-raised: #1a403b;
+  --doc-accent: #d4b47e;
+  --doc-canvas: #0b1918;
+  --doc-surface: #132725;
+  --doc-raised: #19332f;
   --doc-copy: #edf3ee;
-  --doc-muted: #c1d1c9;
+  --doc-muted: #b2c4bb;
   --doc-line: rgba(226, 238, 233, 0.17);
   --doc-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --doc-ease: cubic-bezier(.2,.7,.2,1);
