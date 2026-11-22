@@ -45,7 +45,8 @@
         '<div class="patient-topbar__content"><span class="patient-workspace-kicker">PATIENT WORKSPACE</span><div class="patient-topbar__actions">' +
           '<div class="patient-notification-menu"><button class="patient-icon-button" id="patient-notification-trigger" type="button" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="patient-notification-dropdown">' + icons.bell + '<span class="patient-notification-badge" id="patient-notification-badge" hidden>0</span></button>' +
             '<div class="patient-notification-dropdown" id="patient-notification-dropdown" aria-hidden="true" inert><div class="patient-dropdown-heading">Notifications</div><p class="patient-notification-empty">Your latest updates will appear here.</p><a href="notifications.html">View all notifications</a></div></div>' +
-          '<a class="patient-icon-link" href="settings.html" aria-label="Settings" title="Settings">' + icons.settings + '</a>' +
+          '<div class="patient-quick-menu"><button class="patient-icon-button" id="patient-quick-trigger" type="button" aria-label="Quick settings" aria-haspopup="true" aria-expanded="false" aria-controls="patient-quick-dropdown">' + icons.settings + '</button>' +
+            '<div class="patient-quick-dropdown" id="patient-quick-dropdown" aria-hidden="true" inert><div class="patient-dropdown-heading">Quick settings</div><p class="patient-quick-label">Appearance</p><div class="patient-quick-themes"><button type="button" data-quick-theme="light">Light</button><button type="button" data-quick-theme="dark">Dark</button><button type="button" data-quick-theme="system">System</button></div><p class="patient-quick-saved" id="patient-quick-saved" role="status"></p><div class="patient-quick-links"><a href="notifications.html">' + icons.bell + '<span>Notifications</span></a><a href="settings.html">' + icons.settings + '<span>All settings</span></a></div></div></div>' +
           '<button class="patient-icon-button theme-toggle" type="button" aria-label="Change appearance" title="Change appearance"></button>' +
           '<div class="patient-profile-menu"><button class="patient-profile-trigger" id="patient-profile-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="patient-profile-dropdown"><span class="patient-profile-avatar" id="patient-profile-avatar" aria-hidden="true">PT</span><span class="patient-profile-name" id="patient-profile-name">Patient</span>' + icons.chevron + '</button>' +
             '<div class="patient-profile-dropdown" id="patient-profile-dropdown" role="menu" aria-label="Patient account" aria-hidden="true" inert>' +
@@ -247,7 +248,7 @@
   }
 
   /* Fills the header bell: unread badge (pulses via CSS when it first
-     appears) and the three latest notifications in the dropdown.
+     appears) and the four latest notifications in the dropdown.
      Uses the same endpoint as the Notifications page, so they agree. */
   function populateNotifications() {
     const badge = document.getElementById("patient-notification-badge");
@@ -267,7 +268,7 @@
         if (dropdown && items.length) {
           dropdown.querySelector(".patient-notification-empty")?.remove();
           const viewAll = dropdown.querySelector("a");
-          items.slice(0, 3).forEach((item) => {
+          items.slice(0, 4).forEach((item) => {
             const row = document.createElement("a");
             row.href = "notifications.html";
             row.className = "patient-notification-item" +
@@ -292,6 +293,8 @@
     const profileDropdown = document.getElementById("patient-profile-dropdown");
     const noticeTrigger = document.getElementById("patient-notification-trigger");
     const noticeDropdown = document.getElementById("patient-notification-dropdown");
+    const quickTrigger = document.getElementById("patient-quick-trigger");
+    const quickDropdown = document.getElementById("patient-quick-dropdown");
 
     const setMenu = (trigger, menu, open) => {
       if (!trigger || !menu) return;
@@ -303,12 +306,21 @@
     const closeMenus = () => {
       setMenu(profileTrigger, profileDropdown, false);
       setMenu(noticeTrigger, noticeDropdown, false);
+      setMenu(quickTrigger, quickDropdown, false);
     };
 
     profileTrigger?.addEventListener("click", () => {
       const open = profileTrigger.getAttribute("aria-expanded") !== "true";
       setMenu(noticeTrigger, noticeDropdown, false);
+      setMenu(quickTrigger, quickDropdown, false);
       setMenu(profileTrigger, profileDropdown, open);
+    });
+
+    quickTrigger?.addEventListener("click", () => {
+      const open = quickTrigger.getAttribute("aria-expanded") !== "true";
+      setMenu(profileTrigger, profileDropdown, false);
+      setMenu(noticeTrigger, noticeDropdown, false);
+      setMenu(quickTrigger, quickDropdown, open);
     });
 
     profileTrigger?.addEventListener("keydown", (event) => {
@@ -343,6 +355,7 @@
     noticeTrigger?.addEventListener("click", () => {
       const open = noticeTrigger.getAttribute("aria-expanded") !== "true";
       setMenu(profileTrigger, profileDropdown, false);
+      setMenu(quickTrigger, quickDropdown, false);
       setMenu(noticeTrigger, noticeDropdown, open);
     });
 
@@ -350,7 +363,8 @@
       const target = event.target;
       if (target instanceof Node &&
           !profileDropdown?.contains(target) && !profileTrigger?.contains(target) &&
-          !noticeDropdown?.contains(target) && !noticeTrigger?.contains(target)) closeMenus();
+          !noticeDropdown?.contains(target) && !noticeTrigger?.contains(target) &&
+          !quickDropdown?.contains(target) && !quickTrigger?.contains(target)) closeMenus();
     });
 
     document.addEventListener("click", (event) => {
@@ -363,6 +377,69 @@
       }
     });
     return closeMenus;
+  }
+
+  /* Quick-settings panel (from the header gear): appearance only, plus
+     shortcuts. The full Settings page remains the single place for
+     everything else — this panel deliberately holds no forms. */
+  function bindQuickSettings() {
+    const buttons = Array.from(document.querySelectorAll("[data-quick-theme]"));
+    if (!buttons.length) return;
+    const saved = document.getElementById("patient-quick-saved");
+    let savedTimer = null;
+    const mark = (value) => buttons.forEach((button) =>
+      button.classList.toggle("is-selected", button.dataset.quickTheme === value));
+    const flash = () => {
+      if (!saved) return;
+      saved.textContent = "Appearance saved ✓";
+      saved.classList.add("is-visible");
+      window.clearTimeout(savedTimer);
+      savedTimer = window.setTimeout(() => saved.classList.remove("is-visible"), 2200);
+    };
+
+    fetch(ROOT + "api/settings/get.php", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        const theme = payload?.preferences?.theme;
+        if (theme === "light" || theme === "dark" || theme === "system") {
+          mark(theme);
+          return;
+        }
+        throw new Error("no saved preference");
+      })
+      .catch(() => {
+        const local = localStorage.getItem("hb_theme");
+        mark(local === "light" || local === "dark" ? local : "system");
+      });
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        const value = button.dataset.quickTheme;
+        if (typeof applyTheme === "function") {
+          if (value === "system") {
+            const osDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            applyTheme(osDark ? "dark" : "light");
+            localStorage.removeItem("hb_theme");
+          } else {
+            applyTheme(value);
+          }
+        }
+        mark(value);
+        try {
+          const response = await fetch(ROOT + "api/settings/update.php", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ section: "appearance", theme: value }),
+          });
+          const payload = await response.json().catch(() => null);
+          if (response.ok && payload?.success) flash();
+        } catch { /* the theme is still applied locally */ }
+      });
+    });
   }
 
   function bindMobileSidebar(parts) {
@@ -396,6 +473,7 @@
     const sidebarParts = renderSidebar(sidebarContainer);
     setActiveIndicator(sidebarParts.navLinks);
     const closeMenus = bindMenus();
+    bindQuickSettings();
     const closeSidebar = bindMobileSidebar(sidebarParts);
 
     document.addEventListener("keydown", (event) => {

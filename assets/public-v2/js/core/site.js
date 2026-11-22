@@ -310,15 +310,60 @@ function initPublicNavbar() {
     const group = document.createElement("div");
     group.className = "nav-quick-icons";
 
-    const bell = document.createElement("a");
-    bell.href = bellHref;
+    // The bell opens a small notifications panel (latest four), the same
+    // pattern as the workspace header; "View all" goes to the full page.
+    const bellMenu = document.createElement("div");
+    bellMenu.className = "nav-quick-menu";
+
+    const bell = document.createElement("button");
+    bell.type = "button";
+    bell.className = "nav-quick-bell";
     bell.setAttribute("aria-label", "Notifications");
-    bell.title = "Notifications";
+    bell.setAttribute("aria-haspopup", "true");
+    bell.setAttribute("aria-expanded", "false");
     bell.innerHTML = PUBLIC_BELL_SVG;
     const badge = document.createElement("span");
     badge.className = "nav-quick-badge";
     badge.hidden = true;
     bell.appendChild(badge);
+
+    const panel = document.createElement("div");
+    panel.className = "nav-quick-dropdown";
+    panel.setAttribute("aria-hidden", "true");
+    panel.inert = true;
+    const heading = document.createElement("div");
+    heading.className = "nav-quick-heading";
+    heading.textContent = "Notifications";
+    const list = document.createElement("div");
+    list.className = "nav-quick-list";
+    const empty = document.createElement("p");
+    empty.className = "nav-quick-empty";
+    empty.textContent = "Your latest updates will appear here.";
+    list.appendChild(empty);
+    const viewAll = document.createElement("a");
+    viewAll.className = "nav-quick-viewall";
+    viewAll.href = bellHref;
+    viewAll.textContent = "View all notifications";
+    panel.append(heading, list, viewAll);
+    bellMenu.append(bell, panel);
+
+    const setQuickPanel = (open) => {
+      panel.classList.toggle("is-open", open);
+      panel.setAttribute("aria-hidden", String(!open));
+      panel.inert = !open;
+      bell.setAttribute("aria-expanded", String(open));
+    };
+    bell.addEventListener("click", () => {
+      setQuickPanel(bell.getAttribute("aria-expanded") !== "true");
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target instanceof Node && !bellMenu.contains(event.target)) {
+        setQuickPanel(false);
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setQuickPanel(false);
+    });
 
     const gear = document.createElement("a");
     gear.href = gearHref;
@@ -326,8 +371,15 @@ function initPublicNavbar() {
     gear.title = "Settings";
     gear.innerHTML = PUBLIC_GEAR_SVG;
 
-    group.append(bell, gear);
+    group.append(bellMenu, gear);
     container.insertBefore(group, themeToggle);
+
+    const formatQuickDate = (value) => {
+      const date = new Date(String(value || "").replace(" ", "T"));
+      return Number.isNaN(date.getTime())
+        ? ""
+        : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    };
 
     fetch(base + "api/notifications/notifications.php", {
       method: "GET",
@@ -342,8 +394,23 @@ function initPublicNavbar() {
           badge.hidden = false;
           badge.textContent = unread > 99 ? "99+" : String(unread);
         }
+        if (items.length) {
+          list.replaceChildren();
+          items.slice(0, 4).forEach((item) => {
+            const row = document.createElement("a");
+            row.href = bellHref;
+            row.className = "nav-quick-item" +
+              (Number(item.is_read) === 0 ? " is-unread" : "");
+            const strong = document.createElement("strong");
+            strong.textContent = item.title || "Notification";
+            const time = document.createElement("time");
+            time.textContent = formatQuickDate(item.created_at);
+            row.append(strong, time);
+            list.appendChild(row);
+          });
+        }
       })
-      .catch(() => { /* badge stays hidden */ });
+      .catch(() => { /* badge stays hidden, panel keeps its empty note */ });
   }
 
   const updateScrolled = () => {
