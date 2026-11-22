@@ -126,9 +126,9 @@ body.patient-appointments-page .main-content {
 
 .pa-primary-button {
   flex: 0 0 auto;
-  border-color: var(--pa-accent);
-  background: var(--pa-accent);
-  color: var(--pa-accent-ink);
+  border-color: var(--public-brand-700);
+  background: var(--public-brand-700);
+  color: #fff;
 }
 .pa-primary-button:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1px); }
 .pa-secondary-button,
@@ -355,7 +355,10 @@ body.patient-appointments-page .main-content {
   color: var(--pa-copy);
 }
 
-.pa-next-appointment { margin-top: 20px; }
+/* ID in the selector: the patient shell stylesheet zeroes margin-top on
+   section[id] with higher specificity than a lone class, which silently
+   cancelled this gap. The ID wins the cascade. */
+#appointments-next.pa-next-appointment { margin-top: 20px; }
 .pa-next-card {
   display: flex;
   min-width: 0;
@@ -501,7 +504,7 @@ html[data-theme="light"] .pa-next-card { background: linear-gradient(115deg, #16
 .pa-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding-top: 13px; }
 .pa-action-button { min-height: 34px; padding: 8px 11px; border-color: var(--pa-line); background: transparent; color: var(--pa-copy); font-size: 0.7rem; }
 .pa-action-button:hover { border-color: var(--pa-accent); background: var(--pa-panel-soft); }
-.pa-action-button.is-primary { border-color: var(--pa-accent); background: var(--pa-accent); color: var(--pa-accent-ink); }
+.pa-action-button.is-primary { border-color: var(--public-brand-700); background: var(--public-brand-700); color: #fff; }
 .pa-action-button.is-quiet-danger { border-color: transparent; color: var(--pa-red); }
 .pa-action-button.is-quiet-danger:hover { border-color: var(--pa-red); background: var(--pa-red-bg); }
 .pa-calendar-button { min-height: 34px; margin-left: auto; padding: 7px 10px; font-size: 0.68rem; }
@@ -1210,4 +1213,21 @@ body.patient-appointments-page [hidden] {
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* Entrance motion (22 Nov 2026): appointment cards rise in with a short
+   stagger (index passed as --pa-i from the renderer); the UP NEXT banner
+   settles in when it appears. Transform/opacity only. */
+@keyframes pa-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pa-appointment-card {
+  animation: pa-rise-in 420ms ease both;
+  animation-delay: calc(var(--pa-i, 0) * 45ms);
+}
+#appointments-next:not([hidden]) { animation: pa-rise-in 380ms ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .pa-appointment-card,
+  #appointments-next:not([hidden]) { animation: none; }
 }

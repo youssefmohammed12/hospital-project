@@ -89,8 +89,15 @@
     return String(hour % 12 || 12) + ":" + String(minute).padStart(2, "0") + " " + suffix;
   };
   const appointmentTime = (appt) => {
-    const range = text(appt?.time_range).trim();
-    return range || formatTime(text(appt?.time));
+    // Always format from the start time + duration. The stored time_range
+    // strings differ per row ("15:00 - 15:30" vs "2:00 PM – 2:30 PM"), which
+    // made the same list render in mixed formats.
+    const start = text(appt?.time).trim();
+    const match = start.match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return formatTime(start);
+    const total = Number(match[1]) * 60 + Number(match[2]) + (appt?.duration || 30);
+    const end = String(Math.floor(total / 60) % 24).padStart(2, "0") + ":" + String(total % 60).padStart(2, "0");
+    return formatTime(start) + " – " + formatTime(end);
   };
   const showToast = (message, type = "info") => {
     if (typeof window.showToast === "function") window.showToast(message, type);
@@ -283,7 +290,7 @@
       '</div><button type="button" class="pa-secondary-button" data-appointments-action="view" data-appointment-id="' + next.id + '">View appointment</button></div>';
   }
 
-  function renderCard(appt) {
+  function renderCard(appt, index = 0) {
     const [label, tone] = statusBadge(appt);
     const initials = appt.doctor.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0)).join("").toUpperCase() || "DR";
     const rescheduleBanner = appt.reschedule_status === "pending" && appt.pending_reschedule_date
@@ -298,7 +305,7 @@
     const addToCalendar = isFutureAppointment(appt)
       ? '<button type="button" class="pa-calendar-button" data-appointments-action="calendar" data-appointment-id="' + appt.id + '">Add to calendar</button>'
       : "";
-    return '<article class="pa-appointment-card" data-appointment-id="' + appt.id + '">' +
+    return '<article class="pa-appointment-card" style="--pa-i:' + Math.min(index, 8) + '" data-appointment-id="' + appt.id + '">' +
       '<div class="pa-card-accent" aria-hidden="true"></div>' +
       '<div class="pa-card-main">' +
         '<div class="pa-card-topline"><span class="pa-reference">REF · #' + appt.id + '</span><span class="pa-status" data-status="' + tone + '">' + esc(label) + '</span></div>' +

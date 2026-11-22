@@ -332,7 +332,7 @@
       this.elements["next-appointment-empty"].hidden = true;
       this.elements["next-appointment-status"].textContent = changePending
         ? "Change request pending"
-        : isAwaitingConfirmation ? "Awaiting confirmation" : "Upcoming";
+        : isAwaitingConfirmation ? "Pending confirmation" : "Upcoming";
       this.elements["next-appointment-status"].className = "appointment-state-badge"
         + (changePending ? " is-pending" : isAwaitingConfirmation ? " is-awaiting" : "");
 
@@ -400,9 +400,27 @@
 
     renderSnapshot() {
       const snapshot = this.data?.health_snapshot || {};
-      this.elements["snapshot-completed"].textContent = String(safeCount(snapshot.completed_appointments));
-      this.elements["snapshot-prescriptions"].textContent = String(safeCount(snapshot.active_prescriptions));
-      this.elements["snapshot-profile"].textContent = Math.min(100, safeCount(snapshot.profile_completion)) + "%";
+      // Count-up on first render (plan's Phase 1 animation set); the final
+      // value is identical, and reduced-motion users get it instantly.
+      const animateCount = (el, end, suffix = "") => {
+        if (!el) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || end <= 0) {
+          el.textContent = String(end) + suffix;
+          return;
+        }
+        const duration = 700;
+        const started = performance.now();
+        const tick = (now) => {
+          const p = Math.min(1, (now - started) / duration);
+          const eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = String(Math.round(end * eased)) + suffix;
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      };
+      animateCount(this.elements["snapshot-completed"], safeCount(snapshot.completed_appointments));
+      animateCount(this.elements["snapshot-prescriptions"], safeCount(snapshot.active_prescriptions));
+      animateCount(this.elements["snapshot-profile"], Math.min(100, safeCount(snapshot.profile_completion)), "%");
     },
 
     renderActivity() {

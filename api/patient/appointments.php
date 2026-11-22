@@ -105,7 +105,16 @@ withDB(function (PDO $db) use ($userId, $status, $search, $page, $limit, $offset
     foreach ($timeline['rescheduled'] as $appt) {
         $allAppointments[] = array_merge($appt, ['category' => 'reschedule_requested']);
     }
-    
+
+    // One list in date order (newest first), not grouped by status —
+    // owner preference, 22 Nov 2026. Category stays on each row for
+    // badges and filters.
+    usort($allAppointments, function ($a, $b) {
+        $ka = (string)($a['date'] ?? '') . ' ' . (string)($a['time'] ?? '');
+        $kb = (string)($b['date'] ?? '') . ' ' . (string)($b['time'] ?? '');
+        return strcmp($kb, $ka) ?: ((int)($b['id'] ?? 0) <=> (int)($a['id'] ?? 0));
+    });
+
     // Apply status filter
     if ($status !== 'all') {
         $allAppointments = array_filter($allAppointments, function($appt) use ($status) {
