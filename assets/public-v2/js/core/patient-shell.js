@@ -31,7 +31,7 @@
     notifications: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>',
     documents: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10Z"/><path d="M13 3v7h7M8 14h8M8 17h6"/></svg>',
     profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-1.5a7 7 0 0 1 14 0V21Z"/></svg>',
-    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.5.9l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.5-.9l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.8l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.5-.9l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.5.9l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.8Z"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="6.2"/><circle cx="12" cy="12" r="2.6"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>',
     site: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>',
     chevron: '<svg class="patient-profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
@@ -236,6 +236,47 @@
     window.addEventListener("resize", moveIndicator, { passive: true });
   }
 
+  /* Fills the header bell: unread badge (pulses via CSS when it first
+     appears) and the three latest notifications in the dropdown.
+     Uses the same endpoint as the Notifications page, so they agree. */
+  function populateNotifications() {
+    const badge = document.getElementById("patient-notification-badge");
+    const dropdown = document.getElementById("patient-notification-dropdown");
+    if (!badge && !dropdown) return;
+    fetch(ROOT + "api/notifications/notifications.php", {
+      method: "GET", credentials: "same-origin", headers: { Accept: "application/json" },
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        const items = Array.isArray(payload?.notifications) ? payload.notifications : [];
+        const unread = items.filter((item) => Number(item.is_read) === 0).length;
+        if (badge) {
+          badge.hidden = unread === 0;
+          badge.textContent = unread > 99 ? "99+" : String(unread);
+        }
+        if (dropdown && items.length) {
+          dropdown.querySelector(".patient-notification-empty")?.remove();
+          const viewAll = dropdown.querySelector("a");
+          items.slice(0, 3).forEach((item) => {
+            const row = document.createElement("a");
+            row.href = "notifications.html";
+            row.className = "patient-notification-item" +
+              (Number(item.is_read) === 0 ? " is-unread" : "");
+            const title = document.createElement("strong");
+            title.textContent = String(item.title || "Notification");
+            const when = document.createElement("span");
+            const date = new Date(String(item.created_at || "").replace(" ", "T"));
+            when.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString(undefined, {
+              month: "short", day: "numeric",
+            });
+            row.append(title, when);
+            dropdown.insertBefore(row, viewAll);
+          });
+        }
+      })
+      .catch(() => { /* the badge simply stays hidden */ });
+  }
+
   function bindMenus() {
     const profileTrigger = document.getElementById("patient-profile-trigger");
     const profileDropdown = document.getElementById("patient-profile-dropdown");
@@ -360,6 +401,7 @@
     document.dispatchEvent(new CustomEvent("patient:shell-ready", {
       detail: { user: { id: user.id, role: user.role } },
     }));
+    populateNotifications();
   }
 
   init();

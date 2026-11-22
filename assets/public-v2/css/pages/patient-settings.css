@@ -1,0 +1,311 @@
+/*
+ * HealthBridge Public V2 — Patient Settings (Phase 6 remake)
+ * Built new for Public V2; loads nothing from the legacy frontend.
+ * Tokens mirror the patient shell palette so the workspace matches.
+ * One settings page: Account, Medical information, Password,
+ * Appearance, Notifications and the Danger Zone, stacked.
+ */
+body.patient-settings-page {
+  --st-bg: #0b1918;
+  --st-panel: #132725;
+  --st-panel-raised: #19332f;
+  --st-panel-soft: rgba(226, 238, 233, 0.045);
+  --st-copy: #edf3ee;
+  --st-muted: #b2c4bb;
+  --st-faint: #a6b9af;
+  --st-line: rgba(226, 238, 233, 0.14);
+  --st-accent: #d4b47e;
+  --st-brand: #2a8a81;
+  --st-danger: #e08a7b;
+  --st-danger-line: rgba(224, 138, 123, 0.45);
+  --st-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  background: var(--st-bg);
+  color: var(--st-copy);
+}
+
+html[data-theme="light"] body.patient-settings-page {
+  --st-bg: #f2f5f0;
+  --st-panel: #ffffff;
+  --st-panel-raised: #f7f9f5;
+  --st-panel-soft: #f7f9f5;
+  --st-copy: #183532;
+  --st-muted: #536961;
+  --st-faint: #5f7168;
+  --st-line: rgba(16, 43, 43, 0.13);
+  --st-accent: #a9844f;
+  --st-brand: #17645f;
+  --st-danger: #b3402e;
+  --st-danger-line: rgba(179, 64, 46, 0.4);
+  --st-shadow: 0 18px 44px rgba(19, 46, 39, 0.09);
+}
+
+body.patient-settings-page .main-content {
+  min-width: 0;
+  padding: 0;
+  background: var(--st-bg);
+}
+
+.st-page {
+  width: min(1240px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 48px) clamp(18px, 3.5vw, 44px) 64px;
+  color: var(--st-copy);
+}
+
+.st-eyebrow {
+  color: var(--st-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0 0 10px;
+}
+.st-page-header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 0 10px;
+}
+.st-page-header > p { color: var(--st-muted); margin: 0; max-width: 62ch; line-height: 1.55; }
+
+.st-load-error {
+  margin: 22px 0 0;
+  border: 1px solid var(--st-danger-line);
+  border-radius: 12px;
+  background: var(--st-panel);
+  color: var(--st-danger);
+  padding: 13px 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.st-load-error[hidden] { display: none; }
+
+/* Sections ------------------------------------------------------- */
+/* The shell stylesheet zeroes margins on section[id]; the ID-scoped
+   rules below win the cascade on purpose (same lesson as Phase 3). */
+#account.st-section, #medical.st-section, #password.st-section,
+#appearance.st-section, #notifications.st-section, #danger.st-section {
+  margin-top: 26px;
+  scroll-margin-top: 96px;
+}
+.st-section-head { margin: 0 0 14px; }
+.st-section-head h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  margin: 0 0 6px;
+}
+.st-section-head p { color: var(--st-muted); margin: 0; line-height: 1.55; font-size: 0.93rem; }
+
+.st-card {
+  border: 1px solid var(--st-line);
+  border-radius: 14px;
+  background: var(--st-panel);
+  box-shadow: var(--st-shadow);
+  padding: 22px;
+  animation: st-rise-in 420ms ease both;
+}
+.st-section:nth-of-type(2) .st-card { animation-delay: 40ms; }
+.st-section:nth-of-type(3) .st-card { animation-delay: 80ms; }
+.st-section:nth-of-type(4) .st-card { animation-delay: 120ms; }
+.st-section:nth-of-type(5) .st-card { animation-delay: 160ms; }
+.st-section:nth-of-type(6) .st-card { animation-delay: 200ms; }
+
+@keyframes st-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Forms ---------------------------------------------------------- */
+.st-form { display: grid; gap: 16px; }
+.st-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.st-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.st-field { display: grid; gap: 7px; min-width: 0; align-content: start; }
+.st-field label {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--st-muted); text-transform: uppercase;
+}
+.st-field .st-hint { font-size: 0.8rem; color: var(--st-faint); line-height: 1.45; }
+
+/* The shell's global input rule (specificity 0,1,2) paints every
+   input with the surface colour; the body-class prefix below
+   (0,2,2) wins it back for this page's fields. */
+body.patient-workspace .st-field input,
+body.patient-workspace .st-field select,
+body.patient-workspace .st-field textarea {
+  width: 100%;
+  border: 1px solid var(--st-line);
+  border-radius: 10px;
+  background: var(--st-panel-raised);
+  color: var(--st-copy);
+  padding: 11px 13px;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.st-field textarea { resize: vertical; min-height: 74px; line-height: 1.5; }
+body.patient-workspace .st-field input:disabled {
+  opacity: 0.75;
+  background: var(--st-panel-soft);
+}
+.st-field input:focus, .st-field select:focus, .st-field textarea:focus {
+  outline: 2px solid var(--st-accent);
+  outline-offset: 1px;
+}
+
+.st-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 2px; }
+.st-saved {
+  color: var(--st-accent);
+  font-size: 0.86rem;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+.st-saved.is-visible { opacity: 1; }
+.st-form-error { color: var(--st-danger); font-size: 0.88rem; line-height: 1.5; margin: 0; }
+.st-form-error[hidden] { display: none; }
+
+/* Password ------------------------------------------------------- */
+.st-pw-wrap { position: relative; }
+body.patient-workspace .st-pw-wrap input { padding-right: 46px; }
+.st-pw-toggle {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 34px; height: 34px;
+  border: 0; border-radius: 8px;
+  background: transparent; color: var(--st-muted); cursor: pointer;
+}
+.st-pw-toggle:hover { color: var(--st-copy); background: var(--st-panel-soft); }
+.st-pw-toggle svg { width: 19px; height: 19px; }
+
+.st-strength { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+.st-strength-bar {
+  flex: 1; height: 7px; border-radius: 999px;
+  background: var(--st-panel-soft);
+  border: 1px solid var(--st-line);
+  overflow: hidden;
+}
+.st-strength-fill {
+  display: block; height: 100%; width: 0;
+  border-radius: 999px;
+  background: var(--st-danger);
+  transition: width 300ms ease, background-color 300ms ease;
+}
+.st-strength-label { font-size: 0.8rem; font-weight: 700; color: var(--st-muted); min-width: 74px; }
+
+.st-rules { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.st-rules li {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 0.86rem; color: var(--st-faint); line-height: 1.4;
+}
+.st-rules .st-rule-dot {
+  flex: 0 0 auto; width: 17px; height: 17px; border-radius: 50%;
+  border: 1.5px solid var(--st-line);
+  display: grid; place-items: center;
+  font-size: 0.62rem; color: transparent;
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+.st-rules li.is-met { color: var(--st-copy); }
+.st-rules li.is-met .st-rule-dot {
+  background: var(--st-brand); border-color: var(--st-brand); color: #fff;
+}
+
+/* Appearance ----------------------------------------------------- */
+.st-theme-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.st-theme-option {
+  display: grid; gap: 6px; justify-items: start;
+  border: 1px solid var(--st-line); border-radius: 12px;
+  background: var(--st-panel-raised);
+  color: var(--st-copy);
+  padding: 16px;
+  font: inherit; text-align: left; cursor: pointer;
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+.st-theme-option:hover { transform: translateY(-2px); }
+.st-theme-option strong { font-size: 0.98rem; }
+.st-theme-option span { font-size: 0.83rem; color: var(--st-muted); line-height: 1.45; }
+.st-theme-option.is-selected { border-color: var(--st-accent); box-shadow: 0 0 0 1px var(--st-accent); }
+.st-theme-note { margin: 14px 0 0; color: var(--st-muted); font-size: 0.88rem; line-height: 1.55; }
+
+/* Notification toggles ------------------------------------------- */
+.st-toggle-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--st-line);
+}
+.st-toggle-row:last-of-type { border-bottom: 0; }
+.st-toggle-label { display: block; font-weight: 700; font-size: 0.95rem; }
+.st-toggle-desc { display: block; color: var(--st-muted); font-size: 0.85rem; margin-top: 3px; line-height: 1.45; }
+.st-switch { position: relative; flex: 0 0 auto; width: 46px; height: 26px; }
+.st-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.st-switch .st-slider {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: var(--st-panel-raised);
+  border: 1px solid var(--st-line);
+  transition: background-color 200ms ease;
+  pointer-events: none;
+}
+.st-switch .st-slider::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--st-muted);
+  transition: transform 200ms ease, background-color 200ms ease;
+}
+.st-switch input:checked + .st-slider { background: var(--st-brand); border-color: var(--st-brand); }
+.st-switch input:checked + .st-slider::after { transform: translateX(20px); background: #fff; }
+.st-switch input:focus-visible + .st-slider { outline: 2px solid var(--st-accent); outline-offset: 2px; }
+
+/* Danger zone ------------------------------------------------------ */
+.st-card-danger { border-color: var(--st-danger-line); }
+.st-danger-note { color: var(--st-muted); line-height: 1.6; margin: 0 0 18px; max-width: 68ch; }
+.st-btn-danger {
+  border: 1px solid var(--st-danger-line); border-radius: 10px;
+  background: transparent; color: var(--st-danger);
+  padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+.st-btn-danger:hover { background: var(--st-danger); color: #fff; }
+.st-btn-danger-solid {
+  border: 1px solid var(--st-danger); border-radius: 10px;
+  background: var(--st-danger); color: #fff;
+  padding: 12px 18px; font: inherit; font-weight: 700; cursor: pointer; width: 100%;
+}
+
+/* Modal ------------------------------------------------------------ */
+.st-modal-overlay {
+  position: fixed; inset: 0; z-index: 120;
+  display: grid; place-items: center;
+  background: rgba(4, 12, 11, 0.62);
+  padding: 18px;
+}
+.st-modal-overlay[hidden] { display: none; }
+.st-modal {
+  width: min(460px, 100%);
+  border: 1px solid var(--st-line); border-radius: 16px;
+  background: var(--st-panel); color: var(--st-copy);
+  box-shadow: var(--st-shadow);
+  padding: 24px;
+  animation: st-rise-in 260ms ease both;
+}
+.st-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.st-modal-head h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; font-size: 1.3rem; margin: 0; }
+.st-modal-close {
+  border: 0; background: transparent; color: var(--st-muted);
+  font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 2px 6px;
+}
+.st-modal-close:hover { color: var(--st-copy); }
+.st-modal p { color: var(--st-muted); line-height: 1.6; margin: 12px 0 18px; }
+
+@media (max-width: 760px) {
+  .st-row, .st-row-3 { grid-template-columns: 1fr; }
+  .st-theme-options { grid-template-columns: 1fr; }
+  .st-card { padding: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-card, .st-modal { animation: none; }
+  .st-theme-option { transition: none; }
+  .st-theme-option:hover { transform: none; }
+  .st-strength-fill, .st-saved, .st-switch .st-slider, .st-switch .st-slider::after { transition: none; }
+}

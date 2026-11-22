@@ -31,6 +31,8 @@
 const PUBLIC_MOON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 const PUBLIC_SUN_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42m12.72-12.72 1.42-1.42"/></svg>`;
 const PUBLIC_HAMBURGER_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6" class="ham-line ham-top"/><line x1="3" y1="12" x2="21" y2="12" class="ham-line ham-mid"/><line x1="3" y1="18" x2="21" y2="18" class="ham-line ham-bot"/></svg>`;
+const PUBLIC_BELL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>`;
+const PUBLIC_GEAR_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="6.2"/><circle cx="12" cy="12" r="2.6"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>`;
 
 function getBasePath() {
   const path = window.location.pathname;
@@ -292,6 +294,56 @@ function initPublicNavbar() {
     logoutButton.addEventListener("click", logoutUser);
 
     authArea.append(name, dashboardLink, logoutButton);
+  }
+
+  // Quick access for signed-in visitors: notifications + settings
+  // icons beside the theme toggle, on every public page.
+  if (user && !container.querySelector(".nav-quick-icons")) {
+    const base = getBasePath();
+    const bellHref = user.role === "patient"
+      ? base + "pages/patient/notifications.html"
+      : getDashboardUrl(user.role);
+    const gearHref = user.role === "patient"
+      ? base + "pages/patient/settings.html"
+      : getDashboardUrl(user.role);
+
+    const group = document.createElement("div");
+    group.className = "nav-quick-icons";
+
+    const bell = document.createElement("a");
+    bell.href = bellHref;
+    bell.setAttribute("aria-label", "Notifications");
+    bell.title = "Notifications";
+    bell.innerHTML = PUBLIC_BELL_SVG;
+    const badge = document.createElement("span");
+    badge.className = "nav-quick-badge";
+    badge.hidden = true;
+    bell.appendChild(badge);
+
+    const gear = document.createElement("a");
+    gear.href = gearHref;
+    gear.setAttribute("aria-label", "Settings");
+    gear.title = "Settings";
+    gear.innerHTML = PUBLIC_GEAR_SVG;
+
+    group.append(bell, gear);
+    container.insertBefore(group, themeToggle);
+
+    fetch(base + "api/notifications/notifications.php", {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        const items = Array.isArray(payload?.notifications) ? payload.notifications : [];
+        const unread = items.filter((item) => Number(item.is_read) === 0).length;
+        if (unread > 0) {
+          badge.hidden = false;
+          badge.textContent = unread > 99 ? "99+" : String(unread);
+        }
+      })
+      .catch(() => { /* badge stays hidden */ });
   }
 
   const updateScrolled = () => {

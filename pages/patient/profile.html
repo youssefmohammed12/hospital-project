@@ -9,11 +9,11 @@
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1">
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1">
-  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11">
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=11">
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=12">
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=12">
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-profile.css?v=1">
-  <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
-  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=5"></script>
+  <script src="../../assets/public-v2/js/core/site.js?v=3"></script>
+  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=6"></script>
   <script defer src="../../assets/public-v2/js/pages/patient-profile.js?v=1"></script>
 </head>
 <body class="patient-workspace patient-profile-page">
@@ -61,14 +61,15 @@
             <section class="pf-card" style="--pf-i:1" aria-labelledby="pf-medical-heading">
               <div class="pf-card-head">
                 <h3 id="pf-medical-heading">Medical information</h3>
+                <a class="pf-edit" href="settings.html#medical">Edit in Settings</a>
               </div>
               <dl class="pf-rows" id="pf-medical"></dl>
-              <p class="pf-note">Medical details are read-only here — editing them arrives with the Settings update.</p>
             </section>
 
             <section class="pf-card" style="--pf-i:2" aria-labelledby="pf-emergency-heading">
               <div class="pf-card-head">
                 <h3 id="pf-emergency-heading">Emergency contact</h3>
+                <a class="pf-edit" href="settings.html#medical">Edit in Settings</a>
               </div>
               <dl class="pf-rows" id="pf-emergency"></dl>
             </section>
@@ -76,6 +77,7 @@
             <section class="pf-card" style="--pf-i:3" aria-labelledby="pf-insurance-heading">
               <div class="pf-card-head">
                 <h3 id="pf-insurance-heading">Insurance</h3>
+                <a class="pf-edit" href="settings.html#medical">Edit in Settings</a>
               </div>
               <dl class="pf-rows" id="pf-insurance"></dl>
             </section>

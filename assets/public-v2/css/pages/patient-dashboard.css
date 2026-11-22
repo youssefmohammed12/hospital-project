@@ -1289,3 +1289,128 @@ body.patient-workspace #dashboard-main .profile-completion__text {
 @media (prefers-reduced-motion: reduce) {
   body.patient-workspace #dashboard-main .profile-completion__bar > span { transition: none; }
 }
+
+/* ── Alive touches (Phase 6, 22 Nov 2026) ─────────────────────────
+   Aurora drift behind the dashboard greeting, a shine sweep on
+   primary buttons, a one-time pulse on the bell badge, and real
+   notification rows in the bell dropdown. Transform/opacity only;
+   everything stills under reduced motion. */
+body.patient-workspace #dashboard-main .dashboard-intro {
+  position: relative;
+  overflow: hidden;
+}
+body.patient-workspace #dashboard-main .dashboard-intro::before,
+body.patient-workspace #dashboard-main .dashboard-intro::after {
+  content: "";
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+}
+body.patient-workspace #dashboard-main .dashboard-intro::before {
+  top: -150px;
+  right: 10%;
+  background: radial-gradient(circle, rgba(212, 180, 126, 0.20), transparent 65%);
+  animation: pd-aurora-drift-a 20s ease-in-out infinite alternate;
+}
+body.patient-workspace #dashboard-main .dashboard-intro::after {
+  bottom: -190px;
+  left: -70px;
+  background: radial-gradient(circle, rgba(42, 138, 129, 0.22), transparent 65%);
+  animation: pd-aurora-drift-b 22s ease-in-out infinite alternate;
+}
+html[data-theme="light"] body.patient-workspace #dashboard-main .dashboard-intro::before {
+  background: radial-gradient(circle, rgba(169, 132, 79, 0.16), transparent 65%);
+}
+html[data-theme="light"] body.patient-workspace #dashboard-main .dashboard-intro::after {
+  background: radial-gradient(circle, rgba(23, 100, 95, 0.13), transparent 65%);
+}
+body.patient-workspace #dashboard-main .dashboard-intro__copy,
+body.patient-workspace #dashboard-main .dashboard-intro__actions {
+  position: relative;
+  z-index: 1;
+}
+@keyframes pd-aurora-drift-a {
+  from { transform: translate3d(-5%, -3%, 0) scale(1); }
+  to { transform: translate3d(9%, 7%, 0) scale(1.14); }
+}
+@keyframes pd-aurora-drift-b {
+  from { transform: translate3d(4%, 5%, 0) scale(1.08); }
+  to { transform: translate3d(-7%, -5%, 0) scale(0.96); }
+}
+
+body.patient-workspace .btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+body.patient-workspace .btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.28) 50%, transparent 58%);
+  transform: translateX(-130%);
+  animation: patient-btn-shine 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+body.patient-workspace .btn-primary:hover::after {
+  animation-play-state: paused;
+  opacity: 0;
+}
+@keyframes patient-btn-shine {
+  0% { transform: translateX(-130%); }
+  14% { transform: translateX(130%); }
+  100% { transform: translateX(130%); }
+}
+
+.patient-notification-badge:not([hidden]) {
+  animation: patient-badge-pulse 550ms ease 2;
+}
+@keyframes patient-badge-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+.patient-notification-dropdown > a.patient-notification-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--patient-border);
+  color: var(--patient-text);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.patient-notification-dropdown > a.patient-notification-item:hover strong {
+  color: var(--patient-gold);
+}
+.patient-notification-item strong {
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.patient-notification-item span {
+  flex: 0 0 auto;
+  color: var(--patient-muted);
+  font-size: 0.74rem;
+}
+.patient-notification-item.is-unread strong::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--patient-gold);
+  vertical-align: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.patient-workspace #dashboard-main .dashboard-intro::before,
+  body.patient-workspace #dashboard-main .dashboard-intro::after { animation: none; }
+  body.patient-workspace .btn-primary::after { animation: none; }
+  .patient-notification-badge:not([hidden]) { animation: none; }
+}

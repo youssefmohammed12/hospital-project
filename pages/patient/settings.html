@@ -1,517 +1,396 @@
 <!doctype html>
 <html lang="en" dir="ltr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="HealthBridge Settings — manage your account, preferences, and more."
-    />
-    <title>Settings — HealthBridge</title>
-    <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-      <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=11" />
-  <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
-  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=5"></script>
-  <script defer src="../../assets/public-v2/js/pages/patient-settings.js?v=1"></script>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Your HealthBridge settings — account, medical information, password, appearance and notifications.">
+  <meta name="theme-color" content="#102b2b">
+  <title>Settings — HealthBridge</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1">
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1">
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=12">
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=12">
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-settings.css?v=2">
+  <script src="../../assets/public-v2/js/core/site.js?v=3"></script>
+  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=6"></script>
+  <script defer src="../../assets/public-v2/js/pages/patient-settings.js?v=2"></script>
 </head>
-  <body>
-    <!-- Navbar — loaded dynamically by layout.js -->
-    <div id="navbar-container"></div>
+<body class="patient-workspace patient-settings-page">
+  <div id="navbar-container"></div>
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+    <main class="main-content" id="settings-main">
+      <div class="st-page">
+        <header class="st-page-header">
+          <p class="st-eyebrow">SETTINGS</p>
+          <h1>Settings</h1>
+          <p>Manage your account, medical information, password, appearance and notifications — all in one place.</p>
+        </header>
 
-    <div class="dashboard">
-      <!-- Sidebar — loaded dynamically by layout.js -->
-      <div id="sidebar-container"></div>
+        <p class="st-load-error" id="st-load-error" role="alert" hidden></p>
 
-      <!-- Main -->
-      <main class="main-content">
-        <div class="portal-content">
-        <!-- ACCOUNT SECTION -->
-        <section id="account" class="active">\n          <p id="settings-account-load-error" class="settings-account-load-error" role="alert" hidden></p>
-          <div
-            class="flex-between flex-wrap gap-4 mb-8"
-
-          >
-            <div>
-              <h2 class="settings-heading-reset">
-                <i class="fas fa-user" aria-hidden="true"></i> Account Settings
-              </h2>
-              <p class="mt-2">
-                Manage your personal information and account.
-              </p>
-            </div>
+        <!-- ACCOUNT -->
+        <section class="st-section" id="account" aria-labelledby="st-account-heading">
+          <div class="st-section-head">
+            <h2 id="st-account-heading">Account</h2>
+            <p>Your personal information and account details.</p>
           </div>
-
-          <div class="settings-card">
-            <div class="settings-card-header">
-              <span class="settings-card-icon"><i class="fas fa-clipboard-list" aria-hidden="true"></i></span>
-              <div>
-                <h3>Profile Information</h3>
-                <p>Update your name, email, and contact details.</p>
-              </div>
-            </div>
-            <form id="settings-profile-form">
-              <div class="settings-form-row">
-                <div class="form-group">
-                  <label for="settings-name">Full Name</label>
-                  <input
-                    type="text"
-                    id="settings-name"
-                    name="name"
-                    placeholder="Your full name"
-                    required
-                    minlength="2"
-                    maxlength="100"
-                  />
+          <div class="st-card">
+            <form class="st-form" id="st-profile-form" novalidate>
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-name">Full name</label>
+                  <input type="text" id="st-name" name="name" autocomplete="name" required minlength="2" maxlength="100">
                 </div>
-                <div class="form-group">
-                  <label for="settings-email">Email Address</label>
-                  <input
-                    type="email"
-                    id="settings-email"
-                    name="email"
-                    placeholder="you@example.com"
-                    required
-                  />
+                <div class="st-field">
+                  <label for="st-email">Email address</label>
+                  <input type="email" id="st-email" name="email" autocomplete="email" required maxlength="150">
                 </div>
               </div>
-              <div class="settings-form-row">
-                <div class="form-group">
-                  <label for="settings-phone">Phone Number</label>
-                  <input
-                    type="text"
-                    id="settings-phone"
-                    name="phone"
-                    placeholder="+20 123 456 7890"
-                    maxlength="20"
-                  />
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-phone">Phone number</label>
+                  <input type="text" id="st-phone" name="phone" autocomplete="tel" maxlength="20">
                 </div>
-                <div class="form-group">
-                  <label>Account Type</label>
-                  <input
-                    type="text"
-                    id="settings-role"
-                    disabled
-                    class="settings-readonly-field"
-                  />
+                <div class="st-field">
+                  <label for="st-role">Account type</label>
+                  <input type="text" id="st-role" disabled>
                 </div>
               </div>
-              <div class="settings-form-row">
-                <div class="form-group">
-                  <label>Member Since</label>
-                  <input
-                    type="text"
-                    id="settings-created"
-                    disabled
-                    class="settings-readonly-field"
-                  />
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-created">Member since</label>
+                  <input type="text" id="st-created" disabled>
                 </div>
-                <div class="form-group">
-                  <label>Account Status</label>
-                  <input
-                    type="text"
-                    id="settings-status"
-                    disabled
-                    class="settings-readonly-field"
-                  />
+                <div class="st-field">
+                  <label for="st-status">Account status</label>
+                  <input type="text" id="st-status" disabled>
                 </div>
               </div>
-              <div class="settings-form-actions">
-                <button type="submit" class="btn btn-primary">
-                  Save Changes
-                </button>
+              <p class="st-form-error" id="st-profile-error" role="alert" hidden></p>
+              <div class="st-actions">
+                <button type="submit" class="btn btn-primary">Save changes</button>
+                <span class="st-saved" id="st-profile-saved" role="status">Saved ✓</span>
               </div>
             </form>
           </div>
+        </section>
 
-          <div class="settings-card settings-card-danger">
-            <div class="settings-card-header">
-              <span class="settings-card-icon settings-danger-icon"
-                ><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span
-              >
-              <div>
-                <h3>Danger Zone</h3>
-                <p>Deactivate sign-in while retaining your medical and appointment history.</p>
+        <!-- MEDICAL INFORMATION -->
+        <section class="st-section" id="medical" aria-labelledby="st-medical-heading">
+          <div class="st-section-head">
+            <h2 id="st-medical-heading">Medical information</h2>
+            <p>The details shown on your Profile. Keep them current so your care team has the full picture.</p>
+          </div>
+          <div class="st-card">
+            <form class="st-form" id="st-medical-form" novalidate>
+              <div class="st-row st-row-3">
+                <div class="st-field">
+                  <label for="st-dob">Date of birth</label>
+                  <input type="date" id="st-dob" name="date_of_birth">
+                </div>
+                <div class="st-field">
+                  <label for="st-gender">Gender</label>
+                  <select id="st-gender" name="gender">
+                    <option value="">Not recorded</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div class="st-field">
+                  <label for="st-blood">Blood type</label>
+                  <select id="st-blood" name="blood_type">
+                    <option value="">Not recorded</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
               </div>
-            </div>
-            <p
-              class="settings-danger-note"
-            >
-              Sign-in will be disabled. Appointments that have not started will be cancelled; your medical, appointment, and audit history will be retained.
-            </p>
-            <button class="btn btn-outline" data-settings-action="open-delete">
-              Deactivate My Account
-            </button>
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-height">Height (cm)</label>
+                  <input type="number" id="st-height" name="height_cm" min="50" max="260" step="0.1" inputmode="decimal">
+                </div>
+                <div class="st-field">
+                  <label for="st-weight">Weight (kg)</label>
+                  <input type="number" id="st-weight" name="weight_kg" min="20" max="500" step="0.1" inputmode="decimal">
+                </div>
+              </div>
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-allergies">Allergies</label>
+                  <textarea id="st-allergies" name="allergies" maxlength="1000"></textarea>
+                </div>
+                <div class="st-field">
+                  <label for="st-chronic">Chronic conditions</label>
+                  <textarea id="st-chronic" name="chronic_diseases" maxlength="1000"></textarea>
+                </div>
+              </div>
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-medications">Current medications</label>
+                  <textarea id="st-medications" name="current_medications" maxlength="1000"></textarea>
+                </div>
+                <div class="st-field">
+                  <label for="st-surgeries">Previous surgeries</label>
+                  <textarea id="st-surgeries" name="previous_surgeries" maxlength="1000"></textarea>
+                </div>
+              </div>
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-family">Family history</label>
+                  <textarea id="st-family" name="family_history" maxlength="1000"></textarea>
+                </div>
+                <div class="st-field">
+                  <label for="st-notes">Medical notes</label>
+                  <textarea id="st-notes" name="medical_notes" maxlength="1000"></textarea>
+                </div>
+              </div>
+              <div class="st-row st-row-3">
+                <div class="st-field">
+                  <label for="st-em-name">Emergency contact name</label>
+                  <input type="text" id="st-em-name" name="emergency_name" maxlength="100">
+                </div>
+                <div class="st-field">
+                  <label for="st-em-relation">Relationship</label>
+                  <input type="text" id="st-em-relation" name="emergency_relation" maxlength="50">
+                </div>
+                <div class="st-field">
+                  <label for="st-em-phone">Emergency contact phone</label>
+                  <input type="text" id="st-em-phone" name="emergency_phone" maxlength="20">
+                </div>
+              </div>
+              <div class="st-row st-row-3">
+                <div class="st-field">
+                  <label for="st-address">Address</label>
+                  <input type="text" id="st-address" name="address" maxlength="255">
+                </div>
+                <div class="st-field">
+                  <label for="st-city">City</label>
+                  <input type="text" id="st-city" name="city_text" maxlength="100">
+                </div>
+                <div class="st-field">
+                  <label for="st-governorate">Governorate</label>
+                  <input type="text" id="st-governorate" name="governorate_text" maxlength="100">
+                </div>
+              </div>
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-ins-provider">Insurance provider</label>
+                  <input type="text" id="st-ins-provider" name="insurance_provider" maxlength="100">
+                </div>
+                <div class="st-field">
+                  <label for="st-ins-number">Insurance number</label>
+                  <input type="text" id="st-ins-number" name="insurance_number" maxlength="100">
+                </div>
+              </div>
+              <p class="st-form-error" id="st-medical-error" role="alert" hidden></p>
+              <div class="st-actions">
+                <button type="submit" class="btn btn-primary">Save medical information</button>
+                <span class="st-saved" id="st-medical-saved" role="status">Saved ✓</span>
+              </div>
+            </form>
           </div>
         </section>
 
-        <!-- PASSWORD SECTION -->
-        <section id="password">
-          <div
-            class="flex-between flex-wrap gap-4 mb-8"
-
-          >
-            <div>
-              <h2 class="settings-heading-reset">
-                <i class="fas fa-lock" aria-hidden="true"></i> Change Password
-              </h2>
-              <p class="mt-2">Update your login password.</p>
-            </div>
+        <!-- PASSWORD -->
+        <section class="st-section" id="password" aria-labelledby="st-password-heading">
+          <div class="st-section-head">
+            <h2 id="st-password-heading">Password</h2>
+            <p>Choose a strong password you haven&rsquo;t used before.</p>
           </div>
-
-          <div class="settings-card">
-            <div class="settings-card-header">
-              <span class="settings-card-icon"><i class="fas fa-key" aria-hidden="true"></i></span>
-              <div>
-                <h3>Password</h3>
-                <p>Choose a strong password you haven't used before.</p>
-              </div>
-            </div>
-            <form id="settings-password-form">
-              <div class="form-group">
-                <label for="settings-current-pw">Current Password</label>
-                <div class="pw-field">
-                  <input
-                    type="password"
-                    id="settings-current-pw"
-                    placeholder="Enter current password"
-                    required
-                    minlength="6"
-                  />
-                  <button
-                    type="button"
-                    class="pw-toggle"
-                    data-password-toggle="true"
-                    aria-label="Show password"
-                    title="Show password"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
+          <div class="st-card">
+            <form class="st-form" id="st-password-form" novalidate>
+              <div class="st-field">
+                <label for="st-current-pw">Current password</label>
+                <div class="st-pw-wrap">
+                  <input type="password" id="st-current-pw" autocomplete="current-password" required>
+                  <button type="button" class="st-pw-toggle" data-st-pw-toggle="st-current-pw" aria-label="Show password">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   </button>
                 </div>
               </div>
-              <div class="settings-form-row">
-                <div class="form-group">
-                  <label for="settings-new-pw">New Password</label>
-                  <div class="pw-field">
-                    <input
-                      type="password"
-                      id="settings-new-pw"
-                      placeholder="Min. 6 characters"
-                      required
-                      minlength="6"
-                    />
-                    <button
-                      type="button"
-                      class="pw-toggle"
-                      data-password-toggle="true"
-                      aria-label="Show password"
-                      title="Show password"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                        />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
+              <div class="st-row">
+                <div class="st-field">
+                  <label for="st-new-pw">New password</label>
+                  <div class="st-pw-wrap">
+                    <input type="password" id="st-new-pw" autocomplete="new-password" required>
+                    <button type="button" class="st-pw-toggle" data-st-pw-toggle="st-new-pw" aria-label="Show password">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                   </div>
-                  <div class="pw-strength-wrap settings-password-strength">
-                    <div class="pw-strength-bar">
-                      <div class="pw-strength-fill" id="pw-strength-fill"></div>
-                    </div>
-                    <span
-                      class="pw-strength-label"
-                      id="pw-strength-label"
-                    ></span>
+                  <div class="st-strength" aria-hidden="true">
+                    <div class="st-strength-bar"><span class="st-strength-fill" id="st-strength-fill"></span></div>
+                    <span class="st-strength-label" id="st-strength-label"></span>
                   </div>
+                  <ul class="st-rules" id="st-rules">
+                    <li data-rule="min_length"><span class="st-rule-dot">✓</span>At least 8 characters</li>
+                    <li data-rule="has_uppercase"><span class="st-rule-dot">✓</span>An uppercase letter (A&ndash;Z)</li>
+                    <li data-rule="has_lowercase"><span class="st-rule-dot">✓</span>A lowercase letter (a&ndash;z)</li>
+                    <li data-rule="has_number"><span class="st-rule-dot">✓</span>A number (0&ndash;9)</li>
+                    <li data-rule="has_special"><span class="st-rule-dot">✓</span>A special character (!, @, #, &hellip;)</li>
+                  </ul>
+                  <p class="st-hint">Your password needs at least 4 of the 5 rules above.</p>
                 </div>
-                <div class="form-group">
-                  <label for="settings-confirm-pw">Confirm New Password</label>
-                  <div class="pw-field">
-                    <input
-                      type="password"
-                      id="settings-confirm-pw"
-                      placeholder="Re-enter new password"
-                      required
-                      minlength="6"
-                    />
-                    <button
-                      type="button"
-                      class="pw-toggle"
-                      data-password-toggle="true"
-                      aria-label="Show password"
-                      title="Show password"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                        />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
+                <div class="st-field">
+                  <label for="st-confirm-pw">Confirm new password</label>
+                  <div class="st-pw-wrap">
+                    <input type="password" id="st-confirm-pw" autocomplete="new-password" required>
+                    <button type="button" class="st-pw-toggle" data-st-pw-toggle="st-confirm-pw" aria-label="Show password">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                   </div>
                 </div>
               </div>
-              <div class="settings-form-actions">
-                <button type="submit" class="btn btn-primary">
-                  Update Password
-                </button>
+              <p class="st-form-error" id="st-password-error" role="alert" hidden></p>
+              <div class="st-actions">
+                <button type="submit" class="btn btn-primary">Update password</button>
+                <span class="st-saved" id="st-password-saved" role="status">Password updated ✓</span>
               </div>
             </form>
           </div>
         </section>
 
-        <!-- APPEARANCE SECTION -->
-        <section id="appearance">
-          <div
-            class="flex-between flex-wrap gap-4 mb-8"
-
-          >
-            <div>
-              <h2 class="settings-heading-reset"><i class="fas fa-palette" aria-hidden="true"></i> Appearance</h2>
-              <p class="mt-2">
-                Customize how HealthBridge looks for you.
-              </p>
-            </div>
+        <!-- APPEARANCE -->
+        <section class="st-section" id="appearance" aria-labelledby="st-appearance-heading">
+          <div class="st-section-head">
+            <h2 id="st-appearance-heading">Appearance</h2>
+            <p>Choose how HealthBridge looks. Changes apply right away and are saved to your account.</p>
           </div>
-
-          <div class="settings-card">
-            <div class="settings-card-header">
-              <span class="settings-card-icon"><i class="fas fa-circle-half-stroke" aria-hidden="true"></i></span>
-              <div>
-                <h3>Theme</h3>
-                <p>Choose your preferred color scheme.</p>
-              </div>
-            </div>
-            <div class="theme-options" id="theme-options">
-              <label class="theme-option" data-theme="light">
-                <input type="radio" name="theme" value="light" />
-                <span class="theme-option-icon"><i class="fas fa-sun" aria-hidden="true"></i></span>
-                <span class="theme-option-label">Light</span>
-              </label>
-              <label class="theme-option" data-theme="dark">
-                <input type="radio" name="theme" value="dark" />
-                <span class="theme-option-icon"><i class="fas fa-moon" aria-hidden="true"></i></span>
-                <span class="theme-option-label">Dark</span>
-              </label>
-              <label class="theme-option" data-theme="system">
-                <input type="radio" name="theme" value="system" />
-                <span class="theme-option-icon"><i class="fas fa-desktop" aria-hidden="true"></i></span>
-                <span class="theme-option-label">System</span>
-              </label>
-            </div>
-          </div>
-        </section>
-
-        <!-- NOTIFICATIONS SECTION -->
-        <section id="notifications">
-          <div
-            class="flex-between flex-wrap gap-4 mb-8"
-
-          >
-            <div>
-              <h2 class="settings-heading-reset">
-                <i class="fas fa-bell" aria-hidden="true"></i> Notification Preferences
-              </h2>
-              <p class="mt-2">
-                Control which notifications you receive.
-              </p>
-            </div>
-          </div>
-
-          <div class="settings-card">
-            <div class="settings-card-header">
-              <span class="settings-card-icon"><i class="fas fa-bell" aria-hidden="true"></i></span>
-              <div>
-                <h3>Notifications</h3>
-                <p>Toggle notification types on or off.</p>
-              </div>
-            </div>
-            <form id="settings-notif-form">
-              <div class="settings-toggle-row">
-                <div class="settings-toggle-info">
-                  <span class="settings-toggle-icon"><i class="fas fa-calendar-days" aria-hidden="true"></i></span>
-                  <div>
-                    <span class="settings-toggle-label"
-                      >Appointment Reminders</span
-                    >
-                    <span class="settings-toggle-desc"
-                      >Get notified about upcoming appointments</span
-                    >
-                  </div>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" name="notif_appointment" checked />
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="settings-toggle-row">
-                <div class="settings-toggle-info">
-                  <span class="settings-toggle-icon"><i class="fas fa-star" aria-hidden="true"></i></span>
-                  <div>
-                    <span class="settings-toggle-label"
-                      >Rating Notifications</span
-                    >
-                    <span class="settings-toggle-desc"
-                      >Get notified when you receive a new rating</span
-                    >
-                  </div>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" name="notif_ratings" checked />
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="settings-toggle-row">
-                <div class="settings-toggle-info">
-                  <span class="settings-toggle-icon"><i class="fas fa-comments" aria-hidden="true"></i></span>
-                  <div>
-                    <span class="settings-toggle-label">New Messages</span>
-                    <span class="settings-toggle-desc"
-                      >Get notified when you receive a support reply</span
-                    >
-                  </div>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" name="notif_messages" checked />
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="settings-toggle-row">
-                <div class="settings-toggle-info">
-                  <span class="settings-toggle-icon"><i class="fas fa-bullhorn" aria-hidden="true"></i></span>
-                  <div>
-                    <span class="settings-toggle-label"
-                      >System Announcements</span
-                    >
-                    <span class="settings-toggle-desc"
-                      >Important updates about HealthBridge</span
-                    >
-                  </div>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" name="notif_announcements" checked />
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="settings-toggle-row">
-                <div class="settings-toggle-info">
-                  <span class="settings-toggle-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
-                  <div>
-                    <span class="settings-toggle-label"
-                      >Email Notifications</span
-                    >
-                    <span class="settings-toggle-desc"
-                      >Receive notifications via email</span
-                    >
-                  </div>
-                </div>
-                <label class="toggle-switch">
-                  <input type="checkbox" name="notif_email" />
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="settings-form-actions">
-                <button type="submit" class="btn btn-primary">
-                  Save Notification Settings
-                </button>
-              </div>
-            </form>
-          </div>
-        </section>
-
-        </div>
-      </main>
-    </div>
-
-    <!-- Deactivate Account Confirmation Modal -->
-    <div class="modal-overlay" id="delete-modal">
-      <div class="modal settings-delete-modal-content">
-        <div
-          class="settings-delete-modal-header"
-        >
-          <h3 class="settings-delete-modal-title"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Deactivate Account</h3>
-          <button class="close-btn" data-settings-action="close-delete">
-            &times;
-          </button>
-        </div>
-        <p
-          class="settings-delete-modal-description"
-        >
-          This will disable sign-in and cancel appointments that have not started.
-          Your medical, appointment, and audit history will be retained.
-        </p>
-        <form id="delete-account-form">
-          <div class="form-group">
-            <label for="delete-confirm-pw"
-              >Enter your password to confirm</label
-            >
-            <div class="pw-field">
-              <input
-                type="password"
-                id="delete-confirm-pw"
-                placeholder="Your password"
-                required
-              />
-              <button
-                type="button"
-                class="pw-toggle"
-                data-password-toggle="true"
-                aria-label="Show password"
-                title="Show password"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
+          <div class="st-card">
+            <div class="st-theme-options" role="group" aria-label="Theme">
+              <button type="button" class="st-theme-option" data-theme-value="light">
+                <strong>Light</strong>
+                <span>Always use the light theme.</span>
+              </button>
+              <button type="button" class="st-theme-option" data-theme-value="dark">
+                <strong>Dark</strong>
+                <span>Always use the dark theme.</span>
+              </button>
+              <button type="button" class="st-theme-option" data-theme-value="system">
+                <strong>System</strong>
+                <span>Follow your device&rsquo;s light/dark setting.</span>
               </button>
             </div>
+            <p class="st-theme-note"><span class="st-saved" id="st-theme-saved" role="status">Appearance saved ✓</span></p>
           </div>
-          <button type="submit" class="btn btn-danger btn-block">
-            Deactivate My Account
-          </button>
-        </form>
+        </section>
+
+        <!-- NOTIFICATIONS -->
+        <section class="st-section" id="notifications" aria-labelledby="st-notifications-heading">
+          <div class="st-section-head">
+            <h2 id="st-notifications-heading">Notifications</h2>
+            <p>Control which notifications you receive.</p>
+          </div>
+          <div class="st-card">
+            <form class="st-form" id="st-notif-form" novalidate>
+              <div>
+                <div class="st-toggle-row">
+                  <div>
+                    <span class="st-toggle-label">Appointment reminders</span>
+                    <span class="st-toggle-desc">Get notified about upcoming appointments</span>
+                  </div>
+                  <label class="st-switch">
+                    <input type="checkbox" name="notif_appointment">
+                    <span class="st-slider"></span>
+                  </label>
+                </div>
+                <div class="st-toggle-row">
+                  <div>
+                    <span class="st-toggle-label">Rating notifications</span>
+                    <span class="st-toggle-desc">Get notified when a visit rating is recorded</span>
+                  </div>
+                  <label class="st-switch">
+                    <input type="checkbox" name="notif_ratings">
+                    <span class="st-slider"></span>
+                  </label>
+                </div>
+                <div class="st-toggle-row">
+                  <div>
+                    <span class="st-toggle-label">New messages</span>
+                    <span class="st-toggle-desc">Get notified when you receive a support reply</span>
+                  </div>
+                  <label class="st-switch">
+                    <input type="checkbox" name="notif_messages">
+                    <span class="st-slider"></span>
+                  </label>
+                </div>
+                <div class="st-toggle-row">
+                  <div>
+                    <span class="st-toggle-label">System announcements</span>
+                    <span class="st-toggle-desc">Important updates about HealthBridge</span>
+                  </div>
+                  <label class="st-switch">
+                    <input type="checkbox" name="notif_announcements">
+                    <span class="st-slider"></span>
+                  </label>
+                </div>
+                <div class="st-toggle-row">
+                  <div>
+                    <span class="st-toggle-label">Email notifications</span>
+                    <span class="st-toggle-desc">Receive notifications via email</span>
+                  </div>
+                  <label class="st-switch">
+                    <input type="checkbox" name="notif_email">
+                    <span class="st-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <p class="st-form-error" id="st-notif-error" role="alert" hidden></p>
+              <div class="st-actions">
+                <button type="submit" class="btn btn-primary">Save notification settings</button>
+                <span class="st-saved" id="st-notif-saved" role="status">Saved ✓</span>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- DANGER ZONE -->
+        <section class="st-section" id="danger" aria-labelledby="st-danger-heading">
+          <div class="st-section-head">
+            <h2 id="st-danger-heading">Danger Zone</h2>
+            <p>Deactivate sign-in while retaining your medical and appointment history.</p>
+          </div>
+          <div class="st-card st-card-danger">
+            <p class="st-danger-note">Sign-in will be disabled. Appointments that have not started will be cancelled; your medical, appointment, and audit history will be retained.</p>
+            <button type="button" class="st-btn-danger" data-st-action="open-delete">Deactivate my account</button>
+          </div>
+        </section>
+
       </div>
+    </main>
+  </div>
+
+  <!-- Deactivate confirmation modal -->
+  <div class="st-modal-overlay" id="st-delete-modal" hidden>
+    <div class="st-modal" role="dialog" aria-modal="true" aria-labelledby="st-delete-title">
+      <div class="st-modal-head">
+        <h3 id="st-delete-title">Deactivate account</h3>
+        <button type="button" class="st-modal-close" data-st-action="close-delete" aria-label="Close">&times;</button>
+      </div>
+      <p>This will disable sign-in and cancel appointments that have not started. Your medical, appointment, and audit history will be retained.</p>
+      <form class="st-form" id="st-delete-form" novalidate>
+        <div class="st-field">
+          <label for="st-delete-pw">Enter your password to confirm</label>
+          <div class="st-pw-wrap">
+            <input type="password" id="st-delete-pw" autocomplete="current-password" required>
+            <button type="button" class="st-pw-toggle" data-st-pw-toggle="st-delete-pw" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="st-form-error" id="st-delete-error" role="alert" hidden></p>
+        <button type="submit" class="st-btn-danger-solid">Deactivate my account</button>
+      </form>
     </div>
+  </div>
 
-    </body>
+</body>
 </html>
-
-
