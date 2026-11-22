@@ -104,6 +104,7 @@
     if (currentPage === "settings.html") {
       settings.classList.add("is-active");
       settings.setAttribute("aria-current", "page");
+      sidebar.classList.add("is-footer-active");
     }
     const viewSite = document.createElement("a");
     viewSite.href = ROOT + "index.html";
@@ -217,18 +218,27 @@
     const active = navLinks.find((link) => link.dataset.routeKey === currentPage);
     if (!active) return;
     const nav = active.parentElement;
+    const measure = (link) =>
+      link.getBoundingClientRect().top - nav.getBoundingClientRect().top + nav.scrollTop;
     const moveIndicator = () => {
-      const nextY = active.getBoundingClientRect().top - nav.getBoundingClientRect().top + nav.scrollTop;
+      const nextY = measure(active);
       let previousKey = null;
       try { previousKey = sessionStorage.getItem("hb_patient_active_route"); } catch {}
       const previous = navLinks.find((link) => link.dataset.routeKey === previousKey);
+      // Prime at the previous tab's position with the transition off, so
+      // the bar never slides down from the top of the menu on page load —
+      // only the previous → current leg animates, smoothly.
+      nav.classList.add("is-priming");
       if (previous && previous !== active) {
-        const previousY = previous.getBoundingClientRect().top - nav.getBoundingClientRect().top + nav.scrollTop;
-        nav.style.setProperty("--patient-active-y", String(previousY) + "px");
+        nav.style.setProperty("--patient-active-y", String(measure(previous)) + "px");
         void nav.offsetHeight;
-        requestAnimationFrame(() => nav.style.setProperty("--patient-active-y", String(nextY) + "px"));
+        nav.classList.remove("is-priming");
+        requestAnimationFrame(() =>
+          nav.style.setProperty("--patient-active-y", String(nextY) + "px"));
       } else {
         nav.style.setProperty("--patient-active-y", String(nextY) + "px");
+        void nav.offsetHeight;
+        nav.classList.remove("is-priming");
       }
       try { sessionStorage.setItem("hb_patient_active_route", currentPage); } catch {}
     };

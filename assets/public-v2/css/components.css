@@ -225,6 +225,13 @@ html[data-theme="light"] body.doctors-page .nav-toggle {
   color: var(--public-text);
   font-size: 0.8rem;
   font-weight: 650;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.nav-actions .nav-dashboard-link:hover {
+  color: #e8d1a8;
+  border-color: rgba(212, 180, 126, 0.55);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 /* Signed-in quick access (notifications + settings) in the public header. */
