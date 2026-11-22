@@ -4,15 +4,15 @@
  * Tokens mirror the patient appointments page so the workspace matches.
  */
 body.patient-history-page {
-  --mh-bg: #142f2e;
-  --mh-panel: #1a3a37;
-  --mh-panel-raised: #21433f;
+  --mh-bg: #0b1918;
+  --mh-panel: #132725;
+  --mh-panel-raised: #19332f;
   --mh-panel-soft: rgba(226, 238, 233, 0.045);
   --mh-copy: #edf3ee;
   --mh-muted: #b7c9c1;
   --mh-faint: #a6b9af;
-  --mh-line: rgba(226, 238, 233, 0.13);
-  --mh-accent: #d9bf96;
+  --mh-line: rgba(226, 238, 233, 0.14);
+  --mh-accent: #d4b47e;
   --mh-green: #9dc9b2;
   --mh-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
   background: var(--mh-bg);
@@ -20,15 +20,15 @@ body.patient-history-page {
 }
 
 html[data-theme="light"] body.patient-history-page {
-  --mh-bg: #f2f5f1;
+  --mh-bg: #f2f5f0;
   --mh-panel: #ffffff;
-  --mh-panel-raised: #f8faf7;
-  --mh-panel-soft: #f4f7f3;
+  --mh-panel-raised: #f7f9f5;
+  --mh-panel-soft: #f7f9f5;
   --mh-copy: #183532;
   --mh-muted: #536961;
   --mh-faint: #5f7168;
   --mh-line: rgba(16, 43, 43, 0.13);
-  --mh-accent: #846334;
+  --mh-accent: #a9844f;
   --mh-green: #276d4c;
   --mh-shadow: 0 18px 44px rgba(19, 46, 39, 0.09);
 }
@@ -97,7 +97,9 @@ body.patient-history-page .main-content {
 .mh-filter[aria-pressed="true"] { background: var(--mh-accent); border-color: var(--mh-accent); color: #172f2b; }
 html[data-theme="light"] .mh-filter[aria-pressed="true"] { color: #fff; }
 .mh-search { flex: 1 1 220px; max-width: 320px; }
-.mh-search input {
+/* The body-class prefix outranks the shell stylesheet's global input
+   background rule, which otherwise overrides this field's own colour. */
+body.patient-workspace .mh-search input {
   width: 100%; min-height: 38px; padding: 8px 13px; border-radius: 10px;
   border: 1px solid var(--mh-line); background: var(--mh-panel-soft); color: var(--mh-copy);
   font: inherit; font-size: 0.84rem;

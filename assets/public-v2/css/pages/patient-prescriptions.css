@@ -4,15 +4,15 @@
  * Tokens mirror the patient appointments page so the workspace matches.
  */
 body.patient-prescriptions-page {
-  --rx-bg: #142f2e;
-  --rx-panel: #1a3a37;
-  --rx-panel-raised: #21433f;
+  --rx-bg: #0b1918;
+  --rx-panel: #132725;
+  --rx-panel-raised: #19332f;
   --rx-panel-soft: rgba(226, 238, 233, 0.045);
   --rx-copy: #edf3ee;
   --rx-muted: #b7c9c1;
   --rx-faint: #a6b9af;
-  --rx-line: rgba(226, 238, 233, 0.13);
-  --rx-accent: #d9bf96;
+  --rx-line: rgba(226, 238, 233, 0.14);
+  --rx-accent: #d4b47e;
   --rx-green: #9dc9b2;
   --rx-green-bg: rgba(112, 179, 145, 0.13);
   --rx-amber: #e8c995;
@@ -23,15 +23,15 @@ body.patient-prescriptions-page {
 }
 
 html[data-theme="light"] body.patient-prescriptions-page {
-  --rx-bg: #f2f5f1;
+  --rx-bg: #f2f5f0;
   --rx-panel: #ffffff;
-  --rx-panel-raised: #f8faf7;
-  --rx-panel-soft: #f4f7f3;
+  --rx-panel-raised: #f7f9f5;
+  --rx-panel-soft: #f7f9f5;
   --rx-copy: #183532;
   --rx-muted: #536961;
   --rx-faint: #5f7168;
   --rx-line: rgba(16, 43, 43, 0.13);
-  --rx-accent: #846334;
+  --rx-accent: #a9844f;
   --rx-green: #276d4c;
   --rx-green-bg: #e6f2e9;
   --rx-amber: #805d2b;

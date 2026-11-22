@@ -3,15 +3,15 @@
  * Route-specific presentation only; shared shell and tokens remain authoritative.
  */
 body.patient-appointments-page {
-  --pa-bg: #142f2e;
-  --pa-panel: #1a3a37;
-  --pa-panel-raised: #21433f;
+  --pa-bg: #0b1918;
+  --pa-panel: #132725;
+  --pa-panel-raised: #19332f;
   --pa-panel-soft: rgba(226, 238, 233, 0.045);
   --pa-copy: #edf3ee;
   --pa-muted: #b7c9c1;
   --pa-faint: #a6b9af;
-  --pa-line: rgba(226, 238, 233, 0.13);
-  --pa-accent: #d9bf96;
+  --pa-line: rgba(226, 238, 233, 0.14);
+  --pa-accent: #d4b47e;
   --pa-accent-ink: #172f2b;
   --pa-green: #9dc9b2;
   --pa-green-bg: rgba(112, 179, 145, 0.13);
@@ -25,15 +25,15 @@ body.patient-appointments-page {
 }
 
 html[data-theme="light"] body.patient-appointments-page {
-  --pa-bg: #f2f5f1;
+  --pa-bg: #f2f5f0;
   --pa-panel: #ffffff;
-  --pa-panel-raised: #f8faf7;
-  --pa-panel-soft: #f4f7f3;
+  --pa-panel-raised: #f7f9f5;
+  --pa-panel-soft: #f7f9f5;
   --pa-copy: #183532;
   --pa-muted: #536961;
   --pa-faint: #5f7168;
   --pa-line: rgba(16, 43, 43, 0.13);
-  --pa-accent: #846334;
+  --pa-accent: #a9844f;
   --pa-accent-ink: #ffffff;
   --pa-green: #276d4c;
   --pa-green-bg: #e6f2e9;
@@ -252,7 +252,11 @@ body.patient-appointments-page .main-content {
   content: "";
   transform: rotate(45deg);
 }
-.pa-search input {
+/* The body-class prefix outranks the shell stylesheet's global
+   body.patient-workspace input { background: var(--patient-surface) } rule,
+   which otherwise paints this input a different colour from its wrapper
+   in both themes. */
+body.patient-workspace .pa-search input {
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -719,9 +723,9 @@ html[data-theme="light"] .pa-next-card { background: linear-gradient(115deg, #16
 .pa-field { display: grid; min-width: 0; gap: 7px; margin-top: 14px; color: var(--pa-copy); font-size: 0.75rem; font-weight: 750; }
 .pa-field > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pa-field small { color: var(--pa-faint); font-size: 0.65rem; font-weight: 500; }
-.pa-field input,
-.pa-field select,
-.pa-field textarea {
+body.patient-workspace .pa-field input,
+body.patient-workspace .pa-field select,
+body.patient-workspace .pa-field textarea {
   width: 100%;
   min-width: 0;
   min-height: 44px;

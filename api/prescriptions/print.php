@@ -106,7 +106,7 @@ try {
 
     // Determine dashboard URL for return button
     $dashboardUrl = '';
-    if ($currentRole === 'patient') $dashboardUrl = '../../pages/patient/dashboard.html#prescriptions';
+    if ($currentRole === 'patient') $dashboardUrl = '../../pages/patient/prescriptions.html';
     elseif ($currentRole === 'doctor') $dashboardUrl = '../../pages/doctor/doctor-dashboard.html#prescriptions';
     elseif ($currentRole === 'admin') $dashboardUrl = '../../pages/admin/admin.html#prescriptions';
 
@@ -116,18 +116,14 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prescription <?php echo htmlspecialchars($rxIdFormatted); ?> — HealthBridge</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g" crossorigin="anonymous">
-    <link rel="stylesheet" href="../../assets/css/modules/print-prescription.css">
+    <link rel="stylesheet" href="../../assets/public-v2/css/pages/print-prescription.css?v=1">
 </head>
 <body>
 
     <!-- Hospital Header -->
     <div class="print-header">
-        <div class="print-logo">
-            <i class="fas fa-hospital" aria-hidden="true"></i>
+        <div class="print-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#a9844f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M2 21h20"/><path d="M12 8v4M10 10h4"/><path d="M8 21v-4h8v4"/></svg>
         </div>
         <div class="print-logo-text">
             <h1><?php echo htmlspecialchars($hospitalName, ENT_QUOTES, 'UTF-8'); ?></h1>
@@ -139,9 +135,9 @@ try {
     <div class="print-meta">
         <div>
             <span class="print-rx-id"><?php echo htmlspecialchars($rxIdFormatted); ?></span>
-            <div class="print-date"><i class="fas fa-calendar" aria-hidden="true"></i> Issued: <?php echo htmlspecialchars($issueDate); ?></div>
+            <div class="print-date">Issued: <?php echo htmlspecialchars($issueDate); ?></div>
             <?php if ($updatedDate): ?>
-                <div class="print-updated"><i class="fas fa-pen" aria-hidden="true"></i> Last Updated: <?php echo htmlspecialchars($updatedDate); ?></div>
+                <div class="print-updated">Last Updated: <?php echo htmlspecialchars($updatedDate); ?></div>
             <?php endif; ?>
         </div>
         <div>
@@ -154,7 +150,7 @@ try {
     <!-- Cancellation Reason -->
     <?php if ($rx['status'] === 'Cancelled' && !empty($rx['cancellation_reason'])): ?>
         <div class="print-cancel-reason">
-            <strong><i class="fas fa-ban" aria-hidden="true"></i> Cancellation Reason</strong>
+            <strong>Cancellation Reason</strong>
             <p><?php echo htmlspecialchars($rx['cancellation_reason']); ?></p>
         </div>
     <?php endif; ?>
@@ -162,7 +158,7 @@ try {
     <!-- Info Grid -->
     <div class="print-info-grid">
         <div class="print-info-box">
-            <h3><i class="fas fa-user" aria-hidden="true"></i> Patient Information</h3>
+            <h3>Patient Information</h3>
             <div class="print-info-row">
                 <span class="print-info-label">Name</span>
                 <span class="print-info-value"><?php echo htmlspecialchars($rx['patient_name'] ?? 'N/A'); ?></span>
@@ -173,7 +169,7 @@ try {
             </div>
         </div>
         <div class="print-info-box">
-            <h3><i class="fas fa-user-doctor" aria-hidden="true"></i> Doctor Information</h3>
+            <h3>Doctor Information</h3>
             <div class="print-info-row">
                 <span class="print-info-label">Name</span>
                 <span class="print-info-value"><?php echo htmlspecialchars($rx['doctor_name'] ?? $rx['appt_doctor_name'] ?? 'N/A'); ?></span>
@@ -184,7 +180,7 @@ try {
             </div>
         </div>
         <div class="print-info-box">
-            <h3><i class="fas fa-calendar-check" aria-hidden="true"></i> Appointment</h3>
+            <h3>Appointment</h3>
             <div class="print-info-row">
                 <span class="print-info-label">Date</span>
                 <span class="print-info-value"><?php echo htmlspecialchars(date('F j, Y', strtotime($rx['appt_date']))); ?></span>
@@ -203,7 +199,7 @@ try {
     <!-- Medications -->
     <div class="print-meds-section">
         <div class="print-meds-title">
-            <i class="fas fa-capsules" aria-hidden="true"></i> Prescribed Medications
+            Prescribed Medications
             <span class="print-meds-count"> (<?php echo count($items); ?> item<?php echo count($items) !== 1 ? 's' : ''; ?>)</span>
         </div>
 
@@ -244,7 +240,7 @@ try {
     <!-- Notes -->
     <?php if (!empty($rx['notes'])): ?>
     <div class="print-notes">
-        <h3><i class="fas fa-sticky-note" aria-hidden="true"></i> Prescription Notes</h3>
+        <h3>Prescription Notes</h3>
         <p><?php echo htmlspecialchars($rx['notes']); ?></p>
     </div>
     <?php endif; ?>
@@ -252,7 +248,7 @@ try {
     <!-- Signature -->
     <div class="print-signature">
         <div class="print-signature-left">
-            <h3><i class="fas fa-pen" aria-hidden="true"></i> Prescribing Doctor</h3>
+            <h3>Prescribing Doctor</h3>
             <div class="print-signature-name"><?php echo htmlspecialchars($rx['doctor_name'] ?? $rx['appt_doctor_name'] ?? 'N/A'); ?></div>
             <div class="print-signature-details"><?php echo htmlspecialchars($doctorSpecialty); ?></div>
             <div class="print-signature-line">Prescriber recorded on this prescription</div>
@@ -265,11 +261,11 @@ try {
 
     <!-- Return Button (shown if auto-close fails) -->
     <div class="print-return" id="print-return">
-        <a href="<?php echo htmlspecialchars($dashboardUrl); ?>"><i class="fas fa-arrow-left" aria-hidden="true"></i> Return to Dashboard</a>
+        <a href="<?php echo htmlspecialchars($dashboardUrl); ?>">← Return to your workspace</a>
         <p>If the window did not close automatically, click the button above.</p>
     </div>
 
-        <script src="../../assets/js/pages/print/prescription-print.js"></script>
+        <script src="../../assets/public-v2/js/pages/prescription-print.js?v=1"></script>
 
 </body>
 </html>

@@ -1,37 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" dir="ltr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Document Center & Downloads — HealthBridge" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Your HealthBridge documents — prescriptions, confirmations and visit summaries.">
+  <meta name="theme-color" content="#102b2b">
   <title>Document Center — HealthBridge</title>
-  <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-    <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=9" />
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1">
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1">
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=11">
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=10">
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-documents.css?v=1">
   <script src="../../assets/public-v2/js/core/site.js?v=2"></script>
   <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/pages/patient-documents.js?v=1"></script>
 </head>
-<body>
+<body class="patient-workspace patient-documents-page">
   <div id="navbar-container"></div>
   <div class="dashboard">
     <div id="sidebar-container"></div>
-    <main class="main-content">
-      <div class="portal-content">
-        <div class="page-header">
-          <h1><i class="fas fa-folder-open" aria-hidden="true"></i> Document Center</h1>
-          <p class="page-subtitle">Access, view, and download your medical records, prescriptions, and visit reports</p>
+    <main class="main-content" id="documents-main">
+      <div class="dc-page">
+        <header class="dc-page-header">
+          <p class="dc-eyebrow">YOUR RECORDS</p>
+          <h1 id="documents-title">Document Center</h1>
+          <p>Every document HealthBridge has generated for you — prescriptions, appointment confirmations and visit summaries — ready to open or print.</p>
+        </header>
+
+        <div class="dc-state" id="dc-loading" role="status">
+          <h2>Loading your documents…</h2>
+          <p>Collecting your prescriptions, confirmations and visit summaries.</p>
         </div>
-        <div id="downloads-container">
-          <div class="skeleton-loader">
-            <div class="skeleton skeleton-card patient-download-skeleton-card"></div>
-            <div class="skeleton skeleton-card patient-download-skeleton-card"></div>
-            <div class="skeleton skeleton-card patient-download-skeleton-card"></div>
+
+        <div class="dc-state" id="dc-error" hidden role="alert">
+          <h2>We couldn&rsquo;t load your documents</h2>
+          <p id="dc-error-message">Something went wrong while loading your documents.</p>
+          <button type="button" class="dc-button" data-dc-action="retry">Try again</button>
+        </div>
+
+        <div class="dc-state" id="dc-empty" hidden>
+          <h2>No documents yet</h2>
+          <p>Documents appear here after your first appointment or prescription.</p>
+        </div>
+
+        <div id="dc-content" hidden>
+          <section class="dc-summary" aria-label="Document counts">
+            <div class="dc-stat"><strong id="dc-stat-total">0</strong><span>Documents in total</span></div>
+            <div class="dc-stat"><strong id="dc-stat-rx">0</strong><span>Prescriptions</span></div>
+            <div class="dc-stat"><strong id="dc-stat-conf">0</strong><span>Confirmations</span></div>
+            <div class="dc-stat"><strong id="dc-stat-visit">0</strong><span>Visit summaries</span></div>
+          </section>
+
+          <div class="dc-controls">
+            <label class="dc-search">
+              <span class="dc-visually-hidden" hidden>Search your documents</span>
+              <input id="dc-search-input" type="search" placeholder="Search by title, doctor or department…" autocomplete="off">
+            </label>
+            <div class="dc-filters" id="dc-filters" role="group" aria-label="Filter documents by type"></div>
           </div>
+
+          <p class="dc-count" id="dc-count"></p>
+          <div id="dc-groups"></div>
+          <p class="dc-note" id="dc-note"></p>
         </div>
       </div>
     </main>
   </div>
-  </body>
+</body>
 </html>

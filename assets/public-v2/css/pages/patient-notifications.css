@@ -1,0 +1,174 @@
+/*
+ * HealthBridge Public V2 — Patient Notifications (Phase 4)
+ * Built new for Public V2; loads nothing from the legacy frontend.
+ * Tokens mirror the patient shell palette so the workspace matches.
+ */
+body.patient-notifications-page {
+  --nt-bg: #0b1918;
+  --nt-panel: #132725;
+  --nt-panel-raised: #19332f;
+  --nt-panel-soft: rgba(226, 238, 233, 0.045);
+  --nt-copy: #edf3ee;
+  --nt-muted: #b7c9c1;
+  --nt-faint: #a6b9af;
+  --nt-line: rgba(226, 238, 233, 0.14);
+  --nt-accent: #d4b47e;
+  --nt-green: #9dc9b2;
+  --nt-green-bg: rgba(112, 179, 145, 0.13);
+  --nt-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  background: var(--nt-bg);
+  color: var(--nt-copy);
+}
+
+html[data-theme="light"] body.patient-notifications-page {
+  --nt-bg: #f2f5f0;
+  --nt-panel: #ffffff;
+  --nt-panel-raised: #f7f9f5;
+  --nt-panel-soft: #f7f9f5;
+  --nt-copy: #183532;
+  --nt-muted: #536961;
+  --nt-faint: #5f7168;
+  --nt-line: rgba(16, 43, 43, 0.13);
+  --nt-accent: #a9844f;
+  --nt-green: #276d4c;
+  --nt-green-bg: #e6f2e9;
+  --nt-shadow: 0 18px 44px rgba(19, 46, 39, 0.09);
+}
+
+body.patient-notifications-page .main-content {
+  min-width: 0;
+  padding: 0;
+  background: var(--nt-bg);
+}
+
+.nt-page {
+  width: min(1240px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 48px) clamp(18px, 3.5vw, 44px) 64px;
+  color: var(--nt-copy);
+}
+
+.nt-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 8px; }
+.nt-eyebrow {
+  color: var(--nt-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0 0 10px;
+}
+.nt-page-header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 0 10px;
+}
+.nt-page-header p { color: var(--nt-muted); margin: 0; max-width: 56ch; line-height: 1.55; }
+.nt-mark-all {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--public-brand-700);
+  background: var(--public-brand-700);
+  color: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nt-mark-all:hover { filter: brightness(1.07); }
+.nt-mark-all:disabled { opacity: 0.55; cursor: default; }
+
+.nt-count { color: var(--nt-muted); font-size: 0.8rem; margin: 14px 2px 18px; }
+.nt-count strong { color: var(--nt-copy); }
+
+.nt-group-title {
+  color: var(--nt-faint);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 22px 2px 10px;
+}
+.nt-list { display: grid; gap: 10px; }
+.nt-item {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: 15px 17px;
+  border: 1px solid var(--nt-line);
+  border-radius: 12px;
+  background: var(--nt-panel);
+  color: var(--nt-copy);
+  font: inherit;
+  cursor: default;
+  animation: nt-rise-in 380ms ease both;
+  animation-delay: calc(var(--nt-i, 0) * 35ms);
+}
+.nt-item.is-unread { border-color: var(--nt-accent); cursor: pointer; }
+.nt-item.is-read { opacity: 0.82; }
+.nt-dot {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+.nt-item.is-unread .nt-dot { background: var(--nt-accent); animation: nt-pulse 900ms ease 2; }
+.nt-item-main { min-width: 0; flex: 1; }
+.nt-item-topline { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; }
+.nt-item h3 { margin: 0; font-size: 0.93rem; }
+.nt-item.is-read h3 { font-weight: 600; }
+.nt-time { color: var(--nt-faint); font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.nt-item p { margin: 5px 0 0; color: var(--nt-muted); font-size: 0.83rem; line-height: 1.55; }
+.nt-tag {
+  display: inline-block; margin-top: 9px; padding: 3px 9px; border-radius: 999px;
+  background: var(--nt-panel-soft); color: var(--nt-muted); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em;
+}
+.nt-mark-one {
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--nt-line);
+  background: transparent;
+  color: var(--nt-copy);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nt-mark-one:hover { border-color: var(--nt-accent); }
+
+.nt-state {
+  border: 1px solid var(--nt-line); border-radius: 14px; background: var(--nt-panel);
+  padding: 34px 22px; text-align: center;
+}
+.nt-state h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; margin: 0 0 8px; font-size: 1.3rem; }
+.nt-state p { color: var(--nt-muted); margin: 0 auto 14px; max-width: 46ch; line-height: 1.55; }
+.nt-button {
+  min-height: 36px; padding: 8px 16px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--public-brand-700); background: var(--public-brand-700); color: #fff;
+  font: inherit; font-size: 0.8rem; font-weight: 700;
+}
+
+@keyframes nt-rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes nt-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(212, 180, 126, 0.45); }
+  100% { box-shadow: 0 0 0 7px rgba(212, 180, 126, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nt-item, .nt-item.is-unread .nt-dot { animation: none; }
+}
+@media (max-width: 760px) {
+  .nt-page { padding: 24px 16px 48px; }
+  .nt-page-header { flex-direction: column; }
+}
