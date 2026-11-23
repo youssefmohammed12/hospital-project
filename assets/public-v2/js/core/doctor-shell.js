@@ -38,6 +38,7 @@
     site: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>',
     chevron: '<svg class="doctor-profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+    collapse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>',
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
   };
 
@@ -86,6 +87,7 @@
       const link = document.createElement("a");
       link.href = href;
       link.dataset.routeKey = href;
+      link.dataset.tip = label;
       link.innerHTML = icons[icon] + "<span>" + label + "</span>";
       if (href === currentPage) {
         link.classList.add("is-active");
@@ -101,6 +103,7 @@
     const settings = document.createElement("a");
     settings.href = "settings.html";
     settings.dataset.routeKey = "settings.html";
+    settings.dataset.tip = "Settings";
     settings.innerHTML = icons.settings + "<span>Settings</span>";
     if (currentPage === "settings.html") {
       settings.classList.add("is-active");
@@ -109,6 +112,7 @@
     }
     const viewSite = document.createElement("a");
     viewSite.href = ROOT + "index.html";
+    viewSite.dataset.tip = "View Site";
     viewSite.innerHTML = icons.site + "<span>View Site</span>";
     footer.append(settings, viewSite);
     sidebar.append(main, footer);
@@ -367,6 +371,42 @@
   }
 
 
+  /* Desktop collapse: the sidebar folds to a 72px icon rail and the
+     content area widens into the freed space. The state persists in
+     localStorage ("hb_doctor_sidebar"); each page's head snippet applies
+     it to <html> before first paint, and this binding re-applies it in
+     case the snippet was blocked, so class and storage never disagree.
+     On phone widths the button is hidden by CSS and the off-canvas
+     mobile pattern (bindMobileSidebar) rules instead. */
+  function bindSidebarCollapse(container) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "doctor-sb-toggle";
+    btn.id = "doctor-sb-toggle";
+    btn.innerHTML = icons.collapse;
+    const sync = () => {
+      const collapsed = document.documentElement.classList.contains("doctor-sb-collapsed");
+      btn.setAttribute("aria-expanded", String(!collapsed));
+      btn.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+    };
+    try {
+      if (localStorage.getItem("hb_doctor_sidebar") === "collapsed") {
+        document.documentElement.classList.add("doctor-sb-collapsed");
+      }
+    } catch {}
+    btn.addEventListener("click", () => {
+      const collapsed = document.documentElement.classList.toggle("doctor-sb-collapsed");
+      try { localStorage.setItem("hb_doctor_sidebar", collapsed ? "collapsed" : "expanded"); } catch {}
+      sync();
+      // Sidebar width changed the layout the route indicator measures
+      // against; let its resize listener re-measure.
+      window.dispatchEvent(new Event("resize"));
+    });
+    container.append(btn);
+    sync();
+    return btn;
+  }
+
   function bindMobileSidebar(parts) {
     const toggle = document.getElementById("doctor-sidebar-toggle");
     const close = () => {
@@ -396,6 +436,7 @@
     const skeleton = buildRouteSkeleton(main);
     renderHeader(headerContainer);
     const sidebarParts = renderSidebar(sidebarContainer);
+    bindSidebarCollapse(sidebarContainer);
     setActiveIndicator(sidebarParts.navLinks);
     const closeMenus = bindMenus();
     const closeSidebar = bindMobileSidebar(sidebarParts);

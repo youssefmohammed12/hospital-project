@@ -1,12 +1,13 @@
 /**
- * HealthBridge Public V2 — Doctor overview controller (Phase 1, BENTO).
+ * HealthBridge Public V2 — Doctor overview controller (Phase 1, PORT).
  * Greeting with a working availability toggle; a bento grid holding
- * today's schedule + up next in one tall tile, an attention tile of
- * unfinished EMR notes (badge carries the pending count), four KPI
- * mini-tiles (waiting, confirmed, completed, rating), the current
- * week at a glance, and the latest patient review. All six headline
- * numbers stay visible: today's count sits in the schedule tile's
- * header badge, the EMR-notes count in the attention tile's badge.
+ * today's schedule as a timeline (Up next folded into the same tile),
+ * an attention tile of unfinished EMR notes with a Write note action
+ * per row (badge carries the pending count), four KPI mini-tiles with
+ * computed context lines (waiting, confirmed, completed, rating), the
+ * current week as a bar chart, and the latest patient review. All six
+ * headline numbers stay visible: today's count sits in the schedule
+ * tile's header badge, the EMR-notes count in the attention badge.
  * Data: api/appointments/get-doctor.php, api/doctors/get-doctor-ratings.php,
  * api/doctors/get-availability.php, api/doctors/toggle-availability.php.
  * Every number on the page is computed from those responses — nothing
@@ -50,6 +51,8 @@
     "doctor-workspace.html?patient_id=" + encodeURIComponent(appt.patient_id ?? appt.user_id ?? "") +
     "&appointment_id=" + encodeURIComponent(appt.id ?? "");
   const byDateTime = (a, b) => (String(a.date) + String(a.time)).localeCompare(String(b.date) + String(b.time));
+  const initialsOf = (name) => String(name || "").trim().split(/\s+/).filter(Boolean)
+    .slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("") || "—";
 
   function countUp(el, target, decimals = 0) {
     if (!el) return;
@@ -81,25 +84,54 @@
 
   function renderStats(appointments) {
     const active = appointments.filter((a) => a.status !== "Cancelled");
-    const waitingCount = active.filter((a) => a.visit_workflow?.status === "Waiting").length;
+    const waiting = active.filter((a) => a.visit_workflow?.status === "Waiting");
     const confirmedCount = appointments.filter((a) => a.status === "Confirmed").length;
-    const completedCount = active.filter((a) => a.visit_workflow?.status === "Completed").length;
-    countUp($("ov-stat-waiting"), waitingCount);
+    const completed = active.filter((a) => a.visit_workflow?.status === "Completed");
+    countUp($("ov-stat-waiting"), waiting.length);
     countUp($("ov-stat-confirmed"), confirmedCount);
-    countUp($("ov-stat-completed"), completedCount);
+    countUp($("ov-stat-completed"), completed.length);
+
+    // Context lines — all computed from the same payload, nothing invented.
+    const waitingCtx = $("ov-stat-waiting-ctx");
+    if (waitingCtx) {
+      const sorted = [...waiting].sort(byDateTime);
+      const next = sorted.find((a) => a.date >= todayStr()) || sorted[0];
+      waitingCtx.innerHTML = next
+        ? 'Next up: <span class="doctor-stat__nm">' + esc(next.patient_name || "Patient") +
+          "</span> · " + esc(fmtDay(next.date))
+        : "No one is waiting right now";
+    }
+    const confirmedCtx = $("ov-stat-confirmed-ctx");
+    if (confirmedCtx) {
+      const total = appointments.length;
+      confirmedCtx.textContent = "of " + total + (total === 1 ? " total appointment" : " total appointments");
+    }
+    const completedCtx = $("ov-stat-completed-ctx");
+    if (completedCtx) {
+      const recent = [...completed].sort(byDateTime).pop();
+      completedCtx.innerHTML = recent
+        ? 'Most recent: <span class="doctor-stat__nm">' + esc(recent.patient_name || "Patient") +
+          "</span> · " + esc(fmtDay(recent.date))
+        : "No completed visits yet";
+    }
   }
 
   function renderRating(ratings) {
     const value = $("ov-stat-rating");
-    const hint = $("ov-stat-rating-hint");
+    const ctx = $("ov-stat-rating-ctx");
     if (!ratings.length) {
       if (value) value.textContent = "—";
-      if (hint) hint.textContent = "no reviews yet";
+      if (ctx) ctx.textContent = "No reviews yet";
       return;
     }
     const avg = ratings.reduce((sum, r) => sum + (Number(r.stars) || 0), 0) / ratings.length;
     countUp(value, avg, 1);
-    if (hint) hint.textContent = "from " + ratings.length + (ratings.length === 1 ? " review" : " reviews");
+    if (ctx) {
+      const stars = Math.min(5, Math.max(0, Math.round(avg)));
+      const starText = "★★★★★".slice(0, stars) + "☆☆☆☆☆".slice(0, 5 - stars);
+      ctx.innerHTML = '<span class="doctor-stat__stars" aria-hidden="true">' + starText + "</span> from " +
+        ratings.length + (ratings.length === 1 ? " review" : " reviews");
+    }
   }
 
   /* ---------- Schedule timelines ---------- */
@@ -113,17 +145,22 @@
     return { text: appt.status || "Confirmed", cls: "" };
   }
 
-  function scheduleRow(appt, showDay) {
+  function timelineRow(appt, showDay) {
     const pill = pillFor(appt);
+    const name = appt.patient_name || "Patient";
     const row = document.createElement("div");
-    row.className = "doctor-timeline-row";
+    row.className = "doctor-tl-row";
     row.innerHTML =
-      '<div class="doctor-timeline-row__when"><strong>' + esc(fmtRange(appt)) + "</strong>" +
-        (showDay ? "<span>" + esc(fmtDay(appt.date)) + "</span>" : "") + "</div>" +
-      '<div class="doctor-timeline-row__who"><strong>' + esc(appt.patient_name || "Patient") + "</strong><span>" +
-        esc(appt.department || "") + "</span></div>" +
-      '<span class="doctor-pill' + pill.cls + '">' + esc(pill.text) + "</span>" +
-      '<a class="doctor-consult-btn" href="' + esc(workspaceUrl(appt)) + '">Consult</a>';
+      '<div class="doctor-tl-time">' + esc(fmtRange(appt)) +
+        (showDay ? '<span class="doctor-tl-date">' + esc(fmtDay(appt.date)) + "</span>" : "") + "</div>" +
+      '<div class="doctor-tl-rail"><span class="doctor-tl-dot is-filled"></span></div>' +
+      '<div class="doctor-tl-main"><div class="doctor-appt">' +
+        '<span class="doctor-avatar" aria-hidden="true">' + esc(initialsOf(name)) + "</span>" +
+        '<span class="doctor-appt__who"><strong>' + esc(name) + "</strong><span>" +
+          esc(appt.department || "") + "</span></span>" +
+        '<span class="doctor-pill' + pill.cls + '">' + esc(pill.text) + "</span>" +
+        '<a class="doctor-consult-btn" href="' + esc(workspaceUrl(appt)) + '">Consult</a>' +
+      "</div></div>";
     return row;
   }
 
@@ -141,9 +178,16 @@
     }
     if (todayHost) {
       if (!todays.length) {
-        todayHost.innerHTML = '<p class="doctor-empty">No appointments scheduled for today. Enjoy the breathing room — new bookings will appear here.</p>';
+        todayHost.innerHTML =
+          '<div class="doctor-tl-row doctor-tl-row--empty">' +
+            '<div class="doctor-tl-time"></div>' +
+            '<div class="doctor-tl-rail"><span class="doctor-tl-dot"></span></div>' +
+            '<div class="doctor-tl-main">' +
+              '<p class="doctor-empty-title">No appointments scheduled for today.</p>' +
+              '<p class="doctor-empty-sub">Enjoy the breathing room — new bookings will appear here.</p>' +
+            "</div></div>";
       } else {
-        todayHost.replaceChildren(...todays.map((a) => scheduleRow(a, false)));
+        todayHost.replaceChildren(...todays.map((a) => timelineRow(a, false)));
       }
     }
 
@@ -153,20 +197,28 @@
       .slice(0, 5);
     if (nextHost) {
       if (!upcoming.length) {
-        nextHost.innerHTML = '<p class="doctor-empty">Nothing booked beyond today yet.</p>';
+        nextHost.innerHTML =
+          '<div class="doctor-tl-row"><div class="doctor-tl-time"></div>' +
+          '<div class="doctor-tl-rail"></div>' +
+          '<div class="doctor-tl-main"><p class="doctor-empty">Nothing booked beyond today yet.</p></div></div>';
       } else {
-        nextHost.replaceChildren(...upcoming.map((a) => scheduleRow(a, true)));
+        nextHost.replaceChildren(...upcoming.map((a) => timelineRow(a, true)));
       }
     }
   }
 
   /* ---------- Needs your attention ---------- */
 
-  function attentionRow(title, detail, href, linkText) {
+  function attentionRow(appt) {
+    const name = appt.patient_name || "Patient";
     const row = document.createElement("div");
-    row.className = "doctor-decision-row";
-    row.innerHTML = "<div><strong>" + esc(title) + "</strong><span>" + esc(detail) + "</span></div>" +
-      '<a href="' + esc(href) + '">' + esc(linkText) + "</a>";
+    row.className = "doctor-att-row";
+    row.innerHTML =
+      '<span class="doctor-avatar" aria-hidden="true">' + esc(initialsOf(name)) + "</span>" +
+      '<span class="doctor-att-row__info"><strong>' + esc(name) + "</strong><span>" +
+        "Visit note still to write — " + esc(fmtDay(appt.date)) + ", " + esc(fmtTime(appt.time)) +
+        "</span></span>" +
+      '<a class="doctor-btn-teal" href="' + esc(workspaceUrl(appt)) + '">Write note</a>';
     return row;
   }
 
@@ -193,10 +245,7 @@
       return;
     }
     const CAP = 5;
-    const nodes = notes.slice(0, CAP).map((a) => attentionRow(
-      a.patient_name || "Patient",
-      "visit note still to write — " + fmtDay(a.date) + ", " + fmtTime(a.time),
-      workspaceUrl(a), "Open visit"));
+    const nodes = notes.slice(0, CAP).map((a) => attentionRow(a));
     if (notes.length > CAP) nodes.push(moreRow(notes.length - CAP, "queue.html"));
     host.replaceChildren(...nodes);
   }
@@ -214,19 +263,54 @@
       counts.set(a.date, (counts.get(a.date) || 0) + 1);
     });
     const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    host.replaceChildren();
+    const days = [];
+    let total = 0;
+    let max = 0;
     for (let i = 0; i < 7; i += 1) {
       const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
       const ds = dateStr(d);
       const count = counts.get(ds) || 0;
-      const cell = document.createElement("div");
-      cell.className = "doctor-week__day" + (ds === todayStr() ? " is-today" : "");
-      cell.innerHTML =
-        '<span class="doctor-week__name">' + dayNames[i] + "</span>" +
-        '<span class="doctor-week__num">' + d.getDate() + "</span>" +
-        '<span class="doctor-week__count">' + (count ? count + (count === 1 ? " appt" : " appts") : "—") + "</span>";
-      host.appendChild(cell);
+      total += count;
+      if (count > max) max = count;
+      days.push({ name: dayNames[i], date: d.getDate(), ds, count, isToday: ds === todayStr() });
     }
+
+    const note = $("ov-week-note");
+    if (note) {
+      const monthOf = (ds) => new Date(ds + "T00:00:00")
+        .toLocaleDateString("en-US", { month: "short" });
+      const first = days[0];
+      const last = days[6];
+      const range = first.name + " " + first.date +
+        (monthOf(first.ds) !== monthOf(last.ds) ? " " + monthOf(first.ds) : "") +
+        " – " + last.name + " " + last.date + " " + monthOf(last.ds);
+      note.textContent = range + " · " + total +
+        (total === 1 ? " appointment" : " appointments") + " this week";
+    }
+
+    const chart = document.createElement("div");
+    chart.className = "doctor-chart";
+    chart.setAttribute("role", "img");
+    chart.setAttribute("aria-label", "Bar chart of appointments per day this week: " +
+      days.map((d) => d.name + " " + d.date + ": " + d.count).join(", ") + ".");
+    days.forEach((d) => {
+      const cell = document.createElement("div");
+      cell.className = "doctor-chart__day" + (d.isToday ? " is-today" : "");
+      const pct = d.count === 0 ? 0 : Math.max(16, Math.round((d.count / max) * 88));
+      cell.innerHTML = '<span class="doctor-chart__count">' + d.count + "</span>" +
+        '<div class="doctor-chart__bar" style="height:' + pct + '%"></div>';
+      chart.appendChild(cell);
+    });
+    const labels = document.createElement("div");
+    labels.className = "doctor-chart__labels";
+    days.forEach((d) => {
+      const label = document.createElement("div");
+      if (d.isToday) label.className = "is-today";
+      label.innerHTML = '<span class="doctor-chart__dn">' + d.name + "</span>" +
+        '<span class="doctor-chart__dt">' + d.date + "</span>";
+      labels.appendChild(label);
+    });
+    host.replaceChildren(chart, labels);
   }
 
   /* ---------- Latest review ---------- */
