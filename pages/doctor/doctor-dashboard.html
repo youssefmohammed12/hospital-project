@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=16" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=4" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=5" />
   <script src="../../assets/public-v2/js/core/site.js?v=5"></script>
   <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=2"></script>
-  <script defer src="../../assets/public-v2/js/pages/doctor-overview.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-overview.js?v=2"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -29,55 +29,104 @@
             <h1 id="ov-greeting">Welcome</h1>
             <p class="doctor-page__lede">Today's appointments, who is waiting, and anything that needs your decision.</p>
           </div>
-          <div class="doctor-availability" id="ov-availability" hidden>
-            <span class="doctor-availability__dot" aria-hidden="true"></span>
-            <span id="ov-availability-text">Accepting appointments</span>
+          <div class="doctor-intro__actions">
+            <div class="doctor-availability" id="ov-availability" hidden>
+              <span class="doctor-availability__dot" aria-hidden="true"></span>
+              <span id="ov-availability-text">Accepting appointments</span>
+              <label class="doctor-switch" title="Toggle whether patients can book you">
+                <input type="checkbox" id="ov-availability-toggle" aria-label="Accepting appointments" />
+                <span class="doctor-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+            <button class="doctor-refresh-btn" id="ov-refresh" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"></path></svg>
+              Refresh
+            </button>
           </div>
         </section>
 
-        <section class="doctor-stats" aria-label="Your day in numbers">
+        <section class="doctor-stats doctor-stats--six" aria-label="Your practice in numbers">
           <a class="doctor-stat" href="appointments.html">
-            <span class="doctor-stat__label">Today's appointments</span>
-            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path></svg></span>
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg></span>
             <strong class="doctor-stat__value" id="ov-stat-today">0</strong>
-            <span class="doctor-stat__hint">confirmed for today</span>
+            <span class="doctor-stat__label">Today</span>
+            <span class="doctor-stat__hint">appointments today</span>
           </a>
           <a class="doctor-stat" href="queue.html">
-            <span class="doctor-stat__label">Waiting consultations</span>
             <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"></circle><path d="M3.5 19.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"></path><path d="M16 5.4a3.2 3.2 0 0 1 0 5.9M17.8 15.3c1.5.7 2.4 2 2.7 4.2"></path></svg></span>
             <strong class="doctor-stat__value" id="ov-stat-waiting">0</strong>
+            <span class="doctor-stat__label">Waiting</span>
             <span class="doctor-stat__hint">visits not yet started</span>
           </a>
           <a class="doctor-stat" href="appointments.html">
-            <span class="doctor-stat__label">Pending decisions</span>
-            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 8v5M12 16.5h.01"></path></svg></span>
-            <strong class="doctor-stat__value" id="ov-stat-pending">0</strong>
-            <span class="doctor-stat__hint">bookings &amp; reschedule requests</span>
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.8 12.2 2.2 2.2 4.2-4.6"></path></svg></span>
+            <strong class="doctor-stat__value" id="ov-stat-confirmed">0</strong>
+            <span class="doctor-stat__label">Confirmed</span>
+            <span class="doctor-stat__hint">bookings confirmed</span>
+          </a>
+          <a class="doctor-stat" href="appointments.html">
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.3-9A5.4 5.4 0 0 1 12 6.4 5.4 5.4 0 0 1 21.3 12C19.5 16.4 12 21 12 21Z"></path><path d="M4 12h4l1.5-3 3 6L14 12h6"></path></svg></span>
+            <strong class="doctor-stat__value" id="ov-stat-completed">0</strong>
+            <span class="doctor-stat__label">Completed</span>
+            <span class="doctor-stat__hint">visits completed</span>
+          </a>
+          <a class="doctor-stat" href="queue.html">
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"></path><path d="M14 3v5h5M9 12h6M9 16h6"></path></svg></span>
+            <strong class="doctor-stat__value" id="ov-stat-notes">0</strong>
+            <span class="doctor-stat__label">EMR notes</span>
+            <span class="doctor-stat__hint">notes still to write</span>
           </a>
           <a class="doctor-stat" href="reviews.html">
-            <span class="doctor-stat__label">Your rating</span>
             <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3.6 2.5 5.2 5.7.7-4.2 4 1.1 5.6L12 16.4l-5.1 2.7L8 13.5 3.8 9.5l5.7-.7Z"></path></svg></span>
             <strong class="doctor-stat__value" id="ov-stat-rating">—</strong>
+            <span class="doctor-stat__label">Rating</span>
             <span class="doctor-stat__hint" id="ov-stat-rating-hint">out of 5</span>
           </a>
         </section>
 
         <div class="doctor-overview-grid">
-          <section class="doctor-panel" aria-labelledby="ov-queue-title">
-            <div class="doctor-panel__head">
-              <h2 id="ov-queue-title">Today &amp; up next</h2>
-              <a href="queue.html">Patient queue</a>
-            </div>
-            <div class="doctor-queue-list" id="ov-queue"><p class="doctor-empty">Loading your appointments…</p></div>
-          </section>
+          <div class="doctor-overview-main">
+            <section class="doctor-panel" aria-labelledby="ov-today-title">
+              <div class="doctor-panel__head">
+                <h2 id="ov-today-title">Today's schedule</h2>
+                <a href="queue.html">Patient queue</a>
+              </div>
+              <div class="doctor-timeline" id="ov-today"><p class="doctor-empty">Loading your appointments…</p></div>
+            </section>
 
-          <section class="doctor-panel" aria-labelledby="ov-decisions-title">
-            <div class="doctor-panel__head">
-              <h2 id="ov-decisions-title">Needs your decision</h2>
-              <a href="appointments.html">All appointments</a>
-            </div>
-            <div id="ov-decisions"><p class="doctor-empty">Loading your requests…</p></div>
-          </section>
+            <section class="doctor-panel" aria-labelledby="ov-upnext-title">
+              <div class="doctor-panel__head">
+                <h2 id="ov-upnext-title">Up next</h2>
+                <a href="appointments.html">All appointments</a>
+              </div>
+              <div class="doctor-timeline" id="ov-upnext"><p class="doctor-empty">Loading your appointments…</p></div>
+            </section>
+          </div>
+
+          <div class="doctor-overview-side">
+            <section class="doctor-panel" aria-labelledby="ov-attention-title">
+              <div class="doctor-panel__head">
+                <h2 id="ov-attention-title">Needs your attention</h2>
+                <a href="appointments.html">Review</a>
+              </div>
+              <div id="ov-attention"><p class="doctor-empty">Loading your requests…</p></div>
+            </section>
+
+            <section class="doctor-panel" aria-labelledby="ov-week-title">
+              <div class="doctor-panel__head">
+                <h2 id="ov-week-title">Your week</h2>
+              </div>
+              <div class="doctor-week" id="ov-week"><p class="doctor-empty">Loading your week…</p></div>
+            </section>
+
+            <section class="doctor-panel" aria-labelledby="ov-review-title">
+              <div class="doctor-panel__head">
+                <h2 id="ov-review-title">Latest review</h2>
+                <a href="reviews.html">All reviews</a>
+              </div>
+              <div id="ov-review"><p class="doctor-empty">Loading your reviews…</p></div>
+            </section>
+          </div>
         </div>
 
         <p class="doctor-alert" id="ov-error" role="alert" hidden>Your overview could not be loaded completely. Check your connection and refresh the page.</p>

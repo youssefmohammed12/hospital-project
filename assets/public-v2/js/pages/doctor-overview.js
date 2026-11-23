@@ -1,9 +1,13 @@
 /**
- * HealthBridge Public V2 — Doctor overview controller (Phase 1).
- * Renders the greeting, four honest stat cards, today's queue with
- * what's up next, and anything waiting on the doctor's decision.
+ * HealthBridge Public V2 — Doctor overview controller (Phase 1, rebuild).
+ * Greeting with a working availability toggle, six honest KPI cards,
+ * today's schedule + up next, an attention panel (pending bookings,
+ * reschedule requests, unfinished EMR notes), the current week at a
+ * glance, and the latest patient review.
  * Data: api/appointments/get-doctor.php, api/doctors/get-doctor-ratings.php,
- * api/doctors/get-availability.php — all unchanged.
+ * api/doctors/get-availability.php, api/doctors/toggle-availability.php.
+ * Every number on the page is computed from those responses — nothing
+ * is hardcoded.
  */
 "use strict";
 
@@ -15,19 +19,15 @@
   })[c]);
 
   const pad = (n) => String(n).padStart(2, "0");
-  const todayStr = () => {
-    const d = new Date();
-    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
-  };
-  const fmtDay = (dateStr) => {
-    const d = new Date(String(dateStr || "") + "T00:00:00");
+  const dateStr = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const todayStr = () => dateStr(new Date());
+  const fmtDay = (ds) => {
+    const d = new Date(String(ds || "") + "T00:00:00");
     if (Number.isNaN(d.getTime())) return "";
-    const today = todayStr();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tmr = tomorrow.getFullYear() + "-" + pad(tomorrow.getMonth() + 1) + "-" + pad(tomorrow.getDate());
-    if (dateStr === today) return "Today";
-    if (dateStr === tmr) return "Tomorrow";
+    if (ds === todayStr()) return "Today";
+    const tmr = new Date();
+    tmr.setDate(tmr.getDate() + 1);
+    if (ds === dateStr(tmr)) return "Tomorrow";
     return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   };
   const fmtTime = (hhmm) => {
@@ -39,11 +39,14 @@
     return h + ":" + m[2] + " " + suffix;
   };
   const fmtRange = (appt) => {
-    const range = String(appt.appointment_time_range || "");
-    const parts = range.split("-").map((s) => s.trim());
+    const parts = String(appt.appointment_time_range || "").split("-").map((s) => s.trim());
     if (parts.length === 2 && parts[0]) return fmtTime(parts[0]) + " – " + fmtTime(parts[1]);
     return fmtTime(appt.time);
   };
+  const workspaceUrl = (appt) =>
+    "doctor-workspace.html?patient_id=" + encodeURIComponent(appt.patient_id ?? appt.user_id ?? "") +
+    "&appointment_id=" + encodeURIComponent(appt.id ?? "");
+  const byDateTime = (a, b) => (String(a.date) + String(a.time)).localeCompare(String(b.date) + String(b.time));
 
   function countUp(el, target) {
     if (!el) return;
@@ -59,151 +62,311 @@
     requestAnimationFrame(tick);
   }
 
-  async function fetchJson(url) {
-    const response = await fetch(ROOT + url, {
-      method: "GET", credentials: "same-origin", headers: { Accept: "application/json" },
-    });
+  async function fetchJson(url, options) {
+    const response = await fetch(ROOT + url, Object.assign({
+      credentials: "same-origin", headers: { Accept: "application/json" },
+    }, options || {}));
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) throw new Error(url);
     return payload;
   }
 
-  function renderQueue(appointments) {
-    const host = $("ov-queue");
-    if (!host) return;
+  /* ---------- KPI row ---------- */
+
+  function renderStats(appointments) {
     const today = todayStr();
-    const confirmed = appointments.filter((a) => a.status === "Confirmed");
-    const todays = confirmed.filter((a) => a.date === today)
-      .sort((a, b) => String(a.time).localeCompare(String(b.time)));
-    const upcoming = confirmed.filter((a) => a.date > today)
-      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-    const list = [...todays, ...upcoming].slice(0, 5);
-    if (!list.length) {
-      host.innerHTML = '<p class="doctor-empty">No appointments coming up. New bookings will appear here.</p>';
-      return;
-    }
-    host.replaceChildren();
-    list.forEach((appt) => {
-      const row = document.createElement("div");
-      row.className = "doctor-queue-row";
-      const workflow = appt.visit_workflow?.status || "";
-      const pillClass = workflow === "Waiting" ? " is-waiting"
-        : workflow === "In Progress" ? " is-progress" : "";
-      const pillText = workflow || "Confirmed";
-      row.innerHTML =
-        '<div class="doctor-queue-row__when"><strong>' + esc(fmtRange(appt)) + '</strong><span>' + esc(fmtDay(appt.date)) + '</span></div>' +
-        '<div class="doctor-queue-row__who"><strong>' + esc(appt.patient_name || "Patient") + '</strong><span>' + esc(appt.department || "") + '</span></div>' +
-        '<span class="doctor-pill' + pillClass + '">' + esc(pillText) + '</span>' +
-        '<a class="doctor-consult-btn" href="doctor-workspace.html?patient_id=' +
-          encodeURIComponent(appt.patient_id ?? appt.user_id ?? "") +
-          "&appointment_id=" + encodeURIComponent(appt.id) + '">Consult</a>';
-      host.appendChild(row);
-    });
-  }
-
-  function renderDecisions(appointments) {
-    const host = $("ov-decisions");
-    if (!host) return;
-    const pending = appointments.filter((a) =>
-      a.reschedule_status === "pending" || a.status === "Pending");
-    if (!pending.length) {
-      host.innerHTML = '<p class="doctor-empty">Nothing is waiting on you — no pending bookings or reschedule requests.</p>';
-      return;
-    }
-    host.replaceChildren();
-    pending.forEach((appt) => {
-      const row = document.createElement("div");
-      row.className = "doctor-decision-row";
-      let text;
-      if (appt.reschedule_status === "pending") {
-        text = "<strong>" + esc(appt.patient_name || "Patient") + "</strong><span>wants to move " +
-          esc(fmtDay(appt.date)) + ", " + esc(fmtTime(appt.time)) + " → " +
-          esc(fmtDay(appt.pending_reschedule_date)) + ", " + esc(fmtTime(appt.pending_reschedule_time)) + "</span>" +
-          (appt.reschedule_reason ? '<span class="doctor-decision-row__reason">“' + esc(appt.reschedule_reason) + "”</span>" : "");
-      } else {
-        text = "<strong>" + esc(appt.patient_name || "Patient") + "</strong><span>new booking request — " +
-          esc(fmtDay(appt.date)) + ", " + esc(fmtTime(appt.time)) + "</span>";
-      }
-      row.innerHTML = "<div>" + text + '</div><a href="appointments.html">Review</a>';
-      host.appendChild(row);
-    });
-  }
-
-  async function start() {
-    const now = new Date();
-    const dateNode = $("ov-date");
-    if (dateNode) {
-      dateNode.textContent = "Doctor workspace · " + now.toLocaleDateString("en-US", {
-        weekday: "long", month: "long", day: "numeric", year: "numeric",
-      });
-    }
-
-    let doctorPayload;
-    try {
-      doctorPayload = await fetchJson("api/appointments/get-doctor.php");
-    } catch {
-      const error = $("ov-error");
-      if (error) error.hidden = false;
-      const queue = $("ov-queue");
-      if (queue) queue.innerHTML = '<p class="doctor-empty">Your appointments could not be loaded.</p>';
-      const decisions = $("ov-decisions");
-      if (decisions) decisions.innerHTML = '<p class="doctor-empty">Your requests could not be loaded.</p>';
-      return;
-    }
-
-    const appointments = Array.isArray(doctorPayload.appointments) ? doctorPayload.appointments : [];
-    const doctorName = doctorPayload.doctor?.name || "";
-    const greeting = $("ov-greeting");
-    if (greeting) {
-      const hour = now.getHours();
-      const dayPart = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-      greeting.innerHTML = doctorName
-        ? dayPart + ", <em>" + esc(doctorName) + "</em>"
-        : dayPart;
-    }
-
-    const today = todayStr();
-    const confirmed = appointments.filter((a) => a.status === "Confirmed");
-    const todayCount = confirmed.filter((a) => a.date === today).length;
-    const waitingCount = confirmed.filter((a) => a.visit_workflow?.status === "Waiting").length;
-    const pendingCount = appointments.filter((a) =>
-      a.reschedule_status === "pending" || a.status === "Pending").length;
-
+    const active = appointments.filter((a) => a.status !== "Cancelled");
+    const todayCount = active.filter((a) => a.date === today).length;
+    const waitingCount = active.filter((a) => a.visit_workflow?.status === "Waiting").length;
+    const confirmedCount = appointments.filter((a) => a.status === "Confirmed").length;
+    const completedCount = active.filter((a) => a.visit_workflow?.status === "Completed").length;
+    const notesCount = appointments.filter((a) => a.status === "Confirmed" && !a.has_visit_note).length;
     countUp($("ov-stat-today"), todayCount);
     countUp($("ov-stat-waiting"), waitingCount);
-    countUp($("ov-stat-pending"), pendingCount);
+    countUp($("ov-stat-confirmed"), confirmedCount);
+    countUp($("ov-stat-completed"), completedCount);
+    countUp($("ov-stat-notes"), notesCount);
+  }
 
-    renderQueue(appointments);
-    renderDecisions(appointments);
+  function renderRating(ratings) {
+    const value = $("ov-stat-rating");
+    const hint = $("ov-stat-rating-hint");
+    if (!ratings.length) {
+      if (value) value.textContent = "—";
+      if (hint) hint.textContent = "no reviews yet";
+      return;
+    }
+    const avg = ratings.reduce((sum, r) => sum + (Number(r.stars) || 0), 0) / ratings.length;
+    if (value) value.textContent = avg.toFixed(1);
+    if (hint) hint.textContent = "from " + ratings.length + (ratings.length === 1 ? " review" : " reviews");
+  }
 
-    // Rating + availability fill in independently; neither blocks the page.
+  /* ---------- Schedule timelines ---------- */
+
+  function pillFor(appt) {
+    if (appt.status === "Pending") return { text: "Pending", cls: " is-pending" };
+    const wf = appt.visit_workflow?.status || "";
+    if (wf === "Waiting") return { text: "Waiting", cls: " is-waiting" };
+    if (wf === "In Progress") return { text: "In progress", cls: " is-progress" };
+    if (wf === "Completed" || appt.status === "Completed") return { text: "Completed", cls: " is-done" };
+    return { text: appt.status || "Confirmed", cls: "" };
+  }
+
+  function scheduleRow(appt, showDay) {
+    const pill = pillFor(appt);
+    const row = document.createElement("div");
+    row.className = "doctor-timeline-row";
+    row.innerHTML =
+      '<div class="doctor-timeline-row__when"><strong>' + esc(fmtRange(appt)) + "</strong>" +
+        (showDay ? "<span>" + esc(fmtDay(appt.date)) + "</span>" : "") + "</div>" +
+      '<div class="doctor-timeline-row__who"><strong>' + esc(appt.patient_name || "Patient") + "</strong><span>" +
+        esc(appt.department || "") + "</span></div>" +
+      '<span class="doctor-pill' + pill.cls + '">' + esc(pill.text) + "</span>" +
+      '<a class="doctor-consult-btn" href="' + esc(workspaceUrl(appt)) + '">Consult</a>';
+    return row;
+  }
+
+  function renderSchedule(appointments) {
+    const todayHost = $("ov-today");
+    const nextHost = $("ov-upnext");
+    const today = todayStr();
+
+    const todays = appointments
+      .filter((a) => a.date === today && a.status !== "Cancelled")
+      .sort(byDateTime);
+    if (todayHost) {
+      if (!todays.length) {
+        todayHost.innerHTML = '<p class="doctor-empty">No appointments scheduled for today. Enjoy the breathing room — new bookings will appear here.</p>';
+      } else {
+        todayHost.replaceChildren(...todays.map((a) => scheduleRow(a, false)));
+      }
+    }
+
+    const upcoming = appointments
+      .filter((a) => a.date > today && (a.status === "Confirmed" || a.status === "Pending"))
+      .sort(byDateTime)
+      .slice(0, 5);
+    if (nextHost) {
+      if (!upcoming.length) {
+        nextHost.innerHTML = '<p class="doctor-empty">Nothing booked beyond today yet.</p>';
+      } else {
+        nextHost.replaceChildren(...upcoming.map((a) => scheduleRow(a, true)));
+      }
+    }
+  }
+
+  /* ---------- Needs your attention ---------- */
+
+  function attentionRow(title, detail, href, linkText) {
+    const row = document.createElement("div");
+    row.className = "doctor-decision-row";
+    row.innerHTML = "<div><strong>" + esc(title) + "</strong><span>" + esc(detail) + "</span></div>" +
+      '<a href="' + esc(href) + '">' + esc(linkText) + "</a>";
+    return row;
+  }
+
+  function moreRow(count, href) {
+    const p = document.createElement("p");
+    p.className = "doctor-attention-more";
+    p.innerHTML = '<a href="' + esc(href) + '">and ' + count + " more</a>";
+    return p;
+  }
+
+  function renderAttention(appointments) {
+    const host = $("ov-attention");
+    if (!host) return;
+    const CAP = 3;
+    const nodes = [];
+
+    const bookings = appointments.filter((a) => a.status === "Pending").sort(byDateTime);
+    bookings.slice(0, CAP).forEach((a) => nodes.push(attentionRow(
+      a.patient_name || "Patient",
+      "new booking request — " + fmtDay(a.date) + ", " + fmtTime(a.time),
+      "appointments.html", "Review")));
+    if (bookings.length > CAP) nodes.push(moreRow(bookings.length - CAP, "appointments.html"));
+
+    const reschedules = appointments.filter((a) => a.reschedule_status === "pending").sort(byDateTime);
+    reschedules.slice(0, CAP).forEach((a) => nodes.push(attentionRow(
+      a.patient_name || "Patient",
+      "wants to move " + fmtDay(a.date) + ", " + fmtTime(a.time) + " → " +
+        fmtDay(a.pending_reschedule_date) + ", " + fmtTime(a.pending_reschedule_time),
+      "appointments.html", "Review")));
+    if (reschedules.length > CAP) nodes.push(moreRow(reschedules.length - CAP, "appointments.html"));
+
+    const notes = appointments
+      .filter((a) => a.status === "Confirmed" && !a.has_visit_note)
+      .sort(byDateTime);
+    notes.slice(0, CAP).forEach((a) => nodes.push(attentionRow(
+      a.patient_name || "Patient",
+      "visit note still to write — " + fmtDay(a.date) + ", " + fmtTime(a.time),
+      workspaceUrl(a), "Open visit")));
+    if (notes.length > CAP) nodes.push(moreRow(notes.length - CAP, "queue.html"));
+
+    if (!nodes.length) {
+      host.innerHTML = '<p class="doctor-empty">Nothing needs your attention — no pending bookings, reschedule requests, or unfinished notes.</p>';
+      return;
+    }
+    host.replaceChildren(...nodes);
+  }
+
+  /* ---------- Your week ---------- */
+
+  function renderWeek(appointments) {
+    const host = $("ov-week");
+    if (!host) return;
+    const now = new Date();
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+    const counts = new Map();
+    appointments.forEach((a) => {
+      if (a.status === "Cancelled") return;
+      counts.set(a.date, (counts.get(a.date) || 0) + 1);
+    });
+    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    host.replaceChildren();
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      const ds = dateStr(d);
+      const count = counts.get(ds) || 0;
+      const cell = document.createElement("div");
+      cell.className = "doctor-week__day" + (ds === todayStr() ? " is-today" : "");
+      cell.innerHTML =
+        '<span class="doctor-week__name">' + dayNames[i] + "</span>" +
+        '<span class="doctor-week__num">' + d.getDate() + "</span>" +
+        '<span class="doctor-week__count">' + (count ? count + (count === 1 ? " appt" : " appts") : "—") + "</span>";
+      host.appendChild(cell);
+    }
+  }
+
+  /* ---------- Latest review ---------- */
+
+  function renderLatestReview(ratings) {
+    const host = $("ov-review");
+    if (!host) return;
+    if (!ratings.length) {
+      host.innerHTML = '<p class="doctor-empty">No reviews yet — patients can rate a visit once it is completed.</p>';
+      return;
+    }
+    const sorted = [...ratings].sort((a, b) =>
+      String(b.review_date || b.appt_date || "").localeCompare(String(a.review_date || a.appt_date || "")));
+    const latest = sorted[0];
+    const stars = Math.min(5, Math.max(0, Math.round(Number(latest.stars) || 0)));
+    const starText = "★★★★★".slice(0, stars) + "☆☆☆☆☆".slice(0, 5 - stars);
+    const when = latest.review_date ? fmtDay(String(latest.review_date).slice(0, 10)) : "";
+    host.replaceChildren();
+    const card = document.createElement("div");
+    card.className = "doctor-review-card";
+    card.innerHTML =
+      '<div class="doctor-review-card__stars" role="img" aria-label="Rated ' + stars + ' out of 5">' + starText + "</div>" +
+      (latest.review
+        ? '<p class="doctor-review-card__text">“' + esc(latest.review) + "”</p>"
+        : '<p class="doctor-review-card__text doctor-review-card__text--none">The patient left a rating without a written comment.</p>') +
+      '<p class="doctor-review-card__meta">Verified Patient' + (when ? " · " + esc(when) : "") + "</p>";
+    host.appendChild(card);
+  }
+
+  /* ---------- Availability toggle ---------- */
+
+  let availabilityBusy = false;
+
+  function applyAvailability(available) {
+    const wrap = $("ov-availability");
+    const text = $("ov-availability-text");
+    const toggle = $("ov-availability-toggle");
+    if (!wrap || !text || !toggle) return;
+    text.textContent = available ? "Accepting appointments" : "Not accepting appointments";
+    toggle.checked = available;
+    toggle.setAttribute("aria-label", available ? "Accepting appointments" : "Not accepting appointments");
+    wrap.classList.toggle("is-off", !available);
+    wrap.hidden = false;
+  }
+
+  async function onAvailabilityToggle() {
+    const toggle = $("ov-availability-toggle");
+    if (!toggle || availabilityBusy) return;
+    availabilityBusy = true;
+    toggle.disabled = true;
+    try {
+      const payload = await fetchJson("api/doctors/toggle-availability.php", {
+        method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: "{}",
+      });
+      applyAvailability(Number(payload.available) === 1);
+    } catch {
+      // Revert the switch to the state the server still holds.
+      toggle.checked = !toggle.checked;
+      const error = $("ov-error");
+      if (error) {
+        error.textContent = "Your availability could not be changed. Please try again.";
+        error.hidden = false;
+      }
+    } finally {
+      toggle.disabled = false;
+      availabilityBusy = false;
+    }
+  }
+
+  /* ---------- Page load / refresh ---------- */
+
+  async function loadAll() {
+    const refreshBtn = $("ov-refresh");
+    if (refreshBtn) refreshBtn.disabled = true;
+    try {
+      const doctorPayload = await fetchJson("api/appointments/get-doctor.php");
+      const appointments = Array.isArray(doctorPayload.appointments) ? doctorPayload.appointments : [];
+
+      const now = new Date();
+      const dateNode = $("ov-date");
+      if (dateNode) {
+        dateNode.textContent = "Doctor workspace · " + now.toLocaleDateString("en-US", {
+          weekday: "long", month: "long", day: "numeric", year: "numeric",
+        });
+      }
+      const greeting = $("ov-greeting");
+      if (greeting) {
+        const hour = now.getHours();
+        const dayPart = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+        const doctorName = doctorPayload.doctor?.name || "";
+        greeting.innerHTML = doctorName ? dayPart + ", <em>" + esc(doctorName) + "</em>" : dayPart;
+      }
+
+      renderStats(appointments);
+      renderSchedule(appointments);
+      renderAttention(appointments);
+      renderWeek(appointments);
+    } catch {
+      const error = $("ov-error");
+      if (error) {
+        error.textContent = "Your overview could not be loaded completely. Check your connection and refresh the page.";
+        error.hidden = false;
+      }
+      const today = $("ov-today");
+      if (today) today.innerHTML = '<p class="doctor-empty">Your appointments could not be loaded.</p>';
+      const attention = $("ov-attention");
+      if (attention) attention.innerHTML = '<p class="doctor-empty">Your requests could not be loaded.</p>';
+    } finally {
+      if (refreshBtn) refreshBtn.disabled = false;
+    }
+
+    // Ratings and availability fill in independently; neither blocks the page.
     fetchJson("api/doctors/get-doctor-ratings.php")
       .then((payload) => {
         const ratings = Array.isArray(payload.ratings) ? payload.ratings : [];
-        const value = $("ov-stat-rating");
-        const hint = $("ov-stat-rating-hint");
-        if (!ratings.length) {
-          if (value) value.textContent = "—";
-          if (hint) hint.textContent = "No reviews yet";
-          return;
-        }
-        const avg = ratings.reduce((sum, r) => sum + (Number(r.stars) || 0), 0) / ratings.length;
-        if (value) value.textContent = avg.toFixed(1);
-        if (hint) hint.textContent = "from " + ratings.length + (ratings.length === 1 ? " review" : " reviews");
+        renderRating(ratings);
+        renderLatestReview(ratings);
       })
-      .catch(() => { /* the rating card keeps its neutral state */ });
+      .catch(() => { /* rating surfaces keep their neutral state */ });
 
     fetchJson("api/doctors/get-availability.php")
-      .then((payload) => {
-        const wrap = $("ov-availability");
-        const text = $("ov-availability-text");
-        if (!wrap || !text) return;
-        const available = Number(payload.available) === 1;
-        text.textContent = available ? "Accepting appointments" : "Not accepting appointments";
-        wrap.classList.toggle("is-off", !available);
-        wrap.hidden = false;
-      })
-      .catch(() => { /* no pill shown if availability cannot be read */ });
+      .then((payload) => applyAvailability(Number(payload.available) === 1))
+      .catch(() => { /* no toggle shown if availability cannot be read */ });
+  }
+
+  function start() {
+    const toggle = $("ov-availability-toggle");
+    if (toggle) toggle.addEventListener("change", onAvailabilityToggle);
+    const refreshBtn = $("ov-refresh");
+    if (refreshBtn) refreshBtn.addEventListener("click", loadAll);
+    loadAll();
   }
 
   document.addEventListener("doctor:shell-ready", start);
