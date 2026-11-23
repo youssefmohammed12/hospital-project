@@ -100,6 +100,12 @@
     const footer = document.createElement("nav");
     footer.className = "doctor-sidebar__footer";
     footer.setAttribute("aria-label", "Workspace and site links");
+    const sbToggle = document.createElement("button");
+    sbToggle.type = "button";
+    sbToggle.className = "doctor-sb-toggle";
+    sbToggle.id = "doctor-sb-toggle";
+    sbToggle.dataset.tip = "Collapse";
+    sbToggle.innerHTML = icons.collapse + "<span>Collapse</span>";
     const settings = document.createElement("a");
     settings.href = "settings.html";
     settings.dataset.routeKey = "settings.html";
@@ -114,7 +120,7 @@
     viewSite.href = ROOT + "index.html";
     viewSite.dataset.tip = "View Site";
     viewSite.innerHTML = icons.site + "<span>View Site</span>";
-    footer.append(settings, viewSite);
+    footer.append(sbToggle, settings, viewSite);
     sidebar.append(main, footer);
 
     const backdrop = document.createElement("button");
@@ -123,7 +129,7 @@
     backdrop.tabIndex = -1;
     backdrop.setAttribute("aria-label", "Close workspace navigation");
     container.replaceChildren(sidebar, backdrop);
-    return { sidebar, backdrop, navLinks: Array.from(nav.querySelectorAll("a")) };
+    return { sidebar, backdrop, sbToggle, navLinks: Array.from(nav.querySelectorAll("a")) };
   }
 
   function initials(name) {
@@ -372,22 +378,25 @@
 
 
   /* Desktop collapse: the sidebar folds to a 72px icon rail and the
-     content area widens into the freed space. The state persists in
-     localStorage ("hb_doctor_sidebar"); each page's head snippet applies
-     it to <html> before first paint, and this binding re-applies it in
-     case the snippet was blocked, so class and storage never disagree.
-     On phone widths the button is hidden by CSS and the off-canvas
-     mobile pattern (bindMobileSidebar) rules instead. */
-  function bindSidebarCollapse(container) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "doctor-sb-toggle";
-    btn.id = "doctor-sb-toggle";
-    btn.innerHTML = icons.collapse;
+     content area widens into the freed space. The control is a row at
+     the top of the sidebar footer (rendered by renderSidebar): chevron
+     + "Collapse" while expanded; in the rail only the centred chevron
+     remains, turned to point right, with an "Expand" tooltip. The state
+     persists in localStorage ("hb_doctor_sidebar"); each page's head
+     snippet applies it to <html> before first paint, and this binding
+     re-applies it in case the snippet was blocked, so class and storage
+     never disagree. On phone widths the row is hidden by CSS and the
+     off-canvas mobile pattern (bindMobileSidebar) rules instead. */
+  function bindSidebarCollapse(parts) {
+    const btn = parts.sbToggle;
+    if (!btn) return null;
+    const label = btn.querySelector("span");
     const sync = () => {
       const collapsed = document.documentElement.classList.contains("doctor-sb-collapsed");
       btn.setAttribute("aria-expanded", String(!collapsed));
       btn.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+      btn.dataset.tip = collapsed ? "Expand" : "Collapse";
+      if (label) label.textContent = collapsed ? "Expand" : "Collapse";
     };
     try {
       if (localStorage.getItem("hb_doctor_sidebar") === "collapsed") {
@@ -402,7 +411,6 @@
       // against; let its resize listener re-measure.
       window.dispatchEvent(new Event("resize"));
     });
-    container.append(btn);
     sync();
     return btn;
   }
@@ -436,7 +444,7 @@
     const skeleton = buildRouteSkeleton(main);
     renderHeader(headerContainer);
     const sidebarParts = renderSidebar(sidebarContainer);
-    bindSidebarCollapse(sidebarContainer);
+    bindSidebarCollapse(sidebarParts);
     setActiveIndicator(sidebarParts.navLinks);
     const closeMenus = bindMenus();
     const closeSidebar = bindMobileSidebar(sidebarParts);
