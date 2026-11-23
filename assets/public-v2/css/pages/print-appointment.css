@@ -1,0 +1,103 @@
+/*
+ * HealthBridge Public V2 — Appointment print views.
+ *
+ * Two documents share this stylesheet: the Appointment Confirmation and
+ * the Visit Summary (api/appointments/print.php). The shared Public V2
+ * print chrome (hospital header, meta row, info grid, medication table,
+ * notes panel, signature, return button) comes from print-prescription.css,
+ * imported unchanged so the prescription print keeps its exact rendering;
+ * this file only adds the appointment-specific pieces in the same design
+ * language (cream paper, deep green ink, serif headings, gold accents).
+ */
+@import url("print-prescription.css");
+
+/* Appointment status pills (appointment statuses are Title-case,
+   unlike the lowercase prescription statuses styled in the base sheet) */
+.print-status-Pending { background: var(--pp-amber-bg); color: var(--pp-amber); }
+.print-status-Confirmed,
+.print-status-Completed { background: var(--pp-green-bg); color: var(--pp-green); }
+.print-status-Cancelled { background: var(--pp-red-bg); color: var(--pp-red); }
+
+/* Document title inside the meta row */
+.ap-title {
+  margin: 0 0 6px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.ap-ref {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--pp-teal);
+}
+
+/* Generic white document section (same panel rhythm as the base sheet) */
+.ap-section {
+  background: #fff;
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  padding: 20px 26px;
+}
+.ap-section-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+.ap-section-title .ap-ref-small {
+  color: var(--pp-muted);
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Clinical record items (visit summary) */
+.ap-item { padding: 10px 0 12px; border-bottom: 1px solid var(--pp-line); }
+.ap-item:first-of-type { padding-top: 2px; }
+.ap-item:last-child { border-bottom: 0; padding-bottom: 2px; }
+.ap-item h4 {
+  margin: 0 0 5px;
+  color: var(--pp-gold);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ap-item p { margin: 0; white-space: pre-line; }
+
+/* Honest empty state (no visit summary recorded yet) */
+.ap-empty {
+  background: var(--pp-panel);
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  padding: 26px;
+  text-align: center;
+}
+.ap-empty h2 {
+  margin: 0 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+.ap-empty p { margin: 0 auto; max-width: 52ch; color: var(--pp-muted); }
+
+/* Confidentiality line under the signature block */
+.ap-confidential {
+  padding: 14px 26px 0;
+  text-align: center;
+  color: var(--pp-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media print {
+  .ap-section, .ap-empty {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+}
