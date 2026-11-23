@@ -463,6 +463,24 @@ body.patient-workspace textarea::placeholder {
   opacity: 0.75;
 }
 
+/* Dropdown arrows (owner fix, 23 Nov 2026): the native select arrow
+   renders ~4px from the right edge. Workspace selects use the
+   codebase's custom chevron instead — inset 12px from the edge,
+   with right padding so text clears it. Height and footprint of
+   the control do not change. */
+body.patient-workspace select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c1d1c9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px 14px;
+}
+html[data-theme="light"] body.patient-workspace select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2350645d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 body.patient-workspace .skeleton {
   background: linear-gradient(90deg, var(--patient-surface-raised), var(--patient-surface), var(--patient-surface-raised));
   border: 1px solid var(--patient-border);

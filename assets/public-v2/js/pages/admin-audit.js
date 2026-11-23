@@ -9,11 +9,13 @@
  * the endpoint's filter_options on first load.
  *
  * Entries carry old_value / new_value as JSON strings (or NULL).
- * They are rendered as readable field-by-field diffs — changed
- * fields as "Field: before → after", creations as the recorded
- * field values under a "Record created" caption — never as raw
- * JSON dumps. If a value ever fails to parse as JSON it is shown
- * as plain text rather than hidden.
+ * Rows are compact one-line summaries (the entry's description,
+ * or its first recorded change); the complete diff opens in the
+ * detail modal as a field-by-field Before / After table —
+ * changed fields as "Field: before → after", creations as the
+ * recorded field values under a "Record created" caption —
+ * never as raw JSON dumps. If a value ever fails to parse as
+ * JSON it is shown as plain text rather than hidden.
  *
  * The trail reaches back to 9 Nov 2026: eleven older rows from
  * the legacy_admin_audit table were merged into audit_events on
@@ -91,19 +93,22 @@
     return { kind: "scalar", lines: [{ label: "Value", from: o, to: n }] };
   }
 
-  function diffCellHtml(entry) {
+  // One-line row summary (owner fix, 23 Nov 2026): the entry's own
+  // description when it has one; otherwise the first recorded
+  // change. The complete field-by-field diff lives in the detail
+  // modal — rows stay compact no matter how large the payload is.
+  function summaryText(entry) {
+    const desc = String(entry.description || "").trim();
+    if (desc) return desc;
     const d = diffOf(entry);
-    if (d.kind === "none" || !d.lines.length) {
-      return "<span class=\"aalog-nodiff\">No field changes recorded</span>";
+    if (d.kind === "created") return "Record created";
+    if (d.kind === "removed") return "Record removed";
+    if (d.lines.length) {
+      const l = d.lines[0];
+      return l.label + ": " + fmtVal(l.from) + " → " + fmtVal(l.to) +
+        (d.lines.length > 1 ? " · +" + (d.lines.length - 1) + " more" : "");
     }
-    const caption = d.kind === "created" ? "<span class=\"aalog-diff__cap\">Record created</span>"
-      : d.kind === "removed" ? "<span class=\"aalog-diff__cap\">Record removed</span>" : "";
-    const lines = d.lines.map((l) =>
-      d.kind === "created"
-        ? "<span class=\"aalog-diff__line\"><span class=\"aalog-diff__key\">" + esc(l.label) + ":</span> " + esc(fmtVal(l.to)) + "</span>"
-        : "<span class=\"aalog-diff__line\"><span class=\"aalog-diff__key\">" + esc(l.label) + ":</span> " + esc(fmtVal(l.from)) + " <span class=\"aalog-diff__arrow\">→</span> " + esc(fmtVal(l.to)) + "</span>"
-    ).join("");
-    return caption + lines;
+    return "No field changes recorded";
   }
 
   /* ---------- Rendering ---------- */
@@ -117,14 +122,14 @@
   function cap(s) { const t = String(s || ""); return t ? t.charAt(0).toUpperCase() + t.slice(1) : t; }
 
   function rowHtml(e) {
+    const summary = summaryText(e);
     return "<tr data-id=\"" + num(e.id) + "\">" +
       "<td><span class=\"aalog-date\">" + esc(formatDateTime(e.created_at)) + "</span></td>" +
       "<td><span class=\"aalog-actor\">" + esc(e.actor_name || "—") + "</span>" +
         "<span class=\"aalog-role\">" + esc(cap(e.actor_role)) + "</span></td>" +
       "<td><span class=\"admin-pill " + (ACTION_PILL[String(e.action || "").toLowerCase()] || "") + "\">" + esc(cap(e.action)) + "</span></td>" +
       "<td>" + esc(cap(e.entity_type)) + " <span class=\"aalog-entity-id\">#" + esc(e.entity_id ?? "—") + "</span></td>" +
-      "<td><span class=\"aalog-desc\">" + esc(e.description || "—") + "</span></td>" +
-      "<td><span class=\"aalog-diff\">" + diffCellHtml(e) + "</span></td>" +
+      "<td class=\"aalog-summary-col\"><span class=\"aalog-summary-cell\" title=\"" + esc(summary) + "\">" + esc(summary) + "</span></td>" +
       "<td class=\"aalog-actions-col\"><button class=\"admin-btn admin-btn--ghost\" type=\"button\" data-action=\"view\" data-id=\"" + num(e.id) + "\">Details</button></td>" +
       "</tr>";
   }
@@ -140,7 +145,7 @@
 
     const tbody = $("aalog-tbody");
     if (!entries.length) {
-      tbody.innerHTML = "<tr><td colspan=\"7\" class=\"aalog-empty-cell\">" +
+      tbody.innerHTML = "<tr><td colspan=\"6\" class=\"aalog-empty-cell\">" +
         (total === 0 && page === 1
           ? "No audit entries match these filters."
           : "No audit entries on this page.") +
@@ -205,7 +210,7 @@
       render(payload);
       $("aalog-error").hidden = true;
     } catch (err) {
-      $("aalog-tbody").innerHTML = "<tr><td colspan=\"7\" class=\"aalog-empty-cell\">The audit log could not be loaded.</td></tr>";
+      $("aalog-tbody").innerHTML = "<tr><td colspan=\"6\" class=\"aalog-empty-cell\">The audit log could not be loaded.</td></tr>";
       $("aalog-error").hidden = false;
     }
     document.getElementById("admin-main")?.removeAttribute("aria-busy");

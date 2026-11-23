@@ -1,9 +1,10 @@
 /*
  * HealthBridge Admin — Audit Log area (Phase 6).
  * The audit viewer: two-row filter bar, the entries table with
- * formatted before / after diffs, the pager, and the entry
- * detail modal. Builds on admin-shell.css — shell and shared
- * component classes are never redefined here.
+ * compact one-line summaries, the pager, and the entry detail
+ * modal carrying the full field-by-field before / after diff.
+ * Builds on admin-shell.css — shell and shared component
+ * classes are never redefined here.
  */
 
 /* ================================================================
@@ -63,33 +64,21 @@
   margin-top: 1px;
 }
 .aalog-entity-id { color: var(--admin-muted); }
-.aalog-desc {
+
+/* ---------- Row summary (compact one-liners) ---------- */
+
+/* Rows stay one line tall no matter how large an entry's payload
+   is: the summary is capped and ellipsised, and the full text is
+   one click away in the detail modal (owner fix, 23 Nov 2026). */
+.aalog-summary-col { max-width: 460px; }
+.aalog-summary-cell {
   display: block;
-  min-width: 180px;
+  max-width: 460px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.5;
 }
-
-/* ---------- Formatted diffs ---------- */
-
-.aalog-diff {
-  display: grid;
-  gap: 3px;
-  min-width: 200px;
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-.aalog-diff__cap {
-  color: var(--admin-gold);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.aalog-diff__key {
-  color: var(--admin-muted);
-  font-weight: 650;
-}
-.aalog-diff__arrow { color: var(--admin-gold); }
 .aalog-nodiff { color: var(--admin-muted); font-size: 0.84rem; }
 
 /* ---------- Pager + footnote ---------- */
@@ -138,6 +127,14 @@
 .aalog-detail-desc {
   margin: 0 0 14px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+/* Big entries stay contained: the field-by-field table scrolls
+   inside the modal instead of stretching it (owner fix,
+   23 Nov 2026). */
+#aalog-detail-body .admin-table-wrap {
+  max-height: 46vh;
+  overflow: auto;
 }
 .aalog-diff-table td { overflow-wrap: anywhere; }
 .aalog-ua {

@@ -467,6 +467,24 @@ body.doctor-workspace textarea::placeholder {
   opacity: 0.75;
 }
 
+/* Dropdown arrows (owner fix, 23 Nov 2026): the native select arrow
+   renders ~4px from the right edge. Workspace selects use the
+   codebase's custom chevron instead — inset 12px from the edge,
+   with right padding so text clears it. Height and footprint of
+   the control do not change. */
+body.doctor-workspace select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c1d1c9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px 14px;
+}
+html[data-theme="light"] body.doctor-workspace select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2350645d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 body.doctor-workspace .skeleton {
   background: linear-gradient(90deg, var(--doctor-surface-raised), var(--doctor-surface), var(--doctor-surface-raised));
   border: 1px solid var(--doctor-border);
@@ -1791,11 +1809,25 @@ html[data-theme="light"] .doctor-stat__icon {
 .doctor-chart__day.is-today .doctor-chart__count {
   color: var(--doctor-gold);
 }
-.doctor-chart__bar {
+/* The bar lives in a dedicated track (same construction as the
+   admin Overview chart): heights resolve against the track, so a
+   bar is never flex-squeezed by the count label, and a zero day
+   renders no bar at all (owner fix, 23 Nov 2026). */
+.doctor-chart__track {
   position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+.doctor-chart__bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   width: 72%;
   max-width: 38px;
-  min-height: 12px;
+  min-height: 0;
   border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg, #22756c, #17645f);
 }

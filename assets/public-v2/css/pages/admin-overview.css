@@ -358,7 +358,10 @@ html[data-theme="light"] .admin-stat__icon {
   margin: 0 auto;
   width: 72%;
   max-width: 38px;
-  min-height: 12px;
+  /* No CSS min-height: the builder sets a 4px stub inline for
+     nonzero values only, so a zero day draws no bar (owner fix,
+     23 Nov 2026). */
+  min-height: 0;
   border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg, #22756c, #17645f);
   transform-origin: bottom;

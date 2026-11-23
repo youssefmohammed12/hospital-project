@@ -425,7 +425,10 @@ body.admin-workspace .main-content {
   min-width: 0;
   min-height: calc(100vh - var(--admin-header-height));
   margin: var(--admin-header-height) 0 0 var(--admin-sidebar-width);
-  padding: 30px clamp(20px, 3.2vw, 48px) 54px;
+  /* No padding at this layer: each page scaffold (.admin-page,
+     .admin-overview) owns the single 20px edge layer, exactly the
+     doctor panels' model. */
+  padding: 0;
   overflow: visible;
   color: var(--admin-text);
   background: var(--admin-bg);
@@ -443,6 +446,24 @@ body.admin-workspace input::placeholder,
 body.admin-workspace textarea::placeholder {
   color: var(--admin-muted);
   opacity: 0.75;
+}
+
+/* Dropdown arrows (owner fix, 23 Nov 2026): the native select arrow
+   renders ~4px from the right edge. Workspace selects use the
+   codebase's custom chevron instead — inset 12px from the edge,
+   with right padding so text clears it. Height and footprint of
+   the control do not change. */
+body.admin-workspace select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c1d1c9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px 14px;
+}
+html[data-theme="light"] body.admin-workspace select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2350645d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 body.admin-workspace .skeleton {
@@ -585,7 +606,7 @@ body.admin-workspace .skeleton {
 
   body.admin-workspace .main-content {
     margin: var(--admin-header-height) 0 0;
-    padding: 22px 18px 42px;
+    padding: 0;
   }
 }
 
@@ -881,10 +902,16 @@ html.admin-sb-collapsed .admin-sb-toggle svg {
    replaces the phase note in its own phase)
    ================================================================ */
 
+/* Edge model (owner fix, 23 Nov 2026): every admin page runs to
+   the same edges as the Overview — one 20px layer, no centred
+   max-width cap. Phone: 16px sides, mirroring .admin-overview. */
 .admin-page {
-  width: min(100%, 1240px);
-  margin: 0 auto;
-  padding: 34px clamp(18px, 4vw, 44px) 48px;
+  width: 100%;
+  margin: 0;
+  padding: 20px 20px 28px;
+}
+@media (max-width: 720px) {
+  .admin-page { padding: 18px 16px 28px; }
 }
 .admin-page__eyebrow {
   margin: 0 0 10px;

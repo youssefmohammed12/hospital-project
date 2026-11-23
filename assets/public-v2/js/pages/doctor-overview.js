@@ -287,9 +287,15 @@
     days.forEach((d) => {
       const cell = document.createElement("div");
       cell.className = "doctor-chart__day" + (d.isToday ? " is-today" : "");
-      const pct = d.count === 0 ? 0 : Math.max(16, Math.round((d.count / max) * 88));
+      // Normalised to this week's own max (owner fix, 23 Nov 2026):
+      // tallest day = 100% of the track, exact shares otherwise, a
+      // 3% / 4px stub for nonzero days, and no bar for a zero day.
+      // The bar sits in a track (as in the admin chart) so its
+      // height is never flex-squeezed by the count label.
+      const pct = d.count === 0 ? 0 : Math.max(3, Math.round((d.count / max) * 100));
       cell.innerHTML = '<span class="doctor-chart__count">' + d.count + "</span>" +
-        '<div class="doctor-chart__bar" style="height:' + pct + '%"></div>';
+        '<div class="doctor-chart__track"><div class="doctor-chart__bar" style="height:' + pct +
+        "%;min-height:" + (d.count === 0 ? "0" : "4px") + '"></div></div>';
       chart.appendChild(cell);
     });
     const labels = document.createElement("div");

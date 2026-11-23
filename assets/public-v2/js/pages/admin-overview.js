@@ -197,9 +197,13 @@
   /* ---------- Bar charts ---------- */
 
   function barChart(host, bars) {
-    // bars: [{count, dn, dt, now}] — heights follow the doctor
-    // Overview's rule: proportional to the max, nonzero bars keep a
-    // 16% floor so a small day still reads as a bar.
+    // bars: [{count, dn, dt, now}] — each chart is normalised to
+    // its OWN series (owner fix, 23 Nov 2026): the tallest value
+    // fills the track (100%), every other bar is exactly its share
+    // of that max, a nonzero value keeps only a 3% / 4px stub so
+    // it stays visible, and zero renders no bar at all. (The old
+    // 16% floor + 88% cap compressed a 97:9 month into 5.5:1 and
+    // the CSS min-height drew fake 12px stubs for zero days.)
     const max = Math.max(1, ...bars.map((b) => b.count));
     const chart = document.createElement("div");
     chart.className = "admin-chart";
@@ -209,10 +213,10 @@
     bars.forEach((b, i) => {
       const cell = document.createElement("div");
       cell.className = "admin-chart__day" + (b.now ? " is-now" : "");
-      const pct = b.count === 0 ? 0 : Math.max(16, Math.round((b.count / max) * 88));
+      const pct = b.count === 0 ? 0 : Math.max(3, Math.round((b.count / max) * 100));
       cell.innerHTML = '<span class="admin-chart__count">' + b.count + "</span>" +
         '<div class="admin-chart__track"><div class="admin-chart__bar" style="height:' + pct +
-        "%;animation-delay:" + (i * 25) + 'ms"></div></div>';
+        "%;min-height:" + (b.count === 0 ? "0" : "4px") + ";animation-delay:" + (i * 25) + 'ms"></div></div>';
       chart.appendChild(cell);
     });
     const labels = document.createElement("div");
