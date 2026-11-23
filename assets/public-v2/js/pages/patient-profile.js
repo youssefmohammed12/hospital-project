@@ -14,12 +14,7 @@
 
   const $ = (id) => document.getElementById(id);
   const text = (v, fallback = "") => (v == null ? fallback : String(v));
-  const esc = (v) =>
-    text(v)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  const esc = window.HBHelpers.escText;
   const NOT_RECORDED = "Not recorded";
 
   function maskNationalId(value) {
@@ -29,12 +24,7 @@
     return "••••••••••" + digits.slice(-4);
   }
 
-  function formatDate(value) {
-    const m = text(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return text(value, NOT_RECORDED);
-    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(d);
-  }
+  function formatDate(value) { return window.HBHelpers.formatDate(value, NOT_RECORDED); }
 
   function initials(name) {
     return text(name)

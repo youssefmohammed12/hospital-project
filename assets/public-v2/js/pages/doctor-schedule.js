@@ -27,9 +27,7 @@
 (() => {
   const ROOT = typeof getBasePath === "function" ? getBasePath() : "../../";
   const $ = (id) => document.getElementById(id);
-  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
+  const esc = window.HBHelpers.esc;
 
   const DAY_NAMES = { 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday" };
   const VALID_DURATIONS = [15, 20, 30, 45, 60];
@@ -53,14 +51,7 @@
   };
   const toHHMM = (mins) =>
     String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
-  const fmtTime = (hhmm) => {
-    const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || ""));
-    if (!m) return String(hhmm || "");
-    let h = Number(m[1]);
-    const suffix = h >= 12 ? "PM" : "AM";
-    h = h % 12 === 0 ? 12 : h % 12;
-    return h + ":" + m[2] + " " + suffix;
-  };
+  const fmtTime = window.HBHelpers.fmtTime;
   const fmtHours = (mins) => {
     const h = mins / 60;
     return (Number.isInteger(h) ? String(h) : h.toFixed(1)) + (h === 1 ? " hr" : " hrs");

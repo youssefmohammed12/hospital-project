@@ -20,12 +20,7 @@
     if (field) field.value = value == null ? "" : String(value);
   }
 
-  function formatDate(value) {
-    if (!value) return "—";
-    const date = new Date(String(value).replace(" ", "T"));
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  }
+  function formatDate(value) { return window.HBHelpers.formatDateTime(value); }
 
   // Save confirmations use the site-wide pop-up message (site.js
   // showToast — the same treatment as the login page).

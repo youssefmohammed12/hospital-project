@@ -18,12 +18,7 @@
 
   const $ = (id) => document.getElementById(id);
   const text = (v, fallback = "") => (v == null ? fallback : String(v));
-  const esc = (v) =>
-    text(v)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  const esc = window.HBHelpers.escText;
 
   const TYPE_LABELS = {
     appointment_confirmed: "Appointment",
@@ -52,17 +47,7 @@
     return "earlier";
   }
 
-  function formatWhen(createdAt) {
-    const m = text(createdAt).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
-    if (!m) return text(createdAt);
-    const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]),
-      m[4] ? Number(m[4]) : 0, m[5] ? Number(m[5]) : 0);
-    const day = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
-    const time = m[4]
-      ? new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(date)
-      : "";
-    return time ? day + " · " + time : day;
-  }
+  function formatWhen(createdAt) { return window.HBHelpers.formatWhen(createdAt); }
 
   const state = { notifications: [] };
   const unreadCount = () => state.notifications.filter((n) => !n.is_read).length;

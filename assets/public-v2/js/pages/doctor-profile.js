@@ -30,12 +30,7 @@
     return (words[0][0] + (words[1]?.[0] || "")).toUpperCase();
   }
 
-  function formatDate(value) {
-    if (!value) return "—";
-    const date = new Date(String(value).replace(" ", "T"));
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  }
+  function formatDate(value) { return window.HBHelpers.formatDateTime(value); }
 
   function setText(id, value) {
     const node = $(id);

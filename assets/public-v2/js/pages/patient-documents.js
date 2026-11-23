@@ -17,12 +17,7 @@
 
   const $ = (id) => document.getElementById(id);
   const text = (v, fallback = "") => (v == null ? fallback : String(v));
-  const esc = (v) =>
-    text(v)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  const esc = window.HBHelpers.escText;
 
   const FILTERS = [
     ["all", "All documents"],
@@ -39,16 +34,7 @@
   // Document types the platform supports but this patient has none of yet.
   const EMPTY_TYPES = ["Lab reports", "Imaging reports", "Insurance claims", "Invoices", "Discharge summaries"];
 
-  function parseDate(value) {
-    const m = text(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
-  }
-  function formatDate(value) {
-    const d = parseDate(value);
-    return d
-      ? new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(d)
-      : text(value);
-  }
+  function formatDate(value) { return window.HBHelpers.formatDate(value, ""); }
 
   const state = { documents: [], filter: "all", query: "" };
 

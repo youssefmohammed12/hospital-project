@@ -14,12 +14,7 @@
 
   const $ = (id) => document.getElementById(id);
   const text = (v, fallback = "") => (v == null ? fallback : String(v));
-  const esc = (v) =>
-    text(v)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  const esc = window.HBHelpers.escText;
 
   const TYPE_LABELS = {
     appointment_booked: "Appointment",

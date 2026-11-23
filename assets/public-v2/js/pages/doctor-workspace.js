@@ -18,22 +18,13 @@
 (() => {
   const ROOT = typeof getBasePath === "function" ? getBasePath() : "../../";
   const $ = (id) => document.getElementById(id);
-  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
+  const esc = window.HBHelpers.esc;
   const toast = (message, type) => {
     if (typeof showToast === "function") showToast(message, type || "info");
   };
 
   const pad = (n) => String(n).padStart(2, "0");
-  const fmtTime = (hhmm) => {
-    const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || ""));
-    if (!m) return String(hhmm || "");
-    let h = Number(m[1]);
-    const suffix = h >= 12 ? "PM" : "AM";
-    h = h % 12 === 0 ? 12 : h % 12;
-    return h + ":" + m[2] + " " + suffix;
-  };
+  const fmtTime = window.HBHelpers.fmtTime;
   const fmtRange = (appt) => {
     const parts = String(appt?.appointment_time_range || "").split("-").map((s) => s.trim());
     if (parts.length === 2 && parts[0]) return fmtTime(parts[0]) + " – " + fmtTime(parts[1]);

@@ -14,21 +14,8 @@
 
   const $ = (id) => document.getElementById(id);
   const text = (v, fallback = "") => (v == null ? fallback : String(v));
-  const esc = (v) =>
-    text(v)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  const formatDate = (value) => {
-    const m = text(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return text(value, "Date to be confirmed");
-    return new Intl.DateTimeFormat("en", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  };
+  const esc = window.HBHelpers.escText;
+  const formatDate = (value) => window.HBHelpers.formatDate(value, "Date to be confirmed");
   const initials = (name) =>
     text(name)
       .replace(/^Dr\.\s*/i, "")

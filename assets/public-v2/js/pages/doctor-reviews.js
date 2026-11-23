@@ -17,9 +17,7 @@
 (() => {
   const ROOT = typeof getBasePath === "function" ? getBasePath() : "../../";
   const $ = (id) => document.getElementById(id);
-  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
+  const esc = window.HBHelpers.esc;
 
   const starText = (n) => {
     const s = Math.min(5, Math.max(0, Math.round(Number(n) || 0)));
