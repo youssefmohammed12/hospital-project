@@ -140,7 +140,11 @@
     setView("loading");
     try {
       const payload = await fetchJson("api/doctors/get-doctor-ratings.php");
-      const ratings = Array.isArray(payload.ratings) ? payload.ratings : [];
+      // Admin moderation (admin plan D6): a review the admin hid is
+      // flagged is_hidden=1 by the endpoint — it leaves the doctor's
+      // own view too, summary counts included, until it is shown again.
+      const ratings = (Array.isArray(payload.ratings) ? payload.ratings : [])
+        .filter((r) => Number(r.is_hidden ?? 0) !== 1);
       if (!ratings.length) {
         setView("empty");
         return;

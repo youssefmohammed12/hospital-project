@@ -10,11 +10,13 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21" />
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-doctors.css?v=1" />
   <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-doctor-profile.js?v=1"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -25,11 +27,168 @@
     <main class="main-content" id="admin-main" aria-busy="true">
       <div class="admin-page">
         <a class="admin-back-link" href="doctors.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Back to Doctors</a>
-        <p class="admin-page__eyebrow">Doctors</p>
-        <h1>Doctor Profile</h1>
-        <p class="admin-page__lede">One profile per doctor: professional record, schedule, appointments, reviews and audit history.</p>
-        <div class="admin-phase-note">
-          <strong>Phase 2 of the admin redesign.</strong> The consolidated doctor profile — header card plus Overview, Professional, Schedule, Appointments, Reviews and Audit tabs — is built in this phase. The current admin pages remain available in the meantime: <a href="admin.html">open the current admin dashboard</a>.
+
+        <div id="adp-error" class="admin-phase-note" role="alert" hidden>
+          <strong>This profile could not be loaded.</strong>
+          <span id="adp-error-text">The doctor may not exist, or the request failed.</span>
+          <a href="doctors.html">Return to the Doctors directory</a>.
+        </div>
+
+        <div id="adp-body" hidden>
+          <section class="adp-header" id="adp-header" aria-label="Doctor summary"></section>
+
+          <div class="adp-stats" id="adp-stats"></div>
+
+          <div class="adp-tabs" role="tablist" aria-label="Doctor profile sections">
+            <button class="adp-tab is-active" role="tab" id="adp-tabbtn-overview" aria-controls="adp-tab-overview" aria-selected="true" data-tab="overview" type="button">Overview</button>
+            <button class="adp-tab" role="tab" id="adp-tabbtn-professional" aria-controls="adp-tab-professional" aria-selected="false" data-tab="professional" type="button">Professional</button>
+            <button class="adp-tab" role="tab" id="adp-tabbtn-schedule" aria-controls="adp-tab-schedule" aria-selected="false" data-tab="schedule" type="button">Schedule</button>
+            <button class="adp-tab" role="tab" id="adp-tabbtn-appointments" aria-controls="adp-tab-appointments" aria-selected="false" data-tab="appointments" type="button">Appointments</button>
+            <button class="adp-tab" role="tab" id="adp-tabbtn-reviews" aria-controls="adp-tab-reviews" aria-selected="false" data-tab="reviews" type="button">Reviews</button>
+            <button class="adp-tab" role="tab" id="adp-tabbtn-audit" aria-controls="adp-tab-audit" aria-selected="false" data-tab="audit" type="button">Audit</button>
+          </div>
+
+          <!-- Overview -->
+          <section class="adp-panel" id="adp-tab-overview" role="tabpanel" aria-labelledby="adp-tabbtn-overview">
+            <div class="adp-grid">
+              <div class="adp-card">
+                <h2>Account &amp; contact</h2>
+                <dl class="adp-dl" id="adp-account"></dl>
+              </div>
+              <div class="adp-card">
+                <h2>Professional record</h2>
+                <dl class="adp-dl" id="adp-record"></dl>
+                <p class="adp-note">Specialty, department and experience are maintained by the admin — the doctor sees them as read-only in their own profile. Edit them in the Professional tab.</p>
+              </div>
+            </div>
+            <div class="adp-card">
+              <h2>Latest appointments</h2>
+              <div id="adp-recent"></div>
+            </div>
+          </section>
+
+          <!-- Professional -->
+          <section class="adp-panel" id="adp-tab-professional" role="tabpanel" aria-labelledby="adp-tabbtn-professional" hidden>
+            <div class="adp-card">
+              <h2>Admin-maintained record</h2>
+              <form id="adp-prof-form" novalidate>
+                <div class="adp-form-grid">
+                  <div class="admin-field">
+                    <label for="adp-prof-name">Full name</label>
+                    <input id="adp-prof-name" type="text" maxlength="100" autocomplete="off" />
+                  </div>
+                  <div class="admin-field">
+                    <label for="adp-prof-email">Email</label>
+                    <input id="adp-prof-email" type="email" maxlength="150" autocomplete="off" />
+                  </div>
+                  <div class="admin-field">
+                    <label for="adp-prof-phone">Phone</label>
+                    <input id="adp-prof-phone" type="tel" maxlength="20" autocomplete="off" />
+                  </div>
+                  <div class="admin-field">
+                    <label for="adp-prof-dept">Department</label>
+                    <select id="adp-prof-dept"></select>
+                    <span class="admin-field__hint">Assigning a department also updates the doctor's specialty to match it.</span>
+                  </div>
+                  <div class="admin-field">
+                    <label for="adp-prof-specialty">Specialty</label>
+                    <input id="adp-prof-specialty" type="text" disabled />
+                    <span class="admin-field__hint">Follows the department — it is not a separate field.</span>
+                  </div>
+                  <div class="admin-field">
+                    <label for="adp-prof-exp">Experience (years)</label>
+                    <input id="adp-prof-exp" type="text" disabled />
+                    <span class="admin-field__hint">Recorded when the account was created; no endpoint changes it afterwards.</span>
+                  </div>
+                </div>
+                <p class="admin-field__error" id="adp-prof-error" role="alert" hidden></p>
+                <div class="adp-form-foot">
+                  <span class="adp-saved" id="adp-prof-saved" role="status"></span>
+                  <button class="admin-btn" id="adp-prof-save" type="submit">Save changes</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <!-- Schedule -->
+          <section class="adp-panel" id="adp-tab-schedule" role="tabpanel" aria-labelledby="adp-tabbtn-schedule" hidden>
+            <div class="adp-card">
+              <div class="adp-card__head">
+                <h2>Availability</h2>
+                <label class="adp-switch">
+                  <input type="checkbox" id="adp-avail" />
+                  <span class="adp-switch__track" aria-hidden="true"></span>
+                  <span id="adp-avail-label">Available for bookings</span>
+                </label>
+              </div>
+              <p class="adp-note" id="adp-sched-summary">Loading the schedule…</p>
+            </div>
+
+            <div class="adp-card">
+              <h2>Weekly hours</h2>
+              <div class="adp-days" id="adp-days"></div>
+            </div>
+
+            <div class="adp-card">
+              <h2>Appointments &amp; break</h2>
+              <div class="adp-form-grid">
+                <div class="admin-field">
+                  <label for="adp-duration">Appointment duration</label>
+                  <select id="adp-duration">
+                    <option value="15">15 minutes</option>
+                    <option value="20">20 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="45">45 minutes</option>
+                    <option value="60">60 minutes</option>
+                  </select>
+                </div>
+                <div class="admin-field">
+                  <label for="adp-max">Max appointments per day</label>
+                  <input id="adp-max" type="number" min="1" max="100" step="1" />
+                </div>
+                <div class="admin-field">
+                  <label for="adp-break-start">Break starts</label>
+                  <select id="adp-break-start"></select>
+                </div>
+                <div class="admin-field">
+                  <label for="adp-break-end">Break ends</label>
+                  <select id="adp-break-end"></select>
+                </div>
+              </div>
+              <p class="adp-note">Break times are set together or not at all, and must fall inside every working day. Working hours must stay within the hospital's 8:00 AM – 10:00 PM.</p>
+              <div class="adp-form-foot">
+                <span class="adp-dirty" id="adp-sched-dirty" hidden>Unsaved changes</span>
+                <button class="admin-btn admin-btn--danger" id="adp-sched-reset" type="button">Reset to defaults</button>
+                <button class="admin-btn admin-btn--ghost" id="adp-sched-refresh" type="button">Refresh</button>
+                <button class="admin-btn" id="adp-sched-save" type="button">Save schedule</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Appointments -->
+          <section class="adp-panel" id="adp-tab-appointments" role="tabpanel" aria-labelledby="adp-tabbtn-appointments" hidden>
+            <div class="adp-card">
+              <h2 id="adp-appts-title">Appointments</h2>
+              <div id="adp-appts"></div>
+            </div>
+          </section>
+
+          <!-- Reviews -->
+          <section class="adp-panel" id="adp-tab-reviews" role="tabpanel" aria-labelledby="adp-tabbtn-reviews" hidden>
+            <div class="adp-card">
+              <h2>Reviews &amp; moderation</h2>
+              <p class="adp-note" id="adp-reviews-summary">Loading reviews…</p>
+              <div id="adp-reviews"></div>
+            </div>
+          </section>
+
+          <!-- Audit -->
+          <section class="adp-panel" id="adp-tab-audit" role="tabpanel" aria-labelledby="adp-tabbtn-audit" hidden>
+            <div class="adp-card">
+              <h2>Audit trail for this doctor</h2>
+              <div id="adp-audit"></div>
+            </div>
+          </section>
         </div>
       </div>
     </main>

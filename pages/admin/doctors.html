@@ -10,11 +10,13 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21" />
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-doctors.css?v=1" />
   <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-doctors.js?v=1"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -24,14 +26,105 @@
 
     <main class="main-content" id="admin-main" aria-busy="true">
       <div class="admin-page">
-        <p class="admin-page__eyebrow">Doctors</p>
-        <h1>Doctors</h1>
-        <p class="admin-page__lede">The doctor directory: search, add, disable and archive doctor accounts, and open any doctor's profile.</p>
-        <div class="admin-phase-note">
-          <strong>Phase 2 of the admin redesign.</strong> The doctor directory — search, specialty filter, status pills and the Add Doctor flow — is built in this phase. The current admin pages remain available in the meantime: <a href="admin.html">open the current admin dashboard</a>.
+        <div class="adoc-head">
+          <div>
+            <p class="admin-page__eyebrow">Doctors</p>
+            <h1>Doctors</h1>
+            <p class="admin-page__lede">The doctor directory: search, add, disable and archive doctor accounts, and open any doctor's profile.</p>
+          </div>
+          <button class="admin-btn adoc-head__add" id="adoc-add-open" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Add Doctor
+          </button>
         </div>
+
+        <p class="adoc-summary" id="adoc-summary" role="status">Loading the directory…</p>
+
+        <div class="admin-filter-bar" role="search">
+          <input type="search" id="adoc-search" placeholder="Search by name, email or specialty…" aria-label="Search doctors" />
+          <select id="adoc-dept" aria-label="Filter by department">
+            <option value="">All departments</option>
+          </select>
+          <select id="adoc-status" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
+          </select>
+          <span class="adoc-count" id="adoc-count" aria-live="polite"></span>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table adoc-table">
+            <thead>
+              <tr>
+                <th scope="col">Doctor</th>
+                <th scope="col">Department</th>
+                <th scope="col">Experience</th>
+                <th scope="col">Rating</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="adoc-actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adoc-tbody">
+              <tr><td colspan="6" class="adoc-loading">Loading doctors…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="adoc-error" id="adoc-error" role="alert" hidden>The directory could not be loaded. Check your connection and refresh the page.</p>
       </div>
     </main>
+  </div>
+
+  <!-- Add Doctor modal -->
+  <div class="admin-modal-overlay" id="adoc-add-overlay" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adoc-add-title">
+      <div class="admin-modal__head">
+        <h3 id="adoc-add-title">Add Doctor</h3>
+        <button class="admin-modal__close" id="adoc-add-close" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="admin-modal__note">Creates the account, the professional profile and a default schedule (Monday–Friday, 9:00 AM–5:00 PM). Specialty follows the department.</p>
+      <form id="adoc-add-form" novalidate>
+        <div class="admin-field">
+          <label for="adoc-add-name">Full name</label>
+          <input id="adoc-add-name" name="name" type="text" autocomplete="off" maxlength="100" required />
+        </div>
+        <div class="admin-field">
+          <label for="adoc-add-email">Email</label>
+          <input id="adoc-add-email" name="email" type="email" autocomplete="off" maxlength="150" required />
+        </div>
+        <div class="admin-field">
+          <label for="adoc-add-password">Temporary password</label>
+          <input id="adoc-add-password" name="password" type="password" autocomplete="new-password" maxlength="200" required />
+          <span class="admin-field__hint">At least 8 characters. The doctor signs in with this and can change it later.</span>
+        </div>
+        <div class="admin-field">
+          <label for="adoc-add-dept">Department</label>
+          <select id="adoc-add-dept" name="department_id" required>
+            <option value="">Choose a department…</option>
+          </select>
+        </div>
+        <p class="admin-field__error" id="adoc-add-error" role="alert" hidden></p>
+        <div class="admin-modal__foot">
+          <button class="admin-btn admin-btn--ghost" id="adoc-add-cancel" type="button">Cancel</button>
+          <button class="admin-btn" id="adoc-add-submit" type="submit">Add Doctor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirm modal (disable / enable / archive) -->
+  <div class="admin-modal-overlay" id="adoc-confirm-overlay" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adoc-confirm-title">
+      <div class="admin-modal__head">
+        <h3 id="adoc-confirm-title">Confirm</h3>
+        <button class="admin-modal__close" id="adoc-confirm-close" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="admin-modal__note" id="adoc-confirm-text"></p>
+      <div class="admin-modal__foot">
+        <button class="admin-btn admin-btn--ghost" id="adoc-confirm-cancel" type="button">Keep as is</button>
+        <button class="admin-btn admin-btn--danger" id="adoc-confirm-ok" type="button">Confirm</button>
+      </div>
+    </div>
   </div>
 </body>
 </html>

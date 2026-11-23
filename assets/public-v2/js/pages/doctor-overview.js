@@ -419,7 +419,11 @@
     // Ratings and availability fill in independently; neither blocks the page.
     fetchJson("api/doctors/get-doctor-ratings.php")
       .then((payload) => {
-        const ratings = Array.isArray(payload.ratings) ? payload.ratings : [];
+        // Admin moderation (admin plan D6): reviews the admin hid are
+        // flagged is_hidden=1 — excluded from the rating tile and the
+        // latest-review quote until shown again.
+        const ratings = (Array.isArray(payload.ratings) ? payload.ratings : [])
+          .filter((r) => Number(r.is_hidden ?? 0) !== 1);
         renderRating(ratings);
         renderLatestReview(ratings);
       })
