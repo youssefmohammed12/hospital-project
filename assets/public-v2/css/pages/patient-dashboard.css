@@ -709,6 +709,12 @@ body.patient-workspace .skeleton {
   font-weight: 650;
 }
 
+/* Pop-up accent follows the public pages' treatment: gold in the dark
+   theme (above), teal in the light theme — never gold text on cream. */
+html[data-theme="light"] .patient-notification-dropdown > a:not(.patient-notification-item) {
+  color: #17645f;
+}
+
 body.patient-workspace .main-content {
   position: relative;
 }
@@ -1020,6 +1026,9 @@ body.patient-workspace .btn-primary:hover::after {
 .patient-notification-badge:not([hidden]) {
   animation: patient-badge-pulse 550ms ease 2;
 }
+/* The pulse plays once per area entry; the shell adds .hb-bell-still
+   when this load is a within-area navigation. */
+.hb-bell-still .patient-notification-badge:not([hidden]) { animation: none; }
 @keyframes patient-badge-pulse {
   0% { transform: scale(1); }
   40% { transform: scale(1.45); }
@@ -1039,6 +1048,9 @@ body.patient-workspace .btn-primary:hover::after {
 }
 .patient-notification-dropdown > a.patient-notification-item:hover strong {
   color: var(--patient-gold);
+}
+html[data-theme="light"] .patient-notification-dropdown > a.patient-notification-item:hover strong {
+  color: #17645f;
 }
 .patient-notification-item strong {
   font-size: 0.86rem;

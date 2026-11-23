@@ -28,6 +28,29 @@
   }
 })();
 
+/* Bell badge pulse gating: the pulse plays once per AREA entry, not on
+ * every page load. The public site and both dashboards share the
+ * hb_bell_area session key; when the stored area already matches this
+ * one, .hb-bell-still on the root suppresses the pulse for this load
+ * (see components.css). Runs at parse time, before the badge can be
+ * unhidden by the notification fetch. */
+(function gateBellPulse() {
+  /* Workspace pages load this runtime too, but their own shells own
+     the gate there — only claim the public area off-workspace. */
+  if (/\/(?:patient|doctor|admin)\//.test(window.location.pathname) &&
+      window.location.pathname.includes("/pages/")) {
+    return;
+  }
+  try {
+    if (sessionStorage.getItem("hb_bell_area") === "public") {
+      document.documentElement.classList.add("hb-bell-still");
+    }
+    sessionStorage.setItem("hb_bell_area", "public");
+  } catch {
+    /* Storage unavailable: leave the pulse allowed. */
+  }
+})();
+
 const PUBLIC_MOON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 const PUBLIC_SUN_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42m12.72-12.72 1.42-1.42"/></svg>`;
 const PUBLIC_HAMBURGER_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6" class="ham-line ham-top"/><line x1="3" y1="12" x2="21" y2="12" class="ham-line ham-mid"/><line x1="3" y1="18" x2="21" y2="18" class="ham-line ham-bot"/></svg>`;

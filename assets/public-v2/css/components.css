@@ -415,6 +415,23 @@ html[data-theme="light"] .nav-quick-dropdown {
   display: none;
 }
 
+/* Badge pulse: same values as the dashboard shells' badge pulses.
+   Plays once per area entry — site.js adds .hb-bell-still to the root
+   when the visitor is already inside the public area, and the rule
+   below then keeps the badge still for that load. */
+.nav-quick-badge:not([hidden]) {
+  animation: nav-badge-pulse 550ms ease 2;
+}
+@keyframes nav-badge-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+.hb-bell-still .nav-quick-badge:not([hidden]) { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-quick-badge:not([hidden]) { animation: none; }
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

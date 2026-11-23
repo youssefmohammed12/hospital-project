@@ -435,6 +435,17 @@
   }
 
   async function init() {
+    /* Bell badge pulse gating: pulse once per AREA entry, not on every
+       page load. Shared hb_bell_area session key with the public site
+       and the patient shell; .hb-bell-still suppresses this load's
+       pulse on within-area navigation (see doctor-dashboard.css). Set
+       here, before populateNotifications() can unhide the badge. */
+    try {
+      if (sessionStorage.getItem("hb_bell_area") === "doctor") {
+        document.documentElement.classList.add("hb-bell-still");
+      }
+      sessionStorage.setItem("hb_bell_area", "doctor");
+    } catch { /* Storage unavailable: leave the pulse allowed. */ }
     document.body.classList.add("doctor-workspace");
     const headerContainer = document.getElementById("navbar-container");
     const sidebarContainer = document.getElementById("sidebar-container");

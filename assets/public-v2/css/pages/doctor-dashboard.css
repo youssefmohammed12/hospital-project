@@ -713,6 +713,52 @@ body.doctor-workspace .skeleton {
   font-weight: 650;
 }
 
+/* Pop-up items follow the public pages' treatment (mirrors the patient
+   shell): item text is the normal ink, the title turns to the accent on
+   hover — gold in the dark theme, teal in the light theme — and the
+   footer link takes the same accent. No gold text on cream. */
+.doctor-notification-dropdown > a.doctor-notification-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--doctor-border);
+  color: var(--doctor-text);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.doctor-notification-dropdown > a.doctor-notification-item:hover strong {
+  color: var(--doctor-gold);
+}
+html[data-theme="light"] .doctor-notification-dropdown > a.doctor-notification-item:hover strong {
+  color: #17645f;
+}
+html[data-theme="light"] .doctor-notification-dropdown > a:not(.doctor-notification-item) {
+  color: #17645f;
+}
+.doctor-notification-item strong {
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.doctor-notification-item span {
+  flex: 0 0 auto;
+  color: var(--doctor-muted);
+  font-size: 0.74rem;
+}
+.doctor-notification-item.is-unread strong::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--doctor-gold);
+  vertical-align: 2px;
+}
+
 body.doctor-workspace .main-content {
   position: relative;
 }
@@ -1015,6 +1061,9 @@ html.doctor-sb-collapsed .doctor-sb-toggle svg {
 .doctor-notification-badge:not([hidden]) {
   animation: doctor-badge-pulse 550ms ease 2;
 }
+/* The pulse plays once per area entry; the shell adds .hb-bell-still
+   when this load is a within-area navigation. */
+.hb-bell-still .doctor-notification-badge:not([hidden]) { animation: none; }
 @keyframes doctor-badge-pulse {
   0% { transform: scale(1); }
   40% { transform: scale(1.45); }
