@@ -1,9 +1,12 @@
 /**
- * HealthBridge Public V2 — Doctor overview controller (Phase 1, rebuild).
- * Greeting with a working availability toggle, six honest KPI cards,
- * today's schedule + up next, an attention panel (pending bookings,
- * reschedule requests, unfinished EMR notes), the current week at a
- * glance, and the latest patient review.
+ * HealthBridge Public V2 — Doctor overview controller (Phase 1, BENTO).
+ * Greeting with a working availability toggle; a bento grid holding
+ * today's schedule + up next in one tall tile, an attention tile of
+ * unfinished EMR notes (badge carries the pending count), four KPI
+ * mini-tiles (waiting, confirmed, completed, rating), the current
+ * week at a glance, and the latest patient review. All six headline
+ * numbers stay visible: today's count sits in the schedule tile's
+ * header badge, the EMR-notes count in the attention tile's badge.
  * Data: api/appointments/get-doctor.php, api/doctors/get-doctor-ratings.php,
  * api/doctors/get-availability.php, api/doctors/toggle-availability.php.
  * Every number on the page is computed from those responses — nothing
@@ -48,15 +51,18 @@
     "&appointment_id=" + encodeURIComponent(appt.id ?? "");
   const byDateTime = (a, b) => (String(a.date) + String(a.time)).localeCompare(String(b.date) + String(b.time));
 
-  function countUp(el, target) {
+  function countUp(el, target, decimals = 0) {
     if (!el) return;
+    const from = Number(el.dataset.count ?? 0);
+    el.dataset.count = String(target);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced || target <= 0) { el.textContent = String(target); return; }
+    if (reduced || from === target) { el.textContent = target.toFixed(decimals); return; }
     const start = performance.now();
-    const duration = 650;
+    const duration = 800;
     const tick = (now) => {
       const p = Math.min(1, (now - start) / duration);
-      el.textContent = String(Math.round(target * (1 - Math.pow(1 - p, 3))));
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = (from + (target - from) * eased).toFixed(decimals);
       if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -74,18 +80,13 @@
   /* ---------- KPI row ---------- */
 
   function renderStats(appointments) {
-    const today = todayStr();
     const active = appointments.filter((a) => a.status !== "Cancelled");
-    const todayCount = active.filter((a) => a.date === today).length;
     const waitingCount = active.filter((a) => a.visit_workflow?.status === "Waiting").length;
     const confirmedCount = appointments.filter((a) => a.status === "Confirmed").length;
     const completedCount = active.filter((a) => a.visit_workflow?.status === "Completed").length;
-    const notesCount = appointments.filter((a) => a.status === "Confirmed" && !a.has_visit_note).length;
-    countUp($("ov-stat-today"), todayCount);
     countUp($("ov-stat-waiting"), waitingCount);
     countUp($("ov-stat-confirmed"), confirmedCount);
     countUp($("ov-stat-completed"), completedCount);
-    countUp($("ov-stat-notes"), notesCount);
   }
 
   function renderRating(ratings) {
@@ -97,7 +98,7 @@
       return;
     }
     const avg = ratings.reduce((sum, r) => sum + (Number(r.stars) || 0), 0) / ratings.length;
-    if (value) value.textContent = avg.toFixed(1);
+    countUp(value, avg, 1);
     if (hint) hint.textContent = "from " + ratings.length + (ratings.length === 1 ? " review" : " reviews");
   }
 
@@ -134,6 +135,10 @@
     const todays = appointments
       .filter((a) => a.date === today && a.status !== "Cancelled")
       .sort(byDateTime);
+    const todayBadge = $("ov-today-count");
+    if (todayBadge) {
+      todayBadge.textContent = todays.length + (todays.length === 1 ? " appt today" : " appts today");
+    }
     if (todayHost) {
       if (!todays.length) {
         todayHost.innerHTML = '<p class="doctor-empty">No appointments scheduled for today. Enjoy the breathing room — new bookings will appear here.</p>';
@@ -174,38 +179,25 @@
 
   function renderAttention(appointments) {
     const host = $("ov-attention");
-    if (!host) return;
-    const CAP = 3;
-    const nodes = [];
-
-    const bookings = appointments.filter((a) => a.status === "Pending").sort(byDateTime);
-    bookings.slice(0, CAP).forEach((a) => nodes.push(attentionRow(
-      a.patient_name || "Patient",
-      "new booking request — " + fmtDay(a.date) + ", " + fmtTime(a.time),
-      "appointments.html", "Review")));
-    if (bookings.length > CAP) nodes.push(moreRow(bookings.length - CAP, "appointments.html"));
-
-    const reschedules = appointments.filter((a) => a.reschedule_status === "pending").sort(byDateTime);
-    reschedules.slice(0, CAP).forEach((a) => nodes.push(attentionRow(
-      a.patient_name || "Patient",
-      "wants to move " + fmtDay(a.date) + ", " + fmtTime(a.time) + " → " +
-        fmtDay(a.pending_reschedule_date) + ", " + fmtTime(a.pending_reschedule_time),
-      "appointments.html", "Review")));
-    if (reschedules.length > CAP) nodes.push(moreRow(reschedules.length - CAP, "appointments.html"));
-
     const notes = appointments
       .filter((a) => a.status === "Confirmed" && !a.has_visit_note)
       .sort(byDateTime);
-    notes.slice(0, CAP).forEach((a) => nodes.push(attentionRow(
-      a.patient_name || "Patient",
-      "visit note still to write — " + fmtDay(a.date) + ", " + fmtTime(a.time),
-      workspaceUrl(a), "Open visit")));
-    if (notes.length > CAP) nodes.push(moreRow(notes.length - CAP, "queue.html"));
-
-    if (!nodes.length) {
-      host.innerHTML = '<p class="doctor-empty">Nothing needs your attention — no pending bookings, reschedule requests, or unfinished notes.</p>';
+    const badge = $("ov-attention-count");
+    if (badge) {
+      badge.textContent = notes.length + (notes.length === 1 ? " note" : " notes");
+      badge.hidden = notes.length === 0;
+    }
+    if (!host) return;
+    if (!notes.length) {
+      host.innerHTML = '<p class="doctor-empty">All visit notes are written — nothing waiting on you.</p>';
       return;
     }
+    const CAP = 5;
+    const nodes = notes.slice(0, CAP).map((a) => attentionRow(
+      a.patient_name || "Patient",
+      "visit note still to write — " + fmtDay(a.date) + ", " + fmtTime(a.time),
+      workspaceUrl(a), "Open visit"));
+    if (notes.length > CAP) nodes.push(moreRow(notes.length - CAP, "queue.html"));
     host.replaceChildren(...nodes);
   }
 
@@ -309,7 +301,11 @@
 
   async function loadAll() {
     const refreshBtn = $("ov-refresh");
-    if (refreshBtn) refreshBtn.disabled = true;
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.classList.add("is-spinning");
+      window.setTimeout(() => refreshBtn.classList.remove("is-spinning"), 850);
+    }
     try {
       const doctorPayload = await fetchJson("api/appointments/get-doctor.php");
       const appointments = Array.isArray(doctorPayload.appointments) ? doctorPayload.appointments : [];
@@ -366,6 +362,20 @@
     if (toggle) toggle.addEventListener("change", onAvailabilityToggle);
     const refreshBtn = $("ov-refresh");
     if (refreshBtn) refreshBtn.addEventListener("click", loadAll);
+
+    // Entrance: staggered fade + rise runs once under .is-entering;
+    // the class (and its will-change) is removed when the last tile
+    // lands so hover transforms are never overridden afterwards.
+    const overview = document.querySelector(".doctor-overview");
+    if (overview) {
+      overview.classList.add("is-entering");
+      window.setTimeout(() => overview.classList.remove("is-entering"), 1300);
+    }
+    // Idle animations pause while the tab is hidden.
+    document.addEventListener("visibilitychange", () => {
+      document.documentElement.classList.toggle("hb-anim-paused", document.hidden);
+    });
+
     loadAll();
   }
 

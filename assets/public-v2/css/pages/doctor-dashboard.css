@@ -890,13 +890,83 @@ body.doctor-workspace .main-content.doctor-shell-ready {
   .doctor-notification-badge:not([hidden]) { animation: none; }
 }
 
-/* Doctor panel Phase 1 — overview (rebuild): aurora greeting with a
-   working availability toggle, six compact KPI cards, today's schedule
-   + up next, needs-attention, the week strip, and the latest review.
+/* Doctor panel Phase 1 — overview (BENTO): a fluid 12-column bento
+   grid that fills the whole content area beside the sidebar — no
+   centred max-width, no orphan cells. Tile map (desktop): greeting
+   full width; schedule (8) beside attention (4); four KPI mini-tiles
+   (3 each) in one row; week (8) beside latest review (4).
    KPI anatomy is deliberate: the icon chip sits in normal flow at the
-   top-left, the number under it, then a one-line label and subtext —
-   a label can never slide under the chip (the previous absolute-
-   positioned chip overlapped long labels). */
+   top-left, the number under it, then a one-line label and a subtext
+   that may wrap to two lines — a label can never slide under the chip
+   (the first build's absolute-positioned chip overlapped long labels).
+   Motion: transform/opacity only. Entrance is a staggered fade+rises
+   gated on .is-entering (added/removed by JS so hover transforms are
+   never overridden by a filled animation); idle motion is sparse —
+   aurora drift, a gold shimmer over the greeting name every ~12s,
+   the availability dot's expanding ring, today's week cell breathing,
+   and one shine sweep across the review tile every ~15s. Everything
+   stops under prefers-reduced-motion and pauses while the tab is
+   hidden (html.hb-anim-paused, toggled by the overview script). */
+.doctor-overview {
+  width: 100%;
+  margin: 0;
+  padding: 34px 28px 48px;
+}
+.doctor-bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+.doctor-tile--schedule { grid-column: span 8; }
+.doctor-tile--attention { grid-column: span 4; }
+.doctor-bento .doctor-stat { grid-column: span 3; }
+.doctor-tile--week { grid-column: span 8; }
+.doctor-tile--review {
+  grid-column: span 4;
+  position: relative;
+  overflow: hidden;
+}
+.doctor-tile__badge {
+  margin-left: auto;
+  padding: 4px 11px;
+  border: 1px solid var(--doctor-gold);
+  border-radius: 999px;
+  color: var(--doctor-gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.doctor-tile__badge[hidden] { display: none; }
+.doctor-tile__subhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--doctor-border);
+}
+.doctor-tile__subhead h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.doctor-tile__subhead a {
+  color: var(--doctor-gold);
+  font-size: 0.84rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+.doctor-tile__subhead a:hover {
+  color: var(--doctor-text);
+}
+
 .doctor-intro {
   position: relative;
   display: flex;
@@ -953,6 +1023,26 @@ html[data-theme="light"] .doctor-intro::after {
 .doctor-intro h1 em {
   font-style: italic;
   color: var(--doctor-gold);
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  padding-right: 0.14em;
+  margin-right: -0.14em;
+  vertical-align: bottom;
+}
+.doctor-intro h1 em::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 246, 220, 0.55) 50%, transparent 65%);
+  transform: translateX(-130%);
+  animation: doctor-name-shine 12s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes doctor-name-shine {
+  0% { transform: translateX(-130%); }
+  10% { transform: translateX(130%); }
+  100% { transform: translateX(130%); }
 }
 .doctor-intro__actions {
   display: flex;
@@ -974,19 +1064,33 @@ html[data-theme="light"] .doctor-intro::after {
   white-space: nowrap;
 }
 .doctor-availability__dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #3fa46a;
-  animation: doctor-dot-pulse 2.6s ease-in-out infinite;
+}
+.doctor-availability__dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(63, 164, 106, 0.55);
+  opacity: 0;
+  animation: doctor-dot-ring 2.6s ease-out infinite;
+  pointer-events: none;
 }
 .doctor-availability.is-off .doctor-availability__dot {
   background: #c0564f;
-  animation: none;
 }
-@keyframes doctor-dot-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(63, 164, 106, 0.45); }
-  50% { box-shadow: 0 0 0 5px rgba(63, 164, 106, 0); }
+.doctor-availability.is-off .doctor-availability__dot::after {
+  animation: none;
+  opacity: 0;
+}
+@keyframes doctor-dot-ring {
+  0% { transform: scale(1); opacity: 0.55; }
+  70% { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
 }
 .doctor-switch {
   position: relative;
@@ -1058,23 +1162,20 @@ html[data-theme="light"] .doctor-intro::after {
   opacity: 0.55;
   cursor: default;
 }
+.doctor-refresh-btn.is-spinning svg {
+  animation: doctor-spin 800ms cubic-bezier(0.3, 0.6, 0.3, 1) 1;
+}
+@keyframes doctor-spin {
+  to { transform: rotate(360deg); }
+}
 
-.doctor-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-top: 16px;
-}
-.doctor-stats--six {
-  grid-template-columns: repeat(6, 1fr);
-}
 .doctor-stat {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
   min-width: 0;
-  padding: 16px 18px;
+  padding: 22px 24px;
   background: var(--doctor-surface);
   border: 1px solid var(--doctor-border);
   border-radius: 16px;
@@ -1127,31 +1228,16 @@ html[data-theme="light"] .doctor-stat__icon {
   max-width: 100%;
 }
 
-.doctor-overview-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
-  margin-top: 16px;
-  align-items: start;
-}
-.doctor-overview-main,
-.doctor-overview-side {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
 .doctor-panel {
-  padding: 22px 24px;
+  padding: 26px 28px;
   background: var(--doctor-surface);
   border: 1px solid var(--doctor-border);
   border-radius: 18px;
 }
 .doctor-panel__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 6px;
 }
 .doctor-panel__head h2 {
@@ -1170,6 +1256,17 @@ html[data-theme="light"] .doctor-stat__icon {
 }
 .doctor-panel__head a:hover {
   color: var(--doctor-text);
+}
+.doctor-tile--schedule .doctor-panel__head a,
+.doctor-tile--review .doctor-panel__head a {
+  margin-left: auto;
+}
+.doctor-tile--schedule .doctor-tile__badge,
+.doctor-tile--review .doctor-tile__badge {
+  margin-left: 0;
+}
+.doctor-tile--attention .doctor-panel__head a {
+  margin-left: 0;
 }
 
 .doctor-timeline-row {
@@ -1303,24 +1400,42 @@ html[data-theme="light"] .doctor-timeline-row:hover {
 .doctor-week {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 8px;
   padding-top: 8px;
 }
 .doctor-week__day {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 9px 2px 8px;
+  padding: 12px 2px 10px;
   border: 1px solid transparent;
   border-radius: 11px;
 }
+.doctor-week__day > * {
+  position: relative;
+  z-index: 1;
+}
 .doctor-week__day.is-today {
   border-color: var(--doctor-gold);
-  background: rgba(212, 180, 126, 0.10);
 }
-html[data-theme="light"] .doctor-week__day.is-today {
-  background: rgba(169, 132, 79, 0.12);
+.doctor-week__day.is-today::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(212, 180, 126, 0.35);
+  opacity: 0.3;
+  animation: doctor-week-breathe 4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+html[data-theme="light"] .doctor-week__day.is-today::after {
+  background: rgba(169, 132, 79, 0.35);
+}
+@keyframes doctor-week-breathe {
+  from { opacity: 0.25; }
+  to { opacity: 0.75; }
 }
 .doctor-week__name {
   color: var(--doctor-muted);
@@ -1343,6 +1458,20 @@ html[data-theme="light"] .doctor-week__day.is-today {
   white-space: nowrap;
 }
 
+.doctor-tile--review::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(212, 180, 126, 0.13) 50%, transparent 65%);
+  transform: translateX(-130%);
+  animation: doctor-tile-shine 15s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes doctor-tile-shine {
+  0% { transform: translateX(-130%); }
+  9% { transform: translateX(130%); }
+  100% { transform: translateX(130%); }
+}
 .doctor-review-card__stars {
   color: var(--doctor-gold);
   font-size: 1.05rem;
@@ -1381,44 +1510,80 @@ html[data-theme="light"] .doctor-week__day.is-today {
   border-radius: 12px;
   color: var(--doctor-text);
 }
-.doctor-overview > section,
-.doctor-overview > .doctor-overview-grid {
-  animation: doctor-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+/* Entrance: staggered fade + rise, applied only while .is-entering is
+   on the overview (JS removes it ~1.3s after start) so the filled
+   animation never overrides the hover lift afterwards. */
+.doctor-overview.is-entering .doctor-tile {
+  will-change: transform, opacity;
 }
-.doctor-overview > .doctor-stats {
-  animation-delay: 0.06s;
+.doctor-overview.is-entering .doctor-intro,
+.doctor-overview.is-entering .doctor-bento > * {
+  animation: doctor-tile-in 450ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-.doctor-overview > .doctor-overview-grid {
-  animation-delay: 0.12s;
-}
-@keyframes doctor-rise {
+.doctor-overview.is-entering .doctor-bento > *:nth-child(1) { animation-delay: 70ms; }
+.doctor-overview.is-entering .doctor-bento > *:nth-child(2) { animation-delay: 140ms; }
+.doctor-overview.is-entering .doctor-bento > *:nth-child(3) { animation-delay: 210ms; }
+.doctor-overview.is-entering .doctor-bento > *:nth-child(4) { animation-delay: 280ms; }
+.doctor-overview.is-entering .doctor-bento > *:nth-child(5) { animation-delay: 350ms; }
+.doctor-overview.is-entering .doctor-bento > *:nth-child(6) { animation-delay: 420ms; }
+.doctor-overview.is-entering .doctor-bento > *:nth-child(7) { animation-delay: 490ms; }
+.doctor-overview.is-entering .doctor-bento > *:nth-child(8) { animation-delay: 560ms; }
+@keyframes doctor-tile-in {
   from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+  to { opacity: 1; transform: translateY(0); }
 }
-@media (max-width: 1280px) {
-  .doctor-stats--six { grid-template-columns: repeat(3, 1fr); }
+
+/* Hover lift for the panel tiles (stat tiles carry their own above). */
+@media (hover: hover) and (pointer: fine) {
+  .doctor-bento .doctor-panel {
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+  .doctor-bento .doctor-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(16, 43, 43, 0.10);
+    border-color: var(--doctor-gold);
+  }
 }
-@media (max-width: 1080px) {
-  .doctor-stats { grid-template-columns: repeat(2, 1fr); }
-  .doctor-stats--six { grid-template-columns: repeat(3, 1fr); }
-  .doctor-overview-grid { grid-template-columns: 1fr; }
+
+/* Pause every idle animation while the tab is hidden. */
+html.hb-anim-paused .doctor-intro::before,
+html.hb-anim-paused .doctor-intro::after,
+html.hb-anim-paused .doctor-intro h1 em::after,
+html.hb-anim-paused .doctor-availability__dot::after,
+html.hb-anim-paused .doctor-week__day.is-today::after,
+html.hb-anim-paused .doctor-tile--review::after {
+  animation-play-state: paused;
+}
+
+@media (max-width: 1100px) {
+  .doctor-tile--schedule,
+  .doctor-tile--attention,
+  .doctor-tile--week,
+  .doctor-tile--review { grid-column: 1 / -1; }
+  .doctor-bento .doctor-stat { grid-column: span 6; }
 }
 @media (max-width: 640px) {
+  .doctor-overview { padding: 26px 18px 40px; }
   .doctor-intro { flex-direction: column; }
   .doctor-intro__actions { align-items: flex-start; }
-  .doctor-stats--six { grid-template-columns: repeat(2, 1fr); }
   .doctor-timeline-row { grid-template-columns: 1fr auto; }
   .doctor-timeline-row__when { grid-column: 1 / -1; }
   .doctor-week { gap: 3px; }
   .doctor-week__count { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .doctor-overview > section,
-  .doctor-overview > .doctor-overview-grid { animation: none; }
+  .doctor-overview.is-entering .doctor-intro,
+  .doctor-overview.is-entering .doctor-bento > * { animation: none; }
   .doctor-intro::before,
   .doctor-intro::after,
-  .doctor-availability__dot { animation: none; }
+  .doctor-intro h1 em::after,
+  .doctor-availability__dot::after,
+  .doctor-week__day.is-today::after,
+  .doctor-tile--review::after,
+  .doctor-refresh-btn.is-spinning svg { animation: none; }
   .doctor-stat,
+  .doctor-bento .doctor-panel,
   .doctor-switch__track,
   .doctor-switch__track::after,
   .doctor-consult-btn::after { transition: none; }
