@@ -3157,3 +3157,330 @@ html[data-theme="light"] .dws-review-errors { color: #a83c36; }
   .doctor-ws.is-entering .dws-steps,
   .doctor-ws.is-entering .dws-tabs { animation: none; }
 }
+
+/* Doctor panel Phase 4 — Schedule & Availability: the weekly hours
+   editor on the existing schedule endpoints, plus the availability
+   switch that shares the Overview's toggle endpoint. Edge padding:
+   ONE layer (20px sides, 20px top, 28px bottom) via
+   .doctor-main--schedule, the same neutralisation the Overview and
+   the Phase 2 list pages use. Motion: the family entrance (staggered
+   rise, gated on .is-entering) plus hover states; no idle animation.
+   Transform/opacity only; everything stills under
+   prefers-reduced-motion. */
+body.doctor-workspace .main-content.doctor-main--schedule {
+  padding: 0;
+}
+.doctor-page.doctor-schedpage {
+  width: 100%;
+  margin: 0;
+  padding: 20px 20px 28px;
+}
+
+/* ---------- Availability card ---------- */
+.doctor-sched-avail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 20px;
+  padding: 22px 24px;
+  background: var(--doctor-surface);
+  border: 1px solid var(--doctor-border);
+  border-radius: 18px;
+}
+.doctor-sched-avail__label {
+  margin: 0;
+  color: var(--doctor-gold);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.doctor-sched-avail__status {
+  margin: 7px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.doctor-sched-avail__status.is-off { color: var(--doctor-muted); }
+.doctor-sched-avail__note {
+  margin: 7px 0 0;
+  color: var(--doctor-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+/* Larger switch for the availability card (base: .doctor-switch). */
+.doctor-switch--lg .doctor-switch__track {
+  width: 52px;
+  height: 28px;
+}
+.doctor-switch--lg .doctor-switch__track::after {
+  width: 22px;
+  height: 22px;
+}
+.doctor-switch--lg input:checked + .doctor-switch__track::after {
+  transform: translateX(24px);
+}
+
+/* ---------- Summary strip (four tiles) ---------- */
+.doctor-sched-sum {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* ---------- Editor cards ---------- */
+.doctor-sched-card {
+  margin-top: 20px;
+  padding: 24px;
+  background: var(--doctor-surface);
+  border: 1px solid var(--doctor-border);
+  border-radius: 18px;
+}
+.doctor-sched-card__head h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.doctor-sched-card__head p {
+  margin: 6px 0 0;
+  color: var(--doctor-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.doctor-sched-hint {
+  margin: 14px 0 0;
+  color: var(--doctor-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+/* ---------- Day rows ---------- */
+.doctor-sday {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 15px 0;
+  border-top: 1px solid var(--doctor-border);
+}
+.doctor-sday:first-child {
+  margin-top: 10px;
+}
+.doctor-sday__id {
+  flex: 0 0 168px;
+  min-width: 0;
+}
+.doctor-sday__name {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.doctor-sday__meta {
+  display: block;
+  margin-top: 3px;
+  color: var(--doctor-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.doctor-sday.is-off .doctor-sday__name { color: var(--doctor-muted); }
+.doctor-sday__times {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-left: auto;
+  transition: opacity 180ms ease;
+}
+.doctor-sday.is-off .doctor-sday__times { opacity: 0.45; }
+.doctor-sday__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.doctor-sday__field > span,
+.doctor-sched-field label {
+  color: var(--doctor-gold);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.doctor-sday__dash {
+  padding-bottom: 11px;
+  color: var(--doctor-muted);
+}
+.doctor-sday select,
+.doctor-sched-field select,
+.doctor-sched-field input {
+  padding: 10px 12px;
+  color: var(--doctor-text);
+  background: var(--doctor-surface-raised);
+  border: 1px solid var(--doctor-border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+.doctor-sday select { min-width: 128px; }
+.doctor-sday select:focus,
+.doctor-sched-field select:focus,
+.doctor-sched-field input:focus {
+  outline: 2px solid var(--doctor-gold);
+  outline-offset: 1px;
+  border-color: var(--doctor-gold);
+}
+.doctor-sday select:disabled { cursor: not-allowed; }
+
+/* ---------- Settings grid ---------- */
+.doctor-sched-settings {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+.doctor-sched-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.doctor-sched-field select,
+.doctor-sched-field input { width: 100%; }
+
+/* ---------- Actions + feedback ---------- */
+.doctor-sched-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 22px;
+}
+.doctor-sched-actions__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+.doctor-sched-dirty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 13px;
+  color: var(--doctor-gold);
+  border: 1px solid var(--doctor-gold);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.doctor-sched-dirty[hidden] { display: none; }
+.doctor-sched-dirty__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--doctor-gold);
+}
+.doctor-sched-saved {
+  margin: 0;
+  color: #3fa46a;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.doctor-sched-saved[hidden] { display: none; }
+.doctor-sched-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, opacity 180ms ease;
+}
+.doctor-sched-btn--primary {
+  color: #ffffff;
+  background: #17645f;
+  border: 1px solid #17645f;
+}
+.doctor-sched-btn--primary:hover:not(:disabled) { background: #0f4f4a; }
+.doctor-sched-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.doctor-sched-btn--ghost {
+  color: var(--doctor-text);
+  background: transparent;
+  border: 1px solid var(--doctor-border);
+}
+.doctor-sched-btn--ghost:hover { border-color: var(--doctor-gold); }
+.doctor-sched-btn--ghost.is-arming {
+  color: #e08a84;
+  border-color: #c0564f;
+}
+html[data-theme="light"] .doctor-sched-btn--ghost.is-arming { color: #a83c36; }
+.doctor-sched-btn:disabled { cursor: default; }
+
+/* ---------- Entrance ---------- */
+.doctor-sched.is-entering .doctor-rise {
+  will-change: transform, opacity;
+  animation: doctor-tile-in 450ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* Hover lift for the cards (fine pointers only). */
+@media (hover: hover) and (pointer: fine) {
+  .doctor-sched-avail,
+  .doctor-sched-card,
+  .doctor-sched-sum .doctor-qsum__item {
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+  .doctor-sched-avail:hover,
+  .doctor-sched-card:hover,
+  .doctor-sched-sum .doctor-qsum__item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(16, 43, 43, 0.10);
+    border-color: var(--doctor-gold);
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1080px) {
+  .doctor-sched-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .doctor-sched-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .doctor-page.doctor-schedpage { padding: 18px 16px 28px; }
+  .doctor-sched-avail { padding: 18px; }
+  .doctor-sched-avail__status { font-size: 1.2rem; }
+  .doctor-sched-card { padding: 18px 16px; }
+  .doctor-sched-sum { gap: 12px; }
+  .doctor-sday {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+  .doctor-sday__id { flex: 1 1 auto; }
+  .doctor-sday__times {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+  .doctor-sday__field { flex: 1 1 0; }
+  .doctor-sday select { width: 100%; min-width: 0; }
+  .doctor-sched-actions__btns { margin-left: 0; }
+  .doctor-sched-btn { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doctor-sched.is-entering .doctor-rise { animation: none; }
+  .doctor-sched-avail,
+  .doctor-sched-card,
+  .doctor-sched-btn,
+  .doctor-sday__times { transition: none; }
+}
