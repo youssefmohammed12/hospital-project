@@ -405,6 +405,16 @@ body.patient-workspace .pa-search input {
 .pa-next-card .pa-secondary-button:hover { background: rgba(255, 255, 255, 0.08); }
 html[data-theme="light"] .pa-next-card { background: linear-gradient(115deg, #163a35, #214840); }
 
+/* Freeze round (I2): the light theme's brass --pa-accent (#a9844f) measured
+   3.13:1 on the page ground for the small eyebrow labels, 3.44:1 for the
+   summary glyphs and 3.10:1 for the doctor initials. Those three take the
+   deeper bronze #8a6638 (already the auth accent) on light surfaces; the
+   dark next-appointment card keeps its pale-gold eyebrow. */
+html[data-theme="light"] .pa-eyebrow,
+html[data-theme="light"] .pa-summary-icon,
+html[data-theme="light"] .pa-doctor-avatar { color: #8a6638; }
+html[data-theme="light"] .pa-next-copy .pa-eyebrow { color: #e3c99e; }
+
 .pa-results-heading {
   display: flex;
   align-items: flex-end;

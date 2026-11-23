@@ -98,7 +98,11 @@ body.patient-workspace .dc-search input:focus { border-color: var(--dc-accent); 
   font: inherit; font-size: 0.78rem; font-weight: 650;
 }
 .dc-filter.is-active { border-color: var(--dc-accent); background: var(--dc-accent); color: #172f2b; font-weight: 700; }
-html[data-theme="light"] .dc-filter.is-active { color: #fff; }
+/* Freeze round (I2): white on the light theme's brass accent (#a9844f)
+   measured 3.44:1. The active filter deepens to the bronze #8a6638 in the
+   light theme (white on it: 5.2:1); the dark theme keeps its pale-gold
+   accent with dark ink. */
+html[data-theme="light"] .dc-filter.is-active { border-color: #8a6638; background: #8a6638; color: #fff; }
 .dc-count { color: var(--dc-muted); font-size: 0.8rem; margin: 10px 2px 18px; }
 
 .dc-group-title {

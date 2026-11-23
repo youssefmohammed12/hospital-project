@@ -44,7 +44,11 @@ html[data-theme="light"] body.auth-entry-page {
   --auth-input: #f7faf7;
   --auth-text: #17332f;
   --auth-muted: #52675e;
-  --auth-faint: #6e8178;
+  /* Freeze round (I2): #6e8178 measured 4.14:1 on white / 3.87:1 on the
+     raised surface — below AA for the small text this token colours
+     (divider, wizard step numbers/labels). Deepened within the same sage
+     family; the dark theme's #8fa79b is untouched. */
+  --auth-faint: #5c7166;
   --auth-line: rgba(16, 43, 43, 0.13);
   --auth-line-strong: rgba(16, 43, 43, 0.22);
   --auth-accent: #8a6638;
@@ -1088,6 +1092,14 @@ html[data-theme="light"] .auth-entry-page .form-group select {
   color: #20382f;
 }
 
+/* Freeze round (I2): in the light theme --auth-accent is the deep bronze
+   #8a6638, where the dark ink #20382f measured 2.42:1. The active numeral
+   takes the ivory surface colour there instead (4.83:1); on the dark
+   theme's pale-gold accent the ink stays. */
+html[data-theme="light"] .auth-entry-page .wizard-step-circle.active {
+  color: #f6f7f3;
+}
+
 .auth-entry-page .wizard-step-circle.completed {
   border-color: var(--auth-action);
   background: var(--auth-action);
@@ -1596,20 +1608,20 @@ html[data-theme="light"] .auth-entry-page .form-group select {
 .auth-register-page .patient-preview-card__mark svg { width: 21px; height: 21px; }
 .auth-register-page .patient-preview-card__issuer strong, .auth-register-page .patient-preview-card__issuer small { display: block; }
 .auth-register-page .patient-preview-card__issuer strong { font-size: 0.63rem; font-weight: 850; letter-spacing: 0.13em; }
-.auth-register-page .patient-preview-card__issuer small { margin-top: 2px; color: #75827a; font-size: 0.49rem; font-weight: 760; letter-spacing: 0.16em; }
+.auth-register-page .patient-preview-card__issuer small { margin-top: 2px; color: #5c7166; font-size: 0.49rem; font-weight: 760; letter-spacing: 0.16em; }
 .auth-register-page .patient-preview-card__badge { max-width: 42%; padding: 5px 7px; border: 1px solid rgba(146, 111, 62, 0.24); border-radius: 99px; background: rgba(205, 174, 122, 0.16); color: #7b613d; font-size: 0.48rem; font-weight: 820; letter-spacing: 0.08em; line-height: 1.2; text-align: center; }
 .auth-register-page .patient-preview-card__identity { min-width: 0; gap: 13px; margin-top: 19px; }
 .auth-register-page .patient-preview-card__avatar { display: grid; width: 54px; height: 54px; flex: 0 0 54px; place-items: center; border: 2px solid rgba(168, 128, 70, 0.82); border-radius: 50%; background: linear-gradient(145deg, #1a5147, #12352f); color: #f5e8ca; font-family: Georgia, serif; font-size: 1.12rem; font-weight: 700; letter-spacing: 0.035em; box-shadow: inset 0 0 0 3px rgba(247, 238, 218, 0.13); }
 .auth-register-page .patient-preview-card__avatar.is-placeholder { color: #d8c9a9; font-size: 1.3rem; font-weight: 400; }
 .auth-register-page .patient-preview-card__identity-copy { display: grid; min-width: 0; gap: 3px; }
-.auth-register-page .patient-preview-card__eyebrow { color: #8a7658; font-size: 0.49rem; font-weight: 850; letter-spacing: 0.15em; }
+.auth-register-page .patient-preview-card__eyebrow { color: #77603f; font-size: 0.49rem; font-weight: 850; letter-spacing: 0.15em; }
 .auth-register-page .patient-preview-card__name { display: block; overflow: hidden; color: #173a34; font-family: Georgia, serif; font-size: clamp(1.1rem, 2vw, 1.42rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1.18; text-overflow: ellipsis; white-space: nowrap; }
-.auth-register-page .patient-preview-card__name.is-placeholder, .auth-register-page .patient-preview-card__details-value.is-placeholder { color: #8c9388; font-style: italic; font-weight: 450; }
-.auth-register-page .patient-preview-card__caption { color: #78847a; font-size: 0.57rem; font-weight: 640; letter-spacing: 0.035em; }
+.auth-register-page .patient-preview-card__name.is-placeholder, .auth-register-page .patient-preview-card__details-value.is-placeholder { color: #626d5e; font-style: italic; font-weight: 450; }
+.auth-register-page .patient-preview-card__caption { color: #5f6f63; font-size: 0.57rem; font-weight: 640; letter-spacing: 0.035em; }
 .auth-register-page .patient-preview-card__details { display: grid; min-height: 39px; align-content: center; gap: 3px; margin-top: 16px; padding-top: 9px; border-top: 1px solid rgba(42, 74, 62, 0.13); }
-.auth-register-page .patient-preview-card__details-label { color: #8a7658; font-size: 0.46rem; font-weight: 840; letter-spacing: 0.15em; }
+.auth-register-page .patient-preview-card__details-label { color: #77603f; font-size: 0.46rem; font-weight: 840; letter-spacing: 0.15em; }
 .auth-register-page .patient-preview-card__details-value { min-height: 13px; color: #34594d; font-size: 0.61rem; font-weight: 700; }
-.auth-register-page .patient-preview-card__status { min-height: 22px; gap: 7px; margin-top: 7px; color: #65786d; font-size: 0.55rem; font-weight: 670; }
+.auth-register-page .patient-preview-card__status { min-height: 22px; gap: 7px; margin-top: 7px; color: #55665a; font-size: 0.55rem; font-weight: 670; }
 .auth-register-page .patient-preview-card__status-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: #b18a52; }
 .auth-register-page .patient-preview-card.is-profile-complete .patient-preview-card__status-dot, .auth-register-page .patient-preview-card.is-emergency-complete .patient-preview-card__status-dot { background: #3d9076; }
 .auth-register-page .patient-preview-card__emergency { min-height: 16px; margin-top: 1px; color: #276e58; font-size: 0.58rem; font-weight: 780; opacity: 0; visibility: hidden; }
