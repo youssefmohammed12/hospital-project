@@ -2853,8 +2853,8 @@ html[data-theme="light"] .dws-field-error { color: #a83c36; }
 /* Medication rows in the issue/edit modals. */
 .dws-rx-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  gap: 0 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) 34px;
+  gap: 0 10px;
   align-items: start;
   padding: 13px 14px 2px;
   margin-bottom: 12px;
@@ -2862,8 +2862,33 @@ html[data-theme="light"] .dws-field-error { color: #a83c36; }
   border-radius: 12px;
   background: var(--doctor-surface-raised);
 }
+/* Field placement: the old 3-equal-columns template squeezed all six
+   fields until their placeholders truncated. Name (primary) and
+   Strength share the first row at half width each, Dosage / Frequency
+   / Duration get a third each on the second row, Instructions spans
+   the full third row, and the remove button keeps the top-right. */
+.dws-rx-row .dws-field:nth-child(1) { grid-column: 1 / span 3; }
+.dws-rx-row .dws-field:nth-child(2) { grid-column: 4 / span 3; }
+.dws-rx-row .dws-field:nth-child(3) { grid-column: 1 / span 2; }
+.dws-rx-row .dws-field:nth-child(4) { grid-column: 3 / span 2; }
+.dws-rx-row .dws-field:nth-child(5) { grid-column: 5 / span 2; }
+.dws-rx-row .dws-field--instructions { grid-column: 1 / -1; }
+.dws-rx-row__remove { grid-column: 7; grid-row: 1; }
+@media (max-width: 900px) {
+  .dws-rx-row .dws-field:nth-child(1) { grid-column: 1 / span 6; }
+  .dws-rx-row .dws-field:nth-child(2) { grid-column: 1 / span 3; }
+  .dws-rx-row .dws-field:nth-child(3) { grid-column: 4 / span 3; }
+  .dws-rx-row .dws-field:nth-child(4) { grid-column: 1 / span 3; }
+  .dws-rx-row .dws-field:nth-child(5) { grid-column: 4 / span 3; }
+}
 .dws-rx-row .dws-field { margin-bottom: 11px; }
 .dws-rx-row__remove { width: 34px; height: 34px; margin-top: 1px; }
+/* The add-medication button closes the medications group in the issue
+   and edit modals: without a bottom margin it sat directly on the
+   Notes label that follows (0px gap). Keep the modal's 16px group
+   rhythm (the .dws-field margin) after the button as well. */
+#dws-rx-add-row,
+#dws-rx-edit-add { margin-bottom: 16px; }
 
 /* ---------- Timeline ---------- */
 .dws-timeline { padding: 6px 0 2px; }
@@ -3107,7 +3132,9 @@ html[data-theme="light"] .dws-review-errors { color: #a83c36; }
   .dws-card { padding: 20px; }
   .dws-form-grid { grid-template-columns: 1fr; }
   .dws-rx-row { grid-template-columns: 1fr; }
-  .dws-rx-row__remove { justify-self: end; }
+  .dws-rx-row .dws-field:nth-child(n),
+  .dws-rx-row .dws-field--instructions { grid-column: auto; }
+  .dws-rx-row__remove { grid-column: auto; grid-row: auto; justify-self: end; }
   .dws-modal-overlay { padding: 3vh 10px 10px; }
   .dws-modal { padding: 20px; }
   .dws-autosave { right: 14px; bottom: 14px; }

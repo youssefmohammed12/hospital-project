@@ -7,7 +7,8 @@
  * 
  * Permissions:
  *   - Patient: can print only their own prescriptions
- *   - Doctor: can print only prescriptions they created
+ *   - Doctor: can print any prescription (read-only record access —
+ *     matches api/prescriptions/get.php; editing stays author-only)
  *   - Admin: can print every prescription
  * 
  * Future: This page can be used directly by DomPDF/TCPDF/mPDF
@@ -71,11 +72,9 @@ try {
         exit;
     }
 
-    if ($currentRole === 'doctor' && (int)$rx['doctor_id'] !== $currentUserId) {
-        http_response_code(403);
-        echo '<h1>403 Forbidden</h1><p>You can only view prescriptions you created.</p>';
-        exit;
-    }
+    // Doctors may print any prescription: it is the same read access as
+    // get.php (a treating doctor may need the medication record for the
+    // chart, whoever prescribed it). Write access stays author-only.
 
     // ── Format data ──
     $rxIdFormatted = 'RX-' . date('Y') . '-' . str_pad($rx['id'], 6, '0', STR_PAD_LEFT);

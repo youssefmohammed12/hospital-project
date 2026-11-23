@@ -87,6 +87,7 @@
   let appointmentId = 0;
   let activeTab = "overview";
   let doctorName = "";
+  let doctorId = 0;
 
   let autosaveTimer = null;
   let autosaveDebounceTimer = null;
@@ -928,7 +929,7 @@
       const id = safeId(r.id);
       let html = '<button class="dws-btn dws-btn--ghost dws-btn--sm" type="button" data-dws-action="view-rx" data-rx-id="' + id + '">View</button>' +
         '<button class="dws-btn dws-btn--ghost dws-btn--sm" type="button" data-dws-action="print-rx" data-rx-id="' + id + '">Print</button>';
-      if (!isCompleted && id && rxIsEditable(r.status)) {
+      if (!isCompleted && id && rxIsEditable(r.status) && doctorId > 0 && safeId(r.doctor_id) === doctorId) {
         html += '<button class="dws-btn dws-btn--ghost dws-btn--sm" type="button" data-dws-action="edit-rx" data-rx-id="' + id + '">Edit</button>';
       }
       return html;
@@ -1059,11 +1060,20 @@
     const pill = pillForRxStatus(rx.status);
     const items = Array.isArray(rx.items) ? rx.items.filter((i) => i && typeof i === "object") : [];
     const isCompletedVisit = normStatus(workflowOf(ws.current_visit)) === "completed";
-    const editable = rxIsEditable(rx.status) && !isCompletedVisit;
+    // Any doctor may VIEW a prescription (medication visibility is
+    // safety-critical), but only its creator may act on it — the write
+    // endpoints enforce the same rule server-side.
+    const ownRx = doctorId > 0 && safeId(rx.doctor_id) === doctorId;
+    const editable = ownRx && rxIsEditable(rx.status) && !isCompletedVisit;
 
     let html = "";
     if (rx.status === "Cancelled" && rx.cancellation_reason) {
       html += '<div class="dws-alert dws-alert--danger"><h4>Cancellation Reason</h4><p>' + esc(rx.cancellation_reason) + "</p></div>";
+    }
+    if (!ownRx) {
+      html += '<div class="dws-alert dws-alert--info"><h4>View Only</h4><p>Prescribed by ' +
+        esc(rx.doctor_name || rx.appt_doctor_name || "another doctor") +
+        ". Only the prescribing doctor can edit, complete or cancel this prescription.</p></div>";
     }
     html += '<div class="dws-rx-doc">' +
       '<div class="dws-rx-doc__head"><div><p class="doctor-page__eyebrow">HealthBridge Hospital</p>' +
@@ -1117,6 +1127,10 @@
     if (!id) { toast("A valid prescription ID is required.", "error"); return; }
     const local = (Array.isArray(ws.prescriptions) ? ws.prescriptions : []).find((r) => safeId(r?.id) === id);
     if (!local) { toast("Prescription was not found in this patient workspace. Refresh and try again.", "error"); return; }
+    if (!(doctorId > 0 && safeId(local.doctor_id) === doctorId)) {
+      toast("Only the prescribing doctor can edit this prescription.", "error");
+      return;
+    }
     if (!rxIsEditable(local.status)) { toast("Only Active prescriptions can be edited.", "error"); return; }
     if (normStatus(workflowOf(ws.current_visit)) === "completed") {
       toast("Prescriptions cannot be edited after the visit is completed.", "error");
@@ -1376,12 +1390,16 @@
 
   /* ---------- Init ---------- */
 
-  function start() {
+  function start(event) {
     const params = new URLSearchParams(window.location.search);
     patientId = safeId(params.get("patient_id"));
     appointmentId = safeId(params.get("appointment_id"));
     const user = typeof getUser === "function" ? getUser() : null;
     doctorName = user?.name || "";
+    // Server-verified id from the shell-ready event wins; the stored
+    // session user is the fallback. Used to keep other doctors'
+    // prescriptions read-only (view/print yes, edit/complete/cancel no).
+    doctorId = safeId(event?.detail?.user?.id) || safeId(user?.id) || 0;
 
     bindActions();
     initTabs();

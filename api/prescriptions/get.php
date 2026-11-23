@@ -5,7 +5,10 @@
  *
  * Permissions:
  *   - Patient: view only their own prescriptions
- *   - Doctor: view only prescriptions they created
+ *   - Doctor: view any single prescription in full (clinical continuity —
+ *     a treating doctor must see what medication the patient is taking,
+ *     whoever prescribed it). Editing stays author-only and is enforced
+ *     by the update/complete/cancel endpoints, not here.
  *   - Admin: view all prescriptions (audit only)
  */
 
@@ -64,10 +67,9 @@ try {
             jsonResponse(false, ['message' => 'You can only view your own prescriptions.']);
         }
 
-        if ($currentRole === 'doctor' && (int)$prescription['doctor_id'] !== $currentUserId) {
-            http_response_code(403);
-            jsonResponse(false, ['message' => 'You can only view prescriptions you created.']);
-        }
+        // Doctors may view any prescription: medication visibility across
+        // prescribers is safety-critical for the treating doctor. Write
+        // access remains restricted to the creator by the write endpoints.
 
         jsonResponse(true, ['prescription' => $prescription]);
     }
