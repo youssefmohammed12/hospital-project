@@ -10,12 +10,13 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21" />
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-overview.css?v=2" />
   <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
-  <script src="../../assets/public-v2/js/core/site.js?v=11"></script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
-  <script defer src="../../assets/public-v2/js/pages/admin-overview.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-overview.js?v=3"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -23,14 +24,155 @@
   <div class="dashboard">
     <div id="sidebar-container"></div>
 
-    <main class="main-content" id="admin-main" aria-busy="true">
-      <div class="admin-page">
-        <p class="admin-page__eyebrow">Overview</p>
-        <h1>Overview</h1>
-        <p class="admin-page__lede">Hospital-wide analytics — appointments, people and departments at a glance.</p>
-        <div class="admin-phase-note">
-          <strong>Phase 1 of the admin redesign.</strong> The analytics overview — KPI tiles, weekly and monthly appointment bars, status distribution, department activity and the top-five lists — is built in this phase. The current admin pages remain available in the meantime: <a href="admin.html">open the current admin dashboard</a>.
+    <main class="main-content admin-main--overview" id="admin-main" aria-busy="true">
+      <div class="admin-overview">
+
+        <section class="admin-intro admin-tile">
+          <div class="admin-intro__copy">
+            <p class="admin-page__eyebrow" id="ov-date">Admin workspace</p>
+            <h1 id="ov-greeting">Welcome</h1>
+            <p class="admin-page__lede">The whole hospital at a glance — who is booked, who is waiting, and how every department is doing.</p>
+          </div>
+          <div class="admin-intro__actions">
+            <div class="admin-open-pill" id="ov-open" hidden>
+              <span class="admin-open-pill__dot" aria-hidden="true"></span>
+              <span id="ov-open-text">Hospital hours</span>
+            </div>
+            <button class="admin-refresh-btn" id="ov-refresh" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"></path></svg>
+              Refresh
+            </button>
+          </div>
+        </section>
+
+        <div class="admin-bento">
+          <a class="admin-stat admin-tile" href="patients.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="3.2"/><path d="M5.8 20.5a6.2 6.2 0 0 1 12.4 0"/><path d="M12 14.6v4.2M9.9 16.7h4.2"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-patients">0</strong>
+            <span class="admin-stat__label">Patients</span>
+            <span class="admin-stat__ctx" id="ov-stat-patients-ctx">registered patients</span>
+          </a>
+          <a class="admin-stat admin-tile" href="doctors.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v6a4 4 0 0 0 8 0V3"/><path d="M4.5 3h3M12.5 3h3"/><path d="M10 13v2.5A4.5 4.5 0 0 0 14.5 20h.6A4.5 4.5 0 0 0 19.5 15.5V14"/><circle cx="19.5" cy="11" r="2.2"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-doctors">0</strong>
+            <span class="admin-stat__label">Doctors</span>
+            <span class="admin-stat__ctx" id="ov-stat-doctors-ctx">on the roster</span>
+          </a>
+          <a class="admin-stat admin-tile" href="appointments.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h7"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-today">0</strong>
+            <span class="admin-stat__label">Appointments today</span>
+            <span class="admin-stat__ctx" id="ov-stat-today-ctx">scheduled for today</span>
+          </a>
+          <a class="admin-stat admin-tile" href="appointments.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-pending">0</strong>
+            <span class="admin-stat__label">Pending approval</span>
+            <span class="admin-stat__ctx" id="ov-stat-pending-ctx">waiting for a decision</span>
+          </a>
+
+          <section class="admin-panel admin-tile admin-tile--week" aria-labelledby="ov-week-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-week-title">Last seven days</h2>
+              <span class="admin-panel__note" id="ov-week-note"></span>
+            </div>
+            <div id="ov-week"><p class="admin-empty">Loading this week…</p></div>
+          </section>
+
+          <section class="admin-panel admin-tile admin-tile--status" aria-labelledby="ov-status-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-status-title">Appointment status</h2>
+            </div>
+            <div id="ov-status"><p class="admin-empty">Loading the breakdown…</p></div>
+          </section>
+
+          <a class="admin-stat admin-tile" href="appointments.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9 15.8l2.1 2.1 3.9-4.4"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-confirmed">0</strong>
+            <span class="admin-stat__label">Confirmed</span>
+            <span class="admin-stat__ctx" id="ov-stat-confirmed-ctx">bookings confirmed</span>
+          </a>
+          <a class="admin-stat admin-tile" href="departments.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 7v6M9 10h6"/><path d="M9.5 21v-3.5h5V21"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-departments">0</strong>
+            <span class="admin-stat__label">Departments</span>
+            <span class="admin-stat__ctx" id="ov-stat-departments-ctx">across the hospital</span>
+          </a>
+          <a class="admin-stat admin-tile" href="doctors.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7L12 3.6Z"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-rating">—</strong>
+            <span class="admin-stat__label">Average rating</span>
+            <span class="admin-stat__ctx" id="ov-stat-rating-ctx">out of 5</span>
+          </a>
+          <a class="admin-stat admin-tile" href="patients.html">
+            <span class="admin-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M4 20.5v-1.3A6 6 0 0 1 10 13.2a6 6 0 0 1 4.9 2.4M18.5 14v6M15.5 17h6"/></svg></span>
+            <strong class="admin-stat__value" id="ov-stat-new">0</strong>
+            <span class="admin-stat__label">New patients</span>
+            <span class="admin-stat__ctx" id="ov-stat-new-ctx">registered this month</span>
+          </a>
+
+          <section class="admin-panel admin-tile admin-tile--month" aria-labelledby="ov-month-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-month-title">Appointments by month</h2>
+              <span class="admin-panel__note" id="ov-month-note"></span>
+            </div>
+            <div id="ov-month"><p class="admin-empty">Loading the months…</p></div>
+          </section>
+
+          <section class="admin-panel admin-tile admin-tile--demo" aria-labelledby="ov-demo-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-demo-title">Patient demographics</h2>
+            </div>
+            <div id="ov-demo"><p class="admin-empty">Loading demographics…</p></div>
+          </section>
+
+          <section class="admin-panel admin-tile admin-tile--list" aria-labelledby="ov-busiest-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-busiest-title">Busiest doctors</h2>
+              <a href="doctors.html">All doctors</a>
+            </div>
+            <div id="ov-busiest"><p class="admin-empty">Loading doctors…</p></div>
+          </section>
+
+          <section class="admin-panel admin-tile admin-tile--list" aria-labelledby="ov-rated-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-rated-title">Highest rated</h2>
+              <a href="doctors.html">All doctors</a>
+            </div>
+            <div id="ov-rated"><p class="admin-empty">Loading ratings…</p></div>
+          </section>
+
+          <section class="admin-panel admin-tile admin-tile--list" aria-labelledby="ov-active-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-active-title">Most active patients</h2>
+              <a href="patients.html">All patients</a>
+            </div>
+            <div id="ov-active"><p class="admin-empty">Loading patients…</p></div>
+          </section>
+
+          <section class="admin-panel admin-tile admin-tile--dept" aria-labelledby="ov-dept-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-dept-title">Departments</h2>
+              <a href="departments.html">Manage departments</a>
+            </div>
+            <div id="ov-dept"><p class="admin-empty">Loading departments…</p></div>
+          </section>
+
+          <section class="admin-panel admin-tile admin-tile--activity" aria-labelledby="ov-activity-title">
+            <div class="admin-panel__head">
+              <h2 id="ov-activity-title">Recent activity</h2>
+              <a href="audit-log.html">Audit log</a>
+            </div>
+            <div id="ov-activity"><p class="admin-empty">Loading activity…</p></div>
+          </section>
+
+          <section class="admin-tile admin-tile--sys" aria-label="System status">
+            <div class="admin-sys" id="ov-sys"><p class="admin-empty">Loading system status…</p></div>
+          </section>
         </div>
+
+        <p class="admin-ov-alert" id="ov-error" role="alert" hidden>The overview could not be loaded completely. Check your connection and refresh the page.</p>
+
       </div>
     </main>
   </div>

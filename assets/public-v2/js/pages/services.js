@@ -168,7 +168,7 @@ function getWorkspaceDestination(role) {
   const routes = {
     patient: "pages/patient/dashboard.html#book",
     doctor: "pages/doctor/doctor-dashboard.html",
-    admin: "pages/admin/admin.html",
+    admin: "pages/admin/admin-dashboard.html",
   };
   return basePath + (routes[role] || routes.patient);
 }

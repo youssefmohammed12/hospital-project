@@ -109,7 +109,7 @@ function clearSessionHint() {
 }
 
 function getDashboardUrl(role) {
-  if (role === "admin") return getBasePath() + "pages/admin/admin.html";
+  if (role === "admin") return getBasePath() + "pages/admin/admin-dashboard.html";
   if (role === "doctor") return getBasePath() + "pages/doctor/doctor-dashboard.html";
   return getBasePath() + "pages/patient/dashboard.html";
 }
