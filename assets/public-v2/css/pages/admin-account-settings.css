@@ -1,0 +1,303 @@
+/*
+ * HealthBridge Admin — Own-account Settings (Phase 7).
+ * The admin's own account on the shared settings endpoint:
+ * account (profile), password, appearance, notification
+ * preferences and the default landing tab (D7 — the admin's
+ * profile lives here; there is no separate Profile page).
+ * There is deliberately NO danger zone in this file or its page:
+ * a single admin account must not carry a self-deactivation
+ * control (admin plan Phase 7).
+ * Builds on admin-shell.css — shell and shared component classes
+ * are never redefined here.
+ */
+
+/* ================================================================
+   1. Section cards and form layout
+   ================================================================ */
+
+.aacct-card {
+  padding: 24px 26px;
+  margin-top: 22px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+}
+.aacct-card h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.aacct-card__note {
+  margin: 8px 0 20px;
+  max-width: 68ch;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.aacct-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+/* Fields in this page's grids keep their rows at natural height:
+   the shared .admin-field is a grid whose auto rows otherwise
+   stretch to the tallest field in the row, pushing a shorter
+   field's input down (the doctor settings fields carry the same
+   align-content:start for this reason). Scoped to this page. */
+.aacct-grid .admin-field {
+  align-content: start;
+}
+
+.aacct-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--admin-border);
+}
+.aacct-dirty {
+  margin-right: auto;
+  color: var(--admin-gold);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.aacct-saved {
+  margin-right: auto;
+  color: #3fa46a;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.aacct-form-error {
+  margin: 0 0 14px;
+  color: #d87970;
+  line-height: 1.6;
+}
+.aacct-load-error {
+  margin: 18px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+/* ================================================================
+   2. Toggle rows (notification preferences)
+   ================================================================ */
+
+.aacct-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 0;
+}
+.aacct-toggle-row + .aacct-toggle-row {
+  border-top: 1px solid var(--admin-border);
+}
+.aacct-toggle-label {
+  display: block;
+  font-weight: 650;
+  font-size: 0.94rem;
+}
+.aacct-toggle-desc {
+  display: block;
+  margin-top: 2px;
+  color: var(--admin-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.aacct-switch {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.aacct-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.aacct-switch__track {
+  flex: none;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--admin-surface-raised);
+  border: 1px solid var(--admin-border);
+  position: relative;
+  transition: background 170ms ease;
+}
+.aacct-switch__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--admin-muted);
+  transition: transform 170ms ease, background 170ms ease;
+}
+.aacct-switch input:checked + .aacct-switch__track { background: #17645f; }
+.aacct-switch input:checked + .aacct-switch__track::after { transform: translateX(20px); background: #ffffff; }
+.aacct-switch input:focus-visible + .aacct-switch__track { outline: 2px solid var(--admin-gold); outline-offset: 2px; }
+
+/* ================================================================
+   3. Password — visibility toggle, strength, rules
+   ================================================================ */
+
+.aacct-pw-wrap {
+  position: relative;
+  /* The shared .admin-field is a grid whose row can be stretched by
+     a taller sibling field (the new-password field carries the
+     strength bar and rules); without this the wrap — and its
+     centred toggle — would stretch with the row. */
+  align-self: start;
+}
+.aacct-pw-wrap input {
+  width: 100%;
+  padding-right: 44px;
+}
+.aacct-pw-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--admin-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.aacct-pw-toggle:hover { color: var(--admin-gold); }
+.aacct-pw-toggle svg { width: 18px; height: 18px; }
+
+.aacct-strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+}
+.aacct-strength-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--admin-surface-raised);
+  overflow: hidden;
+}
+.aacct-strength-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  transition: width 170ms ease, background 170ms ease;
+}
+.aacct-strength-label {
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-width: 74px;
+}
+
+.aacct-rules {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+}
+.aacct-rules li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--admin-muted);
+  font-size: 0.84rem;
+}
+.aacct-rule-dot {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--admin-border);
+  border-radius: 50%;
+  font-size: 0.62rem;
+  color: transparent;
+}
+.aacct-rules li.is-met { color: var(--admin-text); }
+.aacct-rules li.is-met .aacct-rule-dot {
+  color: #ffffff;
+  background: #3fa46a;
+  border-color: #3fa46a;
+}
+
+/* ================================================================
+   4. Appearance — theme options
+   ================================================================ */
+
+.aacct-theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.aacct-theme-option {
+  padding: 16px 18px;
+  text-align: left;
+  color: var(--admin-text);
+  background: var(--admin-surface-raised);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.aacct-theme-option strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+.aacct-theme-option span {
+  display: block;
+  margin-top: 4px;
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.aacct-theme-option:hover { border-color: rgba(212, 180, 126, 0.55); }
+.aacct-theme-option.is-selected {
+  border-color: var(--admin-gold);
+  box-shadow: 0 0 0 1px var(--admin-gold);
+}
+
+/* ================================================================
+   5. Closing note (no deactivation control — by design)
+   ================================================================ */
+
+.aacct-note-card {
+  margin-top: 22px;
+  padding: 20px 22px;
+  color: var(--admin-muted);
+  background: var(--admin-surface);
+  border: 1px dashed var(--admin-border);
+  border-radius: 14px;
+  line-height: 1.6;
+  font-size: 0.92rem;
+}
+.aacct-note-card strong { color: var(--admin-text); }
+
+/* ================================================================
+   6. Responsive
+   ================================================================ */
+
+@media (max-width: 700px) {
+  .aacct-grid { grid-template-columns: 1fr; }
+  .aacct-theme-options { grid-template-columns: 1fr; }
+  .aacct-card { padding: 20px; }
+}
