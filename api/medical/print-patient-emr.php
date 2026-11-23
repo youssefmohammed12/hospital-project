@@ -202,8 +202,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMR — <?= htmlspecialchars($patient['name']) ?> — HealthBridge</title>
-    <link rel="stylesheet" href="../../assets/css/modules/print-prescription.css">
-        <link rel="stylesheet" href="../../assets/css/print/medical-emr-print.css">
+    <link rel="stylesheet" href="../../assets/public-v2/css/pages/print-emr.css?v=1">
 </head>
 <body>
     <div class="print-container">
@@ -309,7 +308,7 @@ try {
         </div>
     </div>
 
-        <script src="../../assets/js/pages/print/medical-emr-print.js"></script>
+        <script src="../../assets/public-v2/js/pages/prescription-print.js?v=1"></script>
 </body>
 </html>
 <?php
