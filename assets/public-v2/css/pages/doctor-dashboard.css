@@ -3477,3 +3477,360 @@ html[data-theme="light"] .doctor-sched-btn--ghost.is-arming { color: #a83c36; }
   .doctor-sched-btn,
   .doctor-sday__times { transition: none; }
 }
+
+/* Doctor panel Phase 5 — Reviews + Notifications: the reviews page
+   renders only what api/doctors/get-doctor-ratings.php returns (the
+   average, the count and the per-star distribution are arithmetic on
+   that same list — nothing estimated), and the notifications page
+   mirrors the patient page's behaviour on the shared notifications
+   endpoint so the bell and the page agree. Edge padding: ONE layer
+   (20px sides, 20px top, 28px bottom) via .doctor-main--reviews /
+   .doctor-main--notifs, the same neutralisation the earlier phases
+   use. Motion: the family entrance (staggered rise, gated on
+   .is-entering) plus the notification rows' own stagger; no idle
+   animation. Transform/opacity only; everything stills under
+   prefers-reduced-motion. */
+body.doctor-workspace .main-content.doctor-main--reviews,
+body.doctor-workspace .main-content.doctor-main--notifs {
+  padding: 0;
+}
+.doctor-page.doctor-reviewspage,
+.doctor-page.doctor-notifpage {
+  width: 100%;
+  margin: 0;
+  padding: 20px 20px 28px;
+}
+
+/* Entrance: staggered fade + rise while .is-entering is on the page
+   root (JS removes it after the stagger lands). Reuses the Overview's
+   doctor-tile-in keyframes. */
+.doctor-reviews.is-entering .doctor-rise,
+.doctor-notifs.is-entering .doctor-rise {
+  will-change: transform, opacity;
+  animation: doctor-tile-in 450ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* ---------- Shared state panels (loading / error / empty) ---------- */
+.drv-state,
+.dnt-state {
+  margin-top: 20px;
+  padding: 34px 22px;
+  text-align: center;
+  background: var(--doctor-surface);
+  border: 1px solid var(--doctor-border);
+  border-radius: 18px;
+}
+.drv-state h2,
+.dnt-state h2 {
+  margin: 0 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.drv-state p,
+.dnt-state p {
+  margin: 0 auto 14px;
+  max-width: 46ch;
+  color: var(--doctor-muted);
+  line-height: 1.55;
+}
+.drv-button,
+.dnt-button {
+  min-height: 36px;
+  padding: 8px 16px;
+  border: 1px solid #17645f;
+  border-radius: 9px;
+  background: #17645f;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.drv-button:hover,
+.dnt-button:hover { background: #0f4f4a; }
+
+/* ---------- Reviews: summary ---------- */
+.drv-summary {
+  display: flex;
+  gap: 28px;
+  margin-top: 20px;
+  padding: 24px;
+  background: var(--doctor-surface);
+  border: 1px solid var(--doctor-border);
+  border-radius: 18px;
+}
+.drv-summary__score {
+  flex: 0 0 auto;
+  min-width: 170px;
+  padding-right: 28px;
+  border-right: 1px solid var(--doctor-border);
+}
+.drv-summary__label {
+  margin: 0;
+  color: var(--doctor-gold);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.drv-summary__value {
+  margin: 8px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 3rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.drv-summary__of {
+  color: var(--doctor-muted);
+  font-size: 1.25rem;
+}
+.drv-summary__stars {
+  margin: 10px 0 0;
+  color: var(--doctor-gold);
+  font-size: 1.05rem;
+  letter-spacing: 0.18em;
+}
+.drv-summary__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.drv-summary__count {
+  margin: 2px 0 0;
+  font-size: 1rem;
+}
+.drv-summary__count strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.drv-summary__note {
+  margin: 6px 0 0;
+  color: var(--doctor-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.drv-dist {
+  margin-top: 16px;
+  display: grid;
+  gap: 6px;
+  max-width: 430px;
+}
+.drv-dist__row {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr 1.6rem;
+  align-items: center;
+  gap: 10px;
+}
+.drv-dist__label {
+  color: var(--doctor-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.drv-dist__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--doctor-surface-raised);
+  overflow: hidden;
+}
+.drv-dist__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--doctor-gold);
+}
+.drv-dist__count {
+  color: var(--doctor-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ---------- Reviews: list ---------- */
+.drv-section-title {
+  margin: 26px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.drv-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.drv-card {
+  padding: 22px 24px;
+  background: var(--doctor-surface);
+  border: 1px solid var(--doctor-border);
+  border-radius: 18px;
+}
+.drv-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.drv-card__date {
+  color: var(--doctor-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Hover lift for the summary and review cards (fine pointers only). */
+@media (hover: hover) and (pointer: fine) {
+  .drv-summary,
+  .drv-card {
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+  .drv-summary:hover,
+  .drv-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(16, 43, 43, 0.10);
+    border-color: var(--doctor-gold);
+  }
+}
+
+/* ---------- Notifications ---------- */
+.dnt-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.dnt-mark-all {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 1px solid #17645f;
+  border-radius: 10px;
+  background: #17645f;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dnt-mark-all:hover { background: #0f4f4a; }
+.dnt-mark-all:disabled { opacity: 0.55; cursor: default; }
+
+.dnt-count {
+  margin: 14px 2px 18px;
+  color: var(--doctor-muted);
+  font-size: 0.8rem;
+}
+.dnt-count strong { color: var(--doctor-text); }
+.dnt-group-title {
+  margin: 22px 2px 10px;
+  color: var(--doctor-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.dnt-list { display: grid; gap: 10px; }
+.dnt-item {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 15px 17px;
+  border: 1px solid var(--doctor-border);
+  border-radius: 12px;
+  background: var(--doctor-surface);
+  color: var(--doctor-text);
+  animation: dnt-rise-in 380ms ease both;
+  animation-delay: calc(var(--dnt-i, 0) * 35ms);
+}
+.dnt-item.is-unread { border-color: var(--doctor-gold); cursor: pointer; }
+.dnt-item.is-read { opacity: 0.82; }
+.dnt-dot {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+.dnt-item.is-unread .dnt-dot {
+  background: var(--doctor-gold);
+  animation: dnt-pulse 900ms ease 2;
+}
+.dnt-item-main { min-width: 0; flex: 1; }
+.dnt-item-topline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.dnt-item h3 { margin: 0; font-size: 0.93rem; }
+.dnt-item.is-read h3 { font-weight: 600; }
+.dnt-time {
+  color: var(--doctor-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.dnt-item p {
+  margin: 5px 0 0;
+  color: var(--doctor-muted);
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+.dnt-tag {
+  display: inline-block;
+  margin-top: 9px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--doctor-surface-raised);
+  color: var(--doctor-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+@keyframes dnt-rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dnt-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(212, 180, 126, 0.45); }
+  100% { box-shadow: 0 0 0 7px rgba(212, 180, 126, 0); }
+}
+
+@media (max-width: 640px) {
+  .doctor-page.doctor-reviewspage,
+  .doctor-page.doctor-notifpage {
+    padding: 18px 16px 28px;
+  }
+  .drv-summary {
+    flex-direction: column;
+    gap: 18px;
+    padding: 18px;
+  }
+  .drv-summary__score {
+    min-width: 0;
+    padding-right: 0;
+    padding-bottom: 18px;
+    border-right: none;
+    border-bottom: 1px solid var(--doctor-border);
+  }
+  .drv-card { padding: 18px 16px; }
+  .dnt-head { flex-direction: column; }
+  .dnt-mark-all { align-self: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doctor-reviews.is-entering .doctor-rise,
+  .doctor-notifs.is-entering .doctor-rise { animation: none; }
+  .dnt-item,
+  .dnt-item.is-unread .dnt-dot { animation: none; }
+  .drv-summary,
+  .drv-card,
+  .dnt-mark-all,
+  .drv-button,
+  .dnt-button { transition: none; }
+}
