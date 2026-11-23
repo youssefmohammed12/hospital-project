@@ -257,6 +257,33 @@
     window.addEventListener("resize", moveIndicator, { passive: true });
   }
 
+  /* Opening the bell marks the notifications read on the server (the
+     standard bell pattern) and clears the badge in place; the items
+     stay listed, only their unread styling goes. bellUnread mirrors
+     the count populateNotifications() last computed, so the POST only
+     fires when there is something to clear. */
+  let bellUnread = 0;
+  let bellMarking = false;
+  function markBellNotificationsRead() {
+    if (bellMarking || bellUnread === 0) return;
+    bellMarking = true;
+    fetch(ROOT + "api/notifications/notifications.php", {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "mark_all_read" }),
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!payload || payload.success === false) { bellMarking = false; return; }
+        bellUnread = 0;
+        const badge = document.getElementById("doctor-notification-badge");
+        if (badge) { badge.hidden = true; badge.textContent = "0"; }
+        document.querySelectorAll(".doctor-notification-item.is-unread")
+          .forEach((row) => row.classList.remove("is-unread"));
+      })
+      .catch(() => { bellMarking = false; });
+  }
+
   /* Fills the header bell: unread badge (pulses via CSS when it first
      appears) and the four latest notifications in the dropdown.
      Uses the same endpoint as the Notifications page, so they agree. */
@@ -271,6 +298,7 @@
       .then((payload) => {
         const items = Array.isArray(payload?.notifications) ? payload.notifications : [];
         const unread = items.filter((item) => Number(item.is_read) === 0).length;
+        bellUnread = unread;
         if (badge) {
           badge.hidden = unread === 0;
           badge.textContent = unread > 99 ? "99+" : String(unread);
@@ -355,6 +383,7 @@
       const open = noticeTrigger.getAttribute("aria-expanded") !== "true";
       setMenu(profileTrigger, profileDropdown, false);
       setMenu(noticeTrigger, noticeDropdown, open);
+      if (open) markBellNotificationsRead();
     });
 
     document.addEventListener("pointerdown", (event) => {

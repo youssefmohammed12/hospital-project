@@ -159,6 +159,21 @@
         is_read: n.is_read === true || n.is_read === 1 || n.is_read === "1",
         created_at: text(n.created_at),
       }));
+      // Opening this page counts as seeing the notifications: mark
+      // them all read on the server so the header bell (here and on
+      // every other page) clears, while the items stay listed.
+      if (state.notifications.some((n) => !n.is_read)) {
+        try {
+          await post("mark_all_read");
+          state.notifications.forEach((n) => (n.is_read = true));
+          const badge = document.getElementById("patient-notification-badge");
+          if (badge) { badge.hidden = true; badge.textContent = "0"; }
+          document.querySelectorAll(".patient-notification-item.is-unread")
+            .forEach((row) => row.classList.remove("is-unread"));
+        } catch (error) {
+          console.error("Mark all as read on page open failed:", error);
+        }
+      }
       render();
     } catch (error) {
       console.error("Patient notifications load failed:", error);

@@ -370,6 +370,32 @@ function initPublicNavbar() {
     panel.append(heading, list, viewAll);
     bellMenu.append(bell, panel);
 
+    /* Opening the bell marks the notifications read on the server
+       (the standard bell pattern, same as the workspace shells) and
+       clears the badge in place; the items stay listed, only their
+       unread styling goes. */
+    let quickUnread = 0;
+    let quickMarking = false;
+    const markQuickNotificationsRead = () => {
+      if (quickMarking || quickUnread === 0) return;
+      quickMarking = true;
+      fetch(base + "api/notifications/notifications.php", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ action: "mark_all_read" }),
+      })
+        .then((response) => response.json().catch(() => null))
+        .then((payload) => {
+          if (!payload || payload.success === false) { quickMarking = false; return; }
+          quickUnread = 0;
+          badge.hidden = true;
+          badge.textContent = "0";
+          list.querySelectorAll(".nav-quick-item.is-unread")
+            .forEach((row) => row.classList.remove("is-unread"));
+        })
+        .catch(() => { quickMarking = false; });
+    };
     const setQuickPanel = (open) => {
       panel.classList.toggle("is-open", open);
       panel.setAttribute("aria-hidden", String(!open));
@@ -377,7 +403,9 @@ function initPublicNavbar() {
       bell.setAttribute("aria-expanded", String(open));
     };
     bell.addEventListener("click", () => {
-      setQuickPanel(bell.getAttribute("aria-expanded") !== "true");
+      const open = bell.getAttribute("aria-expanded") !== "true";
+      setQuickPanel(open);
+      if (open) markQuickNotificationsRead();
     });
     document.addEventListener("pointerdown", (event) => {
       if (event.target instanceof Node && !bellMenu.contains(event.target)) {
@@ -413,6 +441,7 @@ function initPublicNavbar() {
       .then((payload) => {
         const items = Array.isArray(payload?.notifications) ? payload.notifications : [];
         const unread = items.filter((item) => Number(item.is_read) === 0).length;
+        quickUnread = unread;
         if (unread > 0) {
           badge.hidden = false;
           badge.textContent = unread > 99 ? "99+" : String(unread);

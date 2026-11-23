@@ -2387,7 +2387,7 @@ body.dws-modal-open {
 
 /* ---------- Safety banners ---------- */
 .dws-alert {
-  padding: 15px 18px;
+  padding: 16px 18px;
   border: 1px solid var(--doctor-border);
   border-left: 4px solid var(--doctor-gold);
   border-radius: 12px;
@@ -2798,6 +2798,11 @@ html[data-theme="light"] .dws-field-error { color: #a83c36; }
 .dws-rx-card__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 
 /* Prescription document (view modal). */
+/* Alerts at the top of the view modal join the modal's 16px block
+   rhythm: they carried no bottom margin, so the document head butted
+   directly against the note box (0px) while every other gap in the
+   stack is 16px. */
+#dws-rx-view-content .dws-alert { margin-bottom: 16px; }
 .dws-rx-doc__head {
   display: flex;
   align-items: flex-start;
