@@ -1318,55 +1318,6 @@ html[data-theme="light"] .auth-entry-page .form-group select {
 /* The shared app script appends this legacy control on every route. It has
    no auth-page styling or purpose, so do not let its native button box extend
    the document below the canonical footer. */
-/* Toast messages supplied by the existing shared JavaScript */
-.auth-entry-page #toast-container {
-  position: fixed;
-  z-index: 2200;
-  right: 22px;
-  bottom: 22px;
-  display: grid;
-  width: min(370px, calc(100% - 32px));
-  gap: 9px;
-}
-
-.auth-entry-page .toast {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 13px 15px;
-  border: 1px solid var(--auth-line-strong);
-  border-radius: 10px;
-  background: var(--auth-surface);
-  color: var(--auth-text);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.20);
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 170ms ease, transform 170ms ease;
-  font-size: 0.76rem;
-}
-
-.auth-entry-page .toast.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.auth-entry-page .toast-icon {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(217, 191, 150, 0.12);
-  color: var(--auth-accent);
-}
-
-.auth-entry-page .toast-icon .fa-circle-check::before { content: "✓"; font-style: normal; }
-.auth-entry-page .toast-icon .fa-triangle-exclamation::before { content: "!"; font-style: normal; }
-.auth-entry-page .toast-icon .fa-circle-info::before { content: "i"; font-style: normal; }
-.auth-entry-page .toast-success .toast-icon { color: var(--auth-success); }
-.auth-entry-page .toast-error .toast-icon { color: var(--auth-danger); }
-
 /* No external icon font is needed on these two routes. */
 .auth-entry-page .fas { font-family: inherit; font-style: normal; }
 .auth-entry-page .fas.fa-check::before { content: "✓"; }
