@@ -365,7 +365,14 @@ class PatientPortalService
                     $upcoming[] = $item;
                 }
             } elseif ($a['status'] === 'Pending') {
-                $upcoming[] = $item;
+                if ($a['date'] < $today) {
+                    // A pending request whose date has already passed was
+                    // never approved or held — it is missed, not upcoming.
+                    // Upcoming holds only appointments dated today or later.
+                    $missed[] = $item;
+                } else {
+                    $upcoming[] = $item;
+                }
             }
         }
 
