@@ -15,11 +15,10 @@
  * JSON dumps. If a value ever fails to parse as JSON it is shown
  * as plain text rather than hidden.
  *
- * The log honestly starts small: the V2 trail's first entries
- * are from 22 Nov 2026. Eleven older V1 rows live in the
- * legacy_admin_audit table, which this endpoint does not read;
- * the page footnote says so instead of pretending the log is
- * complete back to the beginning of time.
+ * The trail reaches back to 9 Nov 2026: eleven older rows from
+ * the legacy_admin_audit table were merged into audit_events on
+ * 23 Nov 2026 (fresh ids; original timestamps kept), so this
+ * viewer shows the whole trail in one place.
  * Depends on the Public V2 shared site.js runtime.
  */
 "use strict";
@@ -143,7 +142,7 @@
     if (!entries.length) {
       tbody.innerHTML = "<tr><td colspan=\"7\" class=\"aalog-empty-cell\">" +
         (total === 0 && page === 1
-          ? "No audit entries match these filters. The current trail began on 22 Nov 2026 — activity before that lives in the legacy table this viewer does not read."
+          ? "No audit entries match these filters."
           : "No audit entries on this page.") +
         "</td></tr>";
     } else {
