@@ -31,7 +31,7 @@ try {
 
     // Repository applies doctor-first lock ordering and schema-specific status rules.
     // Runtime stays on v1 until the explicit v2 cutover decision.
-    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $management = new PatientManagementRepository($db);
     $management->cancelAppointmentByPatient($appointmentId, $userId);
 
     // The cancellation and durable doctor notice are committed together.

@@ -6,31 +6,23 @@ require_once __DIR__ . '/../NotificationService.php';
 require_once __DIR__ . '/../../includes/AppointmentTime.php';
 
 /**
- * Transaction-aware reschedule lifecycle adapter for v1 and v2.
+ * Transaction-aware reschedule lifecycle adapter (V2 schema).
  *
  * Lock order: doctor account -> doctor profile -> appointment -> active reschedule row.
  * Patient identity is read from the locked appointment but the patient account is not
  * locked; this avoids reversing the patient-archive lock order.
  *
- * V1 stores state on appointments. V2 stores every request as an immutable-history
- * child row in appointment_reschedule_requests and moves appointments.starts_at only
+ * V2 stores every request as an immutable-history child row in
+ * appointment_reschedule_requests and moves appointments.starts_at only
  * when the request is approved/accepted.
  */
 final class RescheduleTransactionRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('RescheduleTransactionRepository schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
 
@@ -45,20 +37,6 @@ final class RescheduleTransactionRepository
             throw new InvalidArgumentException('Doctor user ID must be positive.');
         }
 
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                "SELECT a.*, u.name AS patient_name
-                 FROM appointments a
-                 JOIN users u ON a.user_id = u.id
-                 WHERE a.doctor_id = ?
-                   AND a.status = 'Reschedule Requested'
-                   AND a.reschedule_status IN ('pending','suggested')
-                 ORDER BY a.reschedule_requested_at DESC"
-            );
-            $stmt->execute([$doctorUserId]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-
         $stmt = $this->db->prepare($this->v2PendingRequestsSql() . '
             WHERE a.doctor_user_id = ?
               AND a.booking_status = \'confirmed\'
@@ -71,18 +49,6 @@ final class RescheduleTransactionRepository
     /** Existing API DTO for the administrator pending/suggested reschedule list. */
     public function getAllPendingRequests(): array
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            return $this->db->query(
-                "SELECT a.*, u.name AS patient_name, doc.name AS doctor_name
-                 FROM appointments a
-                 JOIN users u ON a.user_id = u.id
-                 JOIN users doc ON a.doctor_id = doc.id
-                 WHERE a.status = 'Reschedule Requested'
-                   AND a.reschedule_status IN ('pending','suggested')
-                 ORDER BY a.reschedule_requested_at DESC"
-            )->fetchAll(PDO::FETCH_ASSOC);
-        }
-
         $stmt = $this->db->query($this->v2PendingRequestsSql() . "
             WHERE a.booking_status = 'confirmed'
               AND r.request_status IN ('requested','suggested')
@@ -95,19 +61,6 @@ final class RescheduleTransactionRepository
     {
         if ($appointmentId <= 0) {
             throw new InvalidArgumentException('Appointment ID must be positive.');
-        }
-
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                "SELECT id, pending_reschedule_date, pending_reschedule_time,
-                        requested_reschedule_date, requested_reschedule_time,
-                        reschedule_reason, reschedule_requested_at, reschedule_requested_by,
-                        reschedule_status, reschedule_responded_at, reschedule_responded_by,
-                        reschedule_response_notes
-                 FROM appointments WHERE id = ? LIMIT 1"
-            );
-            $stmt->execute([$appointmentId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         }
 
         $stmt = $this->db->prepare(
@@ -232,15 +185,8 @@ final class RescheduleTransactionRepository
             $context = $this->lockContext($appointmentId);
             $this->assertActor($context, $actorUserId, $actorRole, ['patient', 'admin']);
 
-            if ($this->schema === self::SCHEMA_V1) {
-                if ($context['booking_status'] !== 'confirmed'
-                    || !in_array($context['legacy_reschedule_status'], ['none', 'approved', 'rejected'], true)) {
-                    throw new DomainException('Only confirmed appointments without an active request can be rescheduled.');
-                }
-            } else {
-                if ($context['active_request'] !== null || $context['booking_status'] !== 'confirmed') {
-                    throw new DomainException('An active reschedule request already exists or the appointment is not confirmed.');
-                }
+            if ($context['active_request'] !== null || $context['booking_status'] !== 'confirmed') {
+                throw new DomainException('An active reschedule request already exists or the appointment is not confirmed.');
             }
 
             if ($context['starts_at'] === $newStartsAt) {
@@ -248,39 +194,15 @@ final class RescheduleTransactionRepository
             }
             $this->validateTargetSlot($context, $newStartsAt);
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $date = substr($newStartsAt, 0, 10);
-                $time = substr($newStartsAt, 11, 5);
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        status = 'Reschedule Requested',
-                        reschedule_status = 'pending',
-                        pending_reschedule_date = ?,
-                        pending_reschedule_time = ?,
-                        requested_reschedule_date = ?,
-                        requested_reschedule_time = ?,
-                        reschedule_reason = ?,
-                        reschedule_requested_at = NOW(),
-                        reschedule_requested_by = ?,
-                        reschedule_responded_at = NULL,
-                        reschedule_responded_by = NULL,
-                        reschedule_response_notes = NULL
-                     WHERE id = ? AND status = 'Confirmed'
-                       AND reschedule_status IN ('none','approved','rejected')"
-                );
-                $stmt->execute([$date, $time, $date, $time, $reason, $actorUserId, $appointmentId]);
-                $this->assertOneRowChanged($stmt, 'The appointment changed before the request could be saved.');
-            } else {
-                $stmt = $this->db->prepare(
-                    'INSERT INTO appointment_reschedule_requests
-                        (appointment_id, requested_by_user_id, original_starts_at,
-                         requested_starts_at, request_status, reason, requested_at, created_at)
-                     VALUES (?, ?, ?, ?, \'requested\', ?, NOW(), NOW())'
-                );
-                $stmt->execute([
-                    $appointmentId, $actorUserId, $context['starts_at'], $newStartsAt, $reason,
-                ]);
-            }
+            $stmt = $this->db->prepare(
+                'INSERT INTO appointment_reschedule_requests
+                    (appointment_id, requested_by_user_id, original_starts_at,
+                     requested_starts_at, request_status, reason, requested_at, created_at)
+                 VALUES (?, ?, ?, ?, \'requested\', ?, NOW(), NOW())'
+            );
+            $stmt->execute([
+                $appointmentId, $actorUserId, $context['starts_at'], $newStartsAt, $reason,
+            ]);
 
             $this->writeEvent(
                 $appointmentId, $actorUserId, $actorRole, 'reschedule_requested',
@@ -324,32 +246,14 @@ final class RescheduleTransactionRepository
             $this->validateTargetSlot($context, $proposedStartsAt);
             $oldRequested = $context['requested_starts_at'];
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $note = ' | Doctor suggested: ' . $proposedStartsAt . ($notes !== '' ? '. Notes: ' . $notes : '');
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        pending_reschedule_date = ?,
-                        pending_reschedule_time = ?,
-                        reschedule_response_notes = CONCAT(COALESCE(reschedule_response_notes, ''), ?),
-                        reschedule_status = 'suggested',
-                        reschedule_responded_at = NOW(),
-                        reschedule_responded_by = ?
-                     WHERE id = ? AND status = 'Reschedule Requested' AND reschedule_status = 'pending'"
-                );
-                $stmt->execute([
-                    substr($proposedStartsAt, 0, 10), substr($proposedStartsAt, 11, 5),
-                    $note, $actorUserId, $appointmentId,
-                ]);
-            } else {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointment_reschedule_requests
-                     SET request_status = 'suggested', proposed_starts_at = ?,
-                         responded_by_user_id = ?, responded_at = NOW(),
-                         response_notes = ?
-                     WHERE id = ? AND request_status = 'requested'"
-                );
-                $stmt->execute([$proposedStartsAt, $actorUserId, $notes, (int)$context['active_request']['id']]);
-            }
+            $stmt = $this->db->prepare(
+                "UPDATE appointment_reschedule_requests
+                 SET request_status = 'suggested', proposed_starts_at = ?,
+                     responded_by_user_id = ?, responded_at = NOW(),
+                     response_notes = ?
+                 WHERE id = ? AND request_status = 'requested'"
+            );
+            $stmt->execute([$proposedStartsAt, $actorUserId, $notes, (int)$context['active_request']['id']]);
             $this->assertOneRowChanged($stmt, 'The reschedule request changed before the suggestion could be saved.');
 
             $this->writeEvent(
@@ -389,17 +293,13 @@ final class RescheduleTransactionRepository
             $this->validateTargetSlot($context, $newStartsAt);
             $this->moveAppointment($context, $newStartsAt);
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $this->updateLegacyTerminalRequest($appointmentId, 'approved', $actorUserId, 'Patient accepted suggested time.');
-            } else {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointment_reschedule_requests
-                     SET request_status='approved', responded_by_user_id=?, responded_at=NOW()
-                     WHERE id=? AND request_status='suggested'"
-                );
-                $stmt->execute([$actorUserId, (int)$context['active_request']['id']]);
-                $this->assertOneRowChanged($stmt, 'The suggestion changed before it could be accepted.');
-            }
+            $stmt = $this->db->prepare(
+                "UPDATE appointment_reschedule_requests
+                 SET request_status='approved', responded_by_user_id=?, responded_at=NOW()
+                 WHERE id=? AND request_status='suggested'"
+            );
+            $stmt->execute([$actorUserId, (int)$context['active_request']['id']]);
+            $this->assertOneRowChanged($stmt, 'The suggestion changed before it could be accepted.');
 
             $this->writeEvent(
                 $appointmentId, $actorUserId, $actorRole, 'reschedule_suggestion_accepted',
@@ -435,32 +335,17 @@ final class RescheduleTransactionRepository
                 throw new DomainException('The original requested time was not retained.');
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET
-                        pending_reschedule_date=?, pending_reschedule_time=?,
-                        reschedule_status='pending',
-                        reschedule_responded_at=NOW(), reschedule_responded_by=?,
-                        reschedule_response_notes=CONCAT(COALESCE(reschedule_response_notes,''), ?)
-                     WHERE id=? AND status='Reschedule Requested' AND reschedule_status='suggested'"
-                );
-                $stmt->execute([
-                    substr($requestedStartsAt, 0, 10), substr($requestedStartsAt, 11, 5),
-                    $actorUserId, ' | Patient declined suggested time.', $appointmentId,
-                ]);
-            } else {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointment_reschedule_requests
-                     SET request_status='requested', proposed_starts_at=NULL,
-                         responded_by_user_id=?, responded_at=NOW(),
-                         response_notes=CONCAT(COALESCE(response_notes,''), ?)
-                     WHERE id=? AND request_status='suggested'"
-                );
-                $stmt->execute([
-                    $actorUserId, 'Patient declined suggested time.',
-                    (int)$context['active_request']['id'],
-                ]);
-            }
+            $stmt = $this->db->prepare(
+                "UPDATE appointment_reschedule_requests
+                 SET request_status='requested', proposed_starts_at=NULL,
+                     responded_by_user_id=?, responded_at=NOW(),
+                     response_notes=CONCAT(COALESCE(response_notes,''), ?)
+                 WHERE id=? AND request_status='suggested'"
+            );
+            $stmt->execute([
+                $actorUserId, 'Patient declined suggested time.',
+                (int)$context['active_request']['id'],
+            ]);
             $this->assertOneRowChanged($stmt, 'The suggestion changed before it could be declined.');
 
             $this->writeEvent(
@@ -494,28 +379,16 @@ final class RescheduleTransactionRepository
                 throw new DomainException('No active reschedule request to cancel.');
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET status='Confirmed', reschedule_status='none',
-                         pending_reschedule_date=NULL, pending_reschedule_time=NULL,
-                         reschedule_responded_at=NOW(), reschedule_responded_by=?,
-                         reschedule_response_notes=CONCAT(COALESCE(reschedule_response_notes,''), ?)
-                     WHERE id=? AND status='Reschedule Requested'
-                       AND reschedule_status IN ('pending','suggested')"
-                );
-                $stmt->execute([$actorUserId, ' | Patient cancelled reschedule request.', $appointmentId]);
-            } else {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointment_reschedule_requests
-                     SET request_status='cancelled', responded_by_user_id=?, responded_at=NOW(),
-                         response_notes=CONCAT(COALESCE(response_notes,''), ?)
-                     WHERE id=? AND request_status IN ('requested','suggested')"
-                );
-                $stmt->execute([
-                    $actorUserId, 'Patient cancelled reschedule request.',
-                    (int)$context['active_request']['id'],
-                ]);
-            }
+            $stmt = $this->db->prepare(
+                "UPDATE appointment_reschedule_requests
+                 SET request_status='cancelled', responded_by_user_id=?, responded_at=NOW(),
+                     response_notes=CONCAT(COALESCE(response_notes,''), ?)
+                 WHERE id=? AND request_status IN ('requested','suggested')"
+            );
+            $stmt->execute([
+                $actorUserId, 'Patient cancelled reschedule request.',
+                (int)$context['active_request']['id'],
+            ]);
             $this->assertOneRowChanged($stmt, 'The reschedule request changed before it could be cancelled.');
 
             $this->writeEvent(
@@ -554,18 +427,14 @@ final class RescheduleTransactionRepository
             $this->validateTargetSlot($context, $newStartsAt);
             $this->moveAppointment($context, $newStartsAt);
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $this->updateLegacyTerminalRequest($appointmentId, 'approved', $actorUserId, ' | Approved: ' . ($doctorNotes ?: 'Approved by doctor.'));
-            } else {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointment_reschedule_requests
-                     SET request_status='approved', responded_by_user_id=?, responded_at=NOW(),
-                         response_notes=?
-                     WHERE id=? AND request_status='requested'"
-                );
-                $stmt->execute([$actorUserId, $doctorNotes, (int)$context['active_request']['id']]);
-                $this->assertOneRowChanged($stmt, 'The reschedule request changed before approval.');
-            }
+            $stmt = $this->db->prepare(
+                "UPDATE appointment_reschedule_requests
+                 SET request_status='approved', responded_by_user_id=?, responded_at=NOW(),
+                     response_notes=?
+                 WHERE id=? AND request_status='requested'"
+            );
+            $stmt->execute([$actorUserId, $doctorNotes, (int)$context['active_request']['id']]);
+            $this->assertOneRowChanged($stmt, 'The reschedule request changed before approval.');
 
             $this->writeEvent(
                 $appointmentId, $actorUserId, $actorRole, 'reschedule_approved',
@@ -597,24 +466,13 @@ final class RescheduleTransactionRepository
                 throw new DomainException('No pending reschedule request for this appointment.');
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointments SET status='Confirmed', reschedule_status='rejected',
-                         reschedule_responded_at=NOW(), reschedule_responded_by=?,
-                         reschedule_response_notes=CONCAT(COALESCE(reschedule_response_notes,''), ?)
-                     WHERE id=? AND status='Reschedule Requested'
-                       AND reschedule_status IN ('pending','suggested')"
-                );
-                $stmt->execute([$actorUserId, ' | Rejected: ' . ($doctorNotes ?: 'Rejected by doctor.'), $appointmentId]);
-            } else {
-                $stmt = $this->db->prepare(
-                    "UPDATE appointment_reschedule_requests
-                     SET request_status='rejected', responded_by_user_id=?, responded_at=NOW(),
-                         response_notes=?
-                     WHERE id=? AND request_status IN ('requested','suggested')"
-                );
-                $stmt->execute([$actorUserId, $doctorNotes, (int)$context['active_request']['id']]);
-            }
+            $stmt = $this->db->prepare(
+                "UPDATE appointment_reschedule_requests
+                 SET request_status='rejected', responded_by_user_id=?, responded_at=NOW(),
+                     response_notes=?
+                 WHERE id=? AND request_status IN ('requested','suggested')"
+            );
+            $stmt->execute([$actorUserId, $doctorNotes, (int)$context['active_request']['id']]);
             $this->assertOneRowChanged($stmt, 'The reschedule request changed before rejection.');
 
             $this->writeEvent(
@@ -640,9 +498,7 @@ final class RescheduleTransactionRepository
             throw new InvalidArgumentException('Appointment ID must be positive.');
         }
 
-        $lookupSql = $this->schema === self::SCHEMA_V1
-            ? 'SELECT doctor_id FROM appointments WHERE id=? LIMIT 1'
-            : 'SELECT doctor_user_id FROM appointments WHERE id=? LIMIT 1';
+        $lookupSql = 'SELECT doctor_user_id FROM appointments WHERE id=? LIMIT 1';
         $lookup = $this->db->prepare($lookupSql);
         $lookup->execute([$appointmentId]);
         $doctorUserId = (int)$lookup->fetchColumn();
@@ -658,49 +514,11 @@ final class RescheduleTransactionRepository
             throw new DomainException('Assigned doctor account is not active.');
         }
 
-        $profileSql = $this->schema === self::SCHEMA_V1
-            ? 'SELECT user_id FROM doctors WHERE user_id=? LIMIT 1 FOR UPDATE'
-            : 'SELECT doctor_user_id FROM doctor_profiles WHERE doctor_user_id=? LIMIT 1 FOR UPDATE';
+        $profileSql = 'SELECT doctor_user_id FROM doctor_profiles WHERE doctor_user_id=? LIMIT 1 FOR UPDATE';
         $profile = $this->db->prepare($profileSql);
         $profile->execute([$doctorUserId]);
         if (!$profile->fetchColumn()) {
             throw new DomainException('Assigned doctor profile was not found.');
-        }
-
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare('SELECT * FROM appointments WHERE id=? LIMIT 1 FOR UPDATE');
-            $stmt->execute([$appointmentId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row || (int)$row['doctor_id'] !== $doctorUserId) {
-                throw new DomainException('Appointment or assigned doctor changed.');
-            }
-            $startsAt = (string)$row['date'] . ' ' . AppointmentTime::normalize((string)$row['time']) . ':00';
-            $activeRequest = null;
-            $requested = !empty($row['requested_reschedule_date']) && !empty($row['requested_reschedule_time'])
-                ? (string)$row['requested_reschedule_date'] . ' ' . AppointmentTime::normalize((string)$row['requested_reschedule_time']) . ':00'
-                : null;
-            $proposed = !empty($row['pending_reschedule_date']) && !empty($row['pending_reschedule_time'])
-                ? (string)$row['pending_reschedule_date'] . ' ' . AppointmentTime::normalize((string)$row['pending_reschedule_time']) . ':00'
-                : null;
-            $status = $row['status'] === 'Confirmed' || $row['status'] === 'Reschedule Requested'
-                ? 'confirmed'
-                : strtolower((string)$row['status']);
-
-            return [
-                'id' => $appointmentId,
-                'patient_user_id' => (int)$row['user_id'],
-                'doctor_user_id' => $doctorUserId,
-                'starts_at' => $startsAt,
-                'booking_status' => $status,
-                'legacy_status' => (string)$row['status'],
-                'legacy_reschedule_status' => (string)$row['reschedule_status'],
-                'requested_starts_at' => $requested,
-                'proposed_starts_at' => $proposed,
-                'active_request' => $activeRequest,
-                'duration_minutes' => $this->legacyAppointmentDuration($row),
-                'patient_name' => (string)$row['patient_name'],
-                'doctor_name' => (string)$row['doctor'],
-            ];
         }
 
         $stmt = $this->db->prepare('SELECT * FROM appointments WHERE id=? LIMIT 1 FOR UPDATE');
@@ -737,22 +555,10 @@ final class RescheduleTransactionRepository
 
     private function currentRequestStatus(array $context): ?string
     {
-        // Legacy cancelled appointments can retain stale embedded reschedule flags.
-        // V2 deactivation normally closes child requests, but an active request
+        // Deactivation normally closes child requests, but an active request
         // must never be actionable once its parent booking has been cancelled.
         if (($context['booking_status'] ?? null) !== 'confirmed') {
             return null;
-        }
-
-        if ($this->schema === self::SCHEMA_V1) {
-            if (($context['legacy_status'] ?? null) !== 'Reschedule Requested') {
-                return null;
-            }
-            return match ($context['legacy_reschedule_status']) {
-                'pending' => 'requested',
-                'suggested' => 'suggested',
-                default => null,
-            };
         }
 
         return $context['active_request']['request_status'] ?? null;
@@ -760,12 +566,6 @@ final class RescheduleTransactionRepository
 
     private function currentProposedStartsAt(array $context): ?string
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            if (!$context['proposed_starts_at']) {
-                return null;
-            }
-            return $context['proposed_starts_at'];
-        }
         return $context['proposed_starts_at'];
     }
 
@@ -773,7 +573,7 @@ final class RescheduleTransactionRepository
     {
         $date = substr($startsAt, 0, 10);
         $time = substr($startsAt, 11, 5);
-        $schedule = new ScheduleService($this->db, $this->schema);
+        $schedule = new ScheduleService($this->db);
         $error = $schedule->validateBookingSlot(
             (int)$context['doctor_user_id'],
             $date,
@@ -787,53 +587,12 @@ final class RescheduleTransactionRepository
 
     private function moveAppointment(array $context, string $newStartsAt): void
     {
-        $date = substr($newStartsAt, 0, 10);
-        $time = substr($newStartsAt, 11, 5);
-        if ($this->schema === self::SCHEMA_V1) {
-            $range = AppointmentTime::range($time, (int)$context['duration_minutes']);
-            $stmt = $this->db->prepare(
-                "UPDATE appointments SET date=?, time=?, appointment_time_range=?
-                 WHERE id=? AND status='Reschedule Requested'"
-            );
-            $stmt->execute([$date, $time, $range, (int)$context['id']]);
-        } else {
-            $stmt = $this->db->prepare(
-                "UPDATE appointments SET starts_at=?, booking_status='confirmed'
-                 WHERE id=? AND booking_status='confirmed'"
-            );
-            $stmt->execute([$newStartsAt, (int)$context['id']]);
-        }
-        $this->assertOneRowChanged($stmt, 'Appointment time changed before the reschedule could be applied.');
-    }
-
-    private function updateLegacyTerminalRequest(int $appointmentId, string $status, int $actorUserId, string $note): void
-    {
         $stmt = $this->db->prepare(
-            "UPDATE appointments SET status='Confirmed', reschedule_status=?, reschedule_responded_at=NOW(),
-                 reschedule_responded_by=?,
-                 reschedule_response_notes=CONCAT(COALESCE(reschedule_response_notes,''), ?)
-             WHERE id=? AND status='Reschedule Requested'"
+            "UPDATE appointments SET starts_at=?, booking_status='confirmed'
+             WHERE id=? AND booking_status='confirmed'"
         );
-        $stmt->execute([$status, $actorUserId, $note, $appointmentId]);
-        $this->assertOneRowChanged($stmt, 'Reschedule request changed before its terminal state was stored.');
-    }
-
-    private function legacyAppointmentDuration(array $row): int
-    {
-        $range = (string)($row['appointment_time_range'] ?? '');
-        if ($range !== '' && preg_match('/[-–—]\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i', $range, $matches)) {
-            $hour = (int)$matches[1];
-            $minute = (int)$matches[2];
-            $period = strtoupper($matches[3]);
-            if ($period === 'PM' && $hour !== 12) { $hour += 12; }
-            if ($period === 'AM' && $hour === 12) { $hour = 0; }
-            $endMinutes = $hour * 60 + $minute;
-            $startMinutes = AppointmentTime::toMinutes((string)$row['time']);
-            if ($endMinutes > $startMinutes) {
-                return $endMinutes - $startMinutes;
-            }
-        }
-        return AppointmentTime::duration($this->db, (int)$row['doctor_id']);
+        $stmt->execute([$newStartsAt, (int)$context['id']]);
+        $this->assertOneRowChanged($stmt, 'Appointment time changed before the reschedule could be applied.');
     }
 
     private function normalizeStartsAt(string $date, string $time): string
@@ -885,9 +644,6 @@ final class RescheduleTransactionRepository
         ?string $toStatus,
         array $details = []
     ): void {
-        if ($this->schema !== self::SCHEMA_V2) {
-            return;
-        }
         $stmt = $this->db->prepare(
             'INSERT INTO appointment_events
                 (appointment_id, actor_user_id, actor_role_snapshot, event_type,
@@ -914,21 +670,12 @@ final class RescheduleTransactionRepository
         $oldJson = $oldValue === null ? null : json_encode($oldValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $newJson = $newValue === null ? null : json_encode($newValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                'INSERT INTO admin_audit
-                    (actor_id, actor_role, action, entity_type, entity_id, patient_id, doctor_id,
-                     old_value, new_value, description, ip_address, user_agent)
-                 VALUES (?, ?, ?, \'appointment\', ?, ?, ?, ?, ?, ?, ?, ?)'
-            );
-        } else {
-            $stmt = $this->db->prepare(
-                'INSERT INTO audit_events
-                    (actor_user_id, actor_role_snapshot, action_code, entity_type, entity_id,
-                     patient_user_id, doctor_user_id, old_value, new_value, description, ip_address, user_agent)
-                 VALUES (?, ?, ?, \'appointment\', ?, ?, ?, ?, ?, ?, ?, ?)'
-            );
-        }
+        $stmt = $this->db->prepare(
+            'INSERT INTO audit_events
+                (actor_user_id, actor_role_snapshot, action_code, entity_type, entity_id,
+                 patient_user_id, doctor_user_id, old_value, new_value, description, ip_address, user_agent)
+             VALUES (?, ?, ?, \'appointment\', ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         $stmt->execute([
             $actorUserId, $actorRole, $action, (string)$appointmentId,
             $patientUserId, $doctorUserId, $oldJson, $newJson, $description,

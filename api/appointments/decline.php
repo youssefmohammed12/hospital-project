@@ -37,7 +37,7 @@ if (mb_strlen($reason) > 2000) {
 
 try {
     $db = getDB();
-    $lifecycle = new AppointmentLifecycleRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA'));
+    $lifecycle = new AppointmentLifecycleRepository($db);
     $lifecycle->transitionPending($appointmentId, (int)$admin['id'], 'admin', 'cancelled', $reason);
 
     $notifications = new NotificationService($db);

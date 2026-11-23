@@ -33,7 +33,7 @@ try {
 
     // The live application remains on v1. The repository has a separately
     // tested v2 adapter; changing this mode belongs to the approved cutover.
-    $management = new DoctorManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA'));
+    $management = new DoctorManagementRepository($db);
     $result = $management->toggleDoctorActive($doctorId, (int)$user['id']);
 
     $newStatus = (int)$result['is_active'];

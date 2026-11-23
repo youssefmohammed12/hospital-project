@@ -17,9 +17,9 @@ require_once __DIR__ . '/AuditService.php';
 
 class AdminAuditService extends AuditService
 {
-    public function __construct(PDO $db, int $adminId, string $schema = self::SCHEMA_V1)
+    public function __construct(PDO $db, int $adminId)
     {
-        parent::__construct($db, $adminId, 'admin', $schema);
+        parent::__construct($db, $adminId, 'admin');
     }
 
     /**

@@ -21,49 +21,39 @@ require_once __DIR__ . '/../includes/AppointmentTime.php';
 
 class PrescriptionService
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema = self::SCHEMA_V1)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('PrescriptionService schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     private function patientColumn(): string
     {
-        return $this->schema === 'v2' ? 'patient_user_id' : 'patient_id';
+        return 'patient_user_id';
     }
 
     private function doctorColumn(): string
     {
-        return $this->schema === 'v2' ? 'doctor_user_id' : 'doctor_id';
+        return 'doctor_user_id';
     }
 
     private function storedStatus(string $legacyStatus): string
     {
-        return $this->schema === 'v2' ? strtolower($legacyStatus) : $legacyStatus;
+        return strtolower($legacyStatus);
     }
 
     private function normalizePrescriptionRow(array $row): array
     {
-        if ($this->schema === 'v2') {
-            $row['patient_id'] = (int)($row['patient_user_id'] ?? $row['patient_id'] ?? 0);
-            $row['doctor_id'] = (int)($row['doctor_user_id'] ?? $row['doctor_id'] ?? 0);
-            $status = strtolower((string)($row['status'] ?? ''));
-            $row['status'] = match ($status) {
-                'active' => 'Active',
-                'completed' => 'Completed',
-                'cancelled' => 'Cancelled',
-                default => (string)($row['status'] ?? ''),
-            };
-        }
+        $row['patient_id'] = (int)($row['patient_user_id'] ?? $row['patient_id'] ?? 0);
+        $row['doctor_id'] = (int)($row['doctor_user_id'] ?? $row['doctor_id'] ?? 0);
+        $status = strtolower((string)($row['status'] ?? ''));
+        $row['status'] = match ($status) {
+            'active' => 'Active',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            default => (string)($row['status'] ?? ''),
+        };
         if (array_key_exists('appt_department', $row)) {
             $row['department'] = $row['appt_department'];
         }
@@ -112,25 +102,18 @@ class PrescriptionService
             // Match booking and clinical writers: doctor account, patient account,
             // then appointment. Prescription foreign keys must not be the first
             // account locks taken after an appointment lock.
-            $accountLocks = new ClinicalAccessService($this->db, $this->schema);
+            $accountLocks = new ClinicalAccessService($this->db);
             if (!$accountLocks->lockDoctorAndPatient($doctorId, $patientId)) {
                 throw new DomainException('The doctor or patient account is no longer available.');
             }
 
             // Serialize prescription creation against other writers for this appointment.
-            if ($this->schema === 'v2') {
-                $appointmentStmt = $this->db->prepare(
-                    'SELECT id, patient_user_id AS user_id, doctor_user_id AS doctor_id,
-                            booking_status AS status, doctor_name_snapshot AS doctor,
-                            starts_at, duration_minutes
-                     FROM appointments WHERE id = ? LIMIT 1 FOR UPDATE'
-                );
-            } else {
-                $appointmentStmt = $this->db->prepare(
-                    'SELECT id, user_id, doctor_id, status, doctor
-                     FROM appointments WHERE id = ? LIMIT 1 FOR UPDATE'
-                );
-            }
+            $appointmentStmt = $this->db->prepare(
+                'SELECT id, patient_user_id AS user_id, doctor_user_id AS doctor_id,
+                        booking_status AS status, doctor_name_snapshot AS doctor,
+                        starts_at, duration_minutes
+                 FROM appointments WHERE id = ? LIMIT 1 FOR UPDATE'
+            );
             $appointmentStmt->execute([$appointmentId]);
             $appointment = $appointmentStmt->fetch();
 
@@ -143,26 +126,22 @@ class PrescriptionService
             if ((int)$appointment['user_id'] !== $patientId) {
                 throw new DomainException('The selected patient does not match this appointment.');
             }
-            $confirmed = $this->schema === 'v2'
-                ? $appointment['status'] === 'confirmed'
-                : $appointment['status'] === 'Confirmed';
+            $confirmed = $appointment['status'] === 'confirmed';
             if (!$confirmed) {
                 throw new DomainException('Prescriptions can only be issued for confirmed appointments.');
             }
 
-            // In v2 a reschedule request is a child record and does not change the
-            // confirmed parent booking. Preserve the v1 rule: do not issue while
-            // a reschedule is actively awaiting a response.
-            if ($this->schema === 'v2') {
-                $rescheduleStmt = $this->db->prepare(
-                    "SELECT id FROM appointment_reschedule_requests
-                     WHERE appointment_id = ? AND request_status IN ('requested','suggested')
-                     LIMIT 1"
-                );
-                $rescheduleStmt->execute([$appointmentId]);
-                if ($rescheduleStmt->fetchColumn()) {
-                    throw new DomainException('Prescriptions cannot be issued while an appointment reschedule is pending.');
-                }
+            // A reschedule request is a child record and does not change the
+            // confirmed parent booking. Do not issue while a reschedule is
+            // actively awaiting a response.
+            $rescheduleStmt = $this->db->prepare(
+                "SELECT id FROM appointment_reschedule_requests
+                 WHERE appointment_id = ? AND request_status IN ('requested','suggested')
+                 LIMIT 1"
+            );
+            $rescheduleStmt->execute([$appointmentId]);
+            if ($rescheduleStmt->fetchColumn()) {
+                throw new DomainException('Prescriptions cannot be issued while an appointment reschedule is pending.');
             }
 
             // The unique appointment_id constraint is the final duplicate guard.
@@ -174,17 +153,10 @@ class PrescriptionService
                 throw new DomainException('A prescription already exists for this appointment.');
             }
 
-            if ($this->schema === 'v2') {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO prescriptions (patient_user_id, doctor_user_id, appointment_id, notes, status, created_at)
-                     VALUES (?, ?, ?, ?, 'active', NOW())"
-                );
-            } else {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO prescriptions (patient_id, doctor_id, appointment_id, notes, status, created_at)
-                     VALUES (?, ?, ?, ?, 'Active', NOW())"
-                );
-            }
+            $stmt = $this->db->prepare(
+                "INSERT INTO prescriptions (patient_user_id, doctor_user_id, appointment_id, notes, status, created_at)
+                 VALUES (?, ?, ?, ?, 'active', NOW())"
+            );
             $stmt->execute([$patientId, $doctorId, $appointmentId, $notes]);
             $prescriptionId = (int)$this->db->lastInsertId();
 
@@ -411,33 +383,20 @@ $this->dispatchNotificationOutbox();
      */
     public function get(int $prescriptionId): ?array
     {
-        if ($this->schema === 'v2') {
-            $stmt = $this->db->prepare(
-                "SELECT p.*, p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
-                        u_patient.name AS patient_name, u_patient.email AS patient_email,
-                        u_doctor.name AS doctor_name,
-                        DATE(a.starts_at) AS appt_date, TIME_FORMAT(a.starts_at, '%H:%i') AS appt_time,
-                        a.department_name_snapshot AS appt_department,
-                        a.doctor_name_snapshot AS appt_doctor_name,
-                        a.doctor_user_id, a.duration_minutes AS appt_duration_minutes
-                 FROM prescriptions p
-                 JOIN users u_patient ON p.patient_user_id = u_patient.id
-                 JOIN users u_doctor ON p.doctor_user_id = u_doctor.id
-                 JOIN appointments a ON p.appointment_id = a.id
-                 WHERE p.id = ? LIMIT 1"
-            );
-        } else {
-            $stmt = $this->db->prepare(
-                'SELECT p.*, u_patient.name AS patient_name, u_patient.email AS patient_email,
-                        u_doctor.name AS doctor_name, a.date AS appt_date, a.time AS appt_time,
-                        a.department AS appt_department, a.doctor AS appt_doctor_name, a.doctor_id
-                 FROM prescriptions p
-                 JOIN users u_patient ON p.patient_id = u_patient.id
-                 JOIN users u_doctor ON p.doctor_id = u_doctor.id
-                 JOIN appointments a ON p.appointment_id = a.id
-                 WHERE p.id = ? LIMIT 1'
-            );
-        }
+        $stmt = $this->db->prepare(
+            "SELECT p.*, p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
+                    u_patient.name AS patient_name, u_patient.email AS patient_email,
+                    u_doctor.name AS doctor_name,
+                    DATE(a.starts_at) AS appt_date, TIME_FORMAT(a.starts_at, '%H:%i') AS appt_time,
+                    a.department_name_snapshot AS appt_department,
+                    a.doctor_name_snapshot AS appt_doctor_name,
+                    a.doctor_user_id, a.duration_minutes AS appt_duration_minutes
+             FROM prescriptions p
+             JOIN users u_patient ON p.patient_user_id = u_patient.id
+             JOIN users u_doctor ON p.doctor_user_id = u_doctor.id
+             JOIN appointments a ON p.appointment_id = a.id
+             WHERE p.id = ? LIMIT 1"
+        );
         $stmt->execute([$prescriptionId]);
         $prescription = $stmt->fetch();
 
@@ -447,9 +406,7 @@ $this->dispatchNotificationOutbox();
         $prescription = $this->normalizePrescriptionRow($prescription);
 
         // Keep the legacy print/API DTO while respecting the normalized appointment snapshot.
-        $duration = $this->schema === 'v2'
-            ? (int)$prescription['appt_duration_minutes']
-            : AppointmentTime::duration($this->db, (int)$prescription['doctor_id']);
+        $duration = (int)$prescription['appt_duration_minutes'];
         $prescription['appointment_time_range'] = AppointmentTime::range(
             (string)$prescription['appt_time'],
             $duration
@@ -517,24 +474,14 @@ $this->dispatchNotificationOutbox();
 
     private function listSelectSql(): string
     {
-        if ($this->schema === 'v2') {
-            return "SELECT p.*, p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
-                           u_patient.name AS patient_name, u_doctor.name AS doctor_name,
-                           DATE(a.starts_at) AS appt_date,
-                           a.doctor_name_snapshot AS appt_doctor_name,
-                           a.department_name_snapshot AS appt_department
-                    FROM prescriptions p
-                    JOIN users u_patient ON p.patient_user_id = u_patient.id
-                    JOIN users u_doctor ON p.doctor_user_id = u_doctor.id
-                    JOIN appointments a ON p.appointment_id = a.id";
-        }
-
-        return "SELECT p.*, u_patient.name AS patient_name, u_doctor.name AS doctor_name,
-                       a.date AS appt_date, a.doctor AS appt_doctor_name,
-                       a.department AS appt_department
+        return "SELECT p.*, p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
+                       u_patient.name AS patient_name, u_doctor.name AS doctor_name,
+                       DATE(a.starts_at) AS appt_date,
+                       a.doctor_name_snapshot AS appt_doctor_name,
+                       a.department_name_snapshot AS appt_department
                 FROM prescriptions p
-                JOIN users u_patient ON p.patient_id = u_patient.id
-                JOIN users u_doctor ON p.doctor_id = u_doctor.id
+                JOIN users u_patient ON p.patient_user_id = u_patient.id
+                JOIN users u_doctor ON p.doctor_user_id = u_doctor.id
                 JOIN appointments a ON p.appointment_id = a.id";
     }
 
@@ -566,20 +513,12 @@ $this->dispatchNotificationOutbox();
      */
     private function getForUpdateAfterAccountLocks(int $prescriptionId, int $doctorId): ?array
     {
-        if ($this->schema === 'v2') {
-            $identityStmt = $this->db->prepare(
-                'SELECT p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
-                        a.doctor_name_snapshot AS appt_doctor_name
-                 FROM prescriptions p JOIN appointments a ON a.id = p.appointment_id
-                 WHERE p.id = ? LIMIT 1'
-            );
-        } else {
-            $identityStmt = $this->db->prepare(
-                'SELECT p.patient_id, p.doctor_id, a.doctor AS appt_doctor_name
-                 FROM prescriptions p JOIN appointments a ON a.id = p.appointment_id
-                 WHERE p.id = ? LIMIT 1'
-            );
-        }
+        $identityStmt = $this->db->prepare(
+            'SELECT p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
+                    a.doctor_name_snapshot AS appt_doctor_name
+             FROM prescriptions p JOIN appointments a ON a.id = p.appointment_id
+             WHERE p.id = ? LIMIT 1'
+        );
         $identityStmt->execute([$prescriptionId]);
         $identity = $identityStmt->fetch();
 
@@ -588,7 +527,7 @@ $this->dispatchNotificationOutbox();
         }
 
         $patientId = (int)$identity['patient_id'];
-        $accountLocks = new ClinicalAccessService($this->db, $this->schema);
+        $accountLocks = new ClinicalAccessService($this->db);
         if (!$accountLocks->lockDoctorAndPatient($doctorId, $patientId)) {
             return null;
         }
@@ -615,14 +554,6 @@ $this->dispatchNotificationOutbox();
         int $patientId,
         int $doctorId
     ): void {
-        if ($this->schema === 'v1') {
-            $audit = new AuditService($this->db, $doctorId, 'doctor', $this->schema);
-            if (!$audit->log($action, 'prescription', $prescriptionId, $oldValue, $newValue, $description, $patientId, $doctorId)) {
-                throw new RuntimeException('Could not record the prescription audit event.');
-            }
-            return;
-        }
-
         $encode = static function ($value): ?string {
             if ($value === null) return null;
             if (is_string($value)) return $value;

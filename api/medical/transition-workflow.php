@@ -13,7 +13,6 @@ header('Content-Type: application/json');
 
 $user = requireRole('doctor');
 $doctorId = (int)$user['id'];
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -54,7 +53,7 @@ try {
     $db = getDB();
     $db->beginTransaction();
 
-    $encounters = new ClinicalEncounterRepository($db, $schema);
+    $encounters = new ClinicalEncounterRepository($db);
     $identity = $encounters->getAppointmentContext($appointmentId);
     if (
         !$identity
@@ -67,7 +66,7 @@ try {
     }
 
     // Account rows are locked before appointment/workflow rows.
-    $accountLocks = new ClinicalAccessService($db, $schema);
+    $accountLocks = new ClinicalAccessService($db);
     if (!$accountLocks->lockDoctorAndPatient($doctorId, (int)$identity['patient_user_id'])) {
         $db->rollBack();
         http_response_code(409);
@@ -87,7 +86,7 @@ try {
     }
 
     // The service owns the workflow lock and validates the transition graph.
-    $workflowService = new VisitWorkflowService($db, $schema);
+    $workflowService = new VisitWorkflowService($db);
     $workflowService->transition($appointmentId, $newStatus);
     $updatedWorkflow = $workflowService->get($appointmentId);
 

@@ -33,7 +33,6 @@ require_once __DIR__ . '/Repositories/AppointmentReservationRepository.php';
 class ScheduleService
 {
     private PDO $db;
-    private string $schema;
     private DoctorScheduleRepository $scheduleRepository;
     private AppointmentReservationRepository $reservationRepository;
 
@@ -41,12 +40,6 @@ class ScheduleService
      * @var array Valid appointment durations in minutes
      */
     public const VALID_DURATIONS = [15, 20, 30, 45, 60];
-
-    public static function schemaFromEnvironment(): string
-    {
-        require_once __DIR__ . '/../includes/SchemaSelector.php';
-        return HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_SCHEDULE_SCHEMA');
-    }
 
     /**
      * @var string Hospital operating hours (enforced for all doctors)
@@ -87,21 +80,13 @@ class ScheduleService
     private ?array $hospitalSettingsCache = null;
 
     /**
-     * Existing callers remain on v1 unless they explicitly opt into v2.
-     *
-     * @param PDO $db Active connection to the selected schema
-     * @param string $schema One of DoctorScheduleRepository::SCHEMA_V1 or SCHEMA_V2
+     * @param PDO $db Active connection (V2 schema)
      */
-    public function __construct(PDO $db, string $schema = DoctorScheduleRepository::SCHEMA_V1)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [DoctorScheduleRepository::SCHEMA_V1, DoctorScheduleRepository::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('ScheduleService schema must be explicitly v1 or v2.');
-        }
-
         $this->db = $db;
-        $this->schema = $schema;
-        $this->scheduleRepository = new DoctorScheduleRepository($db, $schema);
-        $this->reservationRepository = new AppointmentReservationRepository($db, $schema);
+        $this->scheduleRepository = new DoctorScheduleRepository($db);
+        $this->reservationRepository = new AppointmentReservationRepository($db);
     }
 
     /**
@@ -117,11 +102,8 @@ class ScheduleService
         }
 
         try {
-            $hoursSql = $this->schema === DoctorScheduleRepository::SCHEMA_V2
-                ? "SELECT TIME_FORMAT(appointment_open_time, '%H:%i') AS appointment_open_time,
+            $hoursSql = "SELECT TIME_FORMAT(appointment_open_time, '%H:%i') AS appointment_open_time,
                           TIME_FORMAT(appointment_close_time, '%H:%i') AS appointment_close_time
-                   FROM hospital_settings WHERE id = 1 LIMIT 1"
-                : "SELECT appointment_open_time, appointment_close_time
                    FROM hospital_settings WHERE id = 1 LIMIT 1";
             $stmt = $this->db->query($hoursSql);
             $row = $stmt->fetch();

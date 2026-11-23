@@ -57,7 +57,7 @@ $searchQuery = trim($searchValue);
 // ── Execute with detailed error catching ─────────────────
 try {
     $db = getDB();
-    $portal = new PatientPortalService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA'));
+    $portal = new PatientPortalService($db);
 
     // If search query is provided, only return search results
     if (!empty($searchQuery)) {

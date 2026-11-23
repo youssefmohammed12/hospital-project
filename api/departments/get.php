@@ -26,7 +26,7 @@ if (getCurrentUserId() !== null) {
 
 try {
     $db = getDB();
-    $ds = new DepartmentService($db, DepartmentService::schemaFromEnvironment());
+    $ds = new DepartmentService($db);
 
     // Admin: get all departments including inactive
     if ($role === 'admin') {

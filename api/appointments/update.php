@@ -47,7 +47,7 @@ if (!in_array($newStatus, ['Confirmed', 'Cancelled'], true)) {
 
 try {
     $db = getDB();
-    $lifecycle = new AppointmentLifecycleRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA'));
+    $lifecycle = new AppointmentLifecycleRepository($db);
     $status = $newStatus === 'Confirmed' ? 'confirmed' : 'cancelled';
     $lifecycle->transitionPending($appointmentId, (int)$doctor['id'], 'doctor', $status);
 

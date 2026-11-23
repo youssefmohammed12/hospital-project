@@ -59,7 +59,7 @@ $notes = trim($notesInput);
 
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
+    $rs = new RescheduleService($db, $userId, $userRole);
 
     $result = $rs->rejectReschedule($appointmentId, $notes);
 

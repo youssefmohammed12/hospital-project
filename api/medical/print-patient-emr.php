@@ -22,7 +22,6 @@ require_once __DIR__ . '/../../includes/AppointmentTime.php';
 header('Content-Type: text/html; charset=utf-8');
 
 $user = requireAuth();
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
@@ -58,7 +57,7 @@ try {
     // Authorize doctors before checking patient existence. Otherwise the
     // different 403/404 responses reveal whether an arbitrary patient ID exists.
     if ($currentRole === 'doctor') {
-        $clinicalAccess = new ClinicalAccessService($db, $schema);
+        $clinicalAccess = new ClinicalAccessService($db);
         if (!$clinicalAccess->doctorCanAccessPatient($currentUserId, $patientId)) {
             http_response_code(403);
             echo '<h1>403 Forbidden</h1><p>You can only view records of patients with a confirmed appointment or documented clinical encounter.</p>';
@@ -79,13 +78,8 @@ try {
     }
 
     // Medical record
-    if ($schema === PatientPortalService::SCHEMA_V1) {
-        $mrStmt = $db->prepare("SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1");
-        $mrStmt->execute([$patientId]);
-        $mr = $mrStmt->fetch();
-    } else {
-        $profile = (new PatientPortalService($db, $schema))->getMedicalProfile($patientId);
-        $mr = [
+    $profile = (new PatientPortalService($db))->getMedicalProfile($patientId);
+    $mr = [
             'id' => null,
             'patient_id' => $patientId,
             'blood_type' => $profile['blood_type'] ?? null,
@@ -105,7 +99,6 @@ try {
             'created_at' => null,
             'updated_at' => null,
         ];
-    }
     if (!$mr) {
         $mr = [
             'id' => null,'patient_id' => $patientId,'blood_type' => null,
@@ -125,15 +118,7 @@ try {
     }
 
     // Appointments: map normalized V2 columns to the print template's stable DTO.
-    if ($schema === PatientPortalService::SCHEMA_V1) {
-        $apptStmt = $db->prepare(
-            "SELECT a.* FROM appointments a
-             WHERE a.user_id = ?
-             ORDER BY a.date DESC,a.time DESC
-             LIMIT 20"
-        );
-    } else {
-        $apptStmt = $db->prepare(
+    $apptStmt = $db->prepare(
             "SELECT a.id,a.patient_user_id AS user_id,a.doctor_user_id AS doctor_id,
                     a.doctor_name_snapshot AS doctor,
                     a.department_name_snapshot AS department,
@@ -158,42 +143,34 @@ try {
              ORDER BY a.starts_at DESC
              LIMIT 20"
         );
-    }
     $apptStmt->execute([$patientId]);
     $appointments = $apptStmt->fetchAll();
     foreach ($appointments as &$a) {
-        if ($schema === PatientPortalService::SCHEMA_V2) {
-            $sourceTime = (string)($a['source_time_snapshot'] ?? '');
-            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$a['time'])) {
-                $a['time'] = $sourceTime;
-                $rangeSnapshot = $a['source_time_range_snapshot'] ?? null;
-                $a['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
-                    ? $rangeSnapshot
-                    : AppointmentTime::range((string)$a['time'], max(1, (int)($a['duration_minutes'] ?? 30)));
-            } else {
-                $a['appointment_time_range'] = AppointmentTime::range(
-                    (string)$a['time'],
-                    max(1, (int)($a['duration_minutes'] ?? 30))
-                );
-            }
-        } elseif (empty($a['appointment_time_range'])) {
-            $a['appointment_time_range'] = computeAppointmentTimeRange(
-                $a['time'],
-                getAppointmentDuration((int)$a['doctor_id'])
+        $sourceTime = (string)($a['source_time_snapshot'] ?? '');
+        if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$a['time'])) {
+            $a['time'] = $sourceTime;
+            $rangeSnapshot = $a['source_time_range_snapshot'] ?? null;
+            $a['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                ? $rangeSnapshot
+                : AppointmentTime::range((string)$a['time'], max(1, (int)($a['duration_minutes'] ?? 30)));
+        } else {
+            $a['appointment_time_range'] = AppointmentTime::range(
+                (string)$a['time'],
+                max(1, (int)($a['duration_minutes'] ?? 30))
             );
         }
     }
     unset($a);
 
-    // Prescriptions and visit notes use the shared schema-aware services.
-    $prescriptionService = new PrescriptionService($db, $schema);
+    // Prescriptions and visit notes use the shared services.
+    $prescriptionService = new PrescriptionService($db);
     $prescriptions = $prescriptionService->attachItems(
         $prescriptionService->getByPatient($patientId, 10),
         'item_count'
     );
 
     $visitNotes = array_slice(
-        (new VisitWorkflowService($db, $schema))->getNotesForPatient($patientId),
+        (new VisitWorkflowService($db))->getNotesForPatient($patientId),
         0,
         10
     );
@@ -205,14 +182,8 @@ try {
     $cancelledAppts = 0;
     foreach ($appointments as $a) {
         if ($a['status'] === 'Confirmed') {
-            if ($schema === PatientPortalService::SCHEMA_V2) {
-                if (($a['workflow_status'] ?? null) === 'completed') $completedAppts++;
-                elseif ($a['date'] >= date('Y-m-d')) $upcomingAppts++;
-            } elseif ($a['date'] >= date('Y-m-d')) {
-                $upcomingAppts++;
-            } else {
-                $completedAppts++;
-            }
+            if (($a['workflow_status'] ?? null) === 'completed') $completedAppts++;
+            elseif ($a['date'] >= date('Y-m-d')) $upcomingAppts++;
         } elseif ($a['status'] === 'Reschedule Requested') {
             if ($a['date'] >= date('Y-m-d')) $upcomingAppts++;
         } elseif ($a['status'] === 'Cancelled') {

@@ -11,7 +11,6 @@ header('Content-Type: application/json');
 
 $user = requireRole('doctor');
 $doctorId = (int)$user['id'];
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -49,7 +48,7 @@ if ($patientId === null) {
 
 try {
     $db = getDB();
-    $repository = new PatientManagementRepository($db, $schema);
+    $repository = new PatientManagementRepository($db);
     $repository->recordMedicalHistoryUpdate(
         $patientId,
         $doctorId,

@@ -16,7 +16,6 @@ require_once __DIR__ . '/../../services/Repositories/ClinicalEncounterRepository
 header('Content-Type: application/json');
 
 $user = requireRole('doctor');
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -62,7 +61,7 @@ try {
     $db->beginTransaction();
 
     // Resolve appointment identity, then lock doctor -> patient -> appointment.
-    $encounters = new ClinicalEncounterRepository($db, $schema);
+    $encounters = new ClinicalEncounterRepository($db);
     $identity = $encounters->getAppointmentContext($appointmentId);
     if (
         !$identity
@@ -76,7 +75,7 @@ try {
     }
 
     $patientId = (int)$identity['patient_user_id'];
-    $accountLocks = new ClinicalAccessService($db, $schema);
+    $accountLocks = new ClinicalAccessService($db);
     if (!$accountLocks->lockDoctorAndPatient($doctorId, $patientId)) {
         $db->rollBack();
         http_response_code(409);
@@ -96,7 +95,7 @@ try {
     }
 
     // Load and lock workflow before performing any clinical side effects.
-    $wfService = new VisitWorkflowService($db, $schema);
+    $wfService = new VisitWorkflowService($db);
     $workflowBefore = $wfService->getOrCreateWorkflow($appointmentId);
     if (($workflowBefore['status'] ?? null) === VisitWorkflowService::STATUS_COMPLETED) {
         $db->rollBack();
@@ -126,14 +125,14 @@ try {
     );
 
     // 2. Finalize active prescriptions inside this same clinical transaction.
-    $prescriptionService = new PrescriptionService($db, $schema);
+    $prescriptionService = new PrescriptionService($db);
     $prescriptionService->completeForAppointmentInTransaction($appointmentId, $doctorId);
 
     // 3. Complete the locked workflow only after note and prescription writes succeed.
     $wfService->transition($appointmentId, VisitWorkflowService::STATUS_COMPLETED);
 
     // Keep an explicit audit event in the same transaction as the clinical completion.
-    $audit = new AuditService($db, $doctorId, 'doctor', $schema);
+    $audit = new AuditService($db, $doctorId, 'doctor');
     $auditLogged = $audit->log(
         'complete_visit',
         'appointment',
@@ -149,7 +148,7 @@ try {
     }
 
     // 4. Delete draft
-    $draftService = new VisitDraftService($db, $schema);
+    $draftService = new VisitDraftService($db);
     $draftService->delete($appointmentId);
 
     // Queue the notice in the same transaction as the clinical completion.

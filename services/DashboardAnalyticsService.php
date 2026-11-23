@@ -1,25 +1,17 @@
 <?php
 /**
  * HealthBridge — Dashboard Analytics Service
- * Schema-aware admin analytics with a stable v1/v2 response DTO.
- * Runtime callers continue to default to v1 until the approved cutover.
+ * Admin analytics with a stable v2 response DTO.
  */
 require_once __DIR__ . '/../includes/RelativeTimeFormatter.php';
 
 class DashboardAnalyticsService
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema = self::SCHEMA_V1)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('DashboardAnalyticsService schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     public function getAll(): array
@@ -37,19 +29,7 @@ class DashboardAnalyticsService
 
     public function getKPIs(): array
     {
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT
-                (SELECT COUNT(*) FROM users WHERE role='patient') AS total_patients,
-                (SELECT COUNT(*) FROM doctors) AS total_doctors,
-                (SELECT COUNT(*) FROM departments WHERE status='active') AS total_departments,
-                (SELECT COUNT(*) FROM appointments WHERE date=CURDATE()) AS today_appointments,
-                (SELECT COUNT(*) FROM appointments WHERE status='Pending') AS pending_appointments,
-                (SELECT COUNT(*) FROM appointments WHERE status='Confirmed') AS confirmed_appointments,
-                (SELECT COUNT(*) FROM doctors WHERE available=1) AS active_doctors,
-                COALESCE((SELECT ROUND(AVG(rating),1) FROM doctors),0) AS avg_rating,
-                (SELECT COUNT(*) FROM users WHERE role='patient'
-                  AND MONTH(created_at)=MONTH(CURDATE()) AND YEAR(created_at)=YEAR(CURDATE())) AS new_patients_this_month"
-            : "SELECT
+        $sql = "SELECT
                 (SELECT COUNT(*) FROM users WHERE role='patient') AS total_patients,
                 (SELECT COUNT(*) FROM doctor_profiles) AS total_doctors,
                 (SELECT COUNT(*) FROM departments WHERE status='active') AS total_departments,
@@ -68,20 +48,6 @@ class DashboardAnalyticsService
 
     public function getAppointmentAnalytics(): array
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $weeklySql = "SELECT DAYNAME(date) AS day,DAYOFWEEK(date) AS day_num,COUNT(*) AS count
-                FROM appointments WHERE date>=DATE_SUB(CURDATE(),INTERVAL 6 DAY)
-                GROUP BY DAYOFWEEK(date),DAYNAME(date) ORDER BY DAYOFWEEK(date)";
-            $monthlySql = "SELECT DATE_FORMAT(date,'%Y-%m') AS month,COUNT(*) AS count
-                FROM appointments WHERE date>=DATE_SUB(CURDATE(),INTERVAL 5 MONTH)
-                GROUP BY DATE_FORMAT(date,'%Y-%m') ORDER BY month ASC";
-            $statusSql = "SELECT COALESCE(status,'Pending') AS status,COUNT(*) AS count
-                FROM appointments GROUP BY status";
-            $rateSql = "SELECT COUNT(*) AS total_confirmed,
-                SUM(CASE WHEN vw.status='Completed' THEN 1 ELSE 0 END) AS completed
-                FROM appointments a LEFT JOIN visit_workflow vw ON vw.appointment_id=a.id
-                WHERE a.status='Confirmed'";
-        } else {
             $weeklySql = "SELECT DAYNAME(DATE(starts_at)) AS day,DAYOFWEEK(DATE(starts_at)) AS day_num,COUNT(*) AS count
                 FROM appointments WHERE starts_at>=DATE_SUB(CURDATE(),INTERVAL 6 DAY)
                   AND starts_at<CURDATE()+INTERVAL 1 DAY
@@ -105,7 +71,6 @@ class DashboardAnalyticsService
                 WHERE a.booking_status='confirmed'
                   AND NOT EXISTS (SELECT 1 FROM appointment_reschedule_requests r
                     WHERE r.appointment_id=a.id AND r.request_status IN ('requested','suggested'))";
-        }
         $weekly = $this->db->query($weeklySql)->fetchAll(PDO::FETCH_ASSOC);
         $monthly = $this->db->query($monthlySql)->fetchAll(PDO::FETCH_ASSOC);
         $status = $this->db->query($statusSql)->fetchAll(PDO::FETCH_ASSOC);
@@ -122,21 +87,6 @@ class DashboardAnalyticsService
 
     public function getPatientAnalytics(): array
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $genderSql = "SELECT COALESCE(NULLIF(gender,''),'Not specified') AS gender,COUNT(*) AS count
-                FROM medical_records GROUP BY gender ORDER BY count DESC";
-            $ageSql = "SELECT CASE
-                    WHEN TIMESTAMPDIFF(YEAR,date_of_birth,CURDATE()) BETWEEN 0 AND 18 THEN '0-18'
-                    WHEN TIMESTAMPDIFF(YEAR,date_of_birth,CURDATE()) BETWEEN 19 AND 30 THEN '19-30'
-                    WHEN TIMESTAMPDIFF(YEAR,date_of_birth,CURDATE()) BETWEEN 31 AND 45 THEN '31-45'
-                    WHEN TIMESTAMPDIFF(YEAR,date_of_birth,CURDATE()) BETWEEN 46 AND 60 THEN '46-60'
-                    WHEN TIMESTAMPDIFF(YEAR,date_of_birth,CURDATE())>60 THEN '60+' ELSE 'Unknown' END AS age_range,
-                    COUNT(*) AS count FROM medical_records WHERE date_of_birth IS NOT NULL
-                GROUP BY age_range ORDER BY MIN(TIMESTAMPDIFF(YEAR,date_of_birth,CURDATE()))";
-            $activeSql = "SELECT u.name,u.email,COUNT(a.id) AS appointment_count
-                FROM users u JOIN appointments a ON a.user_id=u.id WHERE u.role='patient'
-                GROUP BY u.id,u.name,u.email ORDER BY appointment_count DESC LIMIT 5";
-        } else {
             $genderSql = "SELECT COALESCE(NULLIF(gender,''),'Not specified') AS gender,COUNT(*) AS count
                 FROM patient_profiles GROUP BY gender ORDER BY count DESC";
             $ageSql = "SELECT CASE
@@ -150,7 +100,6 @@ class DashboardAnalyticsService
             $activeSql = "SELECT u.name,u.email,COUNT(a.id) AS appointment_count
                 FROM users u JOIN appointments a ON a.patient_user_id=u.id WHERE u.role='patient'
                 GROUP BY u.id,u.name,u.email ORDER BY appointment_count DESC LIMIT 5";
-        }
         return [
             'gender_distribution' => $this->db->query($genderSql)->fetchAll(PDO::FETCH_ASSOC),
             'age_distribution' => $this->db->query($ageSql)->fetchAll(PDO::FETCH_ASSOC),
@@ -160,18 +109,6 @@ class DashboardAnalyticsService
 
     public function getDoctorAnalytics(): array
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $ratedSql = "SELECT d.id,d.name,d.specialty,d.rating,d.exp,
-                COALESCE((SELECT COUNT(*) FROM ratings r WHERE r.doctor_id=d.id),0) AS review_count,
-                COALESCE((SELECT COUNT(*) FROM appointments a WHERE a.doctor_id=d.id),0) AS total_appointments
-                FROM doctors d ORDER BY d.rating DESC LIMIT 5";
-            $busySql = "SELECT d.id,d.name,d.specialty,COUNT(a.id) AS appointment_count
-                FROM doctors d LEFT JOIN appointments a ON a.doctor_id=d.id
-                GROUP BY d.id,d.name,d.specialty ORDER BY appointment_count DESC LIMIT 5";
-            $availabilitySql = "SELECT
-                SUM(CASE WHEN available=1 THEN 1 ELSE 0 END) AS available_today,
-                SUM(CASE WHEN available=0 THEN 1 ELSE 0 END) AS unavailable_today FROM doctors";
-        } else {
             $ratedSql = "SELECT d.doctor_user_id AS id,u.name,d.specialty,
                 COALESCE(r.average_rating,0) AS rating,d.experience_years AS exp,
                 COALESCE(r.rating_count,0) AS review_count,COALESCE(a.total_appointments,0) AS total_appointments
@@ -189,7 +126,6 @@ class DashboardAnalyticsService
                 SUM(CASE WHEN s.is_available=1 THEN 1 ELSE 0 END) AS available_today,
                 SUM(CASE WHEN s.is_available=0 THEN 1 ELSE 0 END) AS unavailable_today
                 FROM doctor_schedule_settings s JOIN doctor_profiles d ON d.doctor_user_id=s.doctor_user_id";
-        }
         $availability = $this->db->query($availabilitySql)->fetch(PDO::FETCH_ASSOC) ?: [];
         return [
             'highest_rated' => $this->db->query($ratedSql)->fetchAll(PDO::FETCH_ASSOC),
@@ -201,13 +137,7 @@ class DashboardAnalyticsService
 
     public function getDepartmentAnalytics(): array
     {
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT d.id,d.name,d.status,COUNT(DISTINCT doc.id) AS doctor_count,
-                COUNT(DISTINCT a.id) AS appointment_count,COUNT(DISTINCT a.user_id) AS patient_count
-                FROM departments d LEFT JOIN doctors doc ON doc.department_id=d.id
-                LEFT JOIN appointments a ON a.department_id=d.id
-                GROUP BY d.id,d.name,d.status ORDER BY appointment_count DESC"
-            : "SELECT d.id,d.name,d.status,COUNT(DISTINCT doc.doctor_user_id) AS doctor_count,
+        $sql = "SELECT d.id,d.name,d.status,COUNT(DISTINCT doc.doctor_user_id) AS doctor_count,
                 COUNT(DISTINCT a.id) AS appointment_count,COUNT(DISTINCT a.patient_user_id) AS patient_count
                 FROM departments d LEFT JOIN doctor_profiles doc ON doc.department_id=d.id
                 LEFT JOIN appointments a ON a.department_id=d.id
@@ -218,13 +148,7 @@ class DashboardAnalyticsService
     public function getRecentActivity(int $limit = 10): array
     {
         $limit = max(1, min(100, $limit));
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT a.id,a.action,a.entity_type,a.entity_id,a.description,a.created_at,a.actor_role,
-                COALESCE(u.name,CONCAT('Deleted ',UPPER(SUBSTRING(a.actor_role,1,1)),SUBSTRING(a.actor_role,2))) AS actor_name,
-                a.patient_id,a.doctor_id
-                FROM admin_audit a LEFT JOIN users u ON a.actor_id=u.id
-                ORDER BY a.created_at DESC LIMIT ?"
-            : "SELECT a.id,a.action_code AS action,a.entity_type,a.entity_id,a.description,
+        $sql = "SELECT a.id,a.action_code AS action,a.entity_type,a.entity_id,a.description,
                 a.occurred_at AS created_at,a.actor_role_snapshot AS actor_role,
                 COALESCE(u.name,CONCAT('Deleted ',UPPER(SUBSTRING(a.actor_role_snapshot,1,1)),SUBSTRING(a.actor_role_snapshot,2))) AS actor_name,
                 a.patient_user_id AS patient_id,a.doctor_user_id AS doctor_id

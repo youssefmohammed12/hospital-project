@@ -59,12 +59,8 @@ $docType = (($_GET['type'] ?? '') === 'summary') ? 'summary' : 'confirmation';
 try {
     $db = getDB();
 
-    $appointmentSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA');
-    $clinicalSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
-
     // Project the V2 snapshot/instant model into the established print DTO.
-    if ($appointmentSchema === AppointmentBookingRepository::SCHEMA_V2) {
-        $stmt = $db->prepare(
+    $stmt = $db->prepare(
             "SELECT a.id, a.patient_user_id AS user_id, a.doctor_user_id AS doctor_id,
                     a.patient_name_snapshot AS patient_name,
                     a.doctor_name_snapshot AS doctor,
@@ -89,15 +85,6 @@ try {
              LEFT JOIN users u2 ON a.doctor_user_id = u2.id
              WHERE a.id = ? LIMIT 1"
         );
-    } else {
-        $stmt = $db->prepare(
-            "SELECT a.*, u.name as patient_user_name, u2.name as doctor_user_name
-             FROM appointments a
-             LEFT JOIN users u ON a.user_id = u.id
-             LEFT JOIN users u2 ON a.doctor_id = u2.id
-             WHERE a.id = ? LIMIT 1"
-        );
-    }
     $stmt->execute([$appointmentId]);
     $appt = $stmt->fetch();
 
@@ -140,8 +127,7 @@ try {
 
     // Hospital identity — same source as the prescription print.
     $hospitalSettings = (new HospitalSettingsService(
-        $db,
-        HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_HOSPITAL_SCHEMA')
+        $db
     ))->getSettings();
     $hospitalName = trim((string)($hospitalSettings['hospital_name'] ?? '')) ?: 'HealthBridge Hospital';
     $hospitalAddress = trim((string)($hospitalSettings['hospital_address'] ?? ''));
@@ -292,11 +278,10 @@ try {
         // clinical field was recorded) plus every prescription issued at
         // this visit, fetched in full — items included — through the same
         // service the prescription print uses.
-        $visitNote = (new VisitWorkflowService($db, $clinicalSchema))->getNote($appointmentId);
+        $visitNote = (new VisitWorkflowService($db))->getNote($appointmentId);
 
         $prescriptionService = new PrescriptionService(
-            $db,
-            HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA')
+            $db
         );
         $rxIdStmt = $db->prepare(
             "SELECT id FROM prescriptions WHERE appointment_id = ? ORDER BY id ASC"

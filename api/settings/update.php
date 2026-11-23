@@ -38,8 +38,7 @@ $db = null;
 
 try {
     $db = getDB();
-    $settingsSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_SETTINGS_SCHEMA');
-    $auditSchema = AuditService::schemaFromEnvironment();
+
 
     // Legacy accounts may lack a preference row. Check first and insert only
     // immediately before a validated preference write; INSERT IGNORE reserves
@@ -153,7 +152,7 @@ try {
             }
 
             if (!empty($changes)) {
-                $audit = new AuditService($db, $userId, $role, $auditSchema);
+                $audit = new AuditService($db, $userId, $role);
                 $patientCtx = $role === 'patient' ? $userId : null;
                 $doctorCtx = $role === 'doctor' ? $userId : null;
                 $logged = $audit->log(
@@ -223,7 +222,7 @@ try {
                 jsonResponse(false, ['message' => 'Please log in again before changing your password.']);
             }
 
-            $passwordColumn = $settingsSchema === DoctorSettingsRepository::SCHEMA_V1 ? 'password' : 'password_hash';
+            $passwordColumn = 'password_hash';
             $db->beginTransaction();
             $stmt = $db->prepare(
                 "SELECT {$passwordColumn} AS password_hash, session_version
@@ -255,7 +254,7 @@ try {
                 jsonResponse(false, ['message' => 'Your credentials changed in another session. Please log in again.']);
             }
 
-            $audit = new AuditService($db, $userId, $role, $auditSchema);
+            $audit = new AuditService($db, $userId, $role);
             $patientCtx = $role === 'patient' ? $userId : null;
             $doctorCtx = $role === 'doctor' ? $userId : null;
             $logged = $audit->log(
@@ -392,8 +391,7 @@ try {
             }
 
             // V2 requires the complete seven-day model instead of a global hours range.
-            if ($settingsSchema === DoctorSettingsRepository::SCHEMA_V2
-                && ($hoursStart !== '' || $hoursEnd !== '')
+            if (($hoursStart !== '' || $hoursEnd !== '')
                 && !array_key_exists('weekly_schedule', $data)) {
                 http_response_code(400);
                 jsonResponse(false, ['message' => 'V2 settings require a seven-day weekly_schedule instead of global working hours.']);
@@ -408,14 +406,7 @@ try {
             if ($visible !== null) {
                 $changes['profile_visible'] = $visible;
             }
-            if ($settingsSchema === DoctorSettingsRepository::SCHEMA_V1) {
-                if ($hoursStart !== '') {
-                    $changes['working_hours_start'] = $hoursStart;
-                }
-                if ($hoursEnd !== '') {
-                    $changes['working_hours_end'] = $hoursEnd;
-                }
-            } elseif (array_key_exists('weekly_schedule', $data)) {
+            if (array_key_exists('weekly_schedule', $data)) {
                 if (!is_array($data['weekly_schedule'])) {
                     http_response_code(400);
                     jsonResponse(false, ['message' => 'Weekly schedule must be an array.']);
@@ -423,7 +414,7 @@ try {
                 $changes['weekly_schedule'] = $data['weekly_schedule'];
             }
 
-            $settingsRepository = new DoctorSettingsRepository($db, $settingsSchema);
+            $settingsRepository = new DoctorSettingsRepository($db);
             $settingsRepository->updateDoctorSettings($userId, $changes, $userId);
 
             jsonResponse(true, ['message' => 'Doctor settings updated!']);
@@ -448,17 +439,11 @@ try {
                 jsonResponse(false, ['message' => 'Invalid default dashboard tab.']);
             }
             if ($defaultTab !== '') {
-                if ($settingsSchema === DoctorSettingsRepository::SCHEMA_V1) {
-                    $ensurePreferencesRow();
-                    $db->prepare('UPDATE user_preferences SET admin_default_tab = ? WHERE user_id = ?')
-                       ->execute([$defaultTab, $userId]);
-                } else {
-                    $db->prepare(
+                $db->prepare(
                         'INSERT INTO admin_preferences (admin_user_id, default_tab)
                          VALUES (?, ?)
                          ON DUPLICATE KEY UPDATE default_tab=VALUES(default_tab), updated_at=NOW()'
                     )->execute([$userId, $defaultTab]);
-                }
             }
 
             jsonResponse(true, ['message' => 'Admin preferences updated!']);
@@ -479,8 +464,7 @@ try {
             }
 
             $lifecycle = new AccountLifecycleRepository(
-                $db,
-                $settingsSchema
+                $db
             );
             $result = $lifecycle->deactivateSelf($userId, $role, $confirm);
 

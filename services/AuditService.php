@@ -15,36 +15,20 @@
 
 class AuditService
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
-    public static function schemaFromEnvironment(): string
-    {
-        require_once __DIR__ . '/../includes/SchemaSelector.php';
-        return HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUDIT_SCHEMA');
-    }
-
     protected PDO $db;
     protected int $actorId;
     protected string $actorRole;
-    protected string $schema;
 
     /**
      * @param PDO    $db        Database connection
      * @param int    $actorId   User ID of the acting user (from server session, never from frontend)
      * @param string $actorRole Role of the acting user: 'admin', 'doctor', or 'patient'
-     * @param string $schema    Explicit storage schema; defaults to V1 for all existing callers
      */
-    public function __construct(PDO $db, int $actorId, string $actorRole = 'admin', string $schema = self::SCHEMA_V1)
+    public function __construct(PDO $db, int $actorId, string $actorRole = 'admin')
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('AuditService schema must be explicitly v1 or v2.');
-        }
-
         $this->db = $db;
         $this->actorId = $actorId;
         $this->actorRole = in_array($actorRole, ['admin', 'doctor', 'patient'], true) ? $actorRole : 'admin';
-        $this->schema = $schema;
     }
 
     /**
@@ -79,34 +63,19 @@ class AuditService
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
         try {
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO admin_audit
-                        (actor_id, actor_role, action, entity_type, entity_id,
-                         patient_id, doctor_id, old_value, new_value, description,
-                         ip_address, user_agent)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                );
-                $params = [
-                    $this->actorId, $this->actorRole, $action, $entityType, $entityId,
-                    $patientId, $doctorId, $oldValue, $newValue, $description,
-                    $ipAddress, $userAgent,
-                ];
-            } else {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO audit_events
-                        (actor_user_id, actor_role_snapshot, action_code, entity_type,
-                         entity_id, patient_user_id, doctor_user_id, old_value, new_value,
-                         description, ip_address, user_agent)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                );
-                $params = [
-                    $this->actorId, $this->actorRole, $action, $entityType,
-                    $entityId !== null ? (string)$entityId : null,
-                    $patientId, $doctorId, $oldValue, $newValue, $description,
-                    $ipAddress, $userAgent,
-                ];
-            }
+            $stmt = $this->db->prepare(
+                "INSERT INTO audit_events
+                    (actor_user_id, actor_role_snapshot, action_code, entity_type,
+                     entity_id, patient_user_id, doctor_user_id, old_value, new_value,
+                     description, ip_address, user_agent)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            $params = [
+                $this->actorId, $this->actorRole, $action, $entityType,
+                $entityId !== null ? (string)$entityId : null,
+                $patientId, $doctorId, $oldValue, $newValue, $description,
+                $ipAddress, $userAgent,
+            ];
             $stmt->execute($params);
 
             return true;
@@ -278,28 +247,24 @@ class AuditService
     {
         $allowedEntityTypes = ['department', 'hospital_settings', 'doctor', 'patient', 'appointment', 'prescription'];
 
-        // V2 keeps audit history in audit_events and exposes the legacy DTO aliases.
-        $table = $this->schema === self::SCHEMA_V2 ? 'audit_events' : 'admin_audit';
-        $actorColumn = $this->schema === self::SCHEMA_V2 ? 'actor_user_id' : 'actor_id';
-        $roleColumn = $this->schema === self::SCHEMA_V2 ? 'actor_role_snapshot' : 'actor_role';
-        $actionColumn = $this->schema === self::SCHEMA_V2 ? 'action_code' : 'action';
-        $patientColumn = $this->schema === self::SCHEMA_V2 ? 'patient_user_id' : 'patient_id';
-        $doctorColumn = $this->schema === self::SCHEMA_V2 ? 'doctor_user_id' : 'doctor_id';
-        $dateColumn = $this->schema === self::SCHEMA_V2 ? 'occurred_at' : 'created_at';
+        // Audit history lives in audit_events; the V2 column names are projected
+        // to the established admin audit API response shape (legacy DTO aliases).
+        $table = 'audit_events';
+        $actorColumn = 'actor_user_id';
+        $roleColumn = 'actor_role_snapshot';
+        $actionColumn = 'action_code';
+        $patientColumn = 'patient_user_id';
+        $doctorColumn = 'doctor_user_id';
+        $dateColumn = 'occurred_at';
 
         // Keep deleted actors visible while projecting the V2 column names to the
         // established admin audit API response shape.
-        if ($this->schema === self::SCHEMA_V2) {
-            $projection = "a.id, a.actor_user_id AS actor_id, a.actor_role_snapshot AS actor_role,
-                           a.action_code AS action, a.entity_type, a.entity_id,
-                           a.patient_user_id AS patient_id, a.doctor_user_id AS doctor_id,
-                           a.old_value, a.new_value, a.description, a.ip_address,
-                           a.user_agent, a.occurred_at AS created_at";
-            $actorName = "COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role_snapshot, 1, 1)), SUBSTRING(a.actor_role_snapshot, 2)))";
-        } else {
-            $projection = 'a.*';
-            $actorName = "COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role, 1, 1)), SUBSTRING(a.actor_role, 2)))";
-        }
+        $projection = "a.id, a.actor_user_id AS actor_id, a.actor_role_snapshot AS actor_role,
+                       a.action_code AS action, a.entity_type, a.entity_id,
+                       a.patient_user_id AS patient_id, a.doctor_user_id AS doctor_id,
+                       a.old_value, a.new_value, a.description, a.ip_address,
+                       a.user_agent, a.occurred_at AS created_at";
+        $actorName = "COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role_snapshot, 1, 1)), SUBSTRING(a.actor_role_snapshot, 2)))";
 
         $join = " FROM {$table} a LEFT JOIN users u ON a.{$actorColumn} = u.id ";
         $countSql = "SELECT COUNT(*) as total" . $join . "WHERE 1=1";
@@ -434,8 +399,7 @@ class AuditService
      */
     public function getDistinctEntityTypes(): array
     {
-        $table = $this->schema === self::SCHEMA_V2 ? 'audit_events' : 'admin_audit';
-        $stmt = $this->db->query("SELECT DISTINCT entity_type FROM {$table} ORDER BY entity_type ASC");
+        $stmt = $this->db->query("SELECT DISTINCT entity_type FROM audit_events ORDER BY entity_type ASC");
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
@@ -444,9 +408,7 @@ class AuditService
      */
     public function getDistinctActions(): array
     {
-        $table = $this->schema === self::SCHEMA_V2 ? 'audit_events' : 'admin_audit';
-        $column = $this->schema === self::SCHEMA_V2 ? 'action_code' : 'action';
-        $stmt = $this->db->query("SELECT DISTINCT {$column} FROM {$table} ORDER BY {$column} ASC");
+        $stmt = $this->db->query("SELECT DISTINCT action_code FROM audit_events ORDER BY action_code ASC");
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 

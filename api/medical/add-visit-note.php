@@ -19,8 +19,6 @@ $currentUserId = (int)$user['id'];
 $currentRole = (string)$user['role'];
 $currentName = (string)($user['name'] ?? 'A clinician');
 
-// Runtime remains explicitly on v1 until the separately approved cutover.
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -67,7 +65,7 @@ try {
     $db = getDB();
     $db->beginTransaction();
 
-    $encounters = new ClinicalEncounterRepository($db, $schema);
+    $encounters = new ClinicalEncounterRepository($db);
     $identity = $encounters->getAppointmentContext($appointmentId);
     if (!$identity) {
         $db->rollBack();
@@ -81,7 +79,7 @@ try {
         : null;
 
     // Account rows are locked before appointment/workflow rows.
-    $accountLocks = new ClinicalAccessService($db, $schema);
+    $accountLocks = new ClinicalAccessService($db);
     if (!$accountLocks->lockDoctorAndPatient($assignedDoctorId, $identityPatientId)) {
         $db->rollBack();
         http_response_code(409);
@@ -125,7 +123,7 @@ try {
     }
 
     // The appointment row is already locked; this serializes note writes.
-    $workflowService = new VisitWorkflowService($db, $schema);
+    $workflowService = new VisitWorkflowService($db);
     $existing = $workflowService->getNote($appointmentId);
 
     $newValues = [
@@ -151,7 +149,7 @@ try {
         $notificationMessage = "Clinical visit notes for your appointment on {$appointment['appointment_date']} are now available in your Medical Record.";
     }
 
-    $audit = new AuditService($db, $currentUserId, $currentRole, $schema);
+    $audit = new AuditService($db, $currentUserId, $currentRole);
     $auditLogged = $audit->log(
         $action,
         'patient',

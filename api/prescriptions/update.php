@@ -50,7 +50,7 @@ if ($validationError) {
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
+    $ps = new PrescriptionService($db);
 
     $updated = $ps->update($prescriptionId, $items, $notes ?: null, $currentUserId);
 

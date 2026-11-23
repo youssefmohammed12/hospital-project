@@ -16,7 +16,6 @@ require_once __DIR__ . '/../../includes/AppointmentTime.php';
 
 $user = requireRole('doctor');
 $currentUserId = (int)$user['id'];
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
@@ -40,10 +39,10 @@ if ($hasAppointmentId && $appointmentId === null) {
 
 try {
     $db = getDB();
-    $workflowService = new VisitWorkflowService($db, $schema);
+    $workflowService = new VisitWorkflowService($db);
 
     // Use the same encounter-evidence policy as every other doctor EMR route.
-    $clinicalAccess = new ClinicalAccessService($db, $schema);
+    $clinicalAccess = new ClinicalAccessService($db);
     if (!$clinicalAccess->doctorCanAccessPatient($currentUserId, $patientId)) {
         http_response_code(403);
         jsonResponse(false, ['message' => 'You can only view records of patients with a confirmed appointment or documented clinical encounter.']);
@@ -63,13 +62,8 @@ try {
     }
 
     // ── 2. Medical Record ──
-    if ($schema === PatientPortalService::SCHEMA_V1) {
-        $mrStmt = $db->prepare("SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1");
-        $mrStmt->execute([$patientId]);
-        $medicalRecord = $mrStmt->fetch();
-    } else {
-        $profile = (new PatientPortalService($db, $schema))->getMedicalProfile($patientId);
-        $medicalRecord = [
+    $profile = (new PatientPortalService($db))->getMedicalProfile($patientId);
+    $medicalRecord = [
             'id' => null,
             'patient_id' => $patientId,
             'blood_type' => $profile['blood_type'] ?? null,
@@ -89,7 +83,6 @@ try {
             'created_at' => null,
             'updated_at' => null,
         ];
-    }
 
     if (!$medicalRecord) {
         // Workspace loading is read-only; explicit clinical edits create the record.
@@ -148,40 +141,24 @@ try {
     // ── 3. Current Visit (the appointment) ──
     $currentVisit = null;
     if ($appointmentId) {
-        if ($schema === PatientPortalService::SCHEMA_V1) {
-            $visitStmt = $db->prepare(
-                "SELECT a.*, u.name AS doctor_user_name
-                 FROM appointments a
-                 LEFT JOIN users u ON a.doctor_id=u.id
-                 WHERE a.id=? AND a.user_id=? AND a.doctor_id=?"
-            );
-        } else {
-            $visitStmt = $db->prepare(
+        $visitStmt = $db->prepare(
                 $v2AppointmentSelect . " WHERE a.id=? AND a.patient_user_id=? AND a.doctor_user_id=?"
             );
-        }
         $visitStmt->execute([$appointmentId, $patientId, $currentUserId]);
         $currentVisit = $visitStmt->fetch();
 
         if ($currentVisit) {
-            if ($schema === PatientPortalService::SCHEMA_V2) {
-                $sourceTime = (string)($currentVisit['source_time_snapshot'] ?? '');
-                if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$currentVisit['time'])) {
-                    $currentVisit['time'] = $sourceTime;
-                    $rangeSnapshot = $currentVisit['source_time_range_snapshot'] ?? null;
-                    $currentVisit['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
-                        ? $rangeSnapshot
-                        : AppointmentTime::range((string)$currentVisit['time'], max(1, (int)($currentVisit['duration_minutes'] ?? 30)));
-                } else {
-                    $currentVisit['appointment_time_range'] = AppointmentTime::range(
-                        (string)$currentVisit['time'],
-                        max(1, (int)($currentVisit['duration_minutes'] ?? 30))
-                    );
-                }
-            } elseif (empty($currentVisit['appointment_time_range'])) {
-                $currentVisit['appointment_time_range'] = computeAppointmentTimeRange(
-                    $currentVisit['time'],
-                    getAppointmentDuration((int)$currentVisit['doctor_id'])
+            $sourceTime = (string)($currentVisit['source_time_snapshot'] ?? '');
+            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$currentVisit['time'])) {
+                $currentVisit['time'] = $sourceTime;
+                $rangeSnapshot = $currentVisit['source_time_range_snapshot'] ?? null;
+                $currentVisit['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                    ? $rangeSnapshot
+                    : AppointmentTime::range((string)$currentVisit['time'], max(1, (int)($currentVisit['duration_minutes'] ?? 30)));
+            } else {
+                $currentVisit['appointment_time_range'] = AppointmentTime::range(
+                    (string)$currentVisit['time'],
+                    max(1, (int)($currentVisit['duration_minutes'] ?? 30))
                 );
             }
         }
@@ -193,43 +170,26 @@ try {
         $currentVisitNote = $currentVisit ? $workflowService->getNote((int)$currentVisit['id']) : null;
     } else {
         // No specific appointment: get the latest confirmed appointment with this doctor.
-        if ($schema === PatientPortalService::SCHEMA_V1) {
-            $visitStmt = $db->prepare(
-                "SELECT a.*, u.name AS doctor_user_name
-                 FROM appointments a
-                 LEFT JOIN users u ON a.doctor_id=u.id
-                 WHERE a.user_id=? AND a.doctor_id=? AND a.status='Confirmed'
-                 ORDER BY a.date DESC,a.time DESC LIMIT 1"
-            );
-        } else {
-            $visitStmt = $db->prepare(
+        $visitStmt = $db->prepare(
                 $v2AppointmentSelect . " WHERE a.patient_user_id=? AND a.doctor_user_id=?
                                          AND a.booking_status='confirmed'
                                          ORDER BY a.starts_at DESC LIMIT 1"
             );
-        }
         $visitStmt->execute([$patientId, $currentUserId]);
         $currentVisit = $visitStmt->fetch();
 
         if ($currentVisit) {
-            if ($schema === PatientPortalService::SCHEMA_V2) {
-                $sourceTime = (string)($currentVisit['source_time_snapshot'] ?? '');
-                if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$currentVisit['time'])) {
-                    $currentVisit['time'] = $sourceTime;
-                    $rangeSnapshot = $currentVisit['source_time_range_snapshot'] ?? null;
-                    $currentVisit['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
-                        ? $rangeSnapshot
-                        : AppointmentTime::range((string)$currentVisit['time'], max(1, (int)($currentVisit['duration_minutes'] ?? 30)));
-                } else {
-                    $currentVisit['appointment_time_range'] = AppointmentTime::range(
-                        (string)$currentVisit['time'],
-                        max(1, (int)($currentVisit['duration_minutes'] ?? 30))
-                    );
-                }
-            } elseif (empty($currentVisit['appointment_time_range'])) {
-                $currentVisit['appointment_time_range'] = computeAppointmentTimeRange(
-                    $currentVisit['time'],
-                    getAppointmentDuration((int)$currentVisit['doctor_id'])
+            $sourceTime = (string)($currentVisit['source_time_snapshot'] ?? '');
+            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$currentVisit['time'])) {
+                $currentVisit['time'] = $sourceTime;
+                $rangeSnapshot = $currentVisit['source_time_range_snapshot'] ?? null;
+                $currentVisit['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                    ? $rangeSnapshot
+                    : AppointmentTime::range((string)$currentVisit['time'], max(1, (int)($currentVisit['duration_minutes'] ?? 30)));
+            } else {
+                $currentVisit['appointment_time_range'] = AppointmentTime::range(
+                    (string)$currentVisit['time'],
+                    max(1, (int)($currentVisit['duration_minutes'] ?? 30))
                 );
             }
         }
@@ -242,17 +202,7 @@ try {
     }
 
     // ── 4. All Appointments (for timeline) ──
-    if ($schema === PatientPortalService::SCHEMA_V1) {
-        $apptStmt = $db->prepare(
-            "SELECT a.*, u.name AS doctor_user_name
-             FROM appointments a
-             LEFT JOIN users u ON a.doctor_id=u.id
-             WHERE a.user_id=?
-             ORDER BY a.date DESC,a.time DESC"
-        );
-    } else {
-        $apptStmt = $db->prepare($v2AppointmentSelect . " WHERE a.patient_user_id=? ORDER BY a.starts_at DESC");
-    }
+    $apptStmt = $db->prepare($v2AppointmentSelect . " WHERE a.patient_user_id=? ORDER BY a.starts_at DESC");
     $apptStmt->execute([$patientId]);
     $appointments = $apptStmt->fetchAll();
 
@@ -261,24 +211,17 @@ try {
     $apptIds = array_map(static fn(array $appt): int => (int)$appt['id'], $appointments);
     $workflowByAppointment = $workflowService->getForAppointments($apptIds);
     foreach ($appointments as &$appt) {
-        if ($schema === PatientPortalService::SCHEMA_V2) {
-            $sourceTime = (string)($appt['source_time_snapshot'] ?? '');
-            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$appt['time'])) {
-                $appt['time'] = $sourceTime;
-                $rangeSnapshot = $appt['source_time_range_snapshot'] ?? null;
-                $appt['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
-                    ? $rangeSnapshot
-                    : AppointmentTime::range((string)$appt['time'], max(1, (int)($appt['duration_minutes'] ?? 30)));
-            } else {
-                $appt['appointment_time_range'] = AppointmentTime::range(
-                    (string)$appt['time'],
-                    max(1, (int)($appt['duration_minutes'] ?? 30))
-                );
-            }
-        } elseif (empty($appt['appointment_time_range'])) {
-            $appt['appointment_time_range'] = computeAppointmentTimeRange(
-                $appt['time'],
-                getAppointmentDuration((int)$appt['doctor_id'])
+        $sourceTime = (string)($appt['source_time_snapshot'] ?? '');
+        if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$appt['time'])) {
+            $appt['time'] = $sourceTime;
+            $rangeSnapshot = $appt['source_time_range_snapshot'] ?? null;
+            $appt['appointment_time_range'] = is_string($rangeSnapshot) && trim($rangeSnapshot) !== ''
+                ? $rangeSnapshot
+                : AppointmentTime::range((string)$appt['time'], max(1, (int)($appt['duration_minutes'] ?? 30)));
+        } else {
+            $appt['appointment_time_range'] = AppointmentTime::range(
+                (string)$appt['time'],
+                max(1, (int)($appt['duration_minutes'] ?? 30))
             );
         }
 
@@ -287,7 +230,7 @@ try {
     unset($appt);
 
     // ── 5. Prescriptions ──
-    $prescriptionService = new PrescriptionService($db, $schema);
+    $prescriptionService = new PrescriptionService($db);
     $prescriptions = $prescriptionService->attachItems(
         $prescriptionService->getByPatient($patientId),
         'item_count'
@@ -297,16 +240,7 @@ try {
     $visitNotes = $workflowService->getNotesForPatient($patientId);
 
     // ── 6.5. Medical History Updates (for timeline) ──
-    if ($schema === PatientPortalService::SCHEMA_V1) {
-        $mhUpdateStmt = $db->prepare(
-            "SELECT mhu.*,u.name AS doctor_name
-             FROM medical_history_updates mhu
-             LEFT JOIN users u ON mhu.doctor_id=u.id
-             WHERE mhu.patient_id=?
-             ORDER BY mhu.created_at DESC"
-        );
-    } else {
-        $mhUpdateStmt = $db->prepare(
+    $mhUpdateStmt = $db->prepare(
             "SELECT mhe.id,mhe.patient_user_id AS patient_id,
                     mhe.doctor_user_id AS doctor_id,mhe.field_name,
                     mhe.old_value,mhe.new_value,mhe.created_at,
@@ -316,7 +250,6 @@ try {
              WHERE mhe.patient_user_id=?
              ORDER BY mhe.created_at DESC,mhe.id DESC"
         );
-    }
     $mhUpdateStmt->execute([$patientId]);
     $medicalHistoryUpdates = $mhUpdateStmt->fetchAll();
 

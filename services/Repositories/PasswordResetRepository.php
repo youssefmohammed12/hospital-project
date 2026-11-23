@@ -2,34 +2,24 @@
 declare(strict_types=1);
 
 /**
- * Password reset token storage and consumption for the v1/v2 schemas.
+ * Password reset token storage and consumption (V2 schema).
  * Raw tokens are returned only to the caller for one-time mail delivery.
  */
 final class PasswordResetRepository
 {
-    public const SCHEMA_V1='v1';
-    public const SCHEMA_V2='v2';
-
     private PDO $db;
-    private string $schema;
-    private string $table;
-    private string $passwordColumn;
+    private string $table = 'password_reset_tokens';
+    private string $passwordColumn = 'password_hash';
 
-    public function __construct(PDO $db,string $schema)
+    public function __construct(PDO $db)
     {
-        if(!in_array($schema,[self::SCHEMA_V1,self::SCHEMA_V2],true)){
-            throw new InvalidArgumentException('PasswordResetRepository schema must be explicitly v1 or v2.');
-        }
         $this->db=$db;
-        $this->schema=$schema;
-        $this->table=$schema===self::SCHEMA_V1?'password_resets':'password_reset_tokens';
-        $this->passwordColumn=$schema===self::SCHEMA_V1?'password':'password_hash';
     }
 
     /**
      * Create a reset attempt with the existing per-email/IP limits.
-     * Unknown or inactive emails receive a used, tokenless attempt in v1 and
-     * an undisclosed random hash marked used in v2 (where token_hash is NOT NULL).
+     * Unknown or inactive emails receive an undisclosed random hash marked
+     * used (token_hash is NOT NULL in V2).
      *
      * @return array{rate_limited:bool,token:?string,request_id:?int}
      */
@@ -85,24 +75,15 @@ final class PasswordResetRepository
             $tokenHash=$token!==null?hash('sha256',$token):null;
             $used=$activeUser?0:1;
 
-            if($this->schema===self::SCHEMA_V1){
-                $insert=$this->db->prepare(
-                    "INSERT INTO password_resets
-                        (email,token,token_hash,request_ip,expires_at,used,created_at)
-                     VALUES (?,NULL,?,?,DATE_ADD(NOW(),INTERVAL 60 MINUTE),?,NOW())"
-                );
-                $insert->execute([$email,$tokenHash,$requestIp,$used]);
-            }else{
-                // V2 requires token_hash NOT NULL. An unknown/inactive address gets
-                // an unguessable, undisclosed value already marked used.
-                $storedHash=$tokenHash??hash('sha256',random_bytes(32));
-                $insert=$this->db->prepare(
-                    "INSERT INTO password_reset_tokens
-                        (email,token_hash,request_ip,expires_at,used,created_at)
-                     VALUES (?,?,?,DATE_ADD(NOW(),INTERVAL 60 MINUTE),?,NOW())"
-                );
-                $insert->execute([$email,$storedHash,$requestIp,$used]);
-            }
+            // V2 requires token_hash NOT NULL. An unknown/inactive address gets
+            // an unguessable, undisclosed value already marked used.
+            $storedHash=$tokenHash??hash('sha256',random_bytes(32));
+            $insert=$this->db->prepare(
+                "INSERT INTO password_reset_tokens
+                    (email,token_hash,request_ip,expires_at,used,created_at)
+                 VALUES (?,?,?,DATE_ADD(NOW(),INTERVAL 60 MINUTE),?,NOW())"
+            );
+            $insert->execute([$email,$storedHash,$requestIp,$used]);
 
             $id=(int)$this->db->lastInsertId();
             $this->db->commit();
@@ -116,10 +97,9 @@ final class PasswordResetRepository
     public function invalidateUndeliveredToken(int $requestId):void
     {
         if($requestId<=0){return;}
-        $sql=$this->schema===self::SCHEMA_V1
-            ? 'UPDATE password_resets SET used=1,token_hash=NULL WHERE id=? AND used=0'
-            : 'UPDATE password_reset_tokens SET used=1 WHERE id=? AND used=0';
-        $this->db->prepare($sql)->execute([$requestId]);
+        $this->db->prepare(
+            'UPDATE password_reset_tokens SET used=1 WHERE id=? AND used=0'
+        )->execute([$requestId]);
     }
 
     public function isTokenValid(string $tokenHash):bool

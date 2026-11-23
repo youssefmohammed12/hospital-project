@@ -64,7 +64,7 @@ if ($retryAfter > 0) {
 try {
     $db = getDB();
     // Live HTTP routing stays explicitly on v1 until the approved cutover.
-    $credentials = new AuthCredentialRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA'));
+    $credentials = new AuthCredentialRepository($db);
     $user = $credentials->findLoginUser($email);
 } catch (Throwable $e) {
     error_log('Login DB Error: ' . $e->getMessage());

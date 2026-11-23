@@ -43,9 +43,7 @@ if ($user['role'] === 'admin') {
 
 try {
     $db = getDB();
-    $appointmentSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA');
-    $clinicalSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
-    $wfService = new VisitWorkflowService($db, $clinicalSchema);
+    $wfService = new VisitWorkflowService($db);
 
     // Get doctor profile
     $doctorStmt = $db->prepare('SELECT id, name, email FROM users WHERE id = ? AND role = "doctor" LIMIT 1');
@@ -58,8 +56,7 @@ try {
     }
 
     // Get appointments for this doctor
-    if ($appointmentSchema === AppointmentBookingRepository::SCHEMA_V2) {
-        $apptStmt = $db->prepare(
+    $apptStmt = $db->prepare(
             "SELECT a.id, a.patient_user_id AS user_id, a.patient_user_id AS patient_id,
                     a.patient_name_snapshot AS patient_name,
                     a.department_name_snapshot AS department,
@@ -94,13 +91,6 @@ try {
              WHERE a.doctor_user_id = ?
              ORDER BY a.starts_at DESC, a.id DESC"
         );
-    } else {
-        $apptStmt = $db->prepare(
-            'SELECT a.id, a.user_id, a.user_id AS patient_id, a.patient_name, a.department, a.date, a.time, a.appointment_time_range, a.notes, a.status, a.created_at, a.doctor_id,
-                    a.reschedule_status, a.pending_reschedule_date, a.pending_reschedule_time, a.reschedule_reason, a.reschedule_requested_at
-             FROM appointments a WHERE a.doctor_id = ? ORDER BY a.date DESC, a.time DESC'
-        );
-    }
     $apptStmt->execute([$doctor['id']]);
     $appointments = $apptStmt->fetchAll();
 
@@ -124,11 +114,6 @@ try {
                 $appt['prescription_id'] = (int)$existing['id'];
             }
             $appt['has_visit_note'] = $wfService->getNote((int)$appt['id']) !== null;
-        }
-        // Add appointment_time_range — prefer stored value
-        if (empty($appt['appointment_time_range']) && $appointmentSchema === AppointmentBookingRepository::SCHEMA_V1) {
-            $duration = getAppointmentDuration((int)$appt['doctor_id']);
-            $appt['appointment_time_range'] = computeAppointmentTimeRange($appt['time'], $duration);
         }
     }
 

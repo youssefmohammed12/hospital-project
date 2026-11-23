@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../NotificationService.php';
 
 /**
- * Schema-aware self-deactivation workflow for patients, doctors and admins.
+ * Self-deactivation workflow for patients, doctors and admins (V2 schema).
  *
  * Locks and mutations are kept within one transaction. The caller supplies
  * the server-session identity and the password confirmation; no user ID or
@@ -12,19 +12,11 @@ require_once __DIR__ . '/../NotificationService.php';
  */
 final class AccountLifecycleRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('AccountLifecycleRepository schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     public function deactivateSelf(int $userId, string $role, string $password): array
@@ -43,7 +35,7 @@ final class AccountLifecycleRepository
                 $activeAdminCount = count($adminLocks);
             }
 
-            $passwordColumn = $this->schema === self::SCHEMA_V1 ? 'password' : 'password_hash';
+            $passwordColumn = 'password_hash';
             $stmt = $this->db->prepare(
                 "SELECT id,role,is_active,{$passwordColumn} AS password_hash
                  FROM users WHERE id=? AND role=? LIMIT 1 FOR UPDATE"
@@ -120,35 +112,19 @@ final class AccountLifecycleRepository
 
     private function assertNoUnfinishedDoctorWork(int $doctorUserId): void
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $visit = $this->db->prepare(
-                "SELECT COUNT(*) FROM appointments a
-                 INNER JOIN visit_workflow w ON w.appointment_id=a.id
-                 WHERE a.doctor_id=? AND a.status='Confirmed'
-                   AND w.status IN ('In Progress','Ready to Complete')"
-            );
-            $visit->execute([$doctorUserId]);
-            $prescriptions = $this->db->prepare(
-                "SELECT COUNT(*) FROM prescriptions WHERE doctor_id=? AND status='Active'"
-            );
-            $prescriptions->execute([$doctorUserId]);
-            $drafts = $this->db->prepare('SELECT COUNT(*) FROM visit_drafts WHERE doctor_id=?');
-            $drafts->execute([$doctorUserId]);
-        } else {
-            $visit = $this->db->prepare(
-                "SELECT COUNT(*) FROM appointments a
+        $visit = $this->db->prepare(
+            "SELECT COUNT(*) FROM appointments a
                  INNER JOIN clinical_encounters ce ON ce.appointment_id=a.id
                  WHERE a.doctor_user_id=? AND a.booking_status='confirmed'
                    AND ce.workflow_status IN ('in_progress','ready_to_complete')"
-            );
-            $visit->execute([$doctorUserId]);
-            $prescriptions = $this->db->prepare(
-                "SELECT COUNT(*) FROM prescriptions WHERE doctor_user_id=? AND status='active'"
-            );
-            $prescriptions->execute([$doctorUserId]);
-            $drafts = $this->db->prepare('SELECT COUNT(*) FROM encounter_drafts WHERE doctor_user_id=?');
-            $drafts->execute([$doctorUserId]);
-        }
+        );
+        $visit->execute([$doctorUserId]);
+        $prescriptions = $this->db->prepare(
+            "SELECT COUNT(*) FROM prescriptions WHERE doctor_user_id=? AND status='active'"
+        );
+        $prescriptions->execute([$doctorUserId]);
+        $drafts = $this->db->prepare('SELECT COUNT(*) FROM encounter_drafts WHERE doctor_user_id=?');
+        $drafts->execute([$doctorUserId]);
 
         if ((int)$visit->fetchColumn()>0 || (int)$prescriptions->fetchColumn()>0 || (int)$drafts->fetchColumn()>0) {
             throw new DomainException(
@@ -159,21 +135,8 @@ final class AccountLifecycleRepository
 
     private function findCancellableAppointments(int $userId,string $role): array
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $ownerColumn = $role === 'patient' ? 'a.user_id' : 'a.doctor_id';
-            $sql = "SELECT a.id,a.user_id AS patient_user_id,a.date,a.time
-                    FROM appointments a
-                    LEFT JOIN visit_workflow w ON w.appointment_id=a.id
-                    WHERE {$ownerColumn}=?
-                      AND a.status IN ('Pending','Confirmed','Reschedule Requested')
-                      AND (w.status IS NULL OR w.status='Waiting')
-                      AND NOT EXISTS (SELECT 1 FROM visit_drafts vd WHERE vd.appointment_id=a.id)
-                      AND NOT EXISTS (SELECT 1 FROM visit_notes vn WHERE vn.appointment_id=a.id)
-                      AND NOT EXISTS (SELECT 1 FROM prescriptions p WHERE p.appointment_id=a.id)
-                    FOR UPDATE";
-        } else {
-            $ownerColumn = $role === 'patient' ? 'a.patient_user_id' : 'a.doctor_user_id';
-            $sql = "SELECT a.id,a.patient_user_id,a.starts_at
+        $ownerColumn = $role === 'patient' ? 'a.patient_user_id' : 'a.doctor_user_id';
+        $sql = "SELECT a.id,a.patient_user_id,a.starts_at
                     FROM appointments a
                     LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
                     WHERE {$ownerColumn}=?
@@ -189,7 +152,6 @@ final class AccountLifecycleRepository
                       AND NOT EXISTS (SELECT 1 FROM encounter_drafts ed WHERE ed.appointment_id=a.id)
                       AND NOT EXISTS (SELECT 1 FROM prescriptions p WHERE p.appointment_id=a.id)
                     FOR UPDATE";
-        }
         $stmt=$this->db->prepare($sql);
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -197,18 +159,6 @@ final class AccountLifecycleRepository
 
     private function cancelAppointment(int $appointmentId,int $actorUserId,string $actorRole,array $appointment): void
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt=$this->db->prepare(
-                "UPDATE appointments SET status='Cancelled'
-                 WHERE id=? AND status IN ('Pending','Confirmed','Reschedule Requested')"
-            );
-            $stmt->execute([$appointmentId]);
-            if ($stmt->rowCount()!==1) {
-                throw new RuntimeException('An appointment changed during account deactivation.');
-            }
-            return;
-        }
-
         $current=$this->db->prepare('SELECT booking_status FROM appointments WHERE id=? LIMIT 1 FOR UPDATE');
         $current->execute([$appointmentId]);
         $fromStatus=(string)$current->fetchColumn();
@@ -246,21 +196,12 @@ final class AccountLifecycleRepository
     ): void {
         $oldJson=json_encode($oldValue,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
         $newJson=json_encode($newValue,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-        if ($this->schema===self::SCHEMA_V1) {
-            $stmt=$this->db->prepare(
-                'INSERT INTO admin_audit
-                 (actor_id,actor_role,action,entity_type,entity_id,patient_id,doctor_id,
-                  old_value,new_value,description,ip_address,user_agent)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-            );
-        } else {
-            $stmt=$this->db->prepare(
-                'INSERT INTO audit_events
+        $stmt=$this->db->prepare(
+            'INSERT INTO audit_events
                  (actor_user_id,actor_role_snapshot,action_code,entity_type,entity_id,
                   patient_user_id,doctor_user_id,old_value,new_value,description,ip_address,user_agent)
                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-            );
-        }
+        );
         $stmt->execute([
             $actorUserId,$actorRole,$action,$entityType,(string)$entityId,
             $patientId,$doctorId,$oldJson,$newJson,$description,
@@ -271,7 +212,6 @@ final class AccountLifecycleRepository
     private function writeAppointmentEvent(
         int $appointmentId,int $actorUserId,string $actorRole,string $eventType,string $fromStatus,array $details
     ): void {
-        if ($this->schema!==self::SCHEMA_V2) { return; }
         $stmt=$this->db->prepare(
             "INSERT INTO appointment_events
              (appointment_id,actor_user_id,actor_role_snapshot,event_type,from_status,to_status,event_details,created_at)

@@ -5,9 +5,6 @@ require_once __DIR__ . '/Repositories/ClinicalEncounterRepository.php';
 
 /**
  * Visit workflow facade.
- *
- * Existing callers remain on the v1 schema through the one-argument constructor.
- * Explicit v2 mode is used only by isolated compatibility tests/future adapters.
  */
 class VisitWorkflowService
 {
@@ -17,17 +14,12 @@ class VisitWorkflowService
     public const STATUS_COMPLETED = ClinicalEncounterRepository::STATUS_COMPLETED;
 
     private PDO $db;
-    private string $schema;
     private ClinicalEncounterRepository $encounters;
 
-    public function __construct(PDO $db, string $schema = ClinicalEncounterRepository::SCHEMA_V1)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [ClinicalEncounterRepository::SCHEMA_V1, ClinicalEncounterRepository::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('VisitWorkflowService schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
-        $this->encounters = new ClinicalEncounterRepository($db, $schema);
+        $this->encounters = new ClinicalEncounterRepository($db);
     }
 
     public function get(int $appointmentId): ?array
@@ -59,15 +51,11 @@ class VisitWorkflowService
     {
         $stats = ['created' => 0, 'skipped' => 0, 'errors' => 0];
 
-        $sql = $this->schema === ClinicalEncounterRepository::SCHEMA_V1
-            ? "SELECT id,status FROM appointments ORDER BY id"
-            : "SELECT id,booking_status AS status FROM appointments ORDER BY id";
+        $sql = "SELECT id,booking_status AS status FROM appointments ORDER BY id";
         $appointments = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($appointments as $appointment) {
-            $status = $this->schema === ClinicalEncounterRepository::SCHEMA_V1
-                ? ((string)$appointment['status'] === 'Confirmed')
-                : ((string)$appointment['status'] === 'confirmed');
+            $status = ((string)$appointment['status'] === 'confirmed');
             if (!$status) {
                 $stats['skipped']++;
                 continue;

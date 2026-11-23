@@ -40,7 +40,7 @@ if ($user['role'] !== 'admin') {
 
 try {
     $db = getDB();
-    $service = new DashboardAnalyticsService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_ANALYTICS_SCHEMA'));
+    $service = new DashboardAnalyticsService($db);
     $data = $service->getAll();
 
     jsonResponse(true, $data);

@@ -51,54 +51,40 @@ if ($user['role'] === 'patient' && (int)$user['id'] !== $patientId) {
 
 try {
     $db = getDB();
-    $auditSchema = AuditService::schemaFromEnvironment();
-    $clinicalSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
     // Authorization: doctor access uses the shared confirmed-appointment / clinical-encounter policy.
     if ($user['role'] === 'doctor') {
-        $clinicalAccess = new ClinicalAccessService($db, $clinicalSchema);
+        $clinicalAccess = new ClinicalAccessService($db);
         if (!$clinicalAccess->doctorCanAccessPatient((int)$user['id'], $patientId)) {
             http_response_code(403);
             jsonResponse(false, ['message' => 'You can only view audit history for patients with a confirmed appointment or documented clinical encounter.']);
         }
     }
 
-    if ($auditSchema === AuditService::SCHEMA_V2) {
-        $stmt = $db->prepare("
-            SELECT a.id,
-                   a.actor_user_id AS actor_id,
-                   a.actor_role_snapshot AS actor_role,
-                   a.action_code AS action,
-                   a.entity_type,
-                   a.entity_id,
-                   a.patient_user_id AS patient_id,
-                   a.doctor_user_id AS doctor_id,
-                   a.old_value,
-                   a.new_value,
-                   a.description,
-                   a.ip_address,
-                   a.user_agent,
-                   a.occurred_at AS created_at,
-                   COALESCE(u.name, 'Deleted User') AS actor_name
-            FROM audit_events a
-            LEFT JOIN users u ON a.actor_user_id = u.id
-            WHERE a.patient_user_id = ?
-               OR (a.entity_type = 'patient' AND a.entity_id = ?)
-            ORDER BY a.occurred_at DESC, a.id DESC
-            LIMIT ?
-        ");
-        $stmt->execute([$patientId, (string)$patientId, $limit]);
-    } else {
-        $stmt = $db->prepare("
-            SELECT pal.*, COALESCE(u.name, 'Deleted User') as actor_name
-            FROM patient_audit_log pal
-            LEFT JOIN users u ON pal.actor_id = u.id
-            WHERE pal.patient_id = ?
-            ORDER BY pal.created_at DESC
-            LIMIT ?
-        ");
-        $stmt->execute([$patientId, $limit]);
-    }
+    $stmt = $db->prepare("
+        SELECT a.id,
+               a.actor_user_id AS actor_id,
+               a.actor_role_snapshot AS actor_role,
+               a.action_code AS action,
+               a.entity_type,
+               a.entity_id,
+               a.patient_user_id AS patient_id,
+               a.doctor_user_id AS doctor_id,
+               a.old_value,
+               a.new_value,
+               a.description,
+               a.ip_address,
+               a.user_agent,
+               a.occurred_at AS created_at,
+               COALESCE(u.name, 'Deleted User') AS actor_name
+        FROM audit_events a
+        LEFT JOIN users u ON a.actor_user_id = u.id
+        WHERE a.patient_user_id = ?
+           OR (a.entity_type = 'patient' AND a.entity_id = ?)
+        ORDER BY a.occurred_at DESC, a.id DESC
+        LIMIT ?
+    ");
+    $stmt->execute([$patientId, (string)$patientId, $limit]);
     $entries = $stmt->fetchAll();
 
     // A patient viewing their own trail must not receive other users'

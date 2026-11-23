@@ -117,8 +117,7 @@ foreach (['break_start', 'break_end'] as $timeField) {
 
 // Load hospital hours for boundary validation
 $db = getDB();
-$schema = ScheduleService::schemaFromEnvironment();
-$ss = new ScheduleService($db, $schema);
+$ss = new ScheduleService($db);
 $hospitalHours = $ss->getHospitalHours();
 
 $validationError = ScheduleService::validateWeekly($weekly, $hospitalHours['open'], $hospitalHours['close']);
@@ -158,7 +157,7 @@ try {
     // Log schedule update to audit using universal AuditService
     // This captures both admin and doctor role changes
     try {
-        $audit = new AuditService($db, (int)$user['id'], $user['role'], $schema);
+        $audit = new AuditService($db, (int)$user['id'], $user['role']);
         $audit->logScheduleChange($doctorId, $oldSchedule, [
             'weekly' => $weekly,
             'settings' => $settings

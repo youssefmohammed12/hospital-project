@@ -59,7 +59,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 try {
     $db = getDB();
-    $management = new DoctorManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA'));
+    $management = new DoctorManagementRepository($db);
 
     $changes = [
         'name' => $name,

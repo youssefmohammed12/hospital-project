@@ -21,28 +21,20 @@ final class RegistrationIntakeService
     private const MAX_ATTEMPTS = 5;
     private const LEASE_MINUTES = 5;
 
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
     /** @var array<string,string> */
     private array $keyRing;
 
     private string $activeKeyVersion;
 
-    public function __construct(PDO $db, string $schema = self::SCHEMA_V1)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('RegistrationIntakeService schema must be explicitly v1 or v2.');
-        }
         if (!extension_loaded('openssl') || !function_exists('openssl_encrypt') || !function_exists('openssl_decrypt')) {
             throw new RuntimeException('Authenticated encryption support is unavailable.');
         }
 
         $this->db = $db;
-        $this->schema = $schema;
         [$this->keyRing, $this->activeKeyVersion] = self::loadKeyRing();
     }
 
@@ -928,23 +920,12 @@ final class RegistrationIntakeService
         $fullName = formatFullName($profile['first_name'], $profile['last_name']);
         $patientNumber = generatePatientNumber($this->db);
 
-        $isV2 = $this->schema === self::SCHEMA_V2;
-
-        if ($isV2) {
-            $stmt = $this->db->prepare(
-                "INSERT INTO users
-                    (name, first_name, last_name, email, password_hash, phone, role, national_id,
-                     patient_number, email_verification_required, email_verified_at, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, 'patient', ?, ?, 1, ?, NOW())"
-            );
-        } else {
-            $stmt = $this->db->prepare(
-                "INSERT INTO users
-                    (name, first_name, last_name, email, password, phone, role, national_id, patient_number,
-                     email_verification_required, email_verified_at, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, 'patient', ?, ?, 1, ?, NOW())"
-            );
-        }
+        $stmt = $this->db->prepare(
+            "INSERT INTO users
+                (name, first_name, last_name, email, password_hash, phone, role, national_id,
+                 patient_number, email_verification_required, email_verified_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'patient', ?, ?, 1, ?, NOW())"
+        );
         $stmt->execute([
             $fullName,
             $profile['first_name'],
@@ -960,7 +941,6 @@ final class RegistrationIntakeService
 
         $this->db->prepare('INSERT IGNORE INTO user_preferences (user_id) VALUES (?)')->execute([$userId]);
 
-        if ($isV2) {
             $governorateText = trim((string)$profile['governorate']);
             $cityText = trim((string)$profile['city']);
             $governorateId = null;
@@ -1038,52 +1018,6 @@ final class RegistrationIntakeService
                 $_SERVER['REMOTE_ADDR'] ?? null,
                 $_SERVER['HTTP_USER_AGENT'] ?? null,
             ]);
-        } else {
-            $stmt = $this->db->prepare(
-                "INSERT INTO medical_records (
-                    patient_id, date_of_birth, gender, blood_type, governorate, city, address,
-                    emergency_contact_name, emergency_contact_phone, emergency_contact_rel,
-                    allergies, chronic_diseases, current_medications,
-                    insurance_provider, insurance_number, created_at, updated_at
-                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
-            );
-            $stmt->execute([
-                $userId,
-                $profile['date_of_birth'] !== '' ? $profile['date_of_birth'] : null,
-                $profile['gender'],
-                $profile['blood_type'] !== '' ? $profile['blood_type'] : null,
-                $profile['governorate'],
-                $profile['city'],
-                $profile['address'],
-                $profile['emergency_contact_name'],
-                $profile['emergency_contact_phone'],
-                $profile['emergency_contact_rel'],
-                $profile['allergies'] !== '' ? $profile['allergies'] : null,
-                $profile['chronic_diseases'] !== '' ? $profile['chronic_diseases'] : null,
-                $profile['current_medications'] !== '' ? $profile['current_medications'] : null,
-                $profile['insurance_provider'] !== '' ? $profile['insurance_provider'] : null,
-                $profile['insurance_number'] !== '' ? $profile['insurance_number'] : null,
-            ]);
-
-            $audit = new AuditService($this->db, $userId, 'patient', $this->schema);
-            $auditLogged = $audit->log(
-                'create',
-                'patient',
-                $userId,
-                null,
-                [
-                    'first_name' => $profile['first_name'],
-                    'patient_number' => $patientNumber,
-                    'national_id' => '[REDACTED]',
-                ],
-                'New patient account fully registered with patient number: ' . $patientNumber,
-                $userId,
-                null
-            );
-            if (!$auditLogged) {
-                throw new RuntimeException('Registration audit insert failed.');
-            }
-        }
 
         $adminStmt = $this->db->query("SELECT id FROM users WHERE role = 'admin' AND is_active = 1");
         $notifications = new NotificationService($this->db);

@@ -4,10 +4,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/../NotificationService.php';
 
 /**
- * Explicit v1/v2 adapter for doctor account/profile mutations.
+ * Doctor account/profile mutations (V2 schema).
  *
  * All doctor-facing identifiers in this repository are users.id values.
- * It never uses doctors.id as an application identity.
  *
  * The caller owns the surrounding transaction when one is already open.
  * This is important for endpoint-level audit/outbox atomicity and for the
@@ -15,20 +14,11 @@ require_once __DIR__ . '/../NotificationService.php';
  */
 final class DoctorManagementRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('DoctorManagementRepository schema must be explicitly v1 or v2.');
-        }
-
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     /**
@@ -66,13 +56,8 @@ final class DoctorManagementRepository
             $this->assertAdminActor($actorUserId);
             $department = $this->lockActiveDepartment($departmentId);
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $sql = 'INSERT INTO users (name, email, password, phone, role, is_active, created_at)
-                        VALUES (?, ?, ?, ?, \'doctor\', 1, NOW())';
-            } else {
-                $sql = 'INSERT INTO users (name, email, password_hash, phone, role, is_active, session_version)
+            $sql = 'INSERT INTO users (name, email, password_hash, phone, role, is_active, session_version)
                         VALUES (?, ?, ?, ?, \'doctor\', 1, 1)';
-            }
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$name, $email, $passwordHash, $phone]);
@@ -81,51 +66,28 @@ final class DoctorManagementRepository
                 throw new RuntimeException('The doctor account ID could not be generated.');
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $profile = $this->db->prepare(
-                    'INSERT INTO doctors (user_id, name, specialty, rating, exp, available, department_id, emoji)
-                     VALUES (?, ?, ?, 4.5, 5, 1, ?, \'fa-user-doctor\')'
-                );
-                $profile->execute([$doctorUserId, $name, $department['name'], $departmentId]);
+            $profile = $this->db->prepare(
+                'INSERT INTO doctor_profiles
+                    (doctor_user_id, department_id, specialty, experience_years, profile_icon,
+                     accepts_new_patients, profile_visible)
+                 VALUES (?, ?, ?, 5, \'fa-user-doctor\', 1, 1)'
+            );
+            $profile->execute([$doctorUserId, $departmentId, $department['name']]);
 
-                $this->db->prepare('INSERT IGNORE INTO user_preferences (user_id) VALUES (?)')
-                    ->execute([$doctorUserId]);
+            $this->db->prepare('INSERT INTO user_preferences (user_id) VALUES (?)')
+                ->execute([$doctorUserId]);
 
-                $this->db->prepare(
-                    'INSERT INTO doctor_schedule_settings
-                        (doctor_id, appointment_duration, max_appointments_per_day, is_available)
-                     VALUES (?, 30, 25, 1)'
-                )->execute([$doctorUserId]);
+            $this->db->prepare(
+                'INSERT INTO doctor_schedule_settings
+                    (doctor_user_id, appointment_duration_min, max_appointments_per_day, is_available)
+                 VALUES (?, 30, 25, 1)'
+            )->execute([$doctorUserId]);
 
-                $weekly = $this->db->prepare(
-                    'INSERT INTO doctor_schedule_weekly
-                        (doctor_id, day_of_week, start_time, end_time, is_working)
-                     VALUES (?, ?, \'09:00\', \'17:00\', ?)'
-                );
-            } else {
-                $profile = $this->db->prepare(
-                    'INSERT INTO doctor_profiles
-                        (doctor_user_id, department_id, specialty, experience_years, profile_icon,
-                         accepts_new_patients, profile_visible)
-                     VALUES (?, ?, ?, 5, \'fa-user-doctor\', 1, 1)'
-                );
-                $profile->execute([$doctorUserId, $departmentId, $department['name']]);
-
-                $this->db->prepare('INSERT INTO user_preferences (user_id) VALUES (?)')
-                    ->execute([$doctorUserId]);
-
-                $this->db->prepare(
-                    'INSERT INTO doctor_schedule_settings
-                        (doctor_user_id, appointment_duration_min, max_appointments_per_day, is_available)
-                     VALUES (?, 30, 25, 1)'
-                )->execute([$doctorUserId]);
-
-                $weekly = $this->db->prepare(
-                    'INSERT INTO doctor_weekly_schedules
-                        (doctor_user_id, day_of_week, start_time, end_time, is_working)
-                     VALUES (?, ?, \'09:00:00\', \'17:00:00\', ?)'
-                );
-            }
+            $weekly = $this->db->prepare(
+                'INSERT INTO doctor_weekly_schedules
+                    (doctor_user_id, day_of_week, start_time, end_time, is_working)
+                 VALUES (?, ?, \'09:00:00\', \'17:00:00\', ?)'
+            );
 
             for ($day = 1; $day <= 7; $day++) {
                 $weekly->execute([$doctorUserId, $day, $day <= 5 ? 1 : 0]);
@@ -244,11 +206,6 @@ final class DoctorManagementRepository
                 throw new RuntimeException('Doctor account details were not updated.');
             }
 
-            if ($this->schema === self::SCHEMA_V1 && array_key_exists('name', $fieldsChanged)) {
-                $this->db->prepare('UPDATE doctors SET name = ? WHERE user_id = ?')
-                    ->execute([$new['name'], $doctorUserId]);
-            }
-
             $this->writeAudit(
                 $actorUserId,
                 'update',
@@ -264,9 +221,8 @@ final class DoctorManagementRepository
     }
 
     /**
-     * Assign/reassign a doctor using users.id in both schema modes.
-     * The specialty string remains synchronized with the department name,
-     * matching the existing v1 endpoint's backward-compatible behavior.
+     * Assign/reassign a doctor using users.id.
+     * The specialty string remains synchronized with the department name.
      */
     public function assignDoctorToDepartment(int $doctorUserId, int $departmentId, int $actorUserId): array
     {
@@ -293,15 +249,9 @@ final class DoctorManagementRepository
                 ];
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    'UPDATE doctors SET department_id = ?, specialty = ? WHERE user_id = ?'
-                );
-            } else {
-                $stmt = $this->db->prepare(
-                    'UPDATE doctor_profiles SET department_id = ?, specialty = ? WHERE doctor_user_id = ?'
-                );
-            }
+            $stmt = $this->db->prepare(
+                'UPDATE doctor_profiles SET department_id = ?, specialty = ? WHERE doctor_user_id = ?'
+            );
             $stmt->execute([$departmentId, $department['name'], $doctorUserId]);
             if ($stmt->rowCount() !== 1) {
                 throw new RuntimeException('Doctor department assignment was not updated.');
@@ -473,43 +423,23 @@ final class DoctorManagementRepository
 
     private function assertNoUnfinishedClinicalWork(int $doctorUserId, bool $archiving = false): void
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $activeVisit = $this->db->prepare(
-                "SELECT COUNT(*)
-                 FROM appointments a
-                 INNER JOIN visit_workflow w ON w.appointment_id = a.id
-                 WHERE a.doctor_id = ?
-                   AND a.status = 'Confirmed'
-                   AND w.status IN ('In Progress','Ready to Complete')"
-            );
-            $activeVisit->execute([$doctorUserId]);
+        $activeVisit = $this->db->prepare(
+            "SELECT COUNT(*)
+             FROM appointments a
+             INNER JOIN clinical_encounters ce ON ce.appointment_id = a.id
+             WHERE a.doctor_user_id = ?
+               AND a.booking_status = 'confirmed'
+               AND ce.workflow_status IN ('in_progress','ready_to_complete')"
+        );
+        $activeVisit->execute([$doctorUserId]);
 
-            $activePrescription = $this->db->prepare(
-                "SELECT COUNT(*) FROM prescriptions WHERE doctor_id = ? AND status = 'Active'"
-            );
-            $activePrescription->execute([$doctorUserId]);
+        $activePrescription = $this->db->prepare(
+            "SELECT COUNT(*) FROM prescriptions WHERE doctor_user_id = ? AND status = 'active'"
+        );
+        $activePrescription->execute([$doctorUserId]);
 
-            $drafts = $this->db->prepare('SELECT COUNT(*) FROM visit_drafts WHERE doctor_id = ?');
-            $drafts->execute([$doctorUserId]);
-        } else {
-            $activeVisit = $this->db->prepare(
-                "SELECT COUNT(*)
-                 FROM appointments a
-                 INNER JOIN clinical_encounters ce ON ce.appointment_id = a.id
-                 WHERE a.doctor_user_id = ?
-                   AND a.booking_status = 'confirmed'
-                   AND ce.workflow_status IN ('in_progress','ready_to_complete')"
-            );
-            $activeVisit->execute([$doctorUserId]);
-
-            $activePrescription = $this->db->prepare(
-                "SELECT COUNT(*) FROM prescriptions WHERE doctor_user_id = ? AND status = 'active'"
-            );
-            $activePrescription->execute([$doctorUserId]);
-
-            $drafts = $this->db->prepare('SELECT COUNT(*) FROM encounter_drafts WHERE doctor_user_id = ?');
-            $drafts->execute([$doctorUserId]);
-        }
+        $drafts = $this->db->prepare('SELECT COUNT(*) FROM encounter_drafts WHERE doctor_user_id = ?');
+        $drafts->execute([$doctorUserId]);
 
         if ((int)$activeVisit->fetchColumn() > 0
             || (int)$activePrescription->fetchColumn() > 0
@@ -524,21 +454,7 @@ final class DoctorManagementRepository
 
     private function findCancellableAppointments(int $doctorUserId): array
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $sql = "SELECT a.id, a.user_id AS patient_user_id,
-                           DATE_FORMAT(a.date, '%Y-%m-%d') AS appointment_date,
-                           a.time AS appointment_time
-                    FROM appointments a
-                    LEFT JOIN visit_workflow w ON w.appointment_id = a.id
-                    WHERE a.doctor_id = ?
-                      AND a.status IN ('Pending','Confirmed','Reschedule Requested')
-                      AND (w.status IS NULL OR w.status = 'Waiting')
-                      AND NOT EXISTS (SELECT 1 FROM visit_drafts vd WHERE vd.appointment_id = a.id)
-                      AND NOT EXISTS (SELECT 1 FROM visit_notes vn WHERE vn.appointment_id = a.id)
-                      AND NOT EXISTS (SELECT 1 FROM prescriptions p WHERE p.appointment_id = a.id)
-                    FOR UPDATE";
-        } else {
-            $sql = "SELECT a.id, a.patient_user_id,
+        $sql = "SELECT a.id, a.patient_user_id,
                            DATE_FORMAT(a.starts_at, '%Y-%m-%d') AS appointment_date,
                            DATE_FORMAT(a.starts_at, '%H:%i') AS appointment_time
                     FROM appointments a
@@ -559,7 +475,6 @@ final class DoctorManagementRepository
                       AND NOT EXISTS (SELECT 1 FROM encounter_drafts ed WHERE ed.appointment_id = a.id)
                       AND NOT EXISTS (SELECT 1 FROM prescriptions p WHERE p.appointment_id = a.id)
                     FOR UPDATE";
-        }
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$doctorUserId]);
@@ -568,19 +483,6 @@ final class DoctorManagementRepository
 
     private function cancelAppointment(int $appointmentId, int $actorUserId): void
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                "UPDATE appointments
-                 SET status = 'Cancelled'
-                 WHERE id = ? AND status IN ('Pending','Confirmed','Reschedule Requested')"
-            );
-            $stmt->execute([$appointmentId]);
-            if ($stmt->rowCount() !== 1) {
-                throw new RuntimeException('An appointment changed while the doctor account was being disabled.');
-            }
-            return;
-        }
-
         $current = $this->db->prepare(
             'SELECT booking_status FROM appointments WHERE id = ? FOR UPDATE'
         );
@@ -651,9 +553,7 @@ final class DoctorManagementRepository
     {
         $this->lockDoctor($doctorUserId);
 
-        $sql = $this->schema === self::SCHEMA_V1
-            ? 'SELECT department_id, specialty FROM doctors WHERE user_id = ? LIMIT 1 FOR UPDATE'
-            : 'SELECT department_id, specialty FROM doctor_profiles WHERE doctor_user_id = ? LIMIT 1 FOR UPDATE';
+        $sql = 'SELECT department_id, specialty FROM doctor_profiles WHERE doctor_user_id = ? LIMIT 1 FOR UPDATE';
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$doctorUserId]);
         $profile = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -717,21 +617,12 @@ final class DoctorManagementRepository
         $oldJson = $oldValue === null ? null : (is_string($oldValue) ? $oldValue : json_encode($oldValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $newJson = $newValue === null ? null : (is_string($newValue) ? $newValue : json_encode($newValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                'INSERT INTO admin_audit
-                    (actor_id, actor_role, action, entity_type, entity_id, doctor_id,
-                     old_value, new_value, description, ip_address, user_agent)
-                 VALUES (?, \'admin\', ?, \'doctor\', ?, ?, ?, ?, ?, ?, ?)'
-            );
-        } else {
-            $stmt = $this->db->prepare(
-                'INSERT INTO audit_events
-                    (actor_user_id, actor_role_snapshot, action_code, entity_type, entity_id,
-                     doctor_user_id, old_value, new_value, description, ip_address, user_agent)
-                 VALUES (?, \'admin\', ?, \'doctor\', ?, ?, ?, ?, ?, ?, ?)'
-            );
-        }
+        $stmt = $this->db->prepare(
+            'INSERT INTO audit_events
+                (actor_user_id, actor_role_snapshot, action_code, entity_type, entity_id,
+                 doctor_user_id, old_value, new_value, description, ip_address, user_agent)
+             VALUES (?, \'admin\', ?, \'doctor\', ?, ?, ?, ?, ?, ?, ?)'
+        );
 
         $stmt->execute([
             $actorUserId,

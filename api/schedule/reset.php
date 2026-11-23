@@ -40,7 +40,7 @@ if (!$doctor) {
 
 try {
     $db = getDB();
-    $ss = new ScheduleService($db, ScheduleService::schemaFromEnvironment());
+    $ss = new ScheduleService($db);
     $oldSchedule = $ss->getSchedule($doctorId);
     $ss->resetToDefault($doctorId);
     $newSchedule = $ss->getSchedule($doctorId);
@@ -49,7 +49,7 @@ try {
     // (PHP audit, 23 Nov 2026, finding L4). A failed audit write must not
     // fail the reset itself.
     try {
-        $audit = new AuditService($db, (int)$user['id'], $user['role'], AuditService::schemaFromEnvironment());
+        $audit = new AuditService($db, (int)$user['id'], $user['role']);
         $audit->log(
             'reset_schedule',
             'doctor',

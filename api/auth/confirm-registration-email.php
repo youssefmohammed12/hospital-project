@@ -48,7 +48,7 @@ if ($retryAfter > 0) {
 }
 
 try {
-    $service = new RegistrationIntakeService(getDB(), HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA'));
+    $service = new RegistrationIntakeService(getDB());
     if (!$service->confirmRegistrationEmail($token)) {
         http_response_code(400);
         jsonResponse(false, ['message' => 'This verification link is invalid, expired, or has already been used. Please request a new one.']);

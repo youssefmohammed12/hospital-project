@@ -29,7 +29,7 @@ try {
     $db = getDB();
 
     // Keep current runtime on v1; v2 behavior is exercised through disposable fixtures.
-    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $management = new PatientManagementRepository($db);
     $result = $management->archivePatient($id, (int)$user['id']);
 
     jsonResponse(true, [

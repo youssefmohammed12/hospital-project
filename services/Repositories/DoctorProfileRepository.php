@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Canonical doctor-profile read adapter for v1 and v2.
+ * Canonical doctor-profile read adapter (V2 schema).
  *
  * Canonical doctor identity is always users.id (doctor_id/user_id).
  * The public directory also retains its legacy profile-row "id" field for
@@ -10,20 +10,11 @@ declare(strict_types=1);
  */
 final class DoctorProfileRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('Schema mode must be explicitly v1 or v2.');
-        }
-
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     public function findByUserId(int $doctorUserId): ?array
@@ -42,16 +33,11 @@ final class DoctorProfileRepository
 
     public function listPublic(): array
     {
-        $visibility = $this->schema === self::SCHEMA_V1
-            ? 'COALESCE(p.profile_visible, 1) = 1'
-            : 'dp.profile_visible = 1';
-        $departmentColumn = $this->schema === self::SCHEMA_V1 ? 'd.department_id' : 'dp.department_id';
-
         $sql = $this->selectSql()
             . " WHERE u.role = 'doctor'
                  AND u.is_active = 1
-                 AND {$visibility}
-                 AND ({$departmentColumn} IS NULL OR dep.status = 'active' OR dep.id IS NULL)
+                 AND dp.profile_visible = 1
+                 AND (dp.department_id IS NULL OR dep.status = 'active' OR dep.id IS NULL)
                ORDER BY average_rating DESC, u.name ASC";
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
@@ -59,15 +45,7 @@ final class DoctorProfileRepository
 
     public function listForAdmin(): array
     {
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT u.id AS id, u.id AS user_id, u.id AS doctor_id,
-                      u.name, u.email, u.phone, u.is_active, u.created_at,
-                      d.specialty, d.rating, d.exp, d.emoji, d.department_id
-               FROM users u
-               LEFT JOIN doctors d ON d.user_id = u.id
-               WHERE u.role = 'doctor'
-               ORDER BY u.created_at DESC"
-            : "SELECT u.id AS id, u.id AS user_id, u.id AS doctor_id,
+        $sql = "SELECT u.id AS id, u.id AS user_id, u.id AS doctor_id,
                       u.name, u.email, u.phone, u.is_active, u.created_at,
                       dp.specialty, COALESCE(rs.average_rating, 0) AS rating,
                       dp.experience_years AS exp, dp.profile_icon AS emoji,
@@ -83,32 +61,6 @@ final class DoctorProfileRepository
 
     private function selectSql(): string
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            return "SELECT d.id AS id, u.id AS user_id, u.id AS doctor_id,
-                           d.name, u.email, u.phone, u.is_active, u.created_at,
-                           d.specialty, d.exp AS exp, d.exp AS experience_years,
-                           d.emoji AS emoji, d.emoji AS profile_icon, d.department_id,
-                           COALESCE(p.accept_new_patients, 1) AS accepts_new_patients,
-                           COALESCE(p.profile_visible, 1) AS profile_visible,
-                           COALESCE(dss.is_available, d.available) AS available,
-                           COALESCE(dss.is_available, d.available) AS is_available,
-                           COALESCE(
-                               (SELECT ROUND(AVG(r.stars), 1) FROM ratings r WHERE r.doctor_id = u.id),
-                               d.rating
-                           ) AS rating,
-                           COALESCE(
-                               (SELECT ROUND(AVG(r.stars), 1) FROM ratings r WHERE r.doctor_id = u.id),
-                               d.rating
-                           ) AS average_rating,
-                           (SELECT COUNT(*) FROM ratings r WHERE r.doctor_id = u.id) AS rating_count,
-                           COALESCE(dep.name, d.specialty) AS department_name
-                    FROM users u
-                    INNER JOIN doctors d ON d.user_id = u.id
-                    LEFT JOIN user_preferences p ON p.user_id = u.id
-                    LEFT JOIN doctor_schedule_settings dss ON dss.doctor_id = u.id
-                    LEFT JOIN departments dep ON dep.id = d.department_id";
-        }
-
         return "SELECT COALESCE(legacy.source_doctor_id, dp.doctor_user_id) AS id,
                        u.id AS user_id, u.id AS doctor_id,
                        u.name, u.email, u.phone, u.is_active, u.created_at,

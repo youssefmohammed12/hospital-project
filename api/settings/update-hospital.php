@@ -106,10 +106,8 @@ if (!$hasUpdate) {
 
 try {
     $db = getDB();
-    $hospitalSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_HOSPITAL_SCHEMA');
-    $auditSchema = AuditService::schemaFromEnvironment();
-    $hs = new HospitalSettingsService($db, $hospitalSchema);
-    $audit = new AdminAuditService($db, (int)$user['id'], $auditSchema);
+    $hs = new HospitalSettingsService($db);
+    $audit = new AdminAuditService($db, (int)$user['id']);
 
     // Get current settings for audit and calculate the complete proposed hours,
     // including the unchanged counterpart when only one time is being edited.

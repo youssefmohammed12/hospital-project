@@ -12,7 +12,6 @@ require_once __DIR__ . '/../../services/Repositories/ClinicalEncounterRepository
 header('Content-Type: application/json');
 
 $user = requireRole('doctor');
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
@@ -31,7 +30,7 @@ try {
     $db = getDB();
     
     // Resolve appointment ownership through the schema-aware context adapter.
-    $encounters = new ClinicalEncounterRepository($db, $schema);
+    $encounters = new ClinicalEncounterRepository($db);
     $appointment = $encounters->getAppointmentContext($appointmentId);
     if (
         !$appointment
@@ -43,13 +42,13 @@ try {
         jsonResponse(false, ['message' => 'You can only access drafts for your own confirmed appointments.']);
     }
 
-    $workflow = (new VisitWorkflowService($db, $schema))->get($appointmentId);
+    $workflow = (new VisitWorkflowService($db))->get($appointmentId);
     if (($workflow['status'] ?? null) === VisitWorkflowService::STATUS_COMPLETED) {
         http_response_code(409);
         jsonResponse(false, ['message' => 'Completed visits no longer have editable drafts.']);
     }
 
-    $draftService = new VisitDraftService($db, $schema);
+    $draftService = new VisitDraftService($db);
     $draft = $draftService->get($appointmentId);
 
     jsonResponse(true, ['draft' => $draft]);

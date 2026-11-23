@@ -47,7 +47,7 @@ if ($retryAfter > 0) {
 }
 
 try {
-    $service = new RegistrationIntakeService(getDB(), HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA'));
+    $service = new RegistrationIntakeService(getDB());
     $service->resendVerificationEmail($email);
     jsonResponse(true, [
         'message' => 'If a registration is waiting for email verification, a new verification message will be sent to that address.',

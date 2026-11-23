@@ -33,11 +33,10 @@ if ($limit < 1 || $limit > 100) {
 }
 
 try {
-    // Respect the configured auth schema instead of assuming the legacy v1
-    // tables exist; a v2-only deployment must finalize registrations too.
+    // V2-only deployment: RegistrationIntakeService finalizes registrations
+    // against the V2 tables (V1 schema selection retired in Batch 2 Stage B).
     $worker = new RegistrationIntakeService(
-        getDB(),
-        HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA')
+        getDB()
     );
     $stats = $worker->processBatch($limit);
     $stats['queue_age_warning'] = $stats['oldest_pending_age_seconds'] > 120;

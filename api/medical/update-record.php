@@ -94,9 +94,7 @@ foreach ($allowedFields as $field) {
 try {
     $db = getDB();
 
-    // The live application is still V1. The repository's V2 branch is tested
-    // against disposable fixtures and can be selected only during approved cutover.
-    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $management = new PatientManagementRepository($db);
     $result = $management->updateMedicalProfile(
         $patientId,
         $changes,

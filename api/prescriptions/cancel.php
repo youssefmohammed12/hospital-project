@@ -43,7 +43,7 @@ if (empty($reason)) {
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
+    $ps = new PrescriptionService($db);
 
     $cancelled = $ps->cancel($prescriptionId, $currentUserId, $reason);
 

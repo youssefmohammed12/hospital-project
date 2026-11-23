@@ -29,37 +29,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
 
 try {
     $db = getDB();
-    $schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA');
-    if ($schema === DoctorManagementRepository::SCHEMA_V1) {
-        $hasLegacyVisibility = (int)$db->query(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ratings' AND COLUMN_NAME='is_hidden'"
-        )->fetchColumn() === 1;
-        $ratingVisibilityFilter = $hasLegacyVisibility ? "AND COALESCE(r.is_hidden,0)=0" : "";
-        $ratingExpression = $hasLegacyVisibility
-            ? "COALESCE(ROUND(AVG(r.stars),1),0)"
-            : "COALESCE(ROUND(AVG(r.stars),1),d.rating)";
-        $stmt = $db->query(
-        "SELECT d.id, d.user_id, d.name, d.specialty, d.exp, d.emoji, d.department_id,
-                COALESCE(dep.name, d.specialty) as department_name,
-                {$ratingExpression} as rating,
-                COUNT(DISTINCT r.id) as rating_count,
-                COALESCE(dss.is_available, d.available) as available
-         FROM doctors d
-         INNER JOIN users u ON d.user_id = u.id AND u.role = 'doctor' AND u.is_active = 1
-         LEFT JOIN ratings r ON d.user_id = r.doctor_id {$ratingVisibilityFilter}
-         LEFT JOIN doctor_schedule_settings dss ON d.user_id = dss.doctor_id
-         LEFT JOIN departments dep ON d.department_id = dep.id
-         WHERE (d.department_id IS NULL
-            OR dep.status = 'active'
-            OR dep.id IS NULL)
-         GROUP BY d.id, d.user_id, d.name, d.specialty, d.exp, d.available, d.emoji, d.rating, dss.is_available, d.department_id, dep.name, dep.status
-         ORDER BY rating DESC, d.name ASC"
-    );
-        $doctors = $stmt->fetchAll();
-    } else {
-        $stmt = $db->query(
-            "SELECT dp.doctor_user_id AS id,
+    $stmt = $db->query(
+        "SELECT dp.doctor_user_id AS id,
                     dp.doctor_user_id AS user_id,
                     u.name,dp.specialty,
                     dp.experience_years AS exp,
@@ -78,9 +49,8 @@ try {
              WHERE dp.profile_visible=1
                AND (dp.department_id IS NULL OR dep.status='active' OR dep.id IS NULL)
              ORDER BY rating DESC,u.name ASC"
-        );
-        $doctors = $stmt->fetchAll();
-    }
+    );
+    $doctors = $stmt->fetchAll();
     jsonResponse(true, ['doctors' => $doctors]);
 } catch (Throwable $e) {
     error_log('Get Doctors Error: ' . $e->getMessage());

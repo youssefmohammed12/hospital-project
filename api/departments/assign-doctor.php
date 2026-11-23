@@ -29,7 +29,7 @@ if ($departmentId === null || $departmentId <= 0) {
 
 try {
     $db = getDB();
-    $management = new DoctorManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA'));
+    $management = new DoctorManagementRepository($db);
     $management->assignDoctorToDepartment($doctorUserId, $departmentId, (int)$user['id']);
     jsonResponse(true, ['message' => 'Doctor assigned to department successfully.']);
 } catch (DomainException $e) {

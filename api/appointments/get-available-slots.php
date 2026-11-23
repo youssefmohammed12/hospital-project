@@ -61,7 +61,7 @@ if ($date < date('Y-m-d')) {
 
 try {
     $db = getDB();
-    $ss = new ScheduleService($db, ScheduleService::schemaFromEnvironment());
+    $ss = new ScheduleService($db);
 
     // Get available slots
     $slots = $ss->getAvailableSlots($doctorId, $date);

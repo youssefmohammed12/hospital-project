@@ -39,7 +39,7 @@ if ($user['role'] === 'doctor') {
 
     if ($doctorId === 0) {
         withDB(function ($db) {
-            $ss = new ScheduleService($db, ScheduleService::schemaFromEnvironment());
+            $ss = new ScheduleService($db);
             return ['schedules' => $ss->getAllSchedules()];
         }, 'Failed to load schedules.');
         exit;
@@ -57,7 +57,7 @@ if ($doctorId <= 0) {
 }
 
 withDB(function ($db) use ($doctorId) {
-    $ss = new ScheduleService($db, ScheduleService::schemaFromEnvironment());
+    $ss = new ScheduleService($db);
     $schedule = $ss->getSchedule($doctorId);
 
     if (!$schedule) {

@@ -4,37 +4,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/../ClinicalAccessService.php';
 require_once __DIR__ . '/../NotificationService.php';
 
-/** Schema-aware rating creation for completed patient appointments. */
+/** Rating creation for completed patient appointments (V2 schema). */
 final class RatingRepository
 {
-    public const SCHEMA_V1='v1';
-    public const SCHEMA_V2='v2';
-
     private PDO $db;
-    private string $schema;
-    private ?bool $v1HasHiddenColumn = null;
 
-    public function __construct(PDO $db,string $schema)
+    public function __construct(PDO $db)
     {
-        if(!in_array($schema,[self::SCHEMA_V1,self::SCHEMA_V2],true)){
-            throw new InvalidArgumentException('RatingRepository schema must be explicitly v1 or v2.');
-        }
         $this->db=$db;
-        $this->schema=$schema;
-    }
-
-    private function supportsLegacyVisibilityColumn(): bool
-    {
-        if ($this->schema !== self::SCHEMA_V1) {
-            return false;
-        }
-        if ($this->v1HasHiddenColumn === null) {
-            $this->v1HasHiddenColumn = (int)$this->db->query(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS
-                 WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ratings' AND COLUMN_NAME='is_hidden'"
-            )->fetchColumn() === 1;
-        }
-        return $this->v1HasHiddenColumn;
     }
 
     /**
@@ -49,10 +26,6 @@ final class RatingRepository
         }
 
         return $this->withTransaction(function () use ($ratingId, $isPublic, $adminUserId): array {
-            if ($this->schema === self::SCHEMA_V1 && !$this->supportsLegacyVisibilityColumn()) {
-                throw new DomainException('This V1 database does not include ratings.is_hidden.');
-            }
-
             $actor = $this->db->prepare(
                 'SELECT role,is_active FROM users WHERE id=? LIMIT 1 FOR UPDATE'
             );
@@ -62,26 +35,17 @@ final class RatingRepository
                 throw new DomainException('An active administrator is required to change rating visibility.');
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    'SELECT id,is_hidden,user_id AS patient_user_id,doctor_id AS doctor_user_id
+            $stmt = $this->db->prepare(
+                'SELECT id,is_public,patient_user_id,doctor_user_id
                      FROM ratings WHERE id=? LIMIT 1 FOR UPDATE'
-                );
-            } else {
-                $stmt = $this->db->prepare(
-                    'SELECT id,is_public,patient_user_id,doctor_user_id
-                     FROM ratings WHERE id=? LIMIT 1 FOR UPDATE'
-                );
-            }
+            );
             $stmt->execute([$ratingId]);
             $rating = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$rating) {
                 throw new OutOfBoundsException('Rating not found.');
             }
 
-            $wasPublic = $this->schema === self::SCHEMA_V1
-                ? (int)$rating['is_hidden'] === 0
-                : (int)$rating['is_public'] === 1;
+            $wasPublic = (int)$rating['is_public'] === 1;
 
             if ($wasPublic === $isPublic) {
                 return [
@@ -92,13 +56,8 @@ final class RatingRepository
                 ];
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $update = $this->db->prepare('UPDATE ratings SET is_hidden=? WHERE id=?');
-                $update->execute([$isPublic ? 0 : 1, $ratingId]);
-            } else {
-                $update = $this->db->prepare('UPDATE ratings SET is_public=? WHERE id=?');
-                $update->execute([$isPublic ? 1 : 0, $ratingId]);
-            }
+            $update = $this->db->prepare('UPDATE ratings SET is_public=? WHERE id=?');
+            $update->execute([$isPublic ? 1 : 0, $ratingId]);
 
             $patientUserId = (int)$rating['patient_user_id'];
             $doctorUserId = (int)$rating['doctor_user_id'];
@@ -138,21 +97,6 @@ final class RatingRepository
             ? 'Administrator restored a doctor rating to public view.'
             : 'Administrator hid a doctor rating from public view.';
 
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                'INSERT INTO admin_audit
-                 (actor_id,actor_role,action,entity_type,entity_id,patient_id,doctor_id,
-                  old_value,new_value,description,ip_address,user_agent)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-            );
-            $stmt->execute([
-                $adminUserId, 'admin', $action, 'rating', $ratingId,
-                $patientUserId, $doctorUserId, $oldJson, $newJson, $description,
-                $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null,
-            ]);
-            return;
-        }
-
         $stmt = $this->db->prepare(
             'INSERT INTO audit_events
              (actor_user_id,actor_role_snapshot,action_code,entity_type,entity_id,
@@ -180,17 +124,10 @@ final class RatingRepository
         }
 
         return $this->withTransaction(function()use($appointmentId,$patientUserId,$stars,$review):array{
-            if($this->schema===self::SCHEMA_V1){
-                $identity=$this->db->prepare(
-                    'SELECT doctor_id AS doctor_user_id,user_id AS patient_user_id
+            $identity=$this->db->prepare(
+                'SELECT doctor_user_id,patient_user_id
                      FROM appointments WHERE id=? LIMIT 1'
-                );
-            }else{
-                $identity=$this->db->prepare(
-                    'SELECT doctor_user_id,patient_user_id
-                     FROM appointments WHERE id=? LIMIT 1'
-                );
-            }
+            );
             $identity->execute([$appointmentId]);
             $context=$identity->fetch(PDO::FETCH_ASSOC);
             if(!$context||(int)$context['patient_user_id']!==$patientUserId){
@@ -199,7 +136,7 @@ final class RatingRepository
             $doctorId=(int)$context['doctor_user_id'];
             if($doctorId<=0){throw new DomainException('The appointment doctor could not be resolved.');}
 
-            $access=new ClinicalAccessService($this->db,$this->schema);
+            $access=new ClinicalAccessService($this->db,'v2');
             if(!$access->lockDoctorAndPatient($doctorId,$patientUserId)){
                 throw new DomainException('The appointment account relationship is no longer available.');
             }
@@ -209,35 +146,20 @@ final class RatingRepository
             $row=$appointment->fetch(PDO::FETCH_ASSOC);
             if(!$row){throw new DomainException('Appointment not found.');}
 
-            if($this->schema===self::SCHEMA_V1){
-                $status=(string)$row['status'];
-                $workflow=$this->db->prepare('SELECT status FROM visit_workflow WHERE appointment_id=? LIMIT 1 FOR UPDATE');
-                $workflow->execute([$appointmentId]);
-                $workflowStatus=$workflow->fetchColumn();
-                $doctorName=(string)$row['doctor'];
-                $ratingExists=$this->db->prepare('SELECT id FROM ratings WHERE appointment_id=? LIMIT 1 FOR UPDATE');
-                $insert=$this->db->prepare(
-                    'INSERT INTO ratings(appointment_id,user_id,doctor_id,stars,review,created_at)
+            $status=(string)$row['booking_status'];
+            $workflow=$this->db->prepare(
+                'SELECT workflow_status FROM clinical_encounters WHERE appointment_id=? LIMIT 1 FOR UPDATE'
+            );
+            $workflow->execute([$appointmentId]);
+            $workflowStatus=$workflow->fetchColumn();
+            $doctorName=(string)$row['doctor_name_snapshot'];
+            $ratingExists=$this->db->prepare('SELECT id FROM ratings WHERE appointment_id=? LIMIT 1 FOR UPDATE');
+            $insert=$this->db->prepare(
+                'INSERT INTO ratings(appointment_id,patient_user_id,doctor_user_id,stars,review,created_at)
                      VALUES(?,?,?,?,?,NOW())'
-                );
-            }else{
-                $status=(string)$row['booking_status'];
-                $workflow=$this->db->prepare(
-                    'SELECT workflow_status FROM clinical_encounters WHERE appointment_id=? LIMIT 1 FOR UPDATE'
-                );
-                $workflow->execute([$appointmentId]);
-                $workflowStatus=$workflow->fetchColumn();
-                $doctorName=(string)$row['doctor_name_snapshot'];
-                $ratingExists=$this->db->prepare('SELECT id FROM ratings WHERE appointment_id=? LIMIT 1 FOR UPDATE');
-                $insert=$this->db->prepare(
-                    'INSERT INTO ratings(appointment_id,patient_user_id,doctor_user_id,stars,review,created_at)
-                     VALUES(?,?,?,?,?,NOW())'
-                );
-            }
+            );
 
-            $pendingOrNotComplete=$this->schema===self::SCHEMA_V1
-                ? ($status!=='Confirmed'||$workflowStatus!=='Completed')
-                : ($status!=='confirmed'||$workflowStatus!=='completed');
+            $pendingOrNotComplete=($status!=='confirmed'||$workflowStatus!=='completed');
             if($pendingOrNotComplete){
                 throw new DomainException('You can only rate a completed visit.');
             }
@@ -246,21 +168,13 @@ final class RatingRepository
                 throw new DomainException('You have already rated this appointment.');
             }
 
-            if($this->schema===self::SCHEMA_V1){
-                $insert->execute([$appointmentId,$patientUserId,$doctorId,$stars,$review]);
-                $aggregate=$this->db->prepare('SELECT ROUND(AVG(stars),1) FROM ratings WHERE doctor_id=?');
-                $aggregate->execute([$doctorId]);
-                $average=(float)$aggregate->fetchColumn();
-                $this->db->prepare('UPDATE doctors SET rating=? WHERE user_id=?')->execute([$average,$doctorId]);
-            }else{
-                $insert->execute([$appointmentId,$patientUserId,$doctorId,$stars,$review]);
-                $aggregate=$this->db->prepare(
-                    'SELECT average_rating,rating_count FROM v_doctor_rating_summary WHERE doctor_user_id=?'
-                );
-                $aggregate->execute([$doctorId]);
-                $summary=$aggregate->fetch(PDO::FETCH_ASSOC)?:['average_rating'=>0,'rating_count'=>0];
-                $average=(float)$summary['average_rating'];
-            }
+            $insert->execute([$appointmentId,$patientUserId,$doctorId,$stars,$review]);
+            $aggregate=$this->db->prepare(
+                'SELECT average_rating,rating_count FROM v_doctor_rating_summary WHERE doctor_user_id=?'
+            );
+            $aggregate->execute([$doctorId]);
+            $summary=$aggregate->fetch(PDO::FETCH_ASSOC)?:['average_rating'=>0,'rating_count'=>0];
+            $average=(float)$summary['average_rating'];
 
             $patient=$this->db->prepare('SELECT name FROM users WHERE id=? LIMIT 1');
             $patient->execute([$patientUserId]);
@@ -302,12 +216,8 @@ final class RatingRepository
         if($appointmentId<=0||$patientUserId<=0){
             throw new InvalidArgumentException('Appointment and patient IDs must be positive.');
         }
-        $patientColumn=$this->schema===self::SCHEMA_V1?'user_id':'patient_user_id';
-        $visibility = $this->schema === self::SCHEMA_V1
-            ? ($this->supportsLegacyVisibilityColumn()
-                ? 'is_hidden,(1-is_hidden) AS is_public'
-                : '0 AS is_hidden,1 AS is_public')
-            : 'is_public,(1-is_public) AS is_hidden';
+        $patientColumn='patient_user_id';
+        $visibility = 'is_public,(1-is_public) AS is_hidden';
         $stmt=$this->db->prepare(
             "SELECT id,stars,review,created_at,{$visibility} FROM ratings
              WHERE appointment_id=? AND {$patientColumn}=? LIMIT 1"
@@ -321,17 +231,7 @@ final class RatingRepository
     public function getRatingsForDoctor(int $doctorUserId):array
     {
         if($doctorUserId<=0){throw new InvalidArgumentException('Doctor ID must be positive.');}
-        if($this->schema===self::SCHEMA_V1){
-            $visibility = $this->supportsLegacyVisibilityColumn()
-                ? 'r.is_hidden,(1-r.is_hidden) AS is_public'
-                : '0 AS is_hidden,1 AS is_public';
-            $sql="SELECT r.id,r.stars,r.review,{$visibility},
-                         r.created_at AS review_date,a.date AS appt_date,a.time AS appt_time,
-                         a.appointment_time_range,a.id AS appointment_id,a.doctor_id
-                  FROM ratings r JOIN appointments a ON r.appointment_id=a.id
-                  WHERE r.doctor_id=? ORDER BY r.created_at DESC";
-        }else{
-            $sql="SELECT r.id,r.stars,r.review,r.is_public,(1-r.is_public) AS is_hidden,
+        $sql="SELECT r.id,r.stars,r.review,r.is_public,(1-r.is_public) AS is_hidden,
                          r.created_at AS review_date,DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS appt_date,
                          TIME_FORMAT(a.starts_at,'%H:%i') AS appt_time,
                          a.source_time_snapshot,
@@ -340,32 +240,15 @@ final class RatingRepository
                          a.doctor_user_id AS doctor_id
                   FROM ratings r JOIN appointments a ON r.appointment_id=a.id
                   WHERE r.doctor_user_id=? ORDER BY r.created_at DESC";
-        }
         $stmt=$this->db->prepare($sql);
         $stmt->execute([$doctorUserId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /** Return the administrator rating list with the same fields for both schemas. */
+    /** Return the administrator rating list (V2 schema). */
     public function getAllRatings():array
     {
-        if($this->schema===self::SCHEMA_V1){
-            $visibility = $this->supportsLegacyVisibilityColumn()
-                ? 'r.is_hidden,(1-r.is_hidden) AS is_public'
-                : '0 AS is_hidden,1 AS is_public';
-            $sql="SELECT r.id,r.stars,r.review,{$visibility},
-                         r.created_at AS review_date,COALESCE(up.name,a.patient_name,'Unknown Patient') AS patient_name,
-                         COALESCE(up.email,'—') AS patient_email,
-                         COALESCE(ud.name,a.doctor,'Unknown Doctor') AS doctor_name,
-                         a.date AS appt_date,a.time AS appt_time,
-                         a.department,a.id AS appointment_id
-                  FROM ratings r
-                  JOIN appointments a ON r.appointment_id=a.id
-                  LEFT JOIN users up ON r.user_id=up.id
-                  LEFT JOIN users ud ON r.doctor_id=ud.id
-                  ORDER BY r.created_at DESC";
-        }else{
-            $sql="SELECT r.id,r.stars,r.review,r.is_public,(1-r.is_public) AS is_hidden,
+        $sql="SELECT r.id,r.stars,r.review,r.is_public,(1-r.is_public) AS is_hidden,
                          r.created_at AS review_date,COALESCE(up.name,a.patient_name_snapshot,'Unknown Patient') AS patient_name,
                          COALESCE(up.email,'—') AS patient_email,
                          COALESCE(ud.name,a.doctor_name_snapshot,'Unknown Doctor') AS doctor_name,
@@ -378,7 +261,6 @@ final class RatingRepository
                   LEFT JOIN users up ON r.patient_user_id=up.id
                   LEFT JOIN users ud ON r.doctor_user_id=ud.id
                   ORDER BY r.created_at DESC";
-        }
         return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 

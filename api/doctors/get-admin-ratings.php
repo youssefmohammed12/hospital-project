@@ -8,7 +8,6 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/Repositories/RatingRepository.php';
 
 requireRole('admin');
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_RATINGS_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
@@ -18,7 +17,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
 
 try {
     $db = getDB();
-    $ratings = (new RatingRepository($db, $schema))->getAllRatings();
+    $ratings = (new RatingRepository($db))->getAllRatings();
 
     jsonResponse(true, ['ratings' => $ratings]);
 

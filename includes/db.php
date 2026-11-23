@@ -3,7 +3,9 @@
  * HealthBridge — Database Configuration & Connection
  */
 
-require_once __DIR__ . '/SchemaSelector.php';
+// V1 schema retirement (Batch 2 Stage B): the V2 schema is the only schema
+// path. The HEALTHBRIDGE_*_SCHEMA environment variables are inert — the
+// SchemaSelector that read them has been removed.
 
 // Load Composer autoloader and .env file if available
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {

@@ -62,7 +62,7 @@ try {
     $patientNumber = generatePatientNumber($db);
 
     // Live runtime remains V1 until the approved cutover.
-    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $management = new PatientManagementRepository($db);
     $patientId = $management->createPatient(
         $name,
         $email,

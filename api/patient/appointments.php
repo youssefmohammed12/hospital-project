@@ -80,7 +80,7 @@ $offset = $pageIndex * $limit;
 
 // ── Execute ──────────────────────────────────────────────
 withDB(function (PDO $db) use ($userId, $status, $search, $page, $limit, $offset) {
-    $portal = new PatientPortalService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA'));
+    $portal = new PatientPortalService($db);
     
     // Get all appointments with full details
     $timeline = $portal->getAppointmentTimeline($userId);

@@ -33,7 +33,7 @@ if ($userRole !== 'doctor' && $userRole !== 'admin') {
 
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
+    $rs = new RescheduleService($db, $userId, $userRole);
 
     if ($userRole === 'admin') {
         $requests = $rs->getAllPendingRequests();

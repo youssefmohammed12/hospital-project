@@ -57,31 +57,25 @@ try {
         ];
     }
 
-    // V1 remains the default; V2 is enabled only by explicit server configuration.
-    $schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_SETTINGS_SCHEMA');
     $doctorData = null;
     $weeklySchedule = null;
     if ($role === 'doctor') {
-        $doctorSettings = new DoctorSettingsRepository($db, $schema);
+        $doctorSettings = new DoctorSettingsRepository($db);
         $practice = $doctorSettings->getDoctorSettings((int)$userId);
         $preferences = array_merge($preferences, $practice['preferences']);
 
-        if ($schema === DoctorSettingsRepository::SCHEMA_V1) {
-            $docStmt = $db->prepare('SELECT * FROM doctors WHERE user_id = ? LIMIT 1');
-        } else {
-            $docStmt = $db->prepare(
-                'SELECT doctor_user_id AS user_id, department_id, specialty,
+        $docStmt = $db->prepare(
+            'SELECT doctor_user_id AS user_id, department_id, specialty,
                         experience_years AS exp, accepts_new_patients AS available,
                         profile_visible
                  FROM doctor_profiles WHERE doctor_user_id=? LIMIT 1'
-            );
-        }
+        );
         $docStmt->execute([$userId]);
         $doctorData = $docStmt->fetch();
         $weeklySchedule = $practice['weekly_schedule'];
     }
 
-    if ($role === 'admin' && $schema === DoctorSettingsRepository::SCHEMA_V2) {
+    if ($role === 'admin') {
         $adminPrefStmt = $db->prepare('SELECT default_tab FROM admin_preferences WHERE admin_user_id=? LIMIT 1');
         $adminPrefStmt->execute([$userId]);
         $preferences['admin_default_tab'] = $adminPrefStmt->fetchColumn() ?: 'overview';

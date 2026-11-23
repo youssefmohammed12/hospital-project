@@ -2,27 +2,15 @@
 declare(strict_types=1);
 
 /**
- * Read/write adapter for the legacy and v2 doctor schedule schemas.
- *
- * This class is deliberately opt-in. Existing application services continue
- * using v1 until the full booking/reschedule compatibility slice is accepted.
+ * Read/write adapter for the doctor schedule schema (V2 schema).
  */
 final class DoctorScheduleRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('Schema mode must be explicitly v1 or v2.');
-        }
-
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     public function getSchedule(int $doctorUserId): ?array
@@ -48,16 +36,7 @@ final class DoctorScheduleRepository
      */
     public function getAllSchedules(): array
     {
-        $settingsSql = $this->schema === self::SCHEMA_V1
-            ? "SELECT s.doctor_id AS doctor_id, s.appointment_duration,
-                      s.max_appointments_per_day, s.break_start, s.break_end,
-                      s.is_available, s.created_at, s.updated_at,
-                      u.name AS doctor_name, u.email AS doctor_email
-               FROM doctor_schedule_settings s
-               JOIN users u ON u.id = s.doctor_id
-               WHERE u.role = 'doctor'
-               ORDER BY u.name ASC"
-            : "SELECT s.doctor_user_id AS doctor_id,
+        $settingsSql = "SELECT s.doctor_user_id AS doctor_id,
                       s.appointment_duration_min AS appointment_duration,
                       s.max_appointments_per_day, TIME_FORMAT(s.break_start, '%H:%i') AS break_start,
                       TIME_FORMAT(s.break_end, '%H:%i') AS break_end,
@@ -79,12 +58,7 @@ final class DoctorScheduleRepository
         );
         $placeholders = implode(',', array_fill(0, count($doctorIds), '?'));
 
-        $weeklySql = $this->schema === self::SCHEMA_V1
-            ? "SELECT doctor_id, id, day_of_week, start_time, end_time, is_working
-               FROM doctor_schedule_weekly
-               WHERE doctor_id IN ($placeholders)
-               ORDER BY doctor_id, day_of_week"
-            : "SELECT doctor_user_id AS doctor_id, NULL AS id, day_of_week,
+        $weeklySql = "SELECT doctor_user_id AS doctor_id, NULL AS id, day_of_week,
                       TIME_FORMAT(start_time, '%H:%i') AS start_time,
                       TIME_FORMAT(end_time, '%H:%i') AS end_time, is_working
                FROM doctor_weekly_schedules
@@ -171,9 +145,7 @@ final class DoctorScheduleRepository
             throw new InvalidArgumentException('Doctor user ID must be positive.');
         }
 
-        $sql = $this->schema === self::SCHEMA_V1
-            ? 'SELECT appointment_duration FROM doctor_schedule_settings WHERE doctor_id = ? LIMIT 1'
-            : 'SELECT appointment_duration_min FROM doctor_schedule_settings WHERE doctor_user_id = ? LIMIT 1';
+        $sql = 'SELECT appointment_duration_min FROM doctor_schedule_settings WHERE doctor_user_id = ? LIMIT 1';
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$doctorUserId]);
@@ -186,15 +158,7 @@ final class DoctorScheduleRepository
 
     private function fetchSettings(int $doctorUserId): ?array
     {
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT s.doctor_id AS doctor_id, s.appointment_duration,
-                      s.max_appointments_per_day, s.break_start, s.break_end,
-                      s.is_available, s.created_at, s.updated_at,
-                      u.name AS doctor_name, u.email AS doctor_email
-               FROM doctor_schedule_settings s
-               JOIN users u ON u.id = s.doctor_id
-               WHERE s.doctor_id = ? LIMIT 1"
-            : "SELECT s.doctor_user_id AS doctor_id,
+        $sql = "SELECT s.doctor_user_id AS doctor_id,
                       s.appointment_duration_min AS appointment_duration,
                       s.max_appointments_per_day,
                       TIME_FORMAT(s.break_start, '%H:%i') AS break_start,
@@ -214,11 +178,7 @@ final class DoctorScheduleRepository
 
     private function fetchWeekly(int $doctorUserId): array
     {
-        $sql = $this->schema === self::SCHEMA_V1
-            ? 'SELECT id, day_of_week, start_time, end_time, is_working
-               FROM doctor_schedule_weekly
-               WHERE doctor_id = ? ORDER BY day_of_week ASC'
-            : "SELECT NULL AS id, day_of_week,
+        $sql = "SELECT NULL AS id, day_of_week,
                       TIME_FORMAT(start_time, '%H:%i') AS start_time,
                       TIME_FORMAT(end_time, '%H:%i') AS end_time, is_working
                FROM doctor_weekly_schedules
@@ -259,10 +219,7 @@ final class DoctorScheduleRepository
 
     private function ensureSettingsRow(int $doctorUserId): void
     {
-        $sql = $this->schema === self::SCHEMA_V1
-            ? 'INSERT INTO doctor_schedule_settings (doctor_id) VALUES (?)
-               ON DUPLICATE KEY UPDATE doctor_id = VALUES(doctor_id)'
-            : 'INSERT INTO doctor_schedule_settings (doctor_user_id) VALUES (?)
+        $sql = 'INSERT INTO doctor_schedule_settings (doctor_user_id) VALUES (?)
                ON DUPLICATE KEY UPDATE doctor_user_id = VALUES(doctor_user_id)';
 
         $stmt = $this->db->prepare($sql);
@@ -271,9 +228,7 @@ final class DoctorScheduleRepository
 
     private function updateSettings(int $doctorUserId, array $settingsData): void
     {
-        $columnMap = $this->schema === self::SCHEMA_V1
-            ? ['appointment_duration' => 'appointment_duration']
-            : ['appointment_duration' => 'appointment_duration_min'];
+        $columnMap = ['appointment_duration' => 'appointment_duration_min'];
 
         foreach (['max_appointments_per_day', 'break_start', 'break_end', 'is_available'] as $field) {
             $columnMap[$field] = $field;
@@ -291,7 +246,7 @@ final class DoctorScheduleRepository
             return;
         }
 
-        $doctorColumn = $this->schema === self::SCHEMA_V1 ? 'doctor_id' : 'doctor_user_id';
+        $doctorColumn = 'doctor_user_id';
         $updates[] = 'updated_at = CURRENT_TIMESTAMP';
         $params[] = $doctorUserId;
 
@@ -299,22 +254,6 @@ final class DoctorScheduleRepository
             . ' WHERE ' . $doctorColumn . ' = ?';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-
-        // v1 stores this operational flag twice. Keep both legacy readers
-        // consistent when the repository is the write path. In v2,
-        // accepts_new_patients is a separate profile-level decision.
-        if (
-            $this->schema === self::SCHEMA_V1
-            && array_key_exists('is_available', $settingsData)
-        ) {
-            $availabilityStmt = $this->db->prepare(
-                'UPDATE doctors SET available = ? WHERE user_id = ?'
-            );
-            $availabilityStmt->execute([
-                (int)$settingsData['is_available'],
-                $doctorUserId,
-            ]);
-        }
     }
 
     private function upsertWeekly(int $doctorUserId, array $weeklyData): void
@@ -323,16 +262,7 @@ final class DoctorScheduleRepository
             return;
         }
 
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "INSERT INTO doctor_schedule_weekly
-                 (doctor_id, day_of_week, start_time, end_time, is_working)
-               VALUES (?, ?, ?, ?, ?)
-               ON DUPLICATE KEY UPDATE
-                 start_time = VALUES(start_time),
-                 end_time = VALUES(end_time),
-                 is_working = VALUES(is_working),
-                 updated_at = CURRENT_TIMESTAMP"
-            : "INSERT INTO doctor_weekly_schedules
+        $sql = "INSERT INTO doctor_weekly_schedules
                  (doctor_user_id, day_of_week, start_time, end_time, is_working)
                VALUES (?, ?, ?, ?, ?)
                ON DUPLICATE KEY UPDATE

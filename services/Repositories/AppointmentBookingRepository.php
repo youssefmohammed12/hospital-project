@@ -6,7 +6,7 @@ require_once __DIR__ . '/../NotificationService.php';
 require_once __DIR__ . '/../../includes/AppointmentTime.php';
 
 /**
- * Transactional adapter for creating appointments in v1 and v2.
+ * Transactional adapter for creating appointments (V2 schema).
  *
  * Every operation uses users.id for the doctor identity and locks in this order:
  * doctor account -> doctor profile -> department -> schedule validation -> patient.
@@ -15,19 +15,11 @@ require_once __DIR__ . '/../../includes/AppointmentTime.php';
  */
 final class AppointmentBookingRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('AppointmentBookingRepository schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     /**
@@ -90,9 +82,7 @@ final class AppointmentBookingRepository
                 throw new DomainException('The selected doctor account is no longer available.');
             }
 
-            $profileSql = $this->schema === self::SCHEMA_V1
-                ? 'SELECT department_id, specialty FROM doctors WHERE user_id = ? LIMIT 1 FOR UPDATE'
-                : 'SELECT department_id, specialty FROM doctor_profiles WHERE doctor_user_id = ? LIMIT 1 FOR UPDATE';
+            $profileSql = 'SELECT department_id, specialty FROM doctor_profiles WHERE doctor_user_id = ? LIMIT 1 FOR UPDATE';
             $profileStmt = $this->db->prepare($profileSql);
             $profileStmt->execute([$doctorUserId]);
             $profile = $profileStmt->fetch(PDO::FETCH_ASSOC);
@@ -122,7 +112,7 @@ final class AppointmentBookingRepository
 
             $this->assertActorCanBook($actorUserId, $actorRole, $patientUserId);
 
-            $schedule = new ScheduleService($this->db, $this->schema);
+            $schedule = new ScheduleService($this->db, 'v2');
             $validationError = $schedule->validateBookingSlot($doctorUserId, $date, $time);
             if ($validationError !== null) {
                 throw new DomainException($validationError);
@@ -151,31 +141,18 @@ final class AppointmentBookingRepository
             $patientName = (string)$patient['name'];
             $departmentName = (string)$department['name'];
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $insert = $this->db->prepare(
-                    "INSERT INTO appointments
-                        (doctor_id, user_id, patient_name, department, department_id, doctor,
-                         date, time, appointment_time_range, notes, status, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())"
-                );
-                $insert->execute([
-                    $doctorUserId, $patientUserId, $patientName, $departmentName, $departmentId,
-                    $doctorName, $date, $time, $timeRange, $notes,
-                ]);
-            } else {
-                $insert = $this->db->prepare(
-                    "INSERT INTO appointments
+            $insert = $this->db->prepare(
+                "INSERT INTO appointments
                         (patient_user_id, doctor_user_id, department_id,
                          patient_name_snapshot, doctor_name_snapshot, department_name_snapshot,
                          starts_at, duration_minutes, booking_status, notes, created_at)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())"
-                );
-                $insert->execute([
-                    $patientUserId, $doctorUserId, $departmentId,
-                    $patientName, $doctorName, $departmentName,
-                    $startsAt, $duration, $notes,
-                ]);
-            }
+            );
+            $insert->execute([
+                $patientUserId, $doctorUserId, $departmentId,
+                $patientName, $doctorName, $departmentName,
+                $startsAt, $duration, $notes,
+            ]);
 
             $appointmentId = (int)$this->db->lastInsertId();
             if ($appointmentId <= 0) {
@@ -201,17 +178,15 @@ final class AppointmentBookingRepository
                 $doctorUserId
             );
 
-            if ($this->schema === self::SCHEMA_V2) {
-                $this->writeAppointmentEvent(
-                    $appointmentId,
-                    $actorUserId,
-                    $actorRole,
-                    'booked',
-                    null,
-                    'pending',
-                    ['starts_at' => $startsAt, 'duration_minutes' => $duration]
-                );
-            }
+            $this->writeAppointmentEvent(
+                $appointmentId,
+                $actorUserId,
+                $actorRole,
+                'booked',
+                null,
+                'pending',
+                ['starts_at' => $startsAt, 'duration_minutes' => $duration]
+            );
 
             $notifications = new NotificationService($this->db);
             $displayRange = $timeRange;
@@ -270,21 +245,6 @@ final class AppointmentBookingRepository
     ): void {
         $oldJson = $oldValue === null ? null : (is_string($oldValue) ? $oldValue : json_encode($oldValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $newJson = $newValue === null ? null : (is_string($newValue) ? $newValue : json_encode($newValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                'INSERT INTO admin_audit
-                    (actor_id, actor_role, action, entity_type, entity_id, patient_id, doctor_id,
-                     old_value, new_value, description, ip_address, user_agent)
-                 VALUES (?, ?, ?, \'appointment\', ?, ?, ?, ?, ?, ?, ?, ?)'
-            );
-            $stmt->execute([
-                $actorUserId, $actorRole, $action, $appointmentId, $patientUserId, $doctorUserId,
-                $oldJson, $newJson, $description,
-                $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null,
-            ]);
-            return;
-        }
 
         $stmt = $this->db->prepare(
             'INSERT INTO audit_events

@@ -5,28 +5,18 @@ require_once __DIR__ . '/../NotificationService.php';
 require_once __DIR__ . '/../ClinicalAccessService.php';
 
 /**
- * Schema-aware patient account and appointment mutations.
- * Runtime callers must pass the schema explicitly; production remains v1
- * until a separately approved application cutover.
+ * Patient account and appointment mutations (V2 schema).
  */
 final class PatientManagementRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('PatientManagementRepository schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
-    /** Create an admin-provisioned patient and its schema-specific profile aggregate. */
+    /** Create an admin-provisioned patient and its profile aggregate. */
     public function createPatient(
         string $name,
         string $email,
@@ -69,9 +59,8 @@ final class PatientManagementRepository
                 }
             }
 
-            $passwordColumn = $this->schema === self::SCHEMA_V1 ? 'password' : 'password_hash';
             $stmt = $this->db->prepare(
-                "INSERT INTO users (name,email,{$passwordColumn},role,patient_number,phone,is_active,created_at)
+                "INSERT INTO users (name,email,password_hash,role,patient_number,phone,is_active,created_at)
                  VALUES (?,?,?,'patient',?,?,1,NOW())"
             );
             $stmt->execute([$name,$email,$passwordHash,$patientNumber,$phone]);
@@ -82,15 +71,10 @@ final class PatientManagementRepository
 
             $this->db->prepare('INSERT IGNORE INTO user_preferences (user_id) VALUES (?)')
                 ->execute([$patientId]);
-            if ($this->schema === self::SCHEMA_V1) {
-                $this->db->prepare('INSERT INTO medical_records (patient_id) VALUES (?)')
-                    ->execute([$patientId]);
-            } else {
-                $this->db->prepare('INSERT INTO patient_profiles (patient_user_id) VALUES (?)')
-                    ->execute([$patientId]);
-                $this->db->prepare('INSERT INTO patient_medical_profiles (patient_user_id) VALUES (?)')
-                    ->execute([$patientId]);
-            }
+            $this->db->prepare('INSERT INTO patient_profiles (patient_user_id) VALUES (?)')
+                ->execute([$patientId]);
+            $this->db->prepare('INSERT INTO patient_medical_profiles (patient_user_id) VALUES (?)')
+                ->execute([$patientId]);
 
             $this->writeAudit(
                 $actorUserId,
@@ -222,8 +206,7 @@ final class PatientManagementRepository
                 $params[] = $newActive;
             }
             if ($passwordChanged) {
-                $passwordColumn = $this->schema === self::SCHEMA_V1 ? 'password' : 'password_hash';
-                $assignments[] = "{$passwordColumn}=?";
+                $assignments[] = "password_hash=?";
                 $params[] = $passwordHash;
             }
             if ($statusChanged || $passwordChanged) {
@@ -312,7 +295,7 @@ final class PatientManagementRepository
 
             if ($actorRole === 'doctor') {
                 require_once __DIR__ . '/../ClinicalAccessService.php';
-                $access = new ClinicalAccessService($this->db, $this->schema);
+                $access = new ClinicalAccessService($this->db);
                 if (!$access->lockDoctorAndPatient($actorUserId, $patientId)
                     || !$access->doctorCanAccessPatient($actorUserId, $patientId, true)) {
                     throw new DomainException('You can only update records for patients with a confirmed appointment or documented clinical encounter.');
@@ -330,39 +313,27 @@ final class PatientManagementRepository
                 'current_medications', 'previous_surgeries', 'family_history', 'medical_notes',
             ];
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $ensure = $this->db->prepare(
-                    'INSERT IGNORE INTO medical_records (patient_id) VALUES (?)'
-                );
-                $ensure->execute([$patientId]);
-                $lock = $this->db->prepare(
-                    'SELECT * FROM medical_records WHERE patient_id=? LIMIT 1 FOR UPDATE'
-                );
-                $lock->execute([$patientId]);
-                $existing = $lock->fetch(PDO::FETCH_ASSOC) ?: [];
-            } else {
-                $this->db->prepare(
-                    'INSERT IGNORE INTO patient_profiles (patient_user_id) VALUES (?)'
-                )->execute([$patientId]);
-                $this->db->prepare(
-                    'INSERT IGNORE INTO patient_medical_profiles (patient_user_id) VALUES (?)'
-                )->execute([$patientId]);
-                $profileLock = $this->db->prepare(
-                    'SELECT date_of_birth,gender,emergency_name AS emergency_contact_name,
-                            emergency_relation AS emergency_contact_rel,emergency_phone AS emergency_contact_phone
-                     FROM patient_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE'
-                );
-                $profileLock->execute([$patientId]);
-                $profile = $profileLock->fetch(PDO::FETCH_ASSOC) ?: [];
-                $medicalLock = $this->db->prepare(
-                    'SELECT blood_type,height_cm,weight_kg,allergies,chronic_diseases,
-                            current_medications,previous_surgeries,family_history,medical_notes
-                     FROM patient_medical_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE'
-                );
-                $medicalLock->execute([$patientId]);
-                $medical = $medicalLock->fetch(PDO::FETCH_ASSOC) ?: [];
-                $existing = array_merge($profile, $medical);
-            }
+            $this->db->prepare(
+                'INSERT IGNORE INTO patient_profiles (patient_user_id) VALUES (?)'
+            )->execute([$patientId]);
+            $this->db->prepare(
+                'INSERT IGNORE INTO patient_medical_profiles (patient_user_id) VALUES (?)'
+            )->execute([$patientId]);
+            $profileLock = $this->db->prepare(
+                'SELECT date_of_birth,gender,emergency_name AS emergency_contact_name,
+                        emergency_relation AS emergency_contact_rel,emergency_phone AS emergency_contact_phone
+                 FROM patient_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE'
+            );
+            $profileLock->execute([$patientId]);
+            $profile = $profileLock->fetch(PDO::FETCH_ASSOC) ?: [];
+            $medicalLock = $this->db->prepare(
+                'SELECT blood_type,height_cm,weight_kg,allergies,chronic_diseases,
+                        current_medications,previous_surgeries,family_history,medical_notes
+                 FROM patient_medical_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE'
+            );
+            $medicalLock->execute([$patientId]);
+            $medical = $medicalLock->fetch(PDO::FETCH_ASSOC) ?: [];
+            $existing = array_merge($profile, $medical);
 
             $sensitiveAdminFields = [
                 'blood_type', 'emergency_contact_name', 'emergency_contact_phone',
@@ -423,55 +394,41 @@ final class PatientManagementRepository
             $profileMap = [
                 'date_of_birth' => 'date_of_birth',
                 'gender' => 'gender',
-                'emergency_contact_name' => $this->schema === self::SCHEMA_V1 ? 'emergency_contact_name' : 'emergency_name',
-                'emergency_contact_rel' => $this->schema === self::SCHEMA_V1 ? 'emergency_contact_rel' : 'emergency_relation',
-                'emergency_contact_phone' => $this->schema === self::SCHEMA_V1 ? 'emergency_contact_phone' : 'emergency_phone',
+                'emergency_contact_name' => 'emergency_name',
+                'emergency_contact_rel' => 'emergency_relation',
+                'emergency_contact_phone' => 'emergency_phone',
             ];
             $medicalMap = array_fill_keys($medicalFields, null);
             $medicalMap['height_cm'] = 'height_cm';
             $medicalMap['weight_kg'] = 'weight_kg';
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $assignments = [];
-                $params = [];
-                foreach ($changedFields as $field) {
-                    $assignments[] = $field . '=?';
-                    $params[] = $newValues[$field];
+            $profileUpdates = [];
+            $profileParams = [];
+            $medicalUpdates = [];
+            $medicalParams = [];
+            foreach ($changedFields as $field) {
+                if (in_array($field, $profileFields, true)) {
+                    $column = $profileMap[$field];
+                    $profileUpdates[] = $column . '=?';
+                    $profileParams[] = $newValues[$field];
+                } else {
+                    $medicalUpdates[] = $field . '=?';
+                    $medicalParams[] = $newValues[$field];
                 }
-                $params[] = $patientId;
-                $update = $this->db->prepare(
-                    'UPDATE medical_records SET ' . implode(',', $assignments) . ' WHERE patient_id=?'
-                );
-                $update->execute($params);
-            } else {
-                $profileUpdates = [];
-                $profileParams = [];
-                $medicalUpdates = [];
-                $medicalParams = [];
-                foreach ($changedFields as $field) {
-                    if (in_array($field, $profileFields, true)) {
-                        $column = $profileMap[$field];
-                        $profileUpdates[] = $column . '=?';
-                        $profileParams[] = $newValues[$field];
-                    } else {
-                        $medicalUpdates[] = $field . '=?';
-                        $medicalParams[] = $newValues[$field];
-                    }
-                }
-                if ($profileUpdates) {
-                    $profileParams[] = $patientId;
-                    $this->db->prepare(
-                        'UPDATE patient_profiles SET ' . implode(',', $profileUpdates)
-                        . ',updated_at=NOW() WHERE patient_user_id=?'
-                    )->execute($profileParams);
-                }
-                if ($medicalUpdates) {
-                    $medicalParams[] = $patientId;
-                    $this->db->prepare(
-                        'UPDATE patient_medical_profiles SET ' . implode(',', $medicalUpdates)
-                        . ',updated_at=NOW() WHERE patient_user_id=?'
-                    )->execute($medicalParams);
-                }
+            }
+            if ($profileUpdates) {
+                $profileParams[] = $patientId;
+                $this->db->prepare(
+                    'UPDATE patient_profiles SET ' . implode(',', $profileUpdates)
+                    . ',updated_at=NOW() WHERE patient_user_id=?'
+                )->execute($profileParams);
+            }
+            if ($medicalUpdates) {
+                $medicalParams[] = $patientId;
+                $this->db->prepare(
+                    'UPDATE patient_medical_profiles SET ' . implode(',', $medicalUpdates)
+                    . ',updated_at=NOW() WHERE patient_user_id=?'
+                )->execute($medicalParams);
             }
 
             $descriptions = [];
@@ -493,23 +450,7 @@ final class PatientManagementRepository
                 $patientId
             );
 
-            if ($this->schema === self::SCHEMA_V1 && $actorRole === 'admin' && $adminSensitiveChanges) {
-                $audit = $this->db->prepare(
-                    'INSERT INTO medical_record_audit
-                     (patient_id,admin_id,field_name,old_value,new_value,reason)
-                     VALUES (?,?,?,?,?,?)'
-                );
-                foreach ($adminSensitiveChanges as $field) {
-                    $audit->execute([
-                        $patientId,
-                        $actorUserId,
-                        $field,
-                        $oldValues[$field],
-                        $newValues[$field],
-                        $reason,
-                    ]);
-                }
-            } elseif ($this->schema === self::SCHEMA_V2 && $actorRole === 'admin' && $adminSensitiveChanges) {
+            if ($actorRole === 'admin' && $adminSensitiveChanges) {
                 $this->writeAudit(
                     $actorUserId,
                     'admin',
@@ -523,7 +464,7 @@ final class PatientManagementRepository
                 );
             }
 
-            if ($this->schema === self::SCHEMA_V2 && $actorRole === 'doctor') {
+            if ($actorRole === 'doctor') {
                 $history = $this->db->prepare(
                     'INSERT INTO medical_history_events
                      (patient_user_id,doctor_user_id,field_name,old_value,new_value,created_at)
@@ -589,29 +530,19 @@ final class PatientManagementRepository
         if (mb_strlen($oldValue) > 10000 || mb_strlen($newValue) > 10000) {
             throw new InvalidArgumentException('Medical history values cannot exceed 10000 characters.');
         }
-        $storedOldValue = $this->schema === self::SCHEMA_V2 && $oldValue === '' ? null : $oldValue;
-        $storedNewValue = $this->schema === self::SCHEMA_V2 && $newValue === '' ? null : $newValue;
+        $storedOldValue = $oldValue === '' ? null : $oldValue;
+        $storedNewValue = $newValue === '' ? null : $newValue;
         if ($storedOldValue === $storedNewValue) {
             return false;
         }
 
         return $this->withTransaction(function () use ($patientId, $doctorId, $field, $storedOldValue, $storedNewValue): bool {
-            $access = new ClinicalAccessService($this->db, $this->schema);
+            $access = new ClinicalAccessService($this->db);
             if (!$access->lockDoctorAndPatient($doctorId, $patientId)) {
                 throw new DomainException('The doctor or patient account is unavailable for this clinical update.');
             }
             if (!$access->doctorCanAccessPatient($doctorId, $patientId, true)) {
                 throw new DomainException('The doctor does not have an eligible clinical relationship with this patient.');
-            }
-
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    'INSERT INTO medical_history_updates
-                     (patient_id,doctor_id,field_name,old_value,new_value)
-                     VALUES (?,?,?,?,?)'
-                );
-                $stmt->execute([$patientId,$doctorId,$field,$storedOldValue,$storedNewValue]);
-                return true;
             }
 
             $duplicate = $this->db->prepare(
@@ -696,9 +627,8 @@ final class PatientManagementRepository
         $this->withTransaction(function () use ($patientId, $passwordHash, $actorUserId): void {
             $this->assertActor($actorUserId, 'admin');
             $this->lockPatient($patientId);
-            $column = $this->schema === self::SCHEMA_V1 ? 'password' : 'password_hash';
             $stmt = $this->db->prepare(
-                "UPDATE users SET {$column}=?, session_version=session_version+1, updated_at=NOW()
+                "UPDATE users SET password_hash=?, session_version=session_version+1, updated_at=NOW()
                  WHERE id=? AND role='patient'"
             );
             $stmt->execute([$passwordHash, $patientId]);
@@ -727,26 +657,18 @@ final class PatientManagementRepository
             $appointments = $this->findPatientCancellableAppointments($patientId);
             foreach ($appointments as $appointment) {
                 $appointmentId = (int)$appointment['id'];
-                if ($this->schema === self::SCHEMA_V1) {
-                    $stmt = $this->db->prepare(
-                        "UPDATE appointments SET status='Cancelled'
-                         WHERE id=? AND status IN ('Pending','Confirmed','Reschedule Requested')"
-                    );
-                    $stmt->execute([$appointmentId]);
-                } else {
-                    $stmt = $this->db->prepare(
-                        "UPDATE appointments SET booking_status='cancelled'
-                         WHERE id=? AND booking_status IN ('pending','confirmed')"
-                    );
-                    $stmt->execute([$appointmentId]);
-                    $this->db->prepare(
-                        "UPDATE appointment_reschedule_requests
-                         SET request_status='cancelled', responded_by_user_id=?, responded_at=NOW()
-                         WHERE appointment_id=? AND request_status IN ('requested','suggested')"
-                    )->execute([$actorUserId, $appointmentId]);
-                    $this->writeAppointmentEvent($appointmentId, $actorUserId, 'patient_account_archived',
-                        (string)$appointment['booking_status'], ['reason' => 'patient_account_archived']);
-                }
+                $stmt = $this->db->prepare(
+                    "UPDATE appointments SET booking_status='cancelled'
+                     WHERE id=? AND booking_status IN ('pending','confirmed')"
+                );
+                $stmt->execute([$appointmentId]);
+                $this->db->prepare(
+                    "UPDATE appointment_reschedule_requests
+                     SET request_status='cancelled', responded_by_user_id=?, responded_at=NOW()
+                     WHERE appointment_id=? AND request_status IN ('requested','suggested')"
+                )->execute([$actorUserId, $appointmentId]);
+                $this->writeAppointmentEvent($appointmentId, $actorUserId, 'patient_account_archived',
+                    (string)$appointment['booking_status'], ['reason' => 'patient_account_archived']);
                 if ($stmt->rowCount() !== 1) {
                     throw new RuntimeException('An appointment changed while the patient account was being archived.');
                 }
@@ -785,10 +707,8 @@ final class PatientManagementRepository
 
         return $this->withTransaction(function () use ($appointmentId, $patientUserId): array {
             $this->assertActor($patientUserId, 'patient');
-            $doctorColumn = $this->schema === self::SCHEMA_V1 ? 'doctor_id' : 'doctor_user_id';
-            $patientColumn = $this->schema === self::SCHEMA_V1 ? 'user_id' : 'patient_user_id';
             $lookup = $this->db->prepare(
-                "SELECT {$doctorColumn} FROM appointments WHERE id=? AND {$patientColumn}=? LIMIT 1"
+                "SELECT doctor_user_id FROM appointments WHERE id=? AND patient_user_id=? LIMIT 1"
             );
             $lookup->execute([$appointmentId, $patientUserId]);
             $doctorUserId = (int)$lookup->fetchColumn();
@@ -798,54 +718,32 @@ final class PatientManagementRepository
             $doctorLock->execute([$doctorUserId]);
             if (!$doctorLock->fetchColumn()) { throw new DomainException('The assigned doctor account is unavailable.'); }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    'SELECT a.*, w.status AS workflow_status
-                     FROM appointments a LEFT JOIN visit_workflow w ON w.appointment_id=a.id
-                     WHERE a.id=? AND a.user_id=? AND a.doctor_id=? LIMIT 1 FOR UPDATE'
-                );
-            } else {
-                $stmt = $this->db->prepare(
-                    'SELECT * FROM appointments
-                     WHERE id=? AND patient_user_id=? AND doctor_user_id=? LIMIT 1 FOR UPDATE'
-                );
-            }
+            $stmt = $this->db->prepare(
+                'SELECT * FROM appointments
+                 WHERE id=? AND patient_user_id=? AND doctor_user_id=? LIMIT 1 FOR UPDATE'
+            );
             $stmt->execute([$appointmentId, $patientUserId, $doctorUserId]);
             $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$appointment) { throw new DomainException('Appointment not found.'); }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $status = (string)$appointment['status'];
-                $workflow = $appointment['workflow_status'] ?? null;
-                $startsAt = (string)$appointment['date'] . ' ' . (string)$appointment['time'];
-                $patientName = (string)$appointment['patient_name'];
-                $doctorName = (string)$appointment['doctor'];
-            } else {
-                $status = (string)$appointment['booking_status'];
-                $startsAt = (string)$appointment['starts_at'];
-                $patientName = (string)$appointment['patient_name_snapshot'];
-                $doctorName = (string)$appointment['doctor_name_snapshot'];
-                $workflowStmt = $this->db->prepare(
-                    'SELECT workflow_status FROM clinical_encounters WHERE appointment_id=? LIMIT 1 FOR UPDATE'
-                );
-                $workflowStmt->execute([$appointmentId]);
-                $workflow = $workflowStmt->fetchColumn() ?: null;
-            }
+            $status = (string)$appointment['booking_status'];
+            $startsAt = (string)$appointment['starts_at'];
+            $patientName = (string)$appointment['patient_name_snapshot'];
+            $doctorName = (string)$appointment['doctor_name_snapshot'];
+            $workflowStmt = $this->db->prepare(
+                'SELECT workflow_status FROM clinical_encounters WHERE appointment_id=? LIMIT 1 FOR UPDATE'
+            );
+            $workflowStmt->execute([$appointmentId]);
+            $workflow = $workflowStmt->fetchColumn() ?: null;
 
-            $isCancelled = $this->schema === self::SCHEMA_V1 ? $status === 'Cancelled' : $status === 'cancelled';
-            if ($isCancelled) { throw new DomainException('This appointment is already cancelled.'); }
-            $hasPendingReschedule = false;
-            if ($this->schema === self::SCHEMA_V1) {
-                $hasPendingReschedule = $status === 'Reschedule Requested';
-            } else {
-                $requestStmt = $this->db->prepare(
-                    "SELECT id FROM appointment_reschedule_requests
-                     WHERE appointment_id=? AND request_status IN ('requested','suggested')
-                     ORDER BY id DESC LIMIT 1 FOR UPDATE"
-                );
-                $requestStmt->execute([$appointmentId]);
-                $hasPendingReschedule = (bool)$requestStmt->fetchColumn();
-            }
+            if ($status === 'cancelled') { throw new DomainException('This appointment is already cancelled.'); }
+            $requestStmt = $this->db->prepare(
+                "SELECT id FROM appointment_reschedule_requests
+                 WHERE appointment_id=? AND request_status IN ('requested','suggested')
+                 ORDER BY id DESC LIMIT 1 FOR UPDATE"
+            );
+            $requestStmt->execute([$appointmentId]);
+            $hasPendingReschedule = (bool)$requestStmt->fetchColumn();
             if ($hasPendingReschedule) {
                 throw new DomainException('Cancel or resolve the pending reschedule request before cancelling the appointment.');
             }
@@ -856,31 +754,24 @@ final class PatientManagementRepository
                 throw new DomainException('Cannot cancel an appointment after the clinical encounter has started. Contact the clinic if the visit needs to be stopped.');
             }
 
-            $allowed = $this->schema === self::SCHEMA_V1
-                ? in_array($status, ['Pending', 'Confirmed'], true)
-                : in_array($status, ['pending', 'confirmed'], true);
+            $allowed = in_array($status, ['pending', 'confirmed'], true);
             if (!$allowed) { throw new DomainException('This appointment cannot be cancelled in its current state.'); }
             if (new DateTimeImmutable($startsAt) <= new DateTimeImmutable()) {
                 throw new DomainException('Cannot cancel an appointment that has already started.');
             }
 
-            $update = $this->schema === self::SCHEMA_V1
-                ? $this->db->prepare("UPDATE appointments SET status='Cancelled' WHERE id=? AND user_id=? AND status IN ('Pending','Confirmed')")
-                : $this->db->prepare("UPDATE appointments SET booking_status='cancelled' WHERE id=? AND patient_user_id=? AND booking_status IN ('pending','confirmed')");
+            $update = $this->db->prepare("UPDATE appointments SET booking_status='cancelled' WHERE id=? AND patient_user_id=? AND booking_status IN ('pending','confirmed')");
             $update->execute([$appointmentId, $patientUserId]);
             if ($update->rowCount() !== 1) { throw new RuntimeException('The appointment changed before cancellation.'); }
 
-            $newStatus = $this->schema === self::SCHEMA_V1 ? 'Cancelled' : 'cancelled';
             $this->writeAudit($patientUserId, 'patient', 'cancel', 'appointment', $appointmentId,
-                ['status' => $status], ['status' => $newStatus], 'Appointment cancelled by patient',
+                ['status' => $status], ['status' => 'cancelled'], 'Appointment cancelled by patient',
                 $patientUserId, $doctorUserId);
-            if ($this->schema === self::SCHEMA_V2) {
-                $this->writeAppointmentEvent($appointmentId, $patientUserId, 'patient_cancelled',
-                    $status, ['reason' => 'patient_requested']);
-            }
+            $this->writeAppointmentEvent($appointmentId, $patientUserId, 'patient_cancelled',
+                $status, ['reason' => 'patient_requested']);
 
-            $date = $this->schema === self::SCHEMA_V1 ? (string)$appointment['date'] : substr($startsAt, 0, 10);
-            $time = $this->schema === self::SCHEMA_V1 ? (string)$appointment['time'] : substr($startsAt, 11, 5);
+            $date = substr($startsAt, 0, 10);
+            $time = substr($startsAt, 11, 5);
             $this->notify($doctorUserId, NotificationService::TYPE_APPOINTMENT_CANCELLED,
                 'Appointment Cancelled',
                 "Patient {$patientName} has cancelled their appointment on {$date} at {$time}.",
@@ -892,17 +783,7 @@ final class PatientManagementRepository
 
     private function findPatientCancellableAppointments(int $patientId): array
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $sql = "SELECT a.id FROM appointments a
-                    LEFT JOIN visit_workflow w ON w.appointment_id=a.id
-                    WHERE a.user_id=? AND a.status IN ('Pending','Confirmed','Reschedule Requested')
-                      AND (w.status IS NULL OR w.status='Waiting')
-                      AND NOT EXISTS (SELECT 1 FROM visit_drafts vd WHERE vd.appointment_id=a.id)
-                      AND NOT EXISTS (SELECT 1 FROM visit_notes vn WHERE vn.appointment_id=a.id)
-                      AND NOT EXISTS (SELECT 1 FROM prescriptions p WHERE p.appointment_id=a.id)
-                    FOR UPDATE";
-        } else {
-            $sql = "SELECT a.id, a.booking_status FROM appointments a
+        $sql = "SELECT a.id, a.booking_status FROM appointments a
                     LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
                     WHERE a.patient_user_id=? AND a.booking_status IN ('pending','confirmed')
                       AND (ce.id IS NULL OR (
@@ -914,7 +795,6 @@ final class PatientManagementRepository
                       AND NOT EXISTS (SELECT 1 FROM encounter_drafts ed WHERE ed.appointment_id=a.id)
                       AND NOT EXISTS (SELECT 1 FROM prescriptions p WHERE p.appointment_id=a.id)
                     FOR UPDATE";
-        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -934,9 +814,7 @@ final class PatientManagementRepository
 
     private function lockPatientDemographics(int $patientId): array
     {
-        $sql = $this->schema === self::SCHEMA_V1
-            ? 'SELECT gender,date_of_birth FROM medical_records WHERE patient_id=? LIMIT 1 FOR UPDATE'
-            : 'SELECT gender,date_of_birth FROM patient_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE';
+        $sql = 'SELECT gender,date_of_birth FROM patient_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE';
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -945,24 +823,14 @@ final class PatientManagementRepository
 
     private function savePatientDemographics(int $patientId, ?string $gender, ?string $dob): void
     {
-        if ($this->schema === self::SCHEMA_V1) {
-            $exists = $this->db->prepare('SELECT id FROM medical_records WHERE patient_id=? LIMIT 1 FOR UPDATE');
-            $exists->execute([$patientId]);
-            if (!$exists->fetchColumn()) {
-                $this->db->prepare('INSERT INTO medical_records (patient_id) VALUES (?)')->execute([$patientId]);
-            }
-            $this->db->prepare('UPDATE medical_records SET gender=?,date_of_birth=? WHERE patient_id=?')
-                ->execute([$gender, $dob, $patientId]);
+        $exists = $this->db->prepare('SELECT patient_user_id FROM patient_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE');
+        $exists->execute([$patientId]);
+        if (!$exists->fetchColumn()) {
+            $this->db->prepare('INSERT INTO patient_profiles (patient_user_id,gender,date_of_birth) VALUES (?,?,?)')
+                ->execute([$patientId, $gender, $dob]);
         } else {
-            $exists = $this->db->prepare('SELECT patient_user_id FROM patient_profiles WHERE patient_user_id=? LIMIT 1 FOR UPDATE');
-            $exists->execute([$patientId]);
-            if (!$exists->fetchColumn()) {
-                $this->db->prepare('INSERT INTO patient_profiles (patient_user_id,gender,date_of_birth) VALUES (?,?,?)')
-                    ->execute([$patientId, $gender, $dob]);
-            } else {
-                $this->db->prepare('UPDATE patient_profiles SET gender=?,date_of_birth=?,updated_at=NOW() WHERE patient_user_id=?')
-                    ->execute([$gender, $dob, $patientId]);
-            }
+            $this->db->prepare('UPDATE patient_profiles SET gender=?,date_of_birth=?,updated_at=NOW() WHERE patient_user_id=?')
+                ->execute([$gender, $dob, $patientId]);
         }
     }
 
@@ -982,19 +850,11 @@ final class PatientManagementRepository
     ): void {
         $oldJson = $oldValue === null ? null : (is_string($oldValue) ? $oldValue : json_encode($oldValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $newJson = $newValue === null ? null : (is_string($newValue) ? $newValue : json_encode($newValue, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                'INSERT INTO admin_audit
-                 (actor_id,actor_role,action,entity_type,entity_id,patient_id,doctor_id,old_value,new_value,description,ip_address,user_agent)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-            );
-        } else {
-            $stmt = $this->db->prepare(
-                'INSERT INTO audit_events
-                 (actor_user_id,actor_role_snapshot,action_code,entity_type,entity_id,patient_user_id,doctor_user_id,old_value,new_value,description,ip_address,user_agent)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-            );
-        }
+        $stmt = $this->db->prepare(
+            'INSERT INTO audit_events
+             (actor_user_id,actor_role_snapshot,action_code,entity_type,entity_id,patient_user_id,doctor_user_id,old_value,new_value,description,ip_address,user_agent)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+        );
         $stmt->execute([
             $actorUserId,$actorRole,$action,$entityType,(string)$entityId,$patientId,$doctorId,
             $oldJson,$newJson,$description,$_SERVER['REMOTE_ADDR'] ?? null,$_SERVER['HTTP_USER_AGENT'] ?? null,
@@ -1003,7 +863,6 @@ final class PatientManagementRepository
 
     private function writeAppointmentEvent(int $appointmentId, int $actorUserId, string $eventType, ?string $fromStatus, array $details = []): void
     {
-        if ($this->schema !== self::SCHEMA_V2) { return; }
         $roleStmt = $this->db->prepare('SELECT role FROM users WHERE id=? LIMIT 1');
         $roleStmt->execute([$actorUserId]);
         $role = (string)($roleStmt->fetchColumn() ?: 'admin');

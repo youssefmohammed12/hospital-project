@@ -32,18 +32,14 @@ if ($doctorIdValue !== null && (!is_string($doctorIdValue) || !ctype_digit($doct
 
 try {
     $db = getDB();
-    $schema = ScheduleService::schemaFromEnvironment();
     /** @var ScheduleService $ss */
-    $ss = new ScheduleService($db, $schema);
+    $ss = new ScheduleService($db);
 
     $doctorId = $doctorIdValue !== null ? (int)$doctorIdValue : 0;
 
     if ($doctorId > 0) {
         // Single doctor: do not expose availability for an archived/inactive account.
-        if ($schema === DoctorScheduleRepository::SCHEMA_V1) {
-            $activeDoctor = $db->prepare("SELECT id FROM users WHERE id = ? AND role = 'doctor' AND is_active = 1 LIMIT 1");
-        } else {
-            $activeDoctor = $db->prepare(
+        $activeDoctor = $db->prepare(
                 "SELECT u.id
                  FROM users u
                  INNER JOIN doctor_profiles dp ON dp.doctor_user_id=u.id
@@ -53,7 +49,6 @@ try {
                    AND (dp.department_id IS NULL OR dep.status='active' OR dep.id IS NULL)
                  LIMIT 1"
             );
-        }
         $activeDoctor->execute([$doctorId]);
         if (!$activeDoctor->fetchColumn()) {
             http_response_code(404);
@@ -65,15 +60,7 @@ try {
         ]);
     } else {
         // Batch: only public, active doctor profiles are eligible.
-        if ($schema === DoctorScheduleRepository::SCHEMA_V1) {
-            $stmt = $db->query(
-                "SELECT d.user_id FROM doctors d
-                 JOIN users u ON d.user_id=u.id
-                 WHERE u.role='doctor' AND u.is_active=1
-                 ORDER BY d.name ASC"
-            );
-        } else {
-            $stmt = $db->query(
+        $stmt = $db->query(
                 "SELECT dp.doctor_user_id
                  FROM doctor_profiles dp
                  JOIN users u ON u.id=dp.doctor_user_id
@@ -83,7 +70,6 @@ try {
                    AND (dp.department_id IS NULL OR dep.status='active' OR dep.id IS NULL)
                  ORDER BY u.name ASC"
             );
-        }
         $doctorIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $doctorIds = array_map('intval', $doctorIds);
 

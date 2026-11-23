@@ -45,7 +45,7 @@ if ($appointmentId === null) {
 // ── Execute ──────────────────────────────────────────────
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
+    $rs = new RescheduleService($db, $userId, $userRole);
     $result = $rs->cancelRescheduleRequest($appointmentId);
 
     echo json_encode($result);

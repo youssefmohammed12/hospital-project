@@ -15,11 +15,7 @@ require_once __DIR__ . '/Repositories/DoctorScheduleRepository.php';
 
 class HospitalSettingsService
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     private PDO $db;
-    private string $schema;
 
     /**
      * @var array Cached settings for the current request
@@ -28,13 +24,9 @@ class HospitalSettingsService
 
     public const VALID_DURATIONS = [10, 15, 20, 30, 45, 60];
 
-    public function __construct(PDO $db, string $schema = self::SCHEMA_V1)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('HospitalSettingsService schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     /**
@@ -60,7 +52,7 @@ class HospitalSettingsService
             $settings = $stmt->fetch();
         }
 
-        if ($this->schema === self::SCHEMA_V2 && is_array($settings)) {
+        if (is_array($settings)) {
             foreach (['appointment_open_time', 'appointment_close_time'] as $field) {
                 if (isset($settings[$field])) {
                     $settings[$field] = substr((string)$settings[$field], 0, 5);
@@ -207,8 +199,7 @@ class HospitalSettingsService
      */
     public function checkScheduleConflicts(string $newOpenTime, string $newCloseTime): array
     {
-        if ($this->schema === self::SCHEMA_V2) {
-            $repository = new DoctorScheduleRepository($this->db, DoctorScheduleRepository::SCHEMA_V2);
+            $repository = new DoctorScheduleRepository($this->db);
             $conflicts = [];
             foreach ($repository->getAllSchedules() as $schedule) {
                 foreach ($schedule['weekly'] ?? [] as $day) {
@@ -233,19 +224,5 @@ class HospitalSettingsService
                 return $name !== 0 ? $name : ($a['day_of_week'] <=> $b['day_of_week']);
             });
             return $conflicts;
-        }
-
-        $stmt = $this->db->prepare(
-            "SELECT dsw.doctor_id, u.name as doctor_name, dsw.day_of_week, dsw.start_time, dsw.end_time
-             FROM doctor_schedule_weekly dsw
-             JOIN users u ON dsw.doctor_id = u.id
-             WHERE dsw.is_working = 1
-             AND (
-                 dsw.start_time < ? OR dsw.end_time > ?
-             )
-             ORDER BY u.name ASC, dsw.day_of_week ASC"
-        );
-        $stmt->execute([$newOpenTime, $newCloseTime]);
-        return $stmt->fetchAll();
     }
 }

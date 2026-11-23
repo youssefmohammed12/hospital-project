@@ -29,8 +29,8 @@ if (empty($name)) {
 
 try {
     $db = getDB();
-    $ds = new DepartmentService($db, DepartmentService::schemaFromEnvironment());
-    $audit = new AdminAuditService($db, (int)$user['id'], AuditService::schemaFromEnvironment());
+    $ds = new DepartmentService($db);
+    $audit = new AdminAuditService($db, (int)$user['id']);
 
     $db->beginTransaction();
 

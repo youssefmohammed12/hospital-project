@@ -23,7 +23,7 @@ if ($appointmentId === null) {
 }
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
+    $rs = new RescheduleService($db, $userId, $userRole);
     echo json_encode($rs->declineRescheduleSuggestion($appointmentId));
 } catch (Exception $e) {
     error_log('Decline Suggestion Error: ' . $e->getMessage());

@@ -90,28 +90,17 @@ try {
     $filters['page'] = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
     $filters['limit'] = isset($_GET['limit']) ? max(1, min(100, (int)$_GET['limit'])) : 20;
 
-    $auditSchema = AdminAuditService::schemaFromEnvironment();
-    $audit = new AdminAuditService($db, (int)$user['id'], $auditSchema);
+    $audit = new AdminAuditService($db, (int)$user['id']);
     $result = $audit->getAuditLog($filters);
 
-    // Keep filter-option DTOs stable while reading the schema-specific actor columns.
-    if ($auditSchema === AuditService::SCHEMA_V2) {
-        $adminSql = "
+    // Keep filter-option DTOs stable while reading the actor columns.
+    $adminSql = "
             SELECT DISTINCT a.actor_user_id AS actor_id,
                    COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role_snapshot, 1, 1)), SUBSTRING(a.actor_role_snapshot, 2))) AS name
             FROM audit_events a
             LEFT JOIN users u ON a.actor_user_id = u.id
             ORDER BY name ASC
         ";
-    } else {
-        $adminSql = "
-            SELECT DISTINCT a.actor_id,
-                   COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role, 1, 1)), SUBSTRING(a.actor_role, 2))) AS name
-            FROM admin_audit a
-            LEFT JOIN users u ON a.actor_id = u.id
-            ORDER BY name ASC
-        ";
-    }
     $admins = $db->query($adminSql)->fetchAll(PDO::FETCH_ASSOC);
 
     jsonResponse(true, [

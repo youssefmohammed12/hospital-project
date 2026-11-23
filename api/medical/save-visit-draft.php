@@ -14,7 +14,6 @@ header('Content-Type: application/json');
 
 $user = requireRole('doctor');
 $doctorId = (int)$user['id'];
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_CLINICAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -47,7 +46,7 @@ try {
     $db = getDB();
     $db->beginTransaction();
 
-    $encounters = new ClinicalEncounterRepository($db, $schema);
+    $encounters = new ClinicalEncounterRepository($db);
     $identity = $encounters->getAppointmentContext($appointmentId);
     if (!$identity || (int)$identity['doctor_user_id'] !== $doctorId || $identity['patient_user_id'] === null) {
         $db->rollBack();
@@ -56,7 +55,7 @@ try {
     }
 
     // Lock both accounts before locking the appointment row.
-    $accountLocks = new ClinicalAccessService($db, $schema);
+    $accountLocks = new ClinicalAccessService($db);
     if (!$accountLocks->lockDoctorAndPatient($doctorId, (int)$identity['patient_user_id'])) {
         $db->rollBack();
         http_response_code(403);
@@ -75,7 +74,7 @@ try {
         jsonResponse(false, ['message' => 'You can only save drafts for your own confirmed appointments.']);
     }
 
-    $workflowService = new VisitWorkflowService($db, $schema);
+    $workflowService = new VisitWorkflowService($db);
     $workflow = $workflowService->get($appointmentId);
     if (($workflow['status'] ?? null) === VisitWorkflowService::STATUS_COMPLETED) {
         $db->rollBack();
@@ -83,7 +82,7 @@ try {
         jsonResponse(false, ['message' => 'Completed visits cannot be edited as drafts.']);
     }
 
-    $draftService = new VisitDraftService($db, $schema);
+    $draftService = new VisitDraftService($db);
     if (!$draftService->save($appointmentId, $doctorId, $input)) {
         throw new RuntimeException('Could not save visit draft.');
     }

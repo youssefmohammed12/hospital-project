@@ -15,7 +15,6 @@ require_once __DIR__ . '/../../services/Repositories/RatingRepository.php';
 header('Content-Type: application/json');
 
 $user = requireRole('admin');
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_RATINGS_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -46,7 +45,7 @@ if (is_bool($rawHidden)) {
 
 try {
     $db = getDB();
-    $result = (new RatingRepository($db, $schema))->setPublicVisibility(
+    $result = (new RatingRepository($db))->setPublicVisibility(
         (int)$id,
         $isHidden === 0,
         (int)($user['id'] ?? 0)

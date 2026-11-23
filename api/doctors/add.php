@@ -73,7 +73,7 @@ try {
     }
 
     // Current runtime is V1. The V2 implementation is already fixture-tested.
-    $management = new DoctorManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA'));
+    $management = new DoctorManagementRepository($db);
     $doctorUserId = $management->createDoctor(
         $name,
         $email,

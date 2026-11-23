@@ -26,7 +26,7 @@ if ($patientId === null || $patientId <= 0) {
 
 try {
     $db = getDB();
-    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $management = new PatientManagementRepository($db);
     $result = $management->togglePatientActive($patientId, (int)$user['id']);
 
     $statusText = (int)$result['is_active'] === 1 ? 'activated' : 'deactivated';

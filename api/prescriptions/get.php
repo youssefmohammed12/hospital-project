@@ -50,7 +50,7 @@ if (array_key_exists('id', $_GET)) {
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
+    $ps = new PrescriptionService($db);
 
     if ($prescriptionId > 0) {
         // Get single prescription with items

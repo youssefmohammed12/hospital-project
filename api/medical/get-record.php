@@ -19,7 +19,6 @@ require_once __DIR__ . '/../../includes/AppointmentTime.php';
 header('Content-Type: application/json');
 
 $user = requireAuth();
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
@@ -48,11 +47,11 @@ if ($currentRole === 'patient') {
 
 try {
     $db = getDB();
-    $workflowService = new VisitWorkflowService($db, $schema);
+    $workflowService = new VisitWorkflowService($db);
 
     // ── Authorization Checks ──
     if ($currentRole === 'doctor') {
-        $clinicalAccess = new ClinicalAccessService($db, $schema);
+        $clinicalAccess = new ClinicalAccessService($db);
         if (!$clinicalAccess->doctorCanAccessPatient($currentUserId, $patientId)) {
             http_response_code(403);
             jsonResponse(false, ['message' => 'You can only view records of patients with a confirmed appointment or documented clinical encounter.']);
@@ -72,16 +71,9 @@ try {
     }
 
     // ── Get medical record ──
-    if ($schema === PatientPortalService::SCHEMA_V1) {
-        $mrStmt = $db->prepare(
-            "SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1"
-        );
-        $mrStmt->execute([$patientId]);
-        $medicalRecord = $mrStmt->fetch();
-    } else {
-        // Reuse the portal's normalized patient-profile mapper for split V2 tables.
-        $profile = (new PatientPortalService($db, $schema))->getMedicalProfile($patientId);
-        $medicalRecord = [
+    // Reuse the portal's normalized patient-profile mapper for the split V2 tables.
+    $profile = (new PatientPortalService($db))->getMedicalProfile($patientId);
+    $medicalRecord = [
             'id' => null,
             'patient_id' => $patientId,
             'blood_type' => $profile['blood_type'] ?? null,
@@ -101,7 +93,6 @@ try {
             'created_at' => null,
             'updated_at' => null,
         ];
-    }
 
     // Keep GET read-only; return an empty record model until an explicit save creates it.
     if (!$medicalRecord) {
@@ -133,49 +124,25 @@ try {
     // Add appointment_time_range to visit history — prefer stored value
     foreach ($visitHistory as &$visit) {
         if (empty($visit['appointment_time_range'])) {
-            if ($schema === PatientPortalService::SCHEMA_V2) {
-                $sourceTime = (string)($visit['source_time_snapshot'] ?? '');
-                if (
-                    $sourceTime !== ''
-                    && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$visit['appt_time'])
-                ) {
-                    $visit['appointment_time_range'] = $visit['source_time_range_snapshot'] ?? null;
-                } else {
-                    $visit['appointment_time_range'] = AppointmentTime::range(
-                        (string)$visit['appt_time'],
-                        max(1, (int)($visit['duration_minutes'] ?? 30))
-                    );
-                }
+            $sourceTime = (string)($visit['source_time_snapshot'] ?? '');
+            if (
+                $sourceTime !== ''
+                && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$visit['appt_time'])
+            ) {
+                $visit['appointment_time_range'] = $visit['source_time_range_snapshot'] ?? null;
             } else {
-                $duration = getAppointmentDuration((int)$visit['doctor_id']);
-                $visit['appointment_time_range'] = computeAppointmentTimeRange($visit['appt_time'], $duration);
+                $visit['appointment_time_range'] = AppointmentTime::range(
+                    (string)$visit['appt_time'],
+                    max(1, (int)($visit['duration_minutes'] ?? 30))
+                );
             }
         }
     }
     unset($visit);
 
     // ── Get confirmed appointments that do not yet have a clinical note ──
-    if ($schema === PatientPortalService::SCHEMA_V1) {
-        if ($currentRole === 'doctor') {
-            $pendingNotesStmt = $db->prepare(
-                "SELECT a.id,a.date,a.time,a.department,a.doctor,a.status,a.doctor_id
-                 FROM appointments a
-                 WHERE a.user_id=? AND a.doctor_id=? AND a.status='Confirmed'
-                 ORDER BY a.date DESC,a.time DESC"
-            );
-            $pendingNotesStmt->execute([$patientId,$currentUserId]);
-        } else {
-            $pendingNotesStmt = $db->prepare(
-                "SELECT a.id,a.date,a.time,a.department,a.doctor,a.status,a.doctor_id
-                 FROM appointments a
-                 WHERE a.user_id=? AND a.status='Confirmed'
-                 ORDER BY a.date DESC,a.time DESC"
-            );
-            $pendingNotesStmt->execute([$patientId]);
-        }
-    } else {
-        $doctorFilter = $currentRole === 'doctor' ? ' AND a.doctor_user_id=?' : '';
-        $sql = "SELECT a.id,
+    $doctorFilter = $currentRole === 'doctor' ? ' AND a.doctor_user_id=?' : '';
+    $sql = "SELECT a.id,
                        DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
                        DATE_FORMAT(a.starts_at,'%H:%i') AS time,
                        a.department_name_snapshot AS department,
@@ -192,13 +159,12 @@ try {
                       AND rr.request_status IN ('requested','suggested')
                   )
                 ORDER BY a.starts_at DESC";
-        $pendingNotesStmt = $db->prepare($sql);
-        $params = [$patientId];
-        if ($currentRole === 'doctor') {
-            $params[] = $currentUserId;
-        }
-        $pendingNotesStmt->execute($params);
+    $pendingNotesStmt = $db->prepare($sql);
+    $params = [$patientId];
+    if ($currentRole === 'doctor') {
+        $params[] = $currentUserId;
     }
+    $pendingNotesStmt->execute($params);
     $pendingForNotes = $pendingNotesStmt->fetchAll();
     $noteAppointmentIds = array_fill_keys(
         array_map(static fn(array $note): int => (int)$note['appointment_id'], $visitHistory),
@@ -212,22 +178,17 @@ try {
     // Add appointment_time_range to pending for notes — prefer stored value
     foreach ($pendingForNotes as &$pfn) {
         if (empty($pfn['appointment_time_range'])) {
-            if ($schema === PatientPortalService::SCHEMA_V2) {
-                $sourceTime = (string)($pfn['source_time_snapshot'] ?? '');
-                if (
-                    $sourceTime !== ''
-                    && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$pfn['time'])
-                ) {
-                    $pfn['appointment_time_range'] = $pfn['source_time_range_snapshot'] ?? null;
-                } else {
-                    $pfn['appointment_time_range'] = AppointmentTime::range(
-                        (string)$pfn['time'],
-                        max(1, (int)($pfn['duration_minutes'] ?? 30))
-                    );
-                }
+            $sourceTime = (string)($pfn['source_time_snapshot'] ?? '');
+            if (
+                $sourceTime !== ''
+                && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$pfn['time'])
+            ) {
+                $pfn['appointment_time_range'] = $pfn['source_time_range_snapshot'] ?? null;
             } else {
-                $duration = getAppointmentDuration((int)$pfn['doctor_id']);
-                $pfn['appointment_time_range'] = computeAppointmentTimeRange($pfn['time'], $duration);
+                $pfn['appointment_time_range'] = AppointmentTime::range(
+                    (string)$pfn['time'],
+                    max(1, (int)($pfn['duration_minutes'] ?? 30))
+                );
             }
         }
     }

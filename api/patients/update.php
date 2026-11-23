@@ -33,7 +33,7 @@ if ($patientId === false || $patientId === null) {
 
 try {
     $db = getDB();
-    $management = new PatientManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA'));
+    $management = new PatientManagementRepository($db);
 
     // Password-reset modal uses a dedicated path and never clears profile fields.
     $passwordOnlyRequest = array_key_exists('password', $input)

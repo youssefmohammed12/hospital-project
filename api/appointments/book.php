@@ -5,7 +5,7 @@
  * HTTP boundary accepts modern IDs and older name-only client payloads.
  * All authoritative department/doctor/patient checks, locking, schedule and
  * overlap validation, inserts, audit, and outbox writes live in the
- * schema-aware AppointmentBookingRepository.
+ * AppointmentBookingRepository.
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -90,9 +90,8 @@ if (mb_strlen($notes) > 10000) {
 
 try {
     $db = getDB();
-    // The current HTTP runtime is V1. V2 booking has already been exercised
-    // through the same repository's disposable-fixture contract.
-    $schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA');
+    // Booking runs on the V2 schema only (V1 retired in Batch 2 Stage B;
+    // the HEALTHBRIDGE_APPOINTMENTS_SCHEMA env var is now inert).
 
     // Resolve a legacy department-name payload into the canonical department ID.
     if ($departmentId > 0) {
@@ -126,17 +125,7 @@ try {
     // Legacy clients may send a doctor display name without an ID. Resolve only
     // an unambiguous active doctor from the selected department.
     if ($doctorId <= 0) {
-        if ($schema === AppointmentBookingRepository::SCHEMA_V1) {
-            $doctorSql = "SELECT u.id,u.name
-                FROM users u JOIN doctors d ON d.user_id=u.id
-                WHERE u.name=? AND u.role='doctor' AND u.is_active=1
-                  AND (d.department_id=? OR (
-                    d.department_id IS NULL
-                    AND LOWER(TRIM(d.specialty))=LOWER(TRIM(?))
-                  ))
-                ORDER BY u.id LIMIT 2";
-        } else {
-            $doctorSql = "SELECT u.id,u.name
+        $doctorSql = "SELECT u.id,u.name
                 FROM users u JOIN doctor_profiles d ON d.doctor_user_id=u.id
                 WHERE u.name=? AND u.role='doctor' AND u.is_active=1
                   AND (d.department_id=? OR (
@@ -144,7 +133,6 @@ try {
                     AND LOWER(TRIM(d.specialty))=LOWER(TRIM(?))
                   ))
                 ORDER BY u.id LIMIT 2";
-        }
         $doctorStmt = $db->prepare($doctorSql);
         $doctorStmt->execute([$doctorName, $departmentId, $departmentName]);
         $matches = $doctorStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -186,7 +174,7 @@ try {
         $patientId = (int)$matches[0];
     }
 
-    $booking = new AppointmentBookingRepository($db, $schema);
+    $booking = new AppointmentBookingRepository($db);
     $appointmentId = $booking->book([
         'doctor_user_id' => $doctorId,
         'patient_user_id' => $patientId,

@@ -22,13 +22,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-// The editable tables exist only in the V2 schema.
-$portalSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PORTAL_SCHEMA');
-if ($portalSchema !== 'v2') {
-    http_response_code(409);
-    jsonResponse(false, ['message' => 'Medical profile editing is not available on this records system.']);
-}
-
 $data = getJsonInput();
 if (!is_array($data)) {
     http_response_code(400);
@@ -172,7 +165,7 @@ try {
     }
 
     $changed = array_merge(array_keys($profile), array_keys($medical));
-    $audit = new AuditService($db, $userId, 'patient', AuditService::schemaFromEnvironment());
+    $audit = new AuditService($db, $userId, 'patient');
     $logged = $audit->log(
         'update',
         'patient',

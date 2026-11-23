@@ -32,7 +32,7 @@ try {
 
     // The live application remains on v1. The repository has a separately
     // tested v2 adapter; changing this mode belongs to the approved cutover.
-    $management = new DoctorManagementRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA'));
+    $management = new DoctorManagementRepository($db);
     $result = $management->archiveDoctor($id, (int)$user['id']);
 
     if (!$result['changed']) {

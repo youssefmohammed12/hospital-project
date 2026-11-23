@@ -62,7 +62,7 @@ $notes = trim($notesInput);
 
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
+    $rs = new RescheduleService($db, $userId, $userRole);
     $result = $rs->suggestReschedule($appointmentId, $suggestedDate, $suggestedTime, $notes);
     echo json_encode($result);
 } catch (Exception $e) {

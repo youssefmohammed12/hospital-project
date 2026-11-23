@@ -25,7 +25,7 @@ if ($appointmentId === null || $appointmentId <= 0) {
 
 try {
     $db = getDB();
-    $lifecycle = new AppointmentLifecycleRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_APPOINTMENTS_SCHEMA'));
+    $lifecycle = new AppointmentLifecycleRepository($db);
     $result = $lifecycle->transitionPending(
         $appointmentId,
         (int)$admin['id'],

@@ -89,7 +89,7 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $newDate)) {
 
 try {
     $db = getDB();
-    $rs = new RescheduleService($db, $userId, $userRole, RescheduleService::schemaFromEnvironment());
+    $rs = new RescheduleService($db, $userId, $userRole);
 
     $result = $rs->requestReschedule($appointmentId, $newDate, $newTime, $reason);
 

@@ -223,7 +223,7 @@ function handleStep2(array $input): void
 
     // This HTTP request performs no identity lookup and creates no account rows.
     // The worker owns duplicate handling and the complete patient transaction.
-    $intake = new RegistrationIntakeService(getDB(), HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA'));
+    $intake = new RegistrationIntakeService(getDB());
     $intake->enqueue($profile);
     unset($profile, $intake);
 

@@ -11,13 +11,6 @@ declare(strict_types=1);
 class ClinicalAccessService
 {
     private PDO $db;
-    private string $schema;
-
-    private const CARE_WORKFLOW_STATES_V1 = [
-        'In Progress',
-        'Ready to Complete',
-        'Completed',
-    ];
 
     private const CARE_WORKFLOW_STATES_V2 = [
         'in_progress',
@@ -25,13 +18,9 @@ class ClinicalAccessService
         'completed',
     ];
 
-    public function __construct(PDO $db, string $schema = 'v1')
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, ['v1','v2'], true)) {
-            throw new InvalidArgumentException('ClinicalAccessService schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     /**
@@ -81,35 +70,6 @@ class ClinicalAccessService
         }
 
         $lockClause = $forUpdate ? ' FOR UPDATE' : '';
-        if ($this->schema === 'v1') {
-            $workflowStates = implode(',', array_map(
-                static fn(string $status): string => "'" . str_replace("'", "''", $status) . "'",
-                self::CARE_WORKFLOW_STATES_V1
-            ));
-            $sql = "SELECT a.id
-                    FROM appointments a
-                    INNER JOIN users patient
-                      ON patient.id=a.user_id AND patient.role='patient'
-                    WHERE a.doctor_id=? AND a.user_id=?
-                      AND (
-                        a.status='Confirmed'
-                        OR EXISTS (
-                            SELECT 1 FROM visit_workflow vw
-                            WHERE vw.appointment_id=a.id AND vw.status IN ({$workflowStates})
-                        )
-                        OR EXISTS (
-                            SELECT 1 FROM visit_notes vn
-                            WHERE vn.appointment_id=a.id
-                              AND vn.patient_id=a.user_id AND vn.doctor_id=a.doctor_id
-                        )
-                        OR EXISTS (
-                            SELECT 1 FROM prescriptions p
-                            WHERE p.appointment_id=a.id
-                              AND p.patient_id=a.user_id AND p.doctor_id=a.doctor_id
-                        )
-                      )
-                    LIMIT 1{$lockClause}";
-        } else {
             $workflowStates = implode(',', array_map(
                 static fn(string $status): string => "'" . str_replace("'", "''", $status) . "'",
                 self::CARE_WORKFLOW_STATES_V2
@@ -150,7 +110,6 @@ class ClinicalAccessService
                         )
                       )
                     LIMIT 1{$lockClause}";
-        }
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$doctorId,$patientId]);

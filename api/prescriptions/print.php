@@ -56,7 +56,7 @@ if ($prescriptionId < 1 || (string)$prescriptionId !== $normalizedId) {
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
+    $ps = new PrescriptionService($db);
     $rx = $ps->get($prescriptionId);
 
     if (!$rx) {
@@ -81,10 +81,7 @@ try {
     $statusClass = PrintOutputContext::prescriptionStatusClass($rx['status'] ?? null);
     $items = $rx['items'] ?? [];
     $doctorSpecialty = $rx['appt_department'] ?? 'Medical Department';
-    $hospitalSettings = (new HospitalSettingsService(
-        $db,
-        HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_HOSPITAL_SCHEMA')
-    ))->getSettings();
+    $hospitalSettings = (new HospitalSettingsService($db))->getSettings();
     $hospitalName = trim((string)($hospitalSettings['hospital_name'] ?? '')) ?: 'HealthBridge Hospital';
     $hospitalAddress = trim((string)($hospitalSettings['hospital_address'] ?? ''));
     $hospitalPhone = trim((string)($hospitalSettings['hospital_phone'] ?? ''));

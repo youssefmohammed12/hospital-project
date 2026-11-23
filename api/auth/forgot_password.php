@@ -49,7 +49,7 @@ try {
     $db = getDB();
     // The HTTP endpoint remains explicitly on v1. The repository's v2 mapping
     // is contract-tested against the disposable v2 fixture.
-    $resetRepository = new PasswordResetRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA'));
+    $resetRepository = new PasswordResetRepository($db);
     $request = $resetRepository->createRequest($email, $requestIp);
 
     if ($request['rate_limited']) {

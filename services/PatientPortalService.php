@@ -33,9 +33,6 @@ require_once __DIR__ . '/../includes/RelativeTimeFormatter.php';
 
 class PatientPortalService
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     /**
      * Canonical patient portal sections and the existing query method that builds each.
      * Keep this ordered to preserve the legacy getAll() response key order.
@@ -56,20 +53,15 @@ class PatientPortalService
     ];
 
     private PDO $db;
-    private string $schema;
 
     /**
      * @var array|null Cached hospital settings for the request
      */
     private ?array $hospitalCache = null;
 
-    public function __construct(PDO $db, string $schema = self::SCHEMA_V1)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('PatientPortalService schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -131,174 +123,6 @@ class PatientPortalService
     //  1. OVERVIEW — Welcome Hero
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Get welcome hero data: greeting, patient info, hospital status, next appointment,
-     * primary doctor, unread notifications count.
-     *
-     * Uses a single CTE to compute hospital status and patient info together.
-     */
-    public function getOverview(int $patientId): array
-    {
-        if ($this->schema === 'v2') {
-            return $this->getV2Overview($patientId);
-        }
-        // Hospital status — computed once per request
-        $hospital = $this->getHospitalStatus();
-
-        // Single query: patient info + next appointment + unread count + primary doctor
-        $sql = "
-            WITH patient_info AS (
-                SELECT id, name, first_name, last_name, email, phone, patient_number, created_at
-                FROM users
-                WHERE id = ? AND role = 'patient'
-                LIMIT 1
-            ),
-            next_appt AS (
-                SELECT
-                    a.id AS appointment_id,
-                    a.doctor AS doctor_name,
-                    a.doctor_id,
-                    a.department,
-                    a.date,
-                    a.time,
-                    a.appointment_time_range,
-                    a.notes,
-                    a.reschedule_status,
-                    a.pending_reschedule_date,
-                    a.pending_reschedule_time,
-                    a.reschedule_reason,
-                    d.rating AS doctor_rating,
-                    dep.name AS department_name,
-                    (SELECT specialty FROM doctors WHERE user_id = a.doctor_id LIMIT 1) AS doctor_specialty
-                FROM appointments a
-                LEFT JOIN doctors d ON a.doctor_id = d.user_id
-                LEFT JOIN departments dep ON a.department_id = dep.id
-                WHERE a.user_id = ?
-                  AND a.status != 'Cancelled'
-                  AND a.date >= CURDATE()
-                ORDER BY
-                    CASE WHEN a.reschedule_status = 'pending' THEN 0 ELSE 1 END,
-                    a.date ASC,
-                    a.time ASC
-                LIMIT 1
-            ),
-            unread AS (
-                SELECT COUNT(*) AS cnt FROM notifications
-                WHERE user_id = ? AND is_read = 0
-            ),
-            primary_doctor AS (
-                SELECT
-                    d.name, d.specialty, d.rating, d.available,
-                    dep.name AS department_name,
-                    d.user_id
-                FROM doctors d
-                LEFT JOIN departments dep ON d.department_id = dep.id
-                WHERE d.user_id = (
-                    SELECT doctor_id FROM appointments
-                    WHERE user_id = ?
-                    GROUP BY doctor_id
-                    ORDER BY COUNT(*) DESC
-                    LIMIT 1
-                )
-                LIMIT 1
-            )
-            SELECT
-                p.*,
-                n.cnt AS unread_count,
-                na.appointment_id, na.doctor_name, na.doctor_id, na.department,
-                na.date AS next_date, na.time AS next_time,
-                na.appointment_time_range AS next_time_range,
-                na.notes AS next_notes, na.doctor_rating, na.doctor_specialty,
-                na.department_name AS next_department_name,
-                na.reschedule_status AS next_reschedule_status,
-                na.pending_reschedule_date AS next_pending_reschedule_date,
-                na.pending_reschedule_time AS next_pending_reschedule_time,
-                na.reschedule_reason AS next_reschedule_reason,
-                pd.name AS primary_doctor_name,
-                pd.specialty AS primary_doctor_specialty,
-                pd.rating AS primary_doctor_rating,
-                pd.available AS primary_doctor_available,
-                pd.department_name AS primary_doctor_dept,
-                pd.user_id AS primary_doctor_user_id
-            FROM patient_info p
-            CROSS JOIN unread n
-            LEFT JOIN next_appt na ON 1=1
-            LEFT JOIN primary_doctor pd ON 1=1
-        ";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$patientId, $patientId, $patientId, $patientId]);
-        $data = $stmt->fetch();
-
-        if (!$data) {
-            return $this->emptyOverview();
-        }
-
-        // Compute greeting based on time of day
-        $hour = (int)date('G');
-        $greeting = 'Good evening';
-        if ($hour < 12) {
-            $greeting = 'Good morning';
-        } elseif ($hour < 17) {
-            $greeting = 'Good afternoon';
-        }
-
-        $firstName = $data['first_name'] ?: explode(' ', $data['name'] ?? '')[0] ?: 'Patient';
-
-        // Next appointment countdown
-        $nextCountdown = null;
-        if ($data['next_date']) {
-            $nextCountdown = $this->computeCountdown($data['next_date'], $data['next_time']);
-        }
-
-        return [
-            'greeting'              => $greeting,
-            'first_name'            => $firstName,
-            'full_name'             => $data['name'] ?? 'Patient',
-            'patient_number'        => $data['patient_number'] ?? '-',
-            'email'                 => $data['email'] ?? '',
-            'phone'                 => $data['phone'] ?? '',
-            'member_since'          => $data['created_at'] ?? null,
-            'hospital'              => [
-                'name'     => $hospital['name'],
-                'is_open'  => $hospital['is_open'],
-                'open_at'  => $hospital['open_time'],
-                'close_at' => $hospital['close_time'],
-                'status'   => $hospital['is_open'] ? 'Open' : 'Closed',
-                'closed_reason' => $hospital['closed_reason'],
-                'day_name' => $hospital['day_name'],
-                'operating_days' => $hospital['operating_days'],
-            ],
-            'current_time'          => date('l, F j, Y · g:i A'),
-            'current_date'          => date('Y-m-d'),
-            'next_appointment'      => $data['next_date'] ? [
-                'id'          => (int)$data['appointment_id'],
-                'doctor'      => $data['doctor_name'],
-                'doctor_id'   => (int)$data['doctor_id'],
-                'doctor_specialty' => $data['doctor_specialty'],
-                'department'  => $data['next_department_name'] ?: $data['department'],
-                'date'        => $data['next_date'],
-                'time'        => $data['next_time'],
-                'time_range'  => $data['next_time_range'],
-                'notes'       => $data['next_notes'],
-                'countdown'   => $nextCountdown,
-                'doctor_rating' => $data['doctor_rating'] ? (float)$data['doctor_rating'] : null,
-                'reschedule_status' => $data['next_reschedule_status'] ?? 'none',
-                'pending_reschedule_date' => $data['next_pending_reschedule_date'] ?? null,
-                'pending_reschedule_time' => $data['next_pending_reschedule_time'] ?? null,
-                'reschedule_reason' => $data['next_reschedule_reason'] ?? null,
-            ] : null,
-            'primary_doctor'        => $data['primary_doctor_name'] ? [
-                'name'        => $data['primary_doctor_name'],
-                'specialty'   => $data['primary_doctor_specialty'],
-                'rating'      => $data['primary_doctor_rating'] ? (float)$data['primary_doctor_rating'] : null,
-                'available'   => (bool)$data['primary_doctor_available'],
-                'department'  => $data['primary_doctor_dept'],
-                'user_id'     => (int)$data['primary_doctor_user_id'],
-            ] : null,
-            'unread_notifications'  => (int)$data['unread_count'],
-        ];
-    }
 
     // ═══════════════════════════════════════════════════════════════
     //  2. HEALTH SNAPSHOT — KPI Cards
@@ -310,89 +134,44 @@ class PatientPortalService
      */
     public function getHealthSnapshot(int $patientId): array
     {
-        if ($this->schema === 'v2') {
-            $sql = "
-                SELECT
-                    (SELECT COUNT(*) FROM appointments WHERE patient_user_id = ?) AS total_appointments,
-                    (SELECT COUNT(*) FROM appointments WHERE patient_user_id = ?
-                     AND DATE(starts_at) >= CURDATE() AND booking_status <> 'cancelled') AS upcoming_appointments,
-                    (SELECT COUNT(*) FROM appointments a
-                     JOIN clinical_encounters ce ON ce.appointment_id = a.id
-                     WHERE a.patient_user_id = ? AND ce.workflow_status = 'completed') AS completed_appointments,
-                    (SELECT COUNT(*) FROM prescriptions WHERE patient_user_id = ? AND status = 'active') AS active_prescriptions,
-                    (SELECT COUNT(*) FROM prescriptions WHERE patient_user_id = ?) AS total_prescriptions,
-                    (SELECT COUNT(*) FROM patient_medical_profiles WHERE patient_user_id = ?) AS has_medical_record,
-                    (SELECT COUNT(*) FROM notifications WHERE user_id = ?) AS total_notifications,
-                    (SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0) AS unread_notifications,
-                    (SELECT COUNT(DISTINCT a.doctor_user_id) FROM appointments a
-                     WHERE a.patient_user_id = ? AND a.booking_status = 'confirmed'
-                       AND NOT EXISTS (
-                           SELECT 1 FROM appointment_reschedule_requests rr
-                           WHERE rr.appointment_id = a.id
-                             AND rr.request_status IN ('requested','suggested')
-                       )) AS doctors_seen,
-                    (SELECT MAX(DATE(a.starts_at)) FROM appointments a
-                     JOIN clinical_encounters ce ON ce.appointment_id = a.id
-                     WHERE a.patient_user_id = ? AND ce.workflow_status = 'completed') AS last_visit_date,
-                    (SELECT COUNT(*) FROM appointments
-                     WHERE patient_user_id = ? AND booking_status = 'cancelled') AS cancelled_appointments,
-                    (SELECT COUNT(*) FROM appointments a
-                     LEFT JOIN clinical_encounters ce ON ce.appointment_id = a.id
-                     WHERE a.patient_user_id = ? AND DATE(a.starts_at) < CURDATE()
-                       AND a.booking_status = 'confirmed'
-                       AND (ce.workflow_status IS NULL OR ce.workflow_status <> 'completed')
-                       AND NOT EXISTS (
-                           SELECT 1 FROM appointment_reschedule_requests rr
-                           WHERE rr.appointment_id = a.id
-                             AND rr.request_status IN ('requested','suggested')
-                       )) AS missed_appointments,
-                    (SELECT COUNT(*) FROM prescriptions WHERE patient_user_id = ?) AS total_prescriptions_issued
-            ";
-            $params = array_fill(0, 13, $patientId);
-        } else {
-            $sql = "
-                SELECT
-                    -- Total appointments (all time)
-                    (SELECT COUNT(*) FROM appointments WHERE user_id = ?) AS total_appointments,
-                    -- Upcoming appointments (today or future, not cancelled)
-                    (SELECT COUNT(*) FROM appointments
-                     WHERE user_id = ? AND date >= CURDATE() AND status != 'Cancelled') AS upcoming_appointments,
-                    -- Completed appointments (confirmed + past with completed workflow)
-                    (SELECT COUNT(*) FROM appointments a
-                     JOIN visit_workflow vw ON vw.appointment_id = a.id
-                     WHERE a.user_id = ? AND vw.status = 'Completed') AS completed_appointments,
-                    -- Active prescriptions
-                    (SELECT COUNT(*) FROM prescriptions
-                     WHERE patient_id = ? AND status = 'Active') AS active_prescriptions,
-                    -- Total prescriptions
-                    (SELECT COUNT(*) FROM prescriptions WHERE patient_id = ?) AS total_prescriptions,
-                    -- Medical records count (1 if exists)
-                    (SELECT COUNT(*) FROM medical_records WHERE patient_id = ?) AS has_medical_record,
-                    -- Total notifications
-                    (SELECT COUNT(*) FROM notifications WHERE user_id = ?) AS total_notifications,
-                    -- Unread notifications
-                    (SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0) AS unread_notifications,
-                    -- Distinct doctors seen
-                    (SELECT COUNT(DISTINCT doctor_id) FROM appointments
-                     WHERE user_id = ? AND status = 'Confirmed') AS doctors_seen,
-                    -- Last visit date
-                    (SELECT MAX(a.date) FROM appointments a
-                     JOIN visit_workflow vw ON vw.appointment_id = a.id
-                     WHERE a.user_id = ? AND vw.status = 'Completed') AS last_visit_date,
-                    -- Cancelled appointments
-                    (SELECT COUNT(*) FROM appointments
-                     WHERE user_id = ? AND status = 'Cancelled') AS cancelled_appointments,
-                    -- Missed appointments (past confirmed without completed workflow)
-                    (SELECT COUNT(*) FROM appointments a
-                     LEFT JOIN visit_workflow vw ON vw.appointment_id = a.id
-                     WHERE a.user_id = ? AND a.date < CURDATE()
-                       AND a.status IN ('Confirmed')
-                       AND (vw.status IS NULL OR vw.status != 'Completed')) AS missed_appointments,
-                    -- Total prescriptions issued
-                    (SELECT COUNT(*) FROM prescriptions WHERE patient_id = ?) AS total_prescriptions_issued
-            ";
-            $params = array_fill(0, 13, $patientId);
-        }
+        $sql = "
+            SELECT
+                (SELECT COUNT(*) FROM appointments WHERE patient_user_id = ?) AS total_appointments,
+                (SELECT COUNT(*) FROM appointments WHERE patient_user_id = ?
+                 AND DATE(starts_at) >= CURDATE() AND booking_status <> 'cancelled') AS upcoming_appointments,
+                (SELECT COUNT(*) FROM appointments a
+                 JOIN clinical_encounters ce ON ce.appointment_id = a.id
+                 WHERE a.patient_user_id = ? AND ce.workflow_status = 'completed') AS completed_appointments,
+                (SELECT COUNT(*) FROM prescriptions WHERE patient_user_id = ? AND status = 'active') AS active_prescriptions,
+                (SELECT COUNT(*) FROM prescriptions WHERE patient_user_id = ?) AS total_prescriptions,
+                (SELECT COUNT(*) FROM patient_medical_profiles WHERE patient_user_id = ?) AS has_medical_record,
+                (SELECT COUNT(*) FROM notifications WHERE user_id = ?) AS total_notifications,
+                (SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0) AS unread_notifications,
+                (SELECT COUNT(DISTINCT a.doctor_user_id) FROM appointments a
+                 WHERE a.patient_user_id = ? AND a.booking_status = 'confirmed'
+                   AND NOT EXISTS (
+                       SELECT 1 FROM appointment_reschedule_requests rr
+                       WHERE rr.appointment_id = a.id
+                         AND rr.request_status IN ('requested','suggested')
+                   )) AS doctors_seen,
+                (SELECT MAX(DATE(a.starts_at)) FROM appointments a
+                 JOIN clinical_encounters ce ON ce.appointment_id = a.id
+                 WHERE a.patient_user_id = ? AND ce.workflow_status = 'completed') AS last_visit_date,
+                (SELECT COUNT(*) FROM appointments
+                 WHERE patient_user_id = ? AND booking_status = 'cancelled') AS cancelled_appointments,
+                (SELECT COUNT(*) FROM appointments a
+                 LEFT JOIN clinical_encounters ce ON ce.appointment_id = a.id
+                 WHERE a.patient_user_id = ? AND DATE(a.starts_at) < CURDATE()
+                   AND a.booking_status = 'confirmed'
+                   AND (ce.workflow_status IS NULL OR ce.workflow_status <> 'completed')
+                   AND NOT EXISTS (
+                       SELECT 1 FROM appointment_reschedule_requests rr
+                       WHERE rr.appointment_id = a.id
+                         AND rr.request_status IN ('requested','suggested')
+                   )) AS missed_appointments,
+                (SELECT COUNT(*) FROM prescriptions WHERE patient_user_id = ?) AS total_prescriptions_issued
+        ";
+        $params = array_fill(0, 13, $patientId);
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -435,107 +214,80 @@ class PatientPortalService
      */
     public function getAppointmentTimeline(int $patientId): array
     {
-        // Each schema is queried independently, then normalized to the same
-        // patient-facing appointment timeline fields below.
-        if ($this->schema === 'v1') {
-            $sql = "
-                SELECT
-                    a.id,a.doctor,a.doctor_id,a.department,a.department_id,
-                    a.date,a.time,a.appointment_time_range,a.notes,a.status,
-                    a.created_at AS booked_at,
-                    a.reschedule_status,a.pending_reschedule_date,a.pending_reschedule_time,
-                    a.reschedule_reason,a.reschedule_requested_at,
-                    d.rating AS doctor_rating,d.specialty AS doctor_specialty,
-                    COALESCE(ss.is_available,d.available) AS doctor_available,
-                    dep.name AS department_name,
-                    vw.status AS workflow_status,vw.completed_at,
-                    p.id AS prescription_id,p.status AS prescription_status,
-                    r.id AS rating_id,r.stars AS rating_stars
-                FROM appointments a
-                LEFT JOIN doctors d ON a.doctor_id=d.user_id
-                LEFT JOIN doctor_schedule_settings ss ON ss.doctor_id=a.doctor_id
-                LEFT JOIN departments dep ON a.department_id=dep.id
-                LEFT JOIN visit_workflow vw ON vw.appointment_id=a.id
-                LEFT JOIN prescriptions p ON p.appointment_id=a.id
-                LEFT JOIN ratings r ON r.appointment_id=a.id
-                WHERE a.user_id=?
-                ORDER BY a.date DESC,a.time DESC
-            ";
-        } else {
-            $sql = "
-                SELECT
-                    a.id,a.doctor_name_snapshot AS doctor,a.doctor_user_id AS doctor_id,
-                    a.department_name_snapshot AS department,a.department_id,
-                    DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
-                    DATE_FORMAT(a.starts_at,'%H:%i') AS time,
-                    a.source_time_snapshot,a.source_time_range_snapshot,
-                    a.duration_minutes,a.notes,
-                    CASE
-                      WHEN rr.request_status IN ('requested','suggested') THEN 'Reschedule Requested'
-                      WHEN a.booking_status='pending' THEN 'Pending'
-                      WHEN a.booking_status='confirmed' THEN 'Confirmed'
-                      WHEN a.booking_status='cancelled' THEN 'Cancelled'
-                      ELSE 'Cancelled'
-                    END AS status,
-                    a.created_at AS booked_at,
-                    CASE rr.request_status
-                      WHEN 'requested' THEN 'pending'
-                      WHEN 'suggested' THEN 'suggested'
-                      WHEN 'approved' THEN 'approved'
-                      WHEN 'rejected' THEN 'rejected'
-                      ELSE 'none'
-                    END AS reschedule_status,
-                    CASE
-                      WHEN rr.request_status='suggested' AND rr.proposed_starts_at IS NOT NULL
-                        THEN DATE_FORMAT(rr.proposed_starts_at,'%Y-%m-%d')
-                      WHEN rr.request_status IN ('requested','suggested')
-                        THEN DATE_FORMAT(rr.requested_starts_at,'%Y-%m-%d')
-                      ELSE NULL
-                    END AS pending_reschedule_date,
-                    CASE
-                      WHEN rr.request_status='suggested' AND rr.proposed_starts_at IS NOT NULL
-                        THEN DATE_FORMAT(rr.proposed_starts_at,'%H:%i')
-                      WHEN rr.request_status IN ('requested','suggested')
-                        THEN DATE_FORMAT(rr.requested_starts_at,'%H:%i')
-                      ELSE NULL
-                    END AS pending_reschedule_time,
-                    rr.reason AS reschedule_reason,rr.requested_at AS reschedule_requested_at,
-                    rs.average_rating AS doctor_rating,dp.specialty AS doctor_specialty,
-                    COALESCE(ss.is_available,dp.accepts_new_patients) AS doctor_available,
-                    dep.name AS department_name,
-                    CASE ce.workflow_status
-                      WHEN 'waiting' THEN 'Waiting'
-                      WHEN 'in_progress' THEN 'In Progress'
-                      WHEN 'ready_to_complete' THEN 'Ready to Complete'
-                      WHEN 'completed' THEN 'Completed'
-                      ELSE NULL
-                    END AS workflow_status,
-                    ce.completed_at,
-                    p.id AS prescription_id,
-                    CASE p.status
-                      WHEN 'active' THEN 'Active'
-                      WHEN 'completed' THEN 'Completed'
-                      WHEN 'cancelled' THEN 'Cancelled'
-                      ELSE p.status
-                    END AS prescription_status,
-                    r.id AS rating_id,r.stars AS rating_stars
-                FROM appointments a
-                LEFT JOIN doctor_profiles dp ON dp.doctor_user_id=a.doctor_user_id
-                LEFT JOIN doctor_schedule_settings ss ON ss.doctor_user_id=a.doctor_user_id
-                LEFT JOIN v_doctor_rating_summary rs ON rs.doctor_user_id=a.doctor_user_id
-                LEFT JOIN departments dep ON dep.id=a.department_id
-                LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
-                LEFT JOIN prescriptions p ON p.appointment_id=a.id
-                LEFT JOIN ratings r ON r.appointment_id=a.id
-                LEFT JOIN appointment_reschedule_requests rr
-                  ON rr.id=(
-                      SELECT MAX(rr2.id) FROM appointment_reschedule_requests rr2
-                      WHERE rr2.appointment_id=a.id
-                  )
-                WHERE a.patient_user_id=?
-                ORDER BY a.starts_at DESC
-            ";
-        }
+        // The query is normalized to the patient-facing appointment timeline fields below.
+        $sql = "
+            SELECT
+                a.id,a.doctor_name_snapshot AS doctor,a.doctor_user_id AS doctor_id,
+                a.department_name_snapshot AS department,a.department_id,
+                DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
+                DATE_FORMAT(a.starts_at,'%H:%i') AS time,
+                a.source_time_snapshot,a.source_time_range_snapshot,
+                a.duration_minutes,a.notes,
+                CASE
+                  WHEN rr.request_status IN ('requested','suggested') THEN 'Reschedule Requested'
+                  WHEN a.booking_status='pending' THEN 'Pending'
+                  WHEN a.booking_status='confirmed' THEN 'Confirmed'
+                  WHEN a.booking_status='cancelled' THEN 'Cancelled'
+                  ELSE 'Cancelled'
+                END AS status,
+                a.created_at AS booked_at,
+                CASE rr.request_status
+                  WHEN 'requested' THEN 'pending'
+                  WHEN 'suggested' THEN 'suggested'
+                  WHEN 'approved' THEN 'approved'
+                  WHEN 'rejected' THEN 'rejected'
+                  ELSE 'none'
+                END AS reschedule_status,
+                CASE
+                  WHEN rr.request_status='suggested' AND rr.proposed_starts_at IS NOT NULL
+                    THEN DATE_FORMAT(rr.proposed_starts_at,'%Y-%m-%d')
+                  WHEN rr.request_status IN ('requested','suggested')
+                    THEN DATE_FORMAT(rr.requested_starts_at,'%Y-%m-%d')
+                  ELSE NULL
+                END AS pending_reschedule_date,
+                CASE
+                  WHEN rr.request_status='suggested' AND rr.proposed_starts_at IS NOT NULL
+                    THEN DATE_FORMAT(rr.proposed_starts_at,'%H:%i')
+                  WHEN rr.request_status IN ('requested','suggested')
+                    THEN DATE_FORMAT(rr.requested_starts_at,'%H:%i')
+                  ELSE NULL
+                END AS pending_reschedule_time,
+                rr.reason AS reschedule_reason,rr.requested_at AS reschedule_requested_at,
+                rs.average_rating AS doctor_rating,dp.specialty AS doctor_specialty,
+                COALESCE(ss.is_available,dp.accepts_new_patients) AS doctor_available,
+                dep.name AS department_name,
+                CASE ce.workflow_status
+                  WHEN 'waiting' THEN 'Waiting'
+                  WHEN 'in_progress' THEN 'In Progress'
+                  WHEN 'ready_to_complete' THEN 'Ready to Complete'
+                  WHEN 'completed' THEN 'Completed'
+                  ELSE NULL
+                END AS workflow_status,
+                ce.completed_at,
+                p.id AS prescription_id,
+                CASE p.status
+                  WHEN 'active' THEN 'Active'
+                  WHEN 'completed' THEN 'Completed'
+                  WHEN 'cancelled' THEN 'Cancelled'
+                  ELSE p.status
+                END AS prescription_status,
+                r.id AS rating_id,r.stars AS rating_stars
+            FROM appointments a
+            LEFT JOIN doctor_profiles dp ON dp.doctor_user_id=a.doctor_user_id
+            LEFT JOIN doctor_schedule_settings ss ON ss.doctor_user_id=a.doctor_user_id
+            LEFT JOIN v_doctor_rating_summary rs ON rs.doctor_user_id=a.doctor_user_id
+            LEFT JOIN departments dep ON dep.id=a.department_id
+            LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
+            LEFT JOIN prescriptions p ON p.appointment_id=a.id
+            LEFT JOIN ratings r ON r.appointment_id=a.id
+            LEFT JOIN appointment_reschedule_requests rr
+              ON rr.id=(
+                  SELECT MAX(rr2.id) FROM appointment_reschedule_requests rr2
+                  WHERE rr2.appointment_id=a.id
+              )
+            WHERE a.patient_user_id=?
+            ORDER BY a.starts_at DESC
+        ";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
@@ -551,20 +303,18 @@ class PatientPortalService
         foreach ($appointments as $a) {
             $timelineTime = (string)$a['time'];
             $timelineTimeRange = $a['appointment_time_range'] ?? null;
-            if ($this->schema === 'v2') {
-                $sourceTime = (string)($a['source_time_snapshot'] ?? '');
-                if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize($timelineTime)) {
-                    // Preserve the exact source display value and a deliberately null legacy range.
-                    $timelineTime = $sourceTime;
-                    $timelineTimeRange = $a['source_time_range_snapshot'] ?? null;
-                } else {
-                    // Runtime rescheduling moved the appointment from its source time;
-                    // build the range from the appointment's retained duration.
-                    $timelineTimeRange = AppointmentTime::range(
-                        $timelineTime,
-                        max(1, (int)($a['duration_minutes'] ?? 30))
-                    );
-                }
+            $sourceTime = (string)($a['source_time_snapshot'] ?? '');
+            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize($timelineTime)) {
+                // Preserve the exact source display value and a deliberately null legacy range.
+                $timelineTime = $sourceTime;
+                $timelineTimeRange = $a['source_time_range_snapshot'] ?? null;
+            } else {
+                // Runtime rescheduling moved the appointment from its source time;
+                // build the range from the appointment's retained duration.
+                $timelineTimeRange = AppointmentTime::range(
+                    $timelineTime,
+                    max(1, (int)($a['duration_minutes'] ?? 30))
+                );
             }
 
             $item = [
@@ -664,76 +414,55 @@ class PatientPortalService
             ];
         }
 
-        if ($this->schema === 'v1') {
-            $sql = "
-                SELECT
-                    a.id AS appointment_id,a.date,a.time,a.appointment_time_range,
-                    a.status AS appointment_status,a.doctor,a.department,
-                    vw.status AS workflow_status,vw.completed_at,
-                    vn.id AS visit_note_id,vn.diagnosis,vn.symptoms,vn.treatment,
-                    vn.doctor_notes,vn.created_at AS visit_note_created_at,
-                    p.id AS prescription_id,p.status AS prescription_status,
-                    p.created_at AS prescription_created_at,
-                    r.id AS rating_id,r.stars,r.review,r.created_at AS rating_created_at
-                FROM appointments a
-                LEFT JOIN visit_workflow vw ON vw.appointment_id=a.id
-                LEFT JOIN visit_notes vn ON vn.appointment_id=a.id
-                LEFT JOIN prescriptions p ON p.appointment_id=a.id
-                LEFT JOIN ratings r ON r.appointment_id=a.id
-                WHERE a.user_id=?
-                ORDER BY a.date ASC,a.time ASC
-            ";
-        } else {
-            $sql = "
-                SELECT
-                    a.id AS appointment_id,
-                    DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
-                    DATE_FORMAT(a.starts_at,'%H:%i') AS time,
-                    a.source_time_snapshot,a.source_time_range_snapshot,
-                    a.duration_minutes,
-                    a.source_time_range_snapshot AS appointment_time_range,
-                    CASE
-                      WHEN rr.request_status IN ('requested','suggested') THEN 'Reschedule Requested'
-                      WHEN a.booking_status='pending' THEN 'Pending'
-                      WHEN a.booking_status='confirmed' THEN 'Confirmed'
-                      WHEN a.booking_status='cancelled' THEN 'Cancelled'
-                      ELSE 'Cancelled'
-                    END AS appointment_status,
-                    a.doctor_name_snapshot AS doctor,
-                    a.department_name_snapshot AS department,
-                    CASE ce.workflow_status
-                      WHEN 'waiting' THEN 'Waiting'
-                      WHEN 'in_progress' THEN 'In Progress'
-                      WHEN 'ready_to_complete' THEN 'Ready to Complete'
-                      WHEN 'completed' THEN 'Completed'
-                      ELSE NULL
-                    END AS workflow_status,
-                    ce.completed_at,
-                    CASE WHEN (
-                      ce.diagnosis IS NOT NULL OR ce.symptoms IS NOT NULL
-                      OR ce.treatment IS NOT NULL OR ce.doctor_notes IS NOT NULL
-                      OR ce.follow_up_instructions IS NOT NULL
-                    ) THEN ce.id ELSE NULL END AS visit_note_id,
-                    ce.diagnosis,ce.symptoms,ce.treatment,ce.doctor_notes,
-                    ce.created_at AS visit_note_created_at,
-                    p.id AS prescription_id,
-                    CASE p.status WHEN 'active' THEN 'Active' WHEN 'completed' THEN 'Completed'
-                         WHEN 'cancelled' THEN 'Cancelled' ELSE p.status END AS prescription_status,
-                    p.created_at AS prescription_created_at,
-                    r.id AS rating_id,r.stars,r.review,r.created_at AS rating_created_at
-                FROM appointments a
-                LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
-                LEFT JOIN prescriptions p ON p.appointment_id=a.id
-                LEFT JOIN ratings r ON r.appointment_id=a.id
-                LEFT JOIN appointment_reschedule_requests rr
-                  ON rr.id=(
-                    SELECT MAX(rr2.id) FROM appointment_reschedule_requests rr2
-                    WHERE rr2.appointment_id=a.id
-                  )
-                WHERE a.patient_user_id=?
-                ORDER BY a.starts_at ASC
-            ";
-        }
+        $sql = "
+            SELECT
+                a.id AS appointment_id,
+                DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
+                DATE_FORMAT(a.starts_at,'%H:%i') AS time,
+                a.source_time_snapshot,a.source_time_range_snapshot,
+                a.duration_minutes,
+                a.source_time_range_snapshot AS appointment_time_range,
+                CASE
+                  WHEN rr.request_status IN ('requested','suggested') THEN 'Reschedule Requested'
+                  WHEN a.booking_status='pending' THEN 'Pending'
+                  WHEN a.booking_status='confirmed' THEN 'Confirmed'
+                  WHEN a.booking_status='cancelled' THEN 'Cancelled'
+                  ELSE 'Cancelled'
+                END AS appointment_status,
+                a.doctor_name_snapshot AS doctor,
+                a.department_name_snapshot AS department,
+                CASE ce.workflow_status
+                  WHEN 'waiting' THEN 'Waiting'
+                  WHEN 'in_progress' THEN 'In Progress'
+                  WHEN 'ready_to_complete' THEN 'Ready to Complete'
+                  WHEN 'completed' THEN 'Completed'
+                  ELSE NULL
+                END AS workflow_status,
+                ce.completed_at,
+                CASE WHEN (
+                  ce.diagnosis IS NOT NULL OR ce.symptoms IS NOT NULL
+                  OR ce.treatment IS NOT NULL OR ce.doctor_notes IS NOT NULL
+                  OR ce.follow_up_instructions IS NOT NULL
+                ) THEN ce.id ELSE NULL END AS visit_note_id,
+                ce.diagnosis,ce.symptoms,ce.treatment,ce.doctor_notes,
+                ce.created_at AS visit_note_created_at,
+                p.id AS prescription_id,
+                CASE p.status WHEN 'active' THEN 'Active' WHEN 'completed' THEN 'Completed'
+                     WHEN 'cancelled' THEN 'Cancelled' ELSE p.status END AS prescription_status,
+                p.created_at AS prescription_created_at,
+                r.id AS rating_id,r.stars,r.review,r.created_at AS rating_created_at
+            FROM appointments a
+            LEFT JOIN clinical_encounters ce ON ce.appointment_id=a.id
+            LEFT JOIN prescriptions p ON p.appointment_id=a.id
+            LEFT JOIN ratings r ON r.appointment_id=a.id
+            LEFT JOIN appointment_reschedule_requests rr
+              ON rr.id=(
+                SELECT MAX(rr2.id) FROM appointment_reschedule_requests rr2
+                WHERE rr2.appointment_id=a.id
+              )
+            WHERE a.patient_user_id=?
+            ORDER BY a.starts_at ASC
+        ";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
@@ -742,23 +471,21 @@ class PatientPortalService
         foreach ($appointments as $a) {
             $displayTime = (string)$a['time'];
             $displayRange = $a['appointment_time_range'] ?? null;
-            if ($this->schema === 'v2') {
-                if (
-                    !empty($a['source_time_snapshot'])
-                    && AppointmentTime::normalize((string)$a['source_time_snapshot']) === AppointmentTime::normalize($displayTime)
-                ) {
-                    // Preserve the legacy display notation for migrated source times.
-                    $displayTime = (string)$a['source_time_snapshot'];
-                    $displayRange = $a['source_time_range_snapshot'] ?? null;
-                } else {
-                    // Once moved at runtime, use the retained duration at the new time.
-                    $displayRange = AppointmentTime::range(
-                        $displayTime,
-                        max(1, (int)($a['duration_minutes'] ?? 30))
-                    );
-                }
+            if (
+                !empty($a['source_time_snapshot'])
+                && AppointmentTime::normalize((string)$a['source_time_snapshot']) === AppointmentTime::normalize($displayTime)
+            ) {
+                // Preserve the legacy display notation for migrated source times.
+                $displayTime = (string)$a['source_time_snapshot'];
+                $displayRange = $a['source_time_range_snapshot'] ?? null;
+            } else {
+                // Once moved at runtime, use the retained duration at the new time.
+                $displayRange = AppointmentTime::range(
+                    $displayTime,
+                    max(1, (int)($a['duration_minutes'] ?? 30))
+                );
             }
-            $apptDate = $a['date'] . ' ' . $displayTime;
+        $apptDate = $a['date'] . ' ' . $displayTime;
 
             $events[] = [
                 'date'        => $apptDate,
@@ -831,17 +558,7 @@ class PatientPortalService
         }
 
         // Add reschedule events from audit log
-        $rescheduleSql = $this->schema === 'v1'
-            ? "
-                SELECT created_at,action,description,entity_id
-                FROM admin_audit
-                WHERE patient_id=?
-                  AND action IN ('reschedule_request','reschedule_approved','reschedule_rejected',
-                    'reschedule_cancelled','reschedule_suggested','reschedule_suggestion_accepted',
-                    'reschedule_suggestion_declined')
-                ORDER BY created_at ASC
-              "
-            : "
+        $rescheduleSql = "
                 SELECT occurred_at AS created_at,action_code AS action,description,entity_id
                 FROM audit_events
                 WHERE patient_user_id=?
@@ -881,14 +598,7 @@ class PatientPortalService
             ];
         }
 
-        $auditSql = $this->schema === 'v1'
-            ? "
-                SELECT created_at,description,entity_type,entity_id
-                FROM admin_audit
-                WHERE patient_id=? AND entity_type='patient' AND action IN ('update','create')
-                ORDER BY created_at ASC
-              "
-            : "
+        $auditSql = "
                 SELECT created_at,description,entity_type,entity_id
                 FROM legacy_admin_audit
                 WHERE patient_id=? AND entity_type='patient'
@@ -927,54 +637,34 @@ class PatientPortalService
 
     public function getPrescriptions(int $patientId): array
     {
-        if ($this->schema === 'v2') {
-            $sql = "
-                SELECT p.id, p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
-                       p.appointment_id, p.notes, p.status, p.created_at, p.updated_at,
-                       u_doctor.name AS doctor_name,
-                       DATE(a.starts_at) AS appt_date,
-                       a.department_name_snapshot AS appt_department,
-                       dp.specialty AS doctor_specialty,
-                       rs.average_rating AS doctor_rating
-                FROM prescriptions p
-                JOIN users u_doctor ON p.doctor_user_id = u_doctor.id
-                JOIN appointments a ON p.appointment_id = a.id
-                LEFT JOIN doctor_profiles dp ON dp.doctor_user_id = p.doctor_user_id
-                LEFT JOIN v_doctor_rating_summary rs ON rs.doctor_user_id = p.doctor_user_id
-                WHERE p.patient_user_id = ?
-                ORDER BY p.created_at DESC
-            ";
-        } else {
-            $sql = "
-                SELECT p.id, p.patient_id, p.doctor_id, p.appointment_id,
-                    p.notes, p.status, p.created_at, p.updated_at,
-                    u_doctor.name AS doctor_name,
-                    a.date AS appt_date,
-                    a.department AS appt_department,
-                    (SELECT specialty FROM doctors WHERE user_id = p.doctor_id LIMIT 1) AS doctor_specialty,
-                    (SELECT rating FROM doctors WHERE user_id = p.doctor_id LIMIT 1) AS doctor_rating
-                FROM prescriptions p
-                JOIN users u_doctor ON p.doctor_id = u_doctor.id
-                JOIN appointments a ON p.appointment_id = a.id
-                WHERE p.patient_id = ?
-                ORDER BY p.created_at DESC
-            ";
-        }
-
+        $sql = "
+            SELECT p.id, p.patient_user_id AS patient_id, p.doctor_user_id AS doctor_id,
+                   p.appointment_id, p.notes, p.status, p.created_at, p.updated_at,
+                   u_doctor.name AS doctor_name,
+                   DATE(a.starts_at) AS appt_date,
+                   a.department_name_snapshot AS appt_department,
+                   dp.specialty AS doctor_specialty,
+                   rs.average_rating AS doctor_rating
+            FROM prescriptions p
+            JOIN users u_doctor ON p.doctor_user_id = u_doctor.id
+            JOIN appointments a ON p.appointment_id = a.id
+            LEFT JOIN doctor_profiles dp ON dp.doctor_user_id = p.doctor_user_id
+            LEFT JOIN v_doctor_rating_summary rs ON rs.doctor_user_id = p.doctor_user_id
+            WHERE p.patient_user_id = ?
+            ORDER BY p.created_at DESC
+        ";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
         $prescriptions = $stmt->fetchAll();
-        if ($this->schema === 'v2') {
-            foreach ($prescriptions as &$prescription) {
-                $prescription['status'] = match (strtolower((string)$prescription['status'])) {
-                    'active' => 'Active',
-                    'completed' => 'Completed',
-                    'cancelled' => 'Cancelled',
-                    default => (string)$prescription['status'],
-                };
-            }
-            unset($prescription);
+        foreach ($prescriptions as &$prescription) {
+            $prescription['status'] = match (strtolower((string)$prescription['status'])) {
+                'active' => 'Active',
+                'completed' => 'Completed',
+                'cancelled' => 'Cancelled',
+                default => (string)$prescription['status'],
+            };
         }
+        unset($prescription);
 
         $prescriptionIds = array_column($prescriptions, 'id');
         $itemsByPrescription = [];
@@ -1065,96 +755,6 @@ class PatientPortalService
     //  6. MEDICAL PROFILE — Full Patient Profile
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Get the complete patient medical profile.
-     */
-    public function getMedicalProfile(int $patientId): array
-    {
-        if ($this->schema === 'v2') {
-            return $this->getV2MedicalProfile($patientId);
-        }
-        $sql = "
-            SELECT
-                u.id, u.name, u.first_name, u.last_name, u.email, u.phone,
-                u.patient_number, u.national_id, u.created_at AS registered_at,
-                mr.blood_type, mr.height_cm, mr.weight_kg,
-                mr.date_of_birth, mr.gender,
-                mr.allergies, mr.chronic_diseases,
-                mr.current_medications, mr.previous_surgeries, mr.family_history,
-                mr.emergency_contact_name, mr.emergency_contact_rel, mr.emergency_contact_phone,
-                mr.governorate, mr.city, mr.address,
-                mr.insurance_provider, mr.insurance_number,
-                mr.medical_notes
-            FROM users u
-            LEFT JOIN medical_records mr ON u.id = mr.patient_id
-            WHERE u.id = ? AND u.role = 'patient'
-            LIMIT 1
-        ";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$patientId]);
-        $data = $stmt->fetch();
-
-        if (!$data) {
-            return $this->emptyProfile();
-        }
-
-        $age = null;
-        if ($data['date_of_birth']) {
-            $dob = new DateTime($data['date_of_birth']);
-            $now = new DateTime();
-            $age = $dob->diff($now)->y;
-        }
-
-        $bmi = null;
-        if ($data['height_cm'] && $data['weight_kg'] && (float)$data['height_cm'] > 0) {
-            $heightM = (float)$data['height_cm'] / 100;
-            $weightKg = (float)$data['weight_kg'];
-            $bmi = round($weightKg / ($heightM * $heightM), 1);
-        }
-
-        return [
-            'id'                    => (int)$data['id'],
-            'name'                  => $data['name'],
-            'first_name'            => $data['first_name'],
-            'last_name'             => $data['last_name'],
-            'email'                 => $data['email'],
-            'phone'                 => $data['phone'],
-            'patient_number'        => $data['patient_number'] ?? '-',
-            'national_id'           => $data['national_id'],
-            'registered_at'         => $data['registered_at'],
-            'date_of_birth'         => $data['date_of_birth'],
-            'age'                   => $age,
-            'gender'                => $data['gender'],
-            'blood_type'            => $data['blood_type'],
-            'height_cm'             => $data['height_cm'] ? (float)$data['height_cm'] : null,
-            'weight_kg'             => $data['weight_kg'] ? (float)$data['weight_kg'] : null,
-            'bmi'                   => $bmi,
-            'allergies'             => $data['allergies'],
-            'allergies_list'        => $this->parseListField($data['allergies']),
-            'chronic_diseases'      => $data['chronic_diseases'],
-            'chronic_diseases_list' => $this->parseListField($data['chronic_diseases']),
-            'current_medications'   => $data['current_medications'],
-            'previous_surgeries'    => $data['previous_surgeries'],
-            'family_history'        => $data['family_history'],
-            'emergency_contact'     => [
-                'name'  => $data['emergency_contact_name'],
-                'relationship' => $data['emergency_contact_rel'],
-                'phone' => $data['emergency_contact_phone'],
-            ],
-            'location'              => [
-                'governorate' => $data['governorate'],
-                'city'        => $data['city'],
-                'address'     => $data['address'],
-            ],
-            'insurance'             => [
-                'provider' => $data['insurance_provider'],
-                'number'   => $data['insurance_number'],
-            ],
-            'medical_notes'         => $data['medical_notes'],
-        ];
-    }
-
     // ═══════════════════════════════════════════════════════════════
     //  7. NOTIFICATIONS — Gmail-Style Grouped
     // ═══════════════════════════════════════════════════════════════
@@ -1223,93 +823,6 @@ class PatientPortalService
     //  8. FAVORITE DOCTORS — Auto-Computed
     // ═══════════════════════════════════════════════════════════════
 
-    public function getFavorites(int $patientId): array
-    {
-        if ($this->schema === 'v2') {
-            return $this->getV2Favorites($patientId);
-        }
-        $mostVisitedSql = "
-            SELECT a.doctor_id, u.name AS doctor_name, d.specialty, d.rating AS doctor_rating,
-                   d.available, dep.name AS department_name, COUNT(*) AS visit_count, MAX(a.date) AS last_visit_date
-            FROM appointments a
-            JOIN users u ON a.doctor_id = u.id
-            JOIN doctors d ON a.doctor_id = d.user_id
-            LEFT JOIN departments dep ON a.department_id = dep.id
-            WHERE a.user_id = ? AND a.status = 'Confirmed'
-            GROUP BY a.doctor_id, u.name, d.specialty, d.rating, d.available, dep.name
-            ORDER BY visit_count DESC LIMIT 3
-        ";
-        $stmt = $this->db->prepare($mostVisitedSql);
-        $stmt->execute([$patientId]);
-        $mostVisited = $stmt->fetchAll();
-
-        $topRatedSql = "
-            SELECT r.doctor_id, u.name AS doctor_name, d.specialty, d.rating AS doctor_rating,
-                   d.available, dep.name AS department_name, AVG(r.stars) AS patient_avg_rating, COUNT(r.id) AS rating_count
-            FROM ratings r
-            JOIN appointments a ON r.appointment_id = a.id
-            JOIN users u ON r.doctor_id = u.id
-            JOIN doctors d ON r.doctor_id = d.user_id
-            LEFT JOIN departments dep ON a.department_id = dep.id
-            WHERE r.user_id = ?
-            GROUP BY r.doctor_id, u.name, d.specialty, d.rating, d.available, dep.name
-            ORDER BY patient_avg_rating DESC LIMIT 3
-        ";
-        $stmt = $this->db->prepare($topRatedSql);
-        $stmt->execute([$patientId]);
-        $topRated = $stmt->fetchAll();
-
-        $recentSql = "
-            SELECT a.doctor_id, u.name AS doctor_name, d.specialty, d.rating AS doctor_rating,
-                   d.available, dep.name AS department_name, MAX(a.date) AS last_visit_date
-            FROM appointments a
-            JOIN users u ON a.doctor_id = u.id
-            JOIN doctors d ON a.doctor_id = d.user_id
-            LEFT JOIN departments dep ON a.department_id = dep.id
-            WHERE a.user_id = ? AND a.status = 'Confirmed'
-            GROUP BY a.doctor_id, u.name, d.specialty, d.rating, d.available, dep.name
-            ORDER BY last_visit_date DESC LIMIT 3
-        ";
-        $stmt = $this->db->prepare($recentSql);
-        $stmt->execute([$patientId]);
-        $recentVisited = $stmt->fetchAll();
-
-        $recommendedSql = "
-            SELECT d.id, d.user_id, d.name AS doctor_name, d.specialty, d.rating, d.available, d.exp, dep.name AS department_name
-            FROM doctors d
-            LEFT JOIN departments dep ON d.department_id = dep.id
-            WHERE d.department_id = (
-                SELECT a.department_id FROM appointments a WHERE a.user_id = ? AND a.department_id IS NOT NULL
-                GROUP BY a.department_id ORDER BY COUNT(*) DESC LIMIT 1
-            )
-            AND d.user_id NOT IN (SELECT DISTINCT a.doctor_id FROM appointments a WHERE a.user_id = ?)
-            AND d.available = 1
-            ORDER BY d.rating DESC LIMIT 3
-        ";
-        $stmt = $this->db->prepare($recommendedSql);
-        $stmt->execute([$patientId, $patientId]);
-        $recommended = $stmt->fetchAll();
-
-        $formatDoctor = fn($d) => [
-            'doctor_id'       => (int)($d['doctor_id'] ?? $d['user_id']),
-            'name'            => $d['doctor_name'] ?? $d['name'],
-            'specialty'       => $d['specialty'],
-            'rating'          => (float)($d['doctor_rating'] ?? $d['rating']),
-            'available'       => (bool)($d['available']),
-            'department'      => $d['department_name'],
-            'visit_count'     => isset($d['visit_count']) ? (int)$d['visit_count'] : null,
-            'last_visit'      => $d['last_visit_date'] ?? null,
-            'patient_rating'  => isset($d['patient_avg_rating']) ? round((float)$d['patient_avg_rating'], 1) : null,
-            'experience'      => isset($d['exp']) ? (int)$d['exp'] : null,
-        ];
-
-        return [
-            'most_visited'       => array_map($formatDoctor, $mostVisited),
-            'top_rated'          => array_map($formatDoctor, $topRated),
-            'recently_visited'   => array_map($formatDoctor, $recentVisited),
-            'recommended'        => array_map($formatDoctor, $recommended),
-        ];
-    }
 
     // ═══════════════════════════════════════════════════════════════
     //  9. HEALTH INSIGHTS — Statistics & Analytics
@@ -1317,8 +830,7 @@ class PatientPortalService
 
     public function getHealthInsights(int $patientId): array
     {
-        if ($this->schema === 'v2') {
-            $topDeptSql = "
+        $topDeptSql = "
                 SELECT COALESCE(dep.name, a.department_name_snapshot) AS department_name,
                        COUNT(*) AS visit_count
                 FROM appointments a
@@ -1332,22 +844,11 @@ class PatientPortalService
                 GROUP BY COALESCE(dep.name, a.department_name_snapshot)
                 ORDER BY visit_count DESC LIMIT 1
             ";
-        } else {
-            $topDeptSql = "
-                SELECT COALESCE(dep.name, a.department) AS department_name, COUNT(*) AS visit_count
-                FROM appointments a
-                LEFT JOIN departments dep ON a.department_id = dep.id
-                WHERE a.user_id = ? AND a.status = 'Confirmed'
-                GROUP BY COALESCE(dep.name, a.department)
-                ORDER BY visit_count DESC LIMIT 1
-            ";
-        }
         $stmt = $this->db->prepare($topDeptSql);
         $stmt->execute([$patientId]);
         $topDept = $stmt->fetch();
 
-        if ($this->schema === 'v2') {
-            $statsSql = "
+        $statsSql = "
                 SELECT COUNT(*) AS total_visits,
                        SUM(CASE WHEN ce.workflow_status = 'completed' THEN 1 ELSE 0 END) AS completed_visits,
                        SUM(CASE WHEN a.booking_status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_visits,
@@ -1361,68 +862,39 @@ class PatientPortalService
                 LEFT JOIN prescriptions p ON p.appointment_id = a.id AND YEAR(p.created_at) = YEAR(CURDATE())
                 WHERE a.patient_user_id = ?
             ";
-        } else {
-            $statsSql = "
-                SELECT COUNT(*) AS total_visits,
-                       SUM(CASE WHEN vw.status = 'Completed' THEN 1 ELSE 0 END) AS completed_visits,
-                       SUM(CASE WHEN a.status = 'Cancelled' THEN 1 ELSE 0 END) AS cancelled_visits,
-                       COUNT(DISTINCT a.doctor_id) AS unique_doctors,
-                       AVG(r.stars) AS avg_rating_given,
-                       COUNT(r.id) AS ratings_count,
-                       COUNT(DISTINCT p.id) AS prescriptions_this_year
-                FROM appointments a
-                LEFT JOIN visit_workflow vw ON vw.appointment_id = a.id
-                LEFT JOIN ratings r ON r.appointment_id = a.id
-                LEFT JOIN prescriptions p ON p.appointment_id = a.id AND YEAR(p.created_at) = YEAR(CURDATE())
-                WHERE a.user_id = ?
-            ";
-        }
         $stmt = $this->db->prepare($statsSql);
         $stmt->execute([$patientId]);
         $stats = $stmt->fetch();
 
-        $monthSql = $this->schema === 'v2'
-            ? "SELECT COUNT(*) AS visits_this_month FROM appointments a
+        $monthSql = "SELECT COUNT(*) AS visits_this_month FROM appointments a
                WHERE a.patient_user_id = ? AND YEAR(a.starts_at) = YEAR(CURDATE())
                  AND MONTH(a.starts_at) = MONTH(CURDATE()) AND a.booking_status = 'confirmed'
                  AND NOT EXISTS (
                      SELECT 1 FROM appointment_reschedule_requests rr
                      WHERE rr.appointment_id = a.id
                        AND rr.request_status IN ('requested','suggested')
-                 )"
-            : "SELECT COUNT(*) AS visits_this_month
-               FROM appointments WHERE user_id = ? AND YEAR(date) = YEAR(CURDATE())
-                 AND MONTH(date) = MONTH(CURDATE()) AND status = 'Confirmed'";
+                 )";
         $stmt = $this->db->prepare($monthSql);
         $stmt->execute([$patientId]);
         $monthData = $stmt->fetch();
 
-        $monthlySql = $this->schema === 'v2'
-            ? "SELECT DATE_FORMAT(starts_at, '%Y-%m') AS month, COUNT(*) AS count,
+        $monthlySql = "SELECT DATE_FORMAT(starts_at, '%Y-%m') AS month, COUNT(*) AS count,
                       SUM(CASE WHEN booking_status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled
                FROM appointments WHERE patient_user_id = ?
                  AND DATE(starts_at) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
-               GROUP BY DATE_FORMAT(starts_at, '%Y-%m') ORDER BY month ASC"
-            : "SELECT DATE_FORMAT(date, '%Y-%m') AS month, COUNT(*) AS count,
-                      SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) AS cancelled
-               FROM appointments WHERE user_id = ?
-                 AND date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 11 MONTH), '%Y-%m-01')
-               GROUP BY DATE_FORMAT(date, '%Y-%m') ORDER BY month ASC";
+               GROUP BY DATE_FORMAT(starts_at, '%Y-%m') ORDER BY month ASC";
         $stmt = $this->db->prepare($monthlySql);
         $stmt->execute([$patientId]);
         $monthly = $stmt->fetchAll();
 
-        $intervalSql = $this->schema === 'v2'
-            ? "SELECT DATE(a.starts_at) AS visit_date FROM appointments a
+        $intervalSql = "SELECT DATE(a.starts_at) AS visit_date FROM appointments a
                WHERE a.patient_user_id = ? AND a.booking_status = 'confirmed'
                  AND NOT EXISTS (
                      SELECT 1 FROM appointment_reschedule_requests rr
                      WHERE rr.appointment_id = a.id
                        AND rr.request_status IN ('requested','suggested')
                  )
-               ORDER BY a.starts_at ASC"
-            : "SELECT a.date AS visit_date FROM appointments a
-               WHERE a.user_id = ? AND a.status = 'Confirmed' ORDER BY a.date ASC";
+               ORDER BY a.starts_at ASC";
         $stmt = $this->db->prepare($intervalSql);
         $stmt->execute([$patientId]);
         $visitDates = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -1436,8 +908,7 @@ class PatientPortalService
             $avgInterval = round($totalDays / (count($visitDates) - 1), 1);
         }
 
-        $deptDistSql = $this->schema === 'v2'
-            ? "SELECT COALESCE(dep.name, a.department_name_snapshot) AS name, COUNT(*) AS count
+        $deptDistSql = "SELECT COALESCE(dep.name, a.department_name_snapshot) AS name, COUNT(*) AS count
                FROM appointments a LEFT JOIN departments dep ON a.department_id = dep.id
                WHERE a.patient_user_id = ? AND a.booking_status = 'confirmed'
                  AND NOT EXISTS (
@@ -1445,10 +916,7 @@ class PatientPortalService
                      WHERE rr.appointment_id = a.id
                        AND rr.request_status IN ('requested','suggested')
                  )
-               GROUP BY name ORDER BY count DESC"
-            : "SELECT COALESCE(dep.name, a.department) AS name, COUNT(*) AS count
-               FROM appointments a LEFT JOIN departments dep ON a.department_id = dep.id
-               WHERE a.user_id = ? AND a.status = 'Confirmed' GROUP BY name ORDER BY count DESC";
+               GROUP BY name ORDER BY count DESC";
         $stmt = $this->db->prepare($deptDistSql);
         $stmt->execute([$patientId]);
         $deptDist = $stmt->fetchAll();
@@ -1485,8 +953,7 @@ class PatientPortalService
 
     public function getDownloads(int $patientId): array
     {
-        if ($this->schema === 'v2') {
-            $rxSql = "
+        $rxSql = "
                 SELECT p.id, u.name AS doctor_name,
                        DATE(a.starts_at) AS appointment_date,
                        a.department_name_snapshot AS department, p.status, p.created_at,
@@ -1496,33 +963,20 @@ class PatientPortalService
                 JOIN appointments a ON p.appointment_id = a.id
                 WHERE p.patient_user_id = ? ORDER BY p.created_at DESC
             ";
-        } else {
-            $rxSql = "
-                SELECT p.id, u.name AS doctor_name, a.date AS appointment_date, a.department, p.status, p.created_at,
-                       (SELECT COUNT(*) FROM prescription_items WHERE prescription_id = p.id) AS items_count
-                FROM prescriptions p
-                JOIN users u ON p.doctor_id = u.id
-                JOIN appointments a ON p.appointment_id = a.id
-                WHERE p.patient_id = ? ORDER BY p.created_at DESC
-            ";
-        }
         $stmt = $this->db->prepare($rxSql);
         $stmt->execute([$patientId]);
         $prescriptions = $stmt->fetchAll();
-        if ($this->schema === 'v2') {
-            foreach ($prescriptions as &$prescription) {
-                $prescription['status'] = match (strtolower((string)$prescription['status'])) {
-                    'active' => 'Active',
-                    'completed' => 'Completed',
-                    'cancelled' => 'Cancelled',
-                    default => (string)$prescription['status'],
-                };
-            }
-            unset($prescription);
+        foreach ($prescriptions as &$prescription) {
+            $prescription['status'] = match (strtolower((string)$prescription['status'])) {
+                'active' => 'Active',
+                'completed' => 'Completed',
+                'cancelled' => 'Cancelled',
+                default => (string)$prescription['status'],
+            };
         }
+        unset($prescription);
 
-        if ($this->schema === 'v2') {
-            $confSql = "
+        $confSql = "
                 SELECT a.id, a.doctor_name_snapshot AS doctor,
                        a.department_name_snapshot AS department,
                        DATE(a.starts_at) AS date,
@@ -1538,32 +992,23 @@ class PatientPortalService
                   )
                 ORDER BY a.starts_at DESC
             ";
-        } else {
-            $confSql = "
-                SELECT id, doctor, department, date, time, appointment_time_range, status, created_at
-                FROM appointments WHERE user_id = ? AND status IN ('Confirmed') ORDER BY date DESC
-            ";
-        }
         $stmt = $this->db->prepare($confSql);
         $stmt->execute([$patientId]);
         $confirmations = $stmt->fetchAll();
-        if ($this->schema === 'v2') {
-            foreach ($confirmations as &$confirmation) {
-                $sourceTime = (string)($confirmation['source_time_snapshot'] ?? '');
-                if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$confirmation['time'])) {
-                    $confirmation['appointment_time_range'] = $confirmation['source_time_range_snapshot'];
-                } else {
-                    $confirmation['appointment_time_range'] = AppointmentTime::range(
-                        (string)$confirmation['time'],
-                        (int)$confirmation['duration_minutes']
-                    );
-                }
+        foreach ($confirmations as &$confirmation) {
+            $sourceTime = (string)($confirmation['source_time_snapshot'] ?? '');
+            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$confirmation['time'])) {
+                $confirmation['appointment_time_range'] = $confirmation['source_time_range_snapshot'];
+            } else {
+                $confirmation['appointment_time_range'] = AppointmentTime::range(
+                    (string)$confirmation['time'],
+                    (int)$confirmation['duration_minutes']
+                );
             }
-            unset($confirmation);
         }
+        unset($confirmation);
 
-        if ($this->schema === 'v2') {
-            $visitSql = "
+        $visitSql = "
                 SELECT a.id AS appointment_id,
                        a.doctor_name_snapshot AS doctor,
                        a.department_name_snapshot AS department,
@@ -1578,16 +1023,6 @@ class PatientPortalService
                 WHERE a.patient_user_id = ? AND ce.workflow_status = 'completed'
                 ORDER BY a.starts_at DESC
             ";
-        } else {
-            $visitSql = "
-                SELECT a.id AS appointment_id, a.doctor, a.department, a.date, a.appointment_time_range, a.status,
-                       vn.diagnosis, vn.symptoms, vn.treatment, vn.created_at AS summary_date
-                FROM appointments a
-                JOIN visit_workflow vw ON vw.appointment_id = a.id
-                LEFT JOIN visit_notes vn ON vn.appointment_id = a.id
-                WHERE a.user_id = ? AND vw.status = 'Completed' ORDER BY a.date DESC
-            ";
-        }
         $stmt = $this->db->prepare($visitSql);
         $stmt->execute([$patientId]);
         $visits = $stmt->fetchAll();
@@ -1628,8 +1063,7 @@ class PatientPortalService
     {
         $alerts = [];
 
-        if ($this->schema === 'v2') {
-            $upcomingSql = "
+        $upcomingSql = "
                 SELECT id, doctor_name_snapshot AS doctor,
                        department_name_snapshot AS department,
                        DATE(starts_at) AS date,
@@ -1641,17 +1075,10 @@ class PatientPortalService
                   AND booking_status <> 'cancelled'
                 ORDER BY starts_at ASC LIMIT 1
             ";
-        } else {
-            $upcomingSql = "
-                SELECT id, doctor, department, date, time, appointment_time_range
-                FROM appointments WHERE user_id = ? AND date = CURDATE() AND status != 'Cancelled'
-                ORDER BY time ASC LIMIT 1
-            ";
-        }
         $stmt = $this->db->prepare($upcomingSql);
         $stmt->execute([$patientId]);
         $todayAppt = $stmt->fetch();
-        if ($todayAppt && $this->schema === 'v2') {
+        if ($todayAppt) {
             $sourceTime = (string)($todayAppt['source_time_snapshot'] ?? '');
             if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$todayAppt['time'])) {
                 $todayAppt['time'] = $sourceTime;
@@ -1670,8 +1097,7 @@ class PatientPortalService
                 'action' => ['label' => 'View Details', 'url' => 'appointments.html']];
         }
 
-        if ($this->schema === 'v2') {
-            $tomorrowSql = "
+        $tomorrowSql = "
                 SELECT id, doctor_name_snapshot AS doctor,
                        department_name_snapshot AS department,
                        DATE(starts_at) AS date,
@@ -1684,19 +1110,10 @@ class PatientPortalService
                   AND booking_status <> 'cancelled'
                 ORDER BY starts_at ASC LIMIT 1
             ";
-        } else {
-            $tomorrowSql = "
-                SELECT id, doctor, department, date, time, appointment_time_range
-                FROM appointments
-                WHERE user_id = ? AND date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-                  AND status != 'Cancelled'
-                ORDER BY time ASC LIMIT 1
-            ";
-        }
         $stmt = $this->db->prepare($tomorrowSql);
         $stmt->execute([$patientId]);
         $tomorrowAppt = $stmt->fetch();
-        if ($tomorrowAppt && $this->schema === 'v2') {
+        if ($tomorrowAppt) {
             $sourceTime = (string)($tomorrowAppt['source_time_snapshot'] ?? '');
             if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$tomorrowAppt['time'])) {
                 $tomorrowAppt['time'] = $sourceTime;
@@ -1715,9 +1132,7 @@ class PatientPortalService
                 'action' => ['label' => 'View Details', 'url' => 'appointments.html']];
         }
 
-        $expiringSql = $this->schema === 'v2'
-            ? "SELECT COUNT(*) AS cnt FROM prescriptions WHERE patient_user_id = ? AND status = 'active' AND created_at <= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
-            : "SELECT COUNT(*) AS cnt FROM prescriptions WHERE patient_id = ? AND status = 'Active' AND created_at <= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        $expiringSql = "SELECT COUNT(*) AS cnt FROM prescriptions WHERE patient_user_id = ? AND status = 'active' AND created_at <= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
         $stmt = $this->db->prepare($expiringSql);
         $stmt->execute([$patientId]);
         $expiringCount = (int)$stmt->fetchColumn();
@@ -1754,14 +1169,11 @@ class PatientPortalService
                 'action' => ['label' => 'View Notifications', 'url' => 'notifications.html']];
         }
 
-        $mrSql = $this->schema === 'v2'
-            ? "SELECT mp.allergies, mp.chronic_diseases, pp.insurance_provider,
+        $mrSql = "SELECT mp.allergies, mp.chronic_diseases, pp.insurance_provider,
                       pp.emergency_name AS emergency_contact_name
                FROM patient_medical_profiles mp
                LEFT JOIN patient_profiles pp ON pp.patient_user_id = mp.patient_user_id
-               WHERE mp.patient_user_id = ? LIMIT 1"
-            : "SELECT allergies, chronic_diseases, insurance_provider, emergency_contact_name
-               FROM medical_records WHERE patient_id = ?";
+               WHERE mp.patient_user_id = ? LIMIT 1";
         $stmt = $this->db->prepare($mrSql);
         $stmt->execute([$patientId]);
         $mr = $stmt->fetch();
@@ -1798,8 +1210,7 @@ class PatientPortalService
 
     public function getProfileCompletion(int $patientId): array
     {
-        if ($this->schema === 'v2') {
-            $sql = "
+        $sql = "
                 SELECT u.name, u.phone,
                        mp.blood_type, pp.date_of_birth, pp.gender,
                        mp.allergies, mp.chronic_diseases,
@@ -1812,18 +1223,6 @@ class PatientPortalService
                 LEFT JOIN patient_medical_profiles mp ON mp.patient_user_id = u.id
                 WHERE u.id = ? LIMIT 1
             ";
-        } else {
-            $sql = "
-                SELECT u.name, u.phone,
-                       mr.blood_type, mr.date_of_birth, mr.gender,
-                       mr.allergies, mr.chronic_diseases,
-                       mr.emergency_contact_name, mr.emergency_contact_phone,
-                       mr.governorate, mr.city, mr.insurance_provider, mr.insurance_number
-                FROM users u
-                LEFT JOIN medical_records mr ON u.id = mr.patient_id
-                WHERE u.id = ? LIMIT 1
-            ";
-        }
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$patientId]);
@@ -1903,8 +1302,7 @@ class PatientPortalService
         $results = [];
         $total = 0;
 
-        if ($this->schema === 'v2') {
-            $apptSql = "
+        $apptSql = "
                 SELECT a.id, a.doctor_name_snapshot AS doctor,
                        a.department_name_snapshot AS department,
                        DATE(a.starts_at) AS date,
@@ -1928,39 +1326,31 @@ class PatientPortalService
                        OR a.notes LIKE ? OR a.patient_name_snapshot LIKE ?)
                 ORDER BY a.starts_at DESC LIMIT ?
             ";
-        } else {
-            $apptSql = "SELECT id, doctor, department, date, appointment_time_range, status, 'appointment' AS result_type
-                        FROM appointments WHERE user_id = ? AND (doctor LIKE ? OR department LIKE ? OR notes LIKE ? OR patient_name LIKE ?)
-                        ORDER BY date DESC LIMIT ?";
-        }
         $stmt = $this->db->prepare($apptSql);
         $stmt->execute([$patientId, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $limit]);
         $results['appointments'] = $stmt->fetchAll();
-        if ($this->schema === 'v2') {
-            foreach ($results['appointments'] as &$appointment) {
-                $sourceTime = (string)($appointment['source_time_snapshot'] ?? '');
-                if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$appointment['time'])) {
-                    $appointment['appointment_time_range'] = $appointment['source_time_range_snapshot'];
-                } else {
-                    $appointment['appointment_time_range'] = AppointmentTime::range(
-                        (string)$appointment['time'],
-                        (int)$appointment['duration_minutes']
-                    );
-                }
-                unset(
-                    $appointment['time'],
-                    $appointment['notes'],
-                    $appointment['source_time_snapshot'],
-                    $appointment['source_time_range_snapshot'],
-                    $appointment['duration_minutes']
+        foreach ($results['appointments'] as &$appointment) {
+            $sourceTime = (string)($appointment['source_time_snapshot'] ?? '');
+            if ($sourceTime !== '' && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$appointment['time'])) {
+                $appointment['appointment_time_range'] = $appointment['source_time_range_snapshot'];
+            } else {
+                $appointment['appointment_time_range'] = AppointmentTime::range(
+                    (string)$appointment['time'],
+                    (int)$appointment['duration_minutes']
                 );
             }
-            unset($appointment);
+            unset(
+                $appointment['time'],
+                $appointment['notes'],
+                $appointment['source_time_snapshot'],
+                $appointment['source_time_range_snapshot'],
+                $appointment['duration_minutes']
+            );
         }
+        unset($appointment);
         $total += count($results['appointments']);
 
-        if ($this->schema === 'v2') {
-            $docSql = "
+        $docSql = "
                 SELECT DISTINCT a.doctor_user_id AS doctor_id,
                        u.name AS doctor_name, dp.specialty,
                        rs.average_rating AS rating, 'doctor' AS result_type
@@ -1971,18 +1361,12 @@ class PatientPortalService
                 WHERE a.patient_user_id = ? AND u.name LIKE ?
                 ORDER BY u.name ASC LIMIT ?
             ";
-        } else {
-            $docSql = "SELECT DISTINCT a.doctor_id, u.name AS doctor_name, d.specialty, d.rating, 'doctor' AS result_type
-                       FROM appointments a JOIN users u ON a.doctor_id = u.id JOIN doctors d ON a.doctor_id = d.user_id
-                       WHERE a.user_id = ? AND u.name LIKE ? ORDER BY u.name ASC LIMIT ?";
-        }
         $stmt = $this->db->prepare($docSql);
         $stmt->execute([$patientId, $searchTerm, $limit]);
         $results['doctors'] = $stmt->fetchAll();
         $total += count($results['doctors']);
 
-        if ($this->schema === 'v2') {
-            $rxSql = "
+        $rxSql = "
                 SELECT p.id, u.name AS doctor_name,
                        DATE(a.starts_at) AS appt_date,
                        a.department_name_snapshot AS department,
@@ -2000,19 +1384,12 @@ class PatientPortalService
                   AND (u.name LIKE ? OR a.department_name_snapshot LIKE ? OR p.notes LIKE ?)
                 ORDER BY p.created_at DESC LIMIT ?
             ";
-        } else {
-            $rxSql = "SELECT p.id, u.name AS doctor_name, a.date AS appt_date, a.department, p.status, p.created_at, 'prescription' AS result_type
-                      FROM prescriptions p JOIN users u ON p.doctor_id = u.id JOIN appointments a ON p.appointment_id = a.id
-                      WHERE p.patient_id = ? AND (u.name LIKE ? OR a.department LIKE ? OR p.notes LIKE ?)
-                      ORDER BY p.created_at DESC LIMIT ?";
-        }
         $stmt = $this->db->prepare($rxSql);
         $stmt->execute([$patientId, $searchTerm, $searchTerm, $searchTerm, $limit]);
         $results['prescriptions'] = $stmt->fetchAll();
         $total += count($results['prescriptions']);
 
-        if ($this->schema === 'v2') {
-            $histSql = "
+        $histSql = "
                 SELECT COALESCE(CAST(m.source_id AS UNSIGNED), ce.id) AS id,
                        DATE(a.starts_at) AS date,
                        a.doctor_name_snapshot AS doctor,
@@ -2030,12 +1407,6 @@ class PatientPortalService
                        OR ce.treatment LIKE ? OR ce.doctor_notes LIKE ?)
                 ORDER BY a.starts_at DESC LIMIT ?
             ";
-        } else {
-            $histSql = "SELECT vn.id, a.date, a.doctor, a.department, vn.diagnosis, vn.symptoms, vn.treatment, 'history' AS result_type
-                        FROM visit_notes vn JOIN appointments a ON vn.appointment_id = a.id
-                        WHERE vn.patient_id = ? AND (vn.diagnosis LIKE ? OR vn.symptoms LIKE ? OR vn.treatment LIKE ? OR vn.doctor_notes LIKE ?)
-                        ORDER BY a.date DESC LIMIT ?";
-        }
         $stmt = $this->db->prepare($histSql);
         $stmt->execute([$patientId, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $limit]);
         $results['history'] = $stmt->fetchAll();
@@ -2055,7 +1426,7 @@ class PatientPortalService
     /**
      * Build the dashboard overview from normalized v2 ownership and workflow tables.
      */
-    private function getV2Overview(int $patientId): array
+    public function getOverview(int $patientId): array
     {
         $hospital = $this->getHospitalStatus();
         $sql = "
@@ -2248,7 +1619,7 @@ class PatientPortalService
         ];
     }
 
-    private function getV2MedicalProfile(int $patientId): array
+    public function getMedicalProfile(int $patientId): array
     {
         $sql = "
             SELECT
@@ -2337,7 +1708,7 @@ class PatientPortalService
      * Build doctor cards from normalized profiles and the live v2 rating summary.
      * The legacy doctors.rating cache is stale for most seeded doctors.
      */
-    private function getV2Favorites(int $patientId): array
+    public function getFavorites(int $patientId): array
     {
         $mostVisitedSql = "
             SELECT a.doctor_user_id AS doctor_id, u.name AS doctor_name,

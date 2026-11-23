@@ -25,7 +25,6 @@ if ($id === false) {
 
 try {
     $db = getDB();
-    $schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PATIENTS_SCHEMA');
 
     // Get user details
     $stmt = $db->prepare(
@@ -40,9 +39,8 @@ try {
         jsonResponse(false, ['message' => 'Patient not found.']);
     }
     
-    // Get appointment history using the selected schema's timestamp/snapshot model.
-    if ($schema === PatientManagementRepository::SCHEMA_V2) {
-        $apptStmt = $db->prepare(
+    // Get appointment history using the V2 timestamp/snapshot model.
+    $apptStmt = $db->prepare(
             "SELECT id, doctor_user_id AS doctor_id, doctor_name_snapshot AS doctor_name,
                     department_name_snapshot AS department, DATE(starts_at) AS date,
                     TIME_FORMAT(starts_at, '%H:%i') AS time,
@@ -61,27 +59,8 @@ try {
              WHERE patient_user_id = ?
              ORDER BY starts_at DESC, id DESC"
         );
-    } else {
-        $apptStmt = $db->prepare(
-            'SELECT id, doctor_id, doctor AS doctor_name, department, date, time, appointment_time_range, notes, status, created_at
-             FROM appointments
-             WHERE user_id = ?
-             ORDER BY date DESC, time DESC'
-        );
-    }
     $apptStmt->execute([$id]);
     $appointments = $apptStmt->fetchAll();
-    
-    // V1 may need a duration fallback; V2 already projects from duration_minutes.
-    if ($schema === PatientManagementRepository::SCHEMA_V1) {
-        foreach ($appointments as &$appt) {
-            if (empty($appt['appointment_time_range'])) {
-                $duration = getAppointmentDuration((int)$appt['doctor_id']);
-                $appt['appointment_time_range'] = computeAppointmentTimeRange($appt['time'], $duration);
-            }
-        }
-        unset($appt);
-    }
     
     // Get unique doctors visited (with status Confirmed)
     $doctorsVisited = [];
@@ -98,8 +77,7 @@ try {
     }
     
     // Get ratings and reviews submitted.
-    if ($schema === PatientManagementRepository::SCHEMA_V2) {
-        $reviewsStmt = $db->prepare(
+    $reviewsStmt = $db->prepare(
             "SELECT r.id, r.stars, r.review, r.created_at AS review_date,
                     COALESCE(u.name, a.doctor_name_snapshot, 'Unknown Doctor') AS doctor_name,
                     DATE(a.starts_at) AS appt_date,
@@ -113,31 +91,8 @@ try {
              WHERE r.patient_user_id = ?
              ORDER BY r.created_at DESC"
         );
-    } else {
-        $reviewsStmt = $db->prepare(
-            'SELECT r.id, r.stars, r.review, r.created_at AS review_date,
-                    COALESCE(u.name, a.doctor, \'Unknown Doctor\') AS doctor_name,
-                    a.date AS appt_date, a.time AS appt_time, a.doctor_id
-             FROM ratings r
-             JOIN appointments a ON r.appointment_id = a.id
-             LEFT JOIN users u ON r.doctor_id = u.id
-             WHERE r.user_id = ?
-             ORDER BY r.created_at DESC'
-        );
-    }
     $reviewsStmt->execute([$id]);
     $reviews = $reviewsStmt->fetchAll();
-    
-    // V2 computes its duration range from the stored appointment instant; V1 uses the legacy fallback.
-    if ($schema === PatientManagementRepository::SCHEMA_V1) {
-        foreach ($reviews as &$review) {
-            if (empty($review['appointment_time_range'])) {
-                $duration = getAppointmentDuration((int)$review['doctor_id']);
-                $review['appointment_time_range'] = computeAppointmentTimeRange($review['appt_time'], $duration);
-            }
-        }
-        unset($review);
-    }
     
     // Get support messages sent
     $messagesStmt = $db->prepare(

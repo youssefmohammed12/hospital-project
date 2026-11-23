@@ -19,7 +19,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 
 try {
     $db = getDB();
-    $settings = new DoctorSettingsRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_SCHEDULE_SCHEMA'));
+    $settings = new DoctorSettingsRepository($db);
     $result = $settings->toggleOperationalAvailability($userId, $userId);
     $available = (int)$result['available'];
 

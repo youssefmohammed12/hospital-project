@@ -8,7 +8,6 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/Repositories/DoctorManagementRepository.php';
 
 requireRole('admin');
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_DOCTORS_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
@@ -18,18 +17,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
 
 try {
     $db = getDB();
-    if ($schema === DoctorManagementRepository::SCHEMA_V1) {
-        $stmt = $db->prepare(
-            'SELECT u.id,u.name,u.email,u.phone,u.is_active,u.created_at,
-                    d.specialty,d.rating,d.emoji,d.department_id
-             FROM users u
-             LEFT JOIN doctors d ON u.id=d.user_id
-             WHERE u.role="doctor"
-             ORDER BY u.created_at DESC'
-        );
-    } else {
-        $stmt = $db->prepare(
-            'SELECT u.id,u.name,u.email,u.phone,u.is_active,u.created_at,
+    $stmt = $db->prepare(
+        'SELECT u.id,u.name,u.email,u.phone,u.is_active,u.created_at,
                     dp.specialty,COALESCE(rs.average_rating,0) AS rating,
                     dp.profile_icon AS emoji,dp.department_id,
                     dp.experience_years AS exp,
@@ -42,8 +31,7 @@ try {
              LEFT JOIN departments dep ON dep.id=dp.department_id
              WHERE u.role="doctor"
              ORDER BY u.created_at DESC'
-        );
-    }
+    );
     $stmt->execute();
 
     jsonResponse(true, ['doctors' => $stmt->fetchAll()]);

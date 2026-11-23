@@ -28,7 +28,7 @@ if ($prescriptionId === null) {
 
 try {
     $db = getDB();
-    $ps = new PrescriptionService($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA'));
+    $ps = new PrescriptionService($db);
 
     $completed = $ps->complete($prescriptionId, $currentUserId);
 

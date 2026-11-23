@@ -14,19 +14,11 @@ require_once __DIR__ . '/../NotificationService.php';
  */
 final class AppointmentLifecycleRepository
 {
-    public const SCHEMA_V1='v1';
-    public const SCHEMA_V2='v2';
-
     private PDO $db;
-    private string $schema;
 
-    public function __construct(PDO $db,string $schema)
+    public function __construct(PDO $db)
     {
-        if(!in_array($schema,[self::SCHEMA_V1,self::SCHEMA_V2],true)){
-            throw new InvalidArgumentException('AppointmentLifecycleRepository schema must be explicitly v1 or v2.');
-        }
         $this->db=$db;
-        $this->schema=$schema;
     }
 
     /**
@@ -65,17 +57,10 @@ final class AppointmentLifecycleRepository
                 if(!$actor->fetchColumn()){throw new DomainException('The authenticated administrator account is not active.');}
             }
 
-            if($this->schema===self::SCHEMA_V1){
-                $identity=$this->db->prepare(
-                    'SELECT doctor_id AS doctor_user_id,user_id AS patient_user_id
+            $identity=$this->db->prepare(
+                'SELECT doctor_user_id,patient_user_id
                      FROM appointments WHERE id=? LIMIT 1'
-                );
-            }else{
-                $identity=$this->db->prepare(
-                    'SELECT doctor_user_id,patient_user_id
-                     FROM appointments WHERE id=? LIMIT 1'
-                );
-            }
+            );
             $identity->execute([$appointmentId]);
             $context=$identity->fetch(PDO::FETCH_ASSOC);
             if(!$context){throw new DomainException('Appointment not found.');}
@@ -87,61 +72,44 @@ final class AppointmentLifecycleRepository
                 throw new DomainException('You can only manage appointments assigned to you.');
             }
 
-            $access=new ClinicalAccessService($this->db,$this->schema);
+            $access=new ClinicalAccessService($this->db,'v2');
             if(!$access->lockDoctorAndPatient($doctorId,$patientId)){
                 throw new DomainException('The appointment account relationship is no longer available.');
             }
 
-            if($this->schema===self::SCHEMA_V1){
-                $stmt=$this->db->prepare('SELECT * FROM appointments WHERE id=? LIMIT 1 FOR UPDATE');
-            }else{
-                $stmt=$this->db->prepare('SELECT * FROM appointments WHERE id=? LIMIT 1 FOR UPDATE');
-            }
+            $stmt=$this->db->prepare('SELECT * FROM appointments WHERE id=? LIMIT 1 FOR UPDATE');
             $stmt->execute([$appointmentId]);
             $appointment=$stmt->fetch(PDO::FETCH_ASSOC);
             if(!$appointment){throw new DomainException('Appointment not found.');}
 
-            $lockedDoctorId=(int)($this->schema===self::SCHEMA_V1?$appointment['doctor_id']:$appointment['doctor_user_id']);
-            $lockedPatientId=(int)($this->schema===self::SCHEMA_V1?($appointment['user_id']??0):($appointment['patient_user_id']??0));
+            $lockedDoctorId=(int)($appointment['doctor_user_id']);
+            $lockedPatientId=(int)(($appointment['patient_user_id']??0));
             if($lockedDoctorId!==$doctorId||$lockedPatientId!==(int)($patientId??0)){
                 throw new DomainException('The appointment account relationship changed. Refresh and try again.');
             }
 
-            $oldStatus=$this->schema===self::SCHEMA_V1
-                ? (string)$appointment['status']
-                : (string)$appointment['booking_status'];
-            $pending=$this->schema===self::SCHEMA_V1?'Pending':'pending';
+            $oldStatus=(string)$appointment['booking_status'];
+            $pending='pending';
             if($oldStatus!==$pending){
                 throw new DomainException('Only pending appointments can be approved or declined.');
             }
 
-            if($this->schema===self::SCHEMA_V1){
-                $update=$this->db->prepare(
-                    'UPDATE appointments SET status=? WHERE id=? AND status=?'
-                );
-                $storedStatus=$newStatus==='confirmed'?'Confirmed':'Cancelled';
-            }else{
-                $update=$this->db->prepare(
-                    'UPDATE appointments SET booking_status=? WHERE id=? AND booking_status=?'
-                );
-                $storedStatus=$newStatus;
-            }
+            $update=$this->db->prepare(
+                'UPDATE appointments SET booking_status=? WHERE id=? AND booking_status=?'
+            );
+            $storedStatus=$newStatus;
             $update->execute([$storedStatus,$appointmentId,$pending]);
             if($update->rowCount()!==1){
                 throw new DomainException('The appointment was changed by another request. Refresh and try again.');
             }
 
-            $dateTime=$this->schema===self::SCHEMA_V1
-                ? (string)$appointment['date'].' '.(string)$appointment['time']
-                : (string)$appointment['starts_at'];
+            $dateTime=(string)$appointment['starts_at'];
             $date=substr($dateTime,0,10);
             $time=substr($dateTime,11,5);
-            $doctorName=$this->schema===self::SCHEMA_V1
-                ? (string)$appointment['doctor']
-                : (string)$appointment['doctor_name_snapshot'];
+            $doctorName=(string)$appointment['doctor_name_snapshot'];
 
             if($newStatus==='confirmed'){
-                (new ClinicalEncounterRepository($this->db,$this->schema))->getOrCreateWorkflow($appointmentId);
+                (new ClinicalEncounterRepository($this->db,'v2'))->getOrCreateWorkflow($appointmentId);
             }
 
             $action=$newStatus==='confirmed'
@@ -157,16 +125,14 @@ final class AppointmentLifecycleRepository
                 ['status'=>$oldStatus],['status'=>$storedStatus],$description,$patientId,$doctorId
             );
 
-            if($this->schema===self::SCHEMA_V2){
-                $eventType=$newStatus==='confirmed'
-                    ? ($actorRole==='admin'?'admin_approved':'doctor_confirmed')
-                    : ($actorRole==='admin'?'admin_declined':'doctor_cancelled');
-                $this->writeAppointmentEvent(
-                    $appointmentId,$actorUserId,$actorRole,$eventType,
-                    $oldStatus,$storedStatus,
-                    ['reason'=>$reason!==''?$reason:null]
-                );
-            }
+            $eventType=$newStatus==='confirmed'
+                ? ($actorRole==='admin'?'admin_approved':'doctor_confirmed')
+                : ($actorRole==='admin'?'admin_declined':'doctor_cancelled');
+            $this->writeAppointmentEvent(
+                $appointmentId,$actorUserId,$actorRole,$eventType,
+                $oldStatus,$storedStatus,
+                ['reason'=>$reason!==''?$reason:null]
+            );
 
             $notifications=new NotificationService($this->db);
             if($patientId!==null){
@@ -206,21 +172,12 @@ final class AppointmentLifecycleRepository
     ):void{
         $oldJson=json_encode($oldValue,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
         $newJson=json_encode($newValue,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-        if($this->schema===self::SCHEMA_V1){
-            $stmt=$this->db->prepare(
-                'INSERT INTO admin_audit
-                 (actor_id,actor_role,action,entity_type,entity_id,patient_id,doctor_id,
-                  old_value,new_value,description,ip_address,user_agent)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-            );
-        }else{
-            $stmt=$this->db->prepare(
-                'INSERT INTO audit_events
+        $stmt=$this->db->prepare(
+            'INSERT INTO audit_events
                  (actor_user_id,actor_role_snapshot,action_code,entity_type,entity_id,
                   patient_user_id,doctor_user_id,old_value,new_value,description,ip_address,user_agent)
                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-            );
-        }
+        );
         $stmt->execute([
             $actorUserId,$actorRole,$action,$entityType,(string)$entityId,
             $patientId,$doctorId,$oldJson,$newJson,$description,

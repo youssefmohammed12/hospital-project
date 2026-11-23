@@ -327,7 +327,7 @@ try {
                      WHERE u.role='doctor' AND u.is_active=1
                        AND ss.is_available=1 AND dep.status='active'
                      ORDER BY u.id";
-    $schedule = new ScheduleService($clone, RescheduleService::SCHEMA_V2);
+    $schedule = new ScheduleService($clone);
     $candidate = null;
     $slots = [];
     foreach ($clone->query($candidateSql)->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -353,7 +353,7 @@ try {
     $doctor = $doctorStmt->fetch(PDO::FETCH_ASSOC);
     if (!is_array($doctor)) throw new RuntimeException('Selected schedule doctor account is not active.');
 
-    $booking = new AppointmentBookingRepository($clone, RescheduleService::SCHEMA_V2);
+    $booking = new AppointmentBookingRepository($clone);
     $appointmentId = $booking->book([
         'doctor_user_id' => $doctorId,
         'patient_user_id' => (int)$patient['id'],
@@ -501,7 +501,7 @@ try {
     ]), 'Patient cancel-reschedule-request');
     $notes[] = 'Doctor rejection and patient cancellation flows passed through HTTP.';
 
-    $repo = new RescheduleTransactionRepository($clone, RescheduleService::SCHEMA_V2);
+    $repo = new RescheduleTransactionRepository($clone);
     $history = $repo->getRescheduleHistory($appointmentId);
     expectHttp(is_array($history) && ($history['reschedule_status'] ?? '') === 'none', 'Final cancelled reschedule history did not return none.');
     $appointmentStmt = $clone->prepare('SELECT starts_at, booking_status FROM appointments WHERE id=?');
@@ -580,7 +580,7 @@ try {
         'weekly' => $weeklyPayload,
         'settings' => ['max_appointments_per_day' => $newCapacity],
     ]), 'V2 HTTP schedule update');
-    $scheduleAfter = (new ScheduleService($clone, RescheduleService::SCHEMA_V2))->getSchedule($doctorId);
+    $scheduleAfter = (new ScheduleService($clone))->getSchedule($doctorId);
     expectHttp((int)($scheduleAfter['settings']['max_appointments_per_day'] ?? 0) === $newCapacity,
         'HTTP schedule update did not persist.');
     $scheduleRead = httpRequest($base, '/api/schedule/get.php?doctor_id=' . $doctorId, $adminCookie, 'GET');
@@ -609,7 +609,7 @@ try {
     $notes[] = 'V2 rating visibility hide/restore passed admin HTTP.';
 
     // V2 settings update paths, isolated to this disposable clone.
-    $doctorPracticeBefore = (new DoctorSettingsRepository($clone, DoctorSettingsRepository::SCHEMA_V2))
+    $doctorPracticeBefore = (new DoctorSettingsRepository($clone))
         ->getDoctorSettings($doctorId);
     $doctorSettingsRows = $doctorPracticeBefore['weekly_schedule'] ?? [];
     if (count($doctorSettingsRows) !== 7) {
@@ -634,7 +634,7 @@ try {
         'consultation_duration' => $newDuration,
         'weekly_schedule' => $weeklySettingsPayload,
     ]), 'V2 doctor settings update');
-    $doctorPracticeAfter = (new DoctorSettingsRepository($clone, DoctorSettingsRepository::SCHEMA_V2))
+    $doctorPracticeAfter = (new DoctorSettingsRepository($clone))
         ->getDoctorSettings($doctorId);
     expectHttp((int)$doctorPracticeAfter['preferences']['profile_visible'] === $newVisible,
         'V2 doctor profile visibility setting did not persist.');
@@ -655,7 +655,7 @@ try {
 
     // Hospital global settings: V2 time normalization and weekly-schedule conflict projection.
     require_once $root . '/services/HospitalSettingsService.php';
-    $hospitalService = new HospitalSettingsService($clone, HospitalSettingsService::SCHEMA_V2);
+    $hospitalService = new HospitalSettingsService($clone);
     $hospitalBefore = $hospitalService->getSettings();
     $hospitalOpen = (string)$hospitalBefore['appointment_open_time'];
     $hospitalClose = (string)$hospitalBefore['appointment_close_time'];
@@ -669,7 +669,7 @@ try {
     apiSuccess(httpRequest($base, '/api/settings/update-hospital.php', $adminCookie, 'POST', [
         'hospital_name' => $qaHospitalName,
     ]), 'V2 admin hospital settings update');
-    $hospitalAfter = (new HospitalSettingsService($clone, HospitalSettingsService::SCHEMA_V2))->getSettings();
+    $hospitalAfter = (new HospitalSettingsService($clone))->getSettings();
     expectHttp((string)($hospitalAfter['hospital_name'] ?? '') === $qaHospitalName,
         'V2 hospital name update did not persist.');
     $notes[] = 'V2 hospital settings read, HH:MM normalization, schedule conflict projection and admin update passed in the disposable clone.';
@@ -693,7 +693,7 @@ try {
         'description' => 'Updated disposable V2 department.',
         'status' => 'active',
     ]), 'V2 admin department update');
-    $departmentService = new DepartmentService($clone, DepartmentService::SCHEMA_V2);
+    $departmentService = new DepartmentService($clone);
     $departmentAfterUpdate = $departmentService->getDepartmentById($qaDepartmentId);
     expectHttp((string)($departmentAfterUpdate['name'] ?? '') === $departmentUpdateName,
         'V2 department update did not persist.');

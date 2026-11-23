@@ -52,7 +52,7 @@ try {
     $db = getDB();
 
     if ($verifyOnly) {
-        $resetRepository = new PasswordResetRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA'));
+        $resetRepository = new PasswordResetRepository($db);
         if (!$resetRepository->isTokenValid($tokenHash)) {
             http_response_code(400);
             jsonResponse(false, ['message' => 'This reset link is invalid or has expired. Please request a new one.']);
@@ -77,7 +77,7 @@ try {
         throw new RuntimeException('Password hashing failed.');
     }
 
-    $resetRepository = new PasswordResetRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_AUTH_SCHEMA'));
+    $resetRepository = new PasswordResetRepository($db);
     $resetRepository->resetPassword($tokenHash, $passwordHash);
 
     jsonResponse(true, [

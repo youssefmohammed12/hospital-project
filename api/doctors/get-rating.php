@@ -9,7 +9,6 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/Repositories/RatingRepository.php';
 
 $userId = (int)requireRole('patient')['id'];
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_RATINGS_SCHEMA');
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
@@ -28,7 +27,7 @@ if ($appointmentId <= 0) {
 
 try {
     $db = getDB();
-    $rating = (new RatingRepository($db, $schema))->getAppointmentRating($appointmentId, $userId);
+    $rating = (new RatingRepository($db))->getAppointmentRating($appointmentId, $userId);
 
     jsonResponse(true, ['rating' => $rating]); // null if not rated yet
 

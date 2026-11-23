@@ -23,8 +23,7 @@ if (getCurrentUserId() !== null) {
 }
 
 try {
-    $hospitalSchema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_HOSPITAL_SCHEMA');
-    $hs = new HospitalSettingsService(getDB(), $hospitalSchema);
+    $hs = new HospitalSettingsService(getDB());
     $settings = $hs->getSettings();
     
     // For admin: return full settings including all fields

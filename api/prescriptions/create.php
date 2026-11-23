@@ -17,7 +17,6 @@ header('Content-Type: application/json');
 
 $user = requireRole('doctor');
 $currentUserId = (int)$user['id'];
-$schema = HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_PRESCRIPTIONS_SCHEMA');
 $currentName   = $user['name'] ?? 'A doctor';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -63,7 +62,7 @@ try {
 
     // Resolve a schema-neutral preflight context. The service repeats
     // assignment, eligibility and duplicate checks under row locks on create.
-    $appointments = new ClinicalEncounterRepository($db, $schema);
+    $appointments = new ClinicalEncounterRepository($db);
     $appt = $appointments->getAppointmentContext($appointmentId);
 
     if (!$appt) {
@@ -85,7 +84,7 @@ try {
         jsonResponse(false, ['message' => 'Cannot issue prescription: patient is not a registered user.']);
     }
 
-    $ps = new PrescriptionService($db, $schema);
+    $ps = new PrescriptionService($db);
     $existing = $ps->getByAppointment($appointmentId);
     if ($existing) {
         http_response_code(409);

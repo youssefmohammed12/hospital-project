@@ -44,7 +44,7 @@ $review = trim($reviewRaw);
 
 try {
     $db = getDB();
-    $ratings = new RatingRepository($db, HealthBridgeSchemaSelector::fromEnvironment('HEALTHBRIDGE_RATINGS_SCHEMA'));
+    $ratings = new RatingRepository($db);
     $ratings->submitForCompletedAppointment(
         $appointmentId,
         (int)$patient['id'],

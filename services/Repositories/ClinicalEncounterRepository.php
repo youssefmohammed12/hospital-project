@@ -2,26 +2,21 @@
 declare(strict_types=1);
 
 /**
- * Clinical encounter adapter for legacy v1 and normalized v2 schemas.
+ * Clinical encounter adapter for the normalized V2 schema.
  *
- * v1 stores workflow, visit notes and drafts in separate tables.
- * v2 stores workflow + note fields in clinical_encounters and drafts in
+ * V2 stores workflow + note fields in clinical_encounters and drafts in
  * encounter_drafts. "uninitialized" represents a note-bearing encounter
- * that did not have a v1 workflow row; it is not exposed as a real workflow
+ * that does not have a workflow row yet; it is not exposed as a real workflow
  * until getOrCreateWorkflow/create/transition is explicitly requested.
  */
 final class ClinicalEncounterRepository
 {
-    public const SCHEMA_V1 = 'v1';
-    public const SCHEMA_V2 = 'v2';
-
     public const STATUS_WAITING = 'Waiting';
     public const STATUS_IN_PROGRESS = 'In Progress';
     public const STATUS_READY_TO_COMPLETE = 'Ready to Complete';
     public const STATUS_COMPLETED = 'Completed';
 
     private PDO $db;
-    private string $schema;
 
     private const NOTE_FIELDS = [
         'diagnosis',
@@ -31,27 +26,15 @@ final class ClinicalEncounterRepository
         'follow_up_instructions',
     ];
 
-    public function __construct(PDO $db, string $schema)
+    public function __construct(PDO $db)
     {
-        if (!in_array($schema, [self::SCHEMA_V1, self::SCHEMA_V2], true)) {
-            throw new InvalidArgumentException('ClinicalEncounterRepository schema must be explicitly v1 or v2.');
-        }
         $this->db = $db;
-        $this->schema = $schema;
     }
 
     public function getWorkflow(int $appointmentId): ?array
     {
         if ($appointmentId <= 0) {
             throw new InvalidArgumentException('Appointment ID must be positive.');
-        }
-
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                'SELECT * FROM visit_workflow WHERE appointment_id = ? LIMIT 1'
-            );
-            $stmt->execute([$appointmentId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         }
 
         $stmt = $this->db->prepare(
@@ -72,32 +55,19 @@ final class ClinicalEncounterRepository
             $appointment = $this->lockAppointment($appointmentId);
             $this->assertConfirmed($appointment);
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $workflow = $this->getWorkflow($appointmentId);
-                if (!$workflow) {
-                    $stmt = $this->db->prepare(
-                        "INSERT INTO visit_workflow (appointment_id, status)
-                         VALUES (?, 'Waiting')
-                         ON DUPLICATE KEY UPDATE appointment_id = VALUES(appointment_id)"
-                    );
-                    $stmt->execute([$appointmentId]);
-                    $workflow = $this->getWorkflow($appointmentId);
-                }
-            } else {
+            $row = $this->lockV2Encounter($appointmentId);
+            if (!$row) {
+                $this->insertV2Encounter($appointment);
                 $row = $this->lockV2Encounter($appointmentId);
-                if (!$row) {
-                    $this->insertV2Encounter($appointment);
-                    $row = $this->lockV2Encounter($appointmentId);
-                } elseif ($row['workflow_status'] === 'uninitialized') {
-                    $this->db->prepare(
-                        "UPDATE clinical_encounters
-                         SET workflow_status='waiting', updated_at=NOW()
-                         WHERE appointment_id=? AND workflow_status='uninitialized'"
-                    )->execute([$appointmentId]);
-                    $row = $this->lockV2Encounter($appointmentId);
-                }
-                $workflow = $row ? $this->mapV2Workflow($row) : null;
+            } elseif ($row['workflow_status'] === 'uninitialized') {
+                $this->db->prepare(
+                    "UPDATE clinical_encounters
+                     SET workflow_status='waiting', updated_at=NOW()
+                     WHERE appointment_id=? AND workflow_status='uninitialized'"
+                )->execute([$appointmentId]);
+                $row = $this->lockV2Encounter($appointmentId);
             }
+            $workflow = $row ? $this->mapV2Workflow($row) : null;
 
             if (!$workflow) {
                 throw new RuntimeException('Could not create or retrieve the clinical workflow.');
@@ -130,52 +100,6 @@ final class ClinicalEncounterRepository
         return $this->withTransaction(function () use ($appointmentId, $newStatus): bool {
             $appointment = $this->lockAppointment($appointmentId);
             $this->assertConfirmed($appointment);
-
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    'SELECT * FROM visit_workflow WHERE appointment_id=? LIMIT 1 FOR UPDATE'
-                );
-                $stmt->execute([$appointmentId]);
-                $workflow = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$workflow) {
-                    $this->db->prepare(
-                        "INSERT INTO visit_workflow (appointment_id,status) VALUES (?,'Waiting')"
-                    )->execute([$appointmentId]);
-                    $stmt->execute([$appointmentId]);
-                    $workflow = $stmt->fetch(PDO::FETCH_ASSOC);
-                }
-                if (!$workflow) {
-                    throw new RuntimeException('Could not create or lock the visit workflow.');
-                }
-
-                $currentStatus = (string)$workflow['status'];
-                if ($currentStatus === $newStatus) {
-                    return true;
-                }
-                $this->assertAllowedTransition($currentStatus, $newStatus);
-
-                $updates = ['status=?'];
-                if (
-                    in_array($newStatus, [self::STATUS_IN_PROGRESS, self::STATUS_READY_TO_COMPLETE], true)
-                    && empty($workflow['started_at'])
-                ) {
-                    $updates[] = 'started_at=NOW()';
-                }
-                if ($newStatus === self::STATUS_COMPLETED && empty($workflow['completed_at'])) {
-                    $updates[] = 'completed_at=NOW()';
-                }
-
-                $update = $this->db->prepare(
-                    'UPDATE visit_workflow SET ' . implode(',', $updates)
-                    . ' WHERE appointment_id=? AND status=?'
-                );
-                $update->execute([$newStatus, $appointmentId, $currentStatus]);
-                if ($update->rowCount() !== 1) {
-                    throw new DomainException('The visit workflow changed in another request. Refresh and try again.');
-                }
-                return true;
-            }
 
             $row = $this->lockV2Encounter($appointmentId);
             if (!$row) {
@@ -240,23 +164,15 @@ final class ClinicalEncounterRepository
         }
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                "SELECT * FROM visit_workflow WHERE appointment_id IN ({$placeholders})"
-            );
-        } else {
-            $stmt = $this->db->prepare(
-                "SELECT * FROM clinical_encounters
-                 WHERE appointment_id IN ({$placeholders})
-                   AND workflow_status <> 'uninitialized'"
-            );
-        }
+        $stmt = $this->db->prepare(
+            "SELECT * FROM clinical_encounters
+             WHERE appointment_id IN ({$placeholders})
+               AND workflow_status <> 'uninitialized'"
+        );
         $stmt->execute($ids);
         $map = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            if ($this->schema === self::SCHEMA_V2) {
-                $row = $this->mapV2Workflow($row);
-            }
+            $row = $this->mapV2Workflow($row);
             $map[(int)$row['appointment_id']] = $row;
         }
         return $map;
@@ -267,14 +183,6 @@ final class ClinicalEncounterRepository
         if ($appointmentId <= 0) {
             throw new InvalidArgumentException('Appointment ID must be positive.');
         }
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                'SELECT * FROM visit_notes WHERE appointment_id=? LIMIT 1'
-            );
-            $stmt->execute([$appointmentId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        }
-
         $stmt = $this->db->prepare(
             "SELECT id,appointment_id,patient_user_id AS patient_id,doctor_user_id AS doctor_id,
                     diagnosis,symptoms,treatment,doctor_notes,follow_up_instructions,
@@ -304,21 +212,8 @@ final class ClinicalEncounterRepository
             throw new InvalidArgumentException('Patient user ID must be positive.');
         }
 
-        if ($this->schema === self::SCHEMA_V1) {
-            $stmt = $this->db->prepare(
-                "SELECT vn.*,vn.id AS visit_id,vn.created_at AS visit_date,
-                        a.date AS appt_date,a.time AS appt_time,
-                        a.appointment_time_range,a.status AS appt_status,
-                        a.department,u.name AS doctor_name,u.name AS doctor_display_name
-                 FROM visit_notes vn
-                 JOIN appointments a ON a.id=vn.appointment_id
-                 LEFT JOIN users u ON u.id=vn.doctor_id
-                 WHERE vn.patient_id=?
-                 ORDER BY vn.created_at DESC"
-            );
-        } else {
-            $stmt = $this->db->prepare(
-                "SELECT ce.id,ce.appointment_id,
+        $stmt = $this->db->prepare(
+            "SELECT ce.id,ce.appointment_id,
                         ce.patient_user_id AS patient_id,ce.doctor_user_id AS doctor_id,
                         ce.diagnosis,ce.symptoms,ce.treatment,ce.doctor_notes,
                         ce.follow_up_instructions,ce.created_at,ce.updated_at,
@@ -343,8 +238,7 @@ final class ClinicalEncounterRepository
                         OR ce.treatment IS NOT NULL OR ce.doctor_notes IS NOT NULL
                         OR ce.follow_up_instructions IS NOT NULL)
                  ORDER BY ce.created_at DESC"
-            );
-        }
+        );
         $stmt->execute([$patientUserId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -364,23 +258,6 @@ final class ClinicalEncounterRepository
                 || (int)$appointment['doctor_user_id'] !== $doctorUserId
             ) {
                 throw new DomainException('Clinical note ownership does not match the appointment.');
-            }
-
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO visit_notes
-                        (appointment_id,patient_id,doctor_id,diagnosis,symptoms,treatment,doctor_notes,follow_up_instructions)
-                     VALUES (?,?,?,?,?,?,?,?)
-                     ON DUPLICATE KEY UPDATE
-                        diagnosis=VALUES(diagnosis),symptoms=VALUES(symptoms),treatment=VALUES(treatment),
-                        doctor_notes=VALUES(doctor_notes),follow_up_instructions=VALUES(follow_up_instructions),
-                        updated_at=NOW()"
-                );
-                return $stmt->execute([
-                    $appointmentId,$patientUserId,$doctorUserId,
-                    $values['diagnosis'],$values['symptoms'],$values['treatment'],
-                    $values['doctor_notes'],$values['follow_up_instructions'],
-                ]);
             }
 
             $stmt = $this->db->prepare(
@@ -415,27 +292,15 @@ final class ClinicalEncounterRepository
                 throw new DomainException('Draft ownership does not match the appointment.');
             }
 
-            if ($this->schema === self::SCHEMA_V1) {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO visit_drafts
-                        (appointment_id,doctor_id,diagnosis,symptoms,treatment,doctor_notes,follow_up_instructions)
-                     VALUES (?,?,?,?,?,?,?)
-                     ON DUPLICATE KEY UPDATE
-                        diagnosis=VALUES(diagnosis),symptoms=VALUES(symptoms),treatment=VALUES(treatment),
-                        doctor_notes=VALUES(doctor_notes),follow_up_instructions=VALUES(follow_up_instructions),
-                        updated_at=NOW()"
-                );
-            } else {
-                $stmt = $this->db->prepare(
-                    "INSERT INTO encounter_drafts
-                        (appointment_id,doctor_user_id,diagnosis,symptoms,treatment,doctor_notes,follow_up_instructions)
-                     VALUES (?,?,?,?,?,?,?)
-                     ON DUPLICATE KEY UPDATE
-                        diagnosis=VALUES(diagnosis),symptoms=VALUES(symptoms),treatment=VALUES(treatment),
-                        doctor_notes=VALUES(doctor_notes),follow_up_instructions=VALUES(follow_up_instructions),
-                        updated_at=NOW()"
-                );
-            }
+            $stmt = $this->db->prepare(
+                "INSERT INTO encounter_drafts
+                    (appointment_id,doctor_user_id,diagnosis,symptoms,treatment,doctor_notes,follow_up_instructions)
+                 VALUES (?,?,?,?,?,?,?)
+                 ON DUPLICATE KEY UPDATE
+                    diagnosis=VALUES(diagnosis),symptoms=VALUES(symptoms),treatment=VALUES(treatment),
+                    doctor_notes=VALUES(doctor_notes),follow_up_instructions=VALUES(follow_up_instructions),
+                    updated_at=NOW()"
+            );
             return $stmt->execute([
                 $appointmentId,$doctorUserId,$values['diagnosis'],$values['symptoms'],
                 $values['treatment'],$values['doctor_notes'],$values['follow_up_instructions'],
@@ -448,9 +313,7 @@ final class ClinicalEncounterRepository
         if ($appointmentId <= 0) {
             throw new InvalidArgumentException('Appointment ID must be positive.');
         }
-        $sql = $this->schema === self::SCHEMA_V1
-            ? 'SELECT * FROM visit_drafts WHERE appointment_id=? LIMIT 1'
-            : 'SELECT id,appointment_id,doctor_user_id AS doctor_id,diagnosis,symptoms,treatment,
+        $sql = 'SELECT id,appointment_id,doctor_user_id AS doctor_id,diagnosis,symptoms,treatment,
                       doctor_notes,follow_up_instructions,updated_at
                FROM encounter_drafts WHERE appointment_id=? LIMIT 1';
         $stmt = $this->db->prepare($sql);
@@ -463,8 +326,7 @@ final class ClinicalEncounterRepository
         if ($appointmentId <= 0) {
             throw new InvalidArgumentException('Appointment ID must be positive.');
         }
-        $table = $this->schema === self::SCHEMA_V1 ? 'visit_drafts' : 'encounter_drafts';
-        $stmt = $this->db->prepare("DELETE FROM {$table} WHERE appointment_id=?");
+        $stmt = $this->db->prepare("DELETE FROM encounter_drafts WHERE appointment_id=?");
         return $stmt->execute([$appointmentId]);
     }
 
@@ -473,9 +335,8 @@ final class ClinicalEncounterRepository
         if ($days < 1 || $days > 365) {
             throw new InvalidArgumentException('Draft retention must be between 1 and 365 days.');
         }
-        $table = $this->schema === self::SCHEMA_V1 ? 'visit_drafts' : 'encounter_drafts';
         $stmt = $this->db->prepare(
-            "DELETE FROM {$table} WHERE updated_at < DATE_SUB(NOW(), INTERVAL {$days} DAY)"
+            "DELETE FROM encounter_drafts WHERE updated_at < DATE_SUB(NOW(), INTERVAL {$days} DAY)"
         );
         $stmt->execute();
         return $stmt->rowCount();
@@ -492,13 +353,7 @@ final class ClinicalEncounterRepository
             throw new InvalidArgumentException('Appointment ID must be positive.');
         }
 
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT id,doctor_id AS doctor_user_id,user_id AS patient_user_id,status,
-                      doctor AS doctor_name,
-                      DATE_FORMAT(date,'%Y-%m-%d') AS appointment_date,
-                      TIME_FORMAT(time,'%H:%i') AS appointment_time
-               FROM appointments WHERE id=? LIMIT 1"
-            : "SELECT id,doctor_user_id,patient_user_id,booking_status AS status,
+        $sql = "SELECT id,doctor_user_id,patient_user_id,booking_status AS status,
                       doctor_name_snapshot AS doctor_name,
                       DATE_FORMAT(starts_at,'%Y-%m-%d') AS appointment_date,
                       TIME_FORMAT(starts_at,'%H:%i') AS appointment_time
@@ -524,13 +379,7 @@ final class ClinicalEncounterRepository
             throw new RuntimeException('Appointment row locks require an active transaction.');
         }
 
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT id,doctor_id AS doctor_user_id,user_id AS patient_user_id,status,
-                      doctor AS doctor_name,
-                      DATE_FORMAT(date,'%Y-%m-%d') AS appointment_date,
-                      TIME_FORMAT(time,'%H:%i') AS appointment_time
-               FROM appointments WHERE id=? LIMIT 1 FOR UPDATE"
-            : "SELECT id,doctor_user_id,patient_user_id,booking_status AS status,
+        $sql = "SELECT id,doctor_user_id,patient_user_id,booking_status AS status,
                       doctor_name_snapshot AS doctor_name,
                       DATE_FORMAT(starts_at,'%Y-%m-%d') AS appointment_date,
                       TIME_FORMAT(starts_at,'%H:%i') AS appointment_time
@@ -545,14 +394,7 @@ final class ClinicalEncounterRepository
     private function mapAppointmentContext(array $row): array
     {
         $storedStatus = (string)$row['status'];
-        $status = $this->schema === self::SCHEMA_V1
-            ? match ($storedStatus) {
-                'Confirmed' => 'confirmed',
-                'Pending' => 'pending',
-                'Cancelled' => 'cancelled',
-                default => strtolower($storedStatus),
-            }
-            : strtolower($storedStatus);
+        $status = strtolower($storedStatus);
 
         return [
             'id' => (int)$row['id'],
@@ -573,10 +415,7 @@ final class ClinicalEncounterRepository
             throw new InvalidArgumentException('Appointment ID must be positive.');
         }
 
-        $sql = $this->schema === self::SCHEMA_V1
-            ? "SELECT id,doctor_id AS doctor_user_id,user_id AS patient_user_id,status
-               FROM appointments WHERE id=? LIMIT 1 FOR UPDATE"
-            : "SELECT id,doctor_user_id,patient_user_id,booking_status AS status
+        $sql = "SELECT id,doctor_user_id,patient_user_id,booking_status AS status
                FROM appointments WHERE id=? LIMIT 1 FOR UPDATE";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$appointmentId]);
@@ -613,9 +452,7 @@ final class ClinicalEncounterRepository
 
     private function assertConfirmed(array $appointment): void
     {
-        $confirmed = $this->schema === self::SCHEMA_V1
-            ? $appointment['status'] === 'Confirmed'
-            : $appointment['status'] === 'confirmed';
+        $confirmed = $appointment['status'] === 'confirmed';
         if (!$confirmed) {
             throw new DomainException('A clinical encounter can only be accessed for a confirmed appointment.');
         }

@@ -96,7 +96,7 @@ function chooseRescheduleFacadeDoctorAndSlots(PDO $db): array
             WHERE u.role='doctor' AND u.is_active=1
               AND ss.is_available=1 AND dep.status='active'
             ORDER BY u.id";
-    $schedule = new ScheduleService($db, RescheduleService::SCHEMA_V2);
+    $schedule = new ScheduleService($db);
     foreach ($db->query($sql)->fetchAll(PDO::FETCH_ASSOC) as $doctor) {
         $doctorId = (int)$doctor['doctor_user_id'];
         $slots = [];
@@ -163,29 +163,21 @@ try {
     $slots = $candidate['slots'];
     $patientId = firstRescheduleFacadePatient($db);
 
-    // Constructor contract: three arguments still mean V1; V2 is opt-in only.
+    // Constructor contract (V1 retired in Batch 2 Stage B): construction
+    // always selects the V2 transaction repository; there is no schema arg.
     $defaultService = new RescheduleService($db, $patientId, 'patient');
-    $v1Service = new RescheduleService($db, $patientId, 'patient', RescheduleService::SCHEMA_V1);
-    $v2Service = new RescheduleService($db, $patientId, 'patient', RescheduleService::SCHEMA_V2);
+    $v2Service = new RescheduleService($db, $patientId, 'patient');
     $repositoryProperty = new ReflectionProperty(RescheduleService::class, 'repository');
     $repositoryProperty->setAccessible(true);
-    if ($repositoryProperty->getValue($defaultService) !== null || $repositoryProperty->getValue($v1Service) !== null) {
-        throw new RuntimeException('Default and explicit V1 construction must keep the legacy implementation.');
+    if (!$repositoryProperty->getValue($defaultService) instanceof RescheduleTransactionRepository
+        || !$repositoryProperty->getValue($v2Service) instanceof RescheduleTransactionRepository) {
+        throw new RuntimeException('Construction must select RescheduleTransactionRepository.');
     }
-    if (!$repositoryProperty->getValue($v2Service) instanceof RescheduleTransactionRepository) {
-        throw new RuntimeException('Explicit V2 construction must select RescheduleTransactionRepository.');
-    }
-    try {
-        new RescheduleService($db, $patientId, 'patient', 'v3');
-        throw new RuntimeException('An unsupported schema selector was accepted.');
-    } catch (InvalidArgumentException $expected) {
-        // Expected.
-    }
-    echo "SCHEMA_ROUTING_OK|default=v1|explicit_v1=v1|explicit_v2=repository\n";
+    echo "SCHEMA_ROUTING_OK|default=repository|explicit_v2=repository\n";
 
     $patient = $v2Service;
-    $doctor = new RescheduleService($db, $doctorId, 'doctor', RescheduleService::SCHEMA_V2);
-    $bookingRepo = new AppointmentBookingRepository($db, RescheduleService::SCHEMA_V2);
+    $doctor = new RescheduleService($db, $doctorId, 'doctor');
+    $bookingRepo = new AppointmentBookingRepository($db);
 
     $db->beginTransaction();
     $transactionStarted = true;
