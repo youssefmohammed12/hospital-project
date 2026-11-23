@@ -398,6 +398,14 @@ html[data-theme="light"] .nav-account-dropdown {
   }
 }
 
+/* Very small phones: the wordmark gives way too — the gold brand mark
+   stays, and the footer keeps the full lockup. */
+@media (max-width: 420px) {
+  .navbar .logo .home-brand-name {
+    display: none;
+  }
+}
+
 /* Signed-in quick access (notifications) in the public header. */
 .nav-quick-icons {
   display: inline-flex;
@@ -790,6 +798,20 @@ button:disabled,
 
 /* Layout safety */
 @media (max-width: 768px) {
+  /* The signed-in header cluster (logo, bell, theme toggle, account
+     chip, menu button) is fixed-width, and at phone widths its natural
+     width outgrew the container — the last item (the menu button)
+     ended ~1px past the viewport edge at 390px on Doctors, more at
+     narrower widths. Tighten the container gap and drop the bell
+     group's desktop margin so the cluster fits with room to spare. */
+  .nav-container {
+    gap: 8px;
+  }
+
+  .nav-quick-icons {
+    margin-left: 0;
+  }
+
   .nav-row {
     position: absolute;
     top: var(--public-nav-height);

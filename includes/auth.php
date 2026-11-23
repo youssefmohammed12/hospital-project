@@ -67,6 +67,15 @@ function destroyAuthSession(): void
         ]);
     }
 
+    // The JS-readable session hint (set at login) dies with the session
+    // it mirrors, whatever path destroyed the session.
+    setcookie('hb_alive', '', [
+        'expires' => time() - 42000,
+        'path' => '/',
+        'httponly' => false,
+        'samesite' => 'Lax',
+    ]);
+
     session_destroy();
 }
 

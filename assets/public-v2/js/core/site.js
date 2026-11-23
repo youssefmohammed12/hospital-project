@@ -89,6 +89,25 @@ function getUser() {
   }
 }
 
+/* The cached identity above survives browser restarts and session
+   expiry, so on its own it is never proof of a live session. At login
+   the server also sets a data-free `hb_alive` cookie whose lifetime is
+   the browser session — the same lifetime as the HttpOnly session
+   cookie — and clears it whenever the session is destroyed. Public
+   pages honour the cached identity only while the hint is present,
+   which keeps a logged-out load from firing authenticated requests
+   that could only answer 401. */
+function hasSessionHint() {
+  return document.cookie
+    .split(";")
+    .some((part) => part.trim() === "hb_alive=1");
+}
+
+function clearSessionHint() {
+  document.cookie =
+    "hb_alive=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax";
+}
+
 function getDashboardUrl(role) {
   if (role === "admin") return getBasePath() + "pages/admin/admin.html";
   if (role === "doctor") return getBasePath() + "pages/doctor/doctor-dashboard.html";
@@ -157,6 +176,7 @@ async function logoutUser() {
   } catch {
     // Continue to terminate the server session if local storage is unavailable.
   }
+  clearSessionHint();
 
   try {
     await fetch(getBasePath() + "api/auth/logout.php", {
@@ -204,7 +224,7 @@ function applyTheme(theme, syncPreference = false) {
 
   // Preserve the existing authenticated appearance preference contract.
   // This request occurs only after an explicit user toggle, never on page load.
-  if (syncPreference && getUser()) {
+  if (syncPreference && getUser() && hasSessionHint()) {
     fetch(getBasePath() + "api/settings/update.php", {
       method: "POST",
       credentials: "same-origin",
@@ -298,7 +318,19 @@ function initPublicNavbar() {
   });
 
   const authArea = document.getElementById("auth-links");
-  const user = getUser();
+  // Honour the cached identity only while the session hint says a
+  // server session may be alive. A stale cache (browser restarted,
+  // session expired, logged out elsewhere) is dropped silently and
+  // the header keeps its logged-out form — no authenticated request
+  // is fired on the strength of localStorage alone.
+  let user = getUser();
+  if (user && !hasSessionHint()) {
+    try { localStorage.removeItem("hb_user"); } catch { /* storage unavailable */ }
+    user = null;
+  }
+  // Set by the chip block below so the bell can restore the logged-out
+  // header if the session turns out to have expired mid-visit.
+  let restoreLoggedOutHeader = null;
   if (authArea && user) {
     const displayName = typeof user.name === "string" && user.name.trim()
       ? user.name.trim().slice(0, 80)
@@ -315,6 +347,14 @@ function initPublicNavbar() {
       : "Account";
     const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2)
       .map((part) => part.charAt(0).toUpperCase()).join("") || "A";
+
+    const loggedOutAuthContent = [...authArea.childNodes]
+      .map((node) => node.cloneNode(true));
+    restoreLoggedOutHeader = () => {
+      authArea.replaceChildren(
+        ...loggedOutAuthContent.map((node) => node.cloneNode(true)),
+      );
+    };
 
     authArea.replaceChildren();
 
@@ -567,7 +607,13 @@ function initPublicNavbar() {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ action: "mark_all_read" }),
       })
-        .then((response) => response.json().catch(() => null))
+        .then((response) => {
+          if (response.status === 401) {
+            expirePublicSession();
+            return null;
+          }
+          return response.json().catch(() => null);
+        })
         .then((payload) => {
           if (!payload || payload.success === false) { quickMarking = false; return; }
           quickUnread = 0;
@@ -613,6 +659,17 @@ function initPublicNavbar() {
     group.append(bellMenu);
     container.insertBefore(group, themeToggle);
 
+    /* If the session expired while this page was open (the hint said
+       it may be alive, but the server disagrees), drop the cached
+       identity and restore the logged-out header, so the page never
+       presents a signed-in state the server has already ended. */
+    const expirePublicSession = () => {
+      try { localStorage.removeItem("hb_user"); } catch { /* storage unavailable */ }
+      clearSessionHint();
+      if (restoreLoggedOutHeader) restoreLoggedOutHeader();
+      group.remove();
+    };
+
     const formatQuickDate = (value) => {
       const date = new Date(String(value || "").replace(" ", "T"));
       return Number.isNaN(date.getTime())
@@ -625,7 +682,13 @@ function initPublicNavbar() {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
     })
-      .then((response) => response.json().catch(() => null))
+      .then((response) => {
+        if (response.status === 401) {
+          expirePublicSession();
+          return null;
+        }
+        return response.json().catch(() => null);
+      })
       .then((payload) => {
         const items = Array.isArray(payload?.notifications) ? payload.notifications : [];
         const unread = items.filter((item) => Number(item.is_read) === 0).length;

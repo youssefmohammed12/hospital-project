@@ -47,9 +47,12 @@ try {
         (string)($_SERVER['REMOTE_ADDR'] ?? '')
     );
 } catch (Throwable $e) {
+    // Fail soft: when the limiter cannot reach its state storage, let this
+    // attempt proceed without throttling rather than locking every user
+    // out. The failure is logged; normal limiting resumes by itself once
+    // the storage is healthy again.
     error_log('Login Rate Limiter Error: ' . $e->getMessage());
-    http_response_code(503);
-    jsonResponse(false, ['message' => 'Login is temporarily unavailable. Please try again.']);
+    $retryAfter = 0;
 }
 
 if ($retryAfter > 0) {
@@ -111,6 +114,20 @@ $_SESSION['email'] = $user['email'];
 $_SESSION['auth_created_at'] = $now;
 $_SESSION['auth_last_activity'] = $now;
 $_SESSION['auth_session_version'] = (int)$user['session_version'];
+
+// A data-free, JS-readable companion to the HttpOnly session cookie, with
+// the same browser-session lifetime. Public pages check for its presence
+// before firing any authenticated request, so a stale cached identity in
+// localStorage can no longer trigger requests that only answer 401. It
+// carries no identity information; the session cookie stays HttpOnly.
+$hintSecure = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
+setcookie('hb_alive', '1', [
+    'expires' => 0,
+    'path' => '/',
+    'secure' => $hintSecure,
+    'httponly' => false,
+    'samesite' => 'Lax',
+]);
 
 jsonResponse(true, [
     'user' => [

@@ -95,6 +95,19 @@ async function resolveWorkspaceUser() {
   const cached = typeof getUser === "function" ? getUser() : null;
   if (isSupportedWorkspaceUser(cached)) return cached;
 
+  // Only probe the server when a session may actually exist: without
+  // the login hint cookie the visitor is logged out, and asking would
+  // just earn a 401. (With the hint but no cached user — e.g. storage
+  // was cleared mid-session — the probe below still restores the
+  // role-specific destinations, as before.)
+  const hintPresent = typeof hasSessionHint === "function"
+    ? hasSessionHint()
+    : true;
+  if (!hintPresent) {
+    if (cached) clearCachedWorkspaceUser();
+    return null;
+  }
+
   const basePath = typeof getBasePath === "function" ? getBasePath() : "";
   try {
     const response = await fetch(basePath + "api/auth/current_user.php", {

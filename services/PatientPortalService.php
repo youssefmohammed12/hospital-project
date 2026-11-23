@@ -175,6 +175,7 @@ class PatientPortalService
                 LEFT JOIN departments dep ON a.department_id = dep.id
                 WHERE a.user_id = ?
                   AND a.status != 'Cancelled'
+                  AND a.date >= CURDATE()
                 ORDER BY
                     CASE WHEN a.reschedule_status = 'pending' THEN 0 ELSE 1 END,
                     a.date ASC,
@@ -2113,6 +2114,7 @@ class PatientPortalService
                     )
                 WHERE a.patient_user_id = ?
                   AND a.booking_status <> 'cancelled'
+                  AND DATE(a.starts_at) >= CURDATE()
                 ORDER BY
                     CASE WHEN rr.request_status IN ('requested', 'suggested') THEN 0 ELSE 1 END,
                     a.starts_at ASC,
