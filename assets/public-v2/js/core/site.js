@@ -56,6 +56,9 @@ const PUBLIC_SUN_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const PUBLIC_HAMBURGER_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6" class="ham-line ham-top"/><line x1="3" y1="12" x2="21" y2="12" class="ham-line ham-mid"/><line x1="3" y1="18" x2="21" y2="18" class="ham-line ham-bot"/></svg>`;
 const PUBLIC_BELL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>`;
 const PUBLIC_GEAR_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="6.2"/><circle cx="12" cy="12" r="2.6"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>`;
+const PUBLIC_MARK_ALL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></svg>`;
+const PUBLIC_TRASH_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></svg>`;
+const PUBLIC_DISMISS_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
 
 function getBasePath() {
   const path = window.location.pathname;
@@ -356,7 +359,24 @@ function initPublicNavbar() {
     panel.inert = true;
     const heading = document.createElement("div");
     heading.className = "nav-quick-heading";
-    heading.textContent = "Notifications";
+    const headingText = document.createElement("span");
+    headingText.textContent = "Notifications";
+    const headingActions = document.createElement("span");
+    headingActions.className = "nav-quick-actions";
+    const markAllButton = document.createElement("button");
+    markAllButton.type = "button";
+    markAllButton.className = "nav-quick-action";
+    markAllButton.setAttribute("aria-label", "Mark all as read");
+    markAllButton.title = "Mark all as read";
+    markAllButton.innerHTML = PUBLIC_MARK_ALL_SVG;
+    const dismissAllButton = document.createElement("button");
+    dismissAllButton.type = "button";
+    dismissAllButton.className = "nav-quick-action";
+    dismissAllButton.setAttribute("aria-label", "Dismiss all");
+    dismissAllButton.title = "Dismiss all";
+    dismissAllButton.innerHTML = PUBLIC_TRASH_SVG;
+    headingActions.append(markAllButton, dismissAllButton);
+    heading.append(headingText, headingActions);
     const list = document.createElement("div");
     list.className = "nav-quick-list";
     const empty = document.createElement("p");
@@ -370,10 +390,36 @@ function initPublicNavbar() {
     panel.append(heading, list, viewAll);
     bellMenu.append(bell, panel);
 
-    /* Opening the bell marks the notifications read on the server
-       (the standard bell pattern, same as the workspace shells) and
-       clears the badge in place; the items stay listed, only their
-       unread styling goes. */
+    /* Pop-up dismissals are view-only: dismissed notification ids
+       live in localStorage under a per-area, per-user key, so a
+       dismissed item leaves the pop-up but stays in the Notifications
+       page with its read state untouched, and one account's
+       dismissals never hide another's. The set is capped so it
+       cannot grow unbounded. */
+    const quickDismissKey = "hb_bell_dismissed:public:" + (user.id ?? "unknown");
+    const loadQuickDismissed = () => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(quickDismissKey) || "[]");
+        return new Set(Array.isArray(parsed)
+          ? parsed.map(Number).filter(Number.isFinite) : []);
+      } catch { return new Set(); }
+    };
+    const saveQuickDismissed = (set) => {
+      try {
+        localStorage.setItem(quickDismissKey, JSON.stringify([...set].slice(-200)));
+      } catch { /* storage unavailable: dismissals last for this view only */ }
+    };
+    const syncQuickEmpty = () => {
+      const hasRows = Boolean(list.querySelector(".nav-quick-row"));
+      empty.hidden = hasRows;
+      if (!hasRows) empty.textContent = "No new notifications";
+    };
+
+    /* The pop-up header's "Mark all as read" control marks the
+       notifications read on the server (the standard bell pattern,
+       same as the workspace shells) and clears the badge in place;
+       the items stay listed, only their unread styling goes. Opening
+       the pop-up never marks anything by itself. */
     let quickUnread = 0;
     let quickMarking = false;
     const markQuickNotificationsRead = () => {
@@ -405,7 +451,17 @@ function initPublicNavbar() {
     bell.addEventListener("click", () => {
       const open = bell.getAttribute("aria-expanded") !== "true";
       setQuickPanel(open);
-      if (open) markQuickNotificationsRead();
+    });
+    markAllButton.addEventListener("click", () => markQuickNotificationsRead());
+    dismissAllButton.addEventListener("click", () => {
+      const set = loadQuickDismissed();
+      list.querySelectorAll(".nav-quick-row").forEach((row) => {
+        const id = Number(row.dataset.notificationId);
+        if (Number.isFinite(id)) set.add(id);
+        row.remove();
+      });
+      saveQuickDismissed(set);
+      syncQuickEmpty();
     });
     document.addEventListener("pointerdown", (event) => {
       if (event.target instanceof Node && !bellMenu.contains(event.target)) {
@@ -446,21 +502,39 @@ function initPublicNavbar() {
           badge.hidden = false;
           badge.textContent = unread > 99 ? "99+" : String(unread);
         }
-        if (items.length) {
-          list.replaceChildren();
-          items.slice(0, 4).forEach((item) => {
-            const row = document.createElement("a");
-            row.href = bellHref;
-            row.className = "nav-quick-item" +
-              (Number(item.is_read) === 0 ? " is-unread" : "");
-            const strong = document.createElement("strong");
-            strong.textContent = item.title || "Notification";
-            const time = document.createElement("time");
-            time.textContent = formatQuickDate(item.created_at);
-            row.append(strong, time);
-            list.appendChild(row);
+        const dismissed = loadQuickDismissed();
+        items.slice(0, 4).forEach((item) => {
+          const id = Number(item.id);
+          if (dismissed.has(id)) return;
+          const row = document.createElement("div");
+          row.className = "nav-quick-row";
+          row.dataset.notificationId = String(id);
+          const link = document.createElement("a");
+          link.href = bellHref;
+          link.className = "nav-quick-item" +
+            (Number(item.is_read) === 0 ? " is-unread" : "");
+          const strong = document.createElement("strong");
+          strong.textContent = item.title || "Notification";
+          const time = document.createElement("time");
+          time.textContent = formatQuickDate(item.created_at);
+          link.append(strong, time);
+          const dismiss = document.createElement("button");
+          dismiss.type = "button";
+          dismiss.className = "nav-quick-dismiss";
+          dismiss.setAttribute("aria-label", "Dismiss notification");
+          dismiss.title = "Dismiss";
+          dismiss.innerHTML = PUBLIC_DISMISS_SVG;
+          dismiss.addEventListener("click", () => {
+            const set = loadQuickDismissed();
+            set.add(id);
+            saveQuickDismissed(set);
+            row.remove();
+            syncQuickEmpty();
           });
-        }
+          row.append(link, dismiss);
+          list.appendChild(row);
+        });
+        syncQuickEmpty();
       })
       .catch(() => { /* badge stays hidden, panel keeps its empty note */ });
   }

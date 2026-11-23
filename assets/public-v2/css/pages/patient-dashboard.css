@@ -691,9 +691,49 @@ body.patient-workspace .skeleton {
 }
 
 .patient-dropdown-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 12px;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.12rem;
+}
+
+.patient-dropdown-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.patient-dropdown-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--patient-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.patient-dropdown-action:hover {
+  color: var(--patient-gold);
+  border-color: var(--patient-border);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="light"] .patient-dropdown-action:hover {
+  color: #17645f;
+  background: rgba(16, 43, 43, 0.05);
+}
+
+.patient-dropdown-action svg {
+  width: 16px;
+  height: 16px;
 }
 
 .patient-notification-empty {
@@ -1034,23 +1074,54 @@ body.patient-workspace .btn-primary:hover::after {
   40% { transform: scale(1.45); }
   100% { transform: scale(1); }
 }
-.patient-notification-dropdown > a.patient-notification-item {
+.patient-notification-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--patient-border);
+}
+.patient-notification-dropdown .patient-notification-item {
+  flex: 1 1 auto;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--patient-border);
   color: var(--patient-text);
   font-size: 0.86rem;
   font-weight: 500;
   text-decoration: none;
 }
-.patient-notification-dropdown > a.patient-notification-item:hover strong {
+.patient-notification-dropdown .patient-notification-item:hover strong {
   color: var(--patient-gold);
 }
-html[data-theme="light"] .patient-notification-dropdown > a.patient-notification-item:hover strong {
+html[data-theme="light"] .patient-notification-dropdown .patient-notification-item:hover strong {
   color: #17645f;
+}
+.patient-notification-dismiss {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--patient-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease;
+}
+.patient-notification-dismiss:hover {
+  color: var(--patient-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="light"] .patient-notification-dismiss:hover {
+  background: rgba(16, 43, 43, 0.06);
+}
+.patient-notification-dismiss svg {
+  width: 13px;
+  height: 13px;
 }
 .patient-notification-item strong {
   font-size: 0.86rem;

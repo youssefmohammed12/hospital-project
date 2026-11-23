@@ -695,9 +695,49 @@ body.doctor-workspace .skeleton {
 }
 
 .doctor-dropdown-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 12px;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.12rem;
+}
+
+.doctor-dropdown-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.doctor-dropdown-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--doctor-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.doctor-dropdown-action:hover {
+  color: var(--doctor-gold);
+  border-color: var(--doctor-border);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="light"] .doctor-dropdown-action:hover {
+  color: #17645f;
+  background: rgba(16, 43, 43, 0.05);
+}
+
+.doctor-dropdown-action svg {
+  width: 16px;
+  height: 16px;
 }
 
 .doctor-notification-empty {
@@ -717,23 +757,54 @@ body.doctor-workspace .skeleton {
    shell): item text is the normal ink, the title turns to the accent on
    hover — gold in the dark theme, teal in the light theme — and the
    footer link takes the same accent. No gold text on cream. */
-.doctor-notification-dropdown > a.doctor-notification-item {
+.doctor-notification-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--doctor-border);
+}
+.doctor-notification-dropdown .doctor-notification-item {
+  flex: 1 1 auto;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--doctor-border);
   color: var(--doctor-text);
   font-size: 0.86rem;
   font-weight: 500;
   text-decoration: none;
 }
-.doctor-notification-dropdown > a.doctor-notification-item:hover strong {
+.doctor-notification-dropdown .doctor-notification-item:hover strong {
   color: var(--doctor-gold);
 }
-html[data-theme="light"] .doctor-notification-dropdown > a.doctor-notification-item:hover strong {
+html[data-theme="light"] .doctor-notification-dropdown .doctor-notification-item:hover strong {
   color: #17645f;
+}
+.doctor-notification-dismiss {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--doctor-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease;
+}
+.doctor-notification-dismiss:hover {
+  color: var(--doctor-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="light"] .doctor-notification-dismiss:hover {
+  background: rgba(16, 43, 43, 0.06);
+}
+.doctor-notification-dismiss svg {
+  width: 13px;
+  height: 13px;
 }
 html[data-theme="light"] .doctor-notification-dropdown > a:not(.doctor-notification-item) {
   color: #17645f;

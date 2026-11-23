@@ -334,8 +334,42 @@ html[data-theme="light"] .nav-quick-dropdown {
   visibility: visible;
 }
 .nav-quick-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   font-size: 1rem;
   font-weight: 700;
+}
+.nav-quick-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-quick-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--nq-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.nav-quick-action:hover {
+  color: var(--nq-accent);
+  border-color: var(--nq-border);
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-theme="light"] .nav-quick-action:hover {
+  background: rgba(16, 43, 43, 0.05);
+}
+.nav-quick-action svg {
+  width: 16px;
+  height: 16px;
 }
 .nav-quick-list {
   margin-top: 6px;
@@ -345,15 +379,46 @@ html[data-theme="light"] .nav-quick-dropdown {
   color: var(--nq-muted);
   font-size: 0.82rem;
 }
+.nav-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--nq-border);
+}
 .nav-quick-item {
+  flex: 1 1 auto;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--nq-border);
   color: var(--nq-text);
   text-decoration: none;
+}
+.nav-quick-dismiss {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--nq-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease;
+}
+.nav-quick-dismiss:hover {
+  color: var(--nq-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="light"] .nav-quick-dismiss:hover {
+  background: rgba(16, 43, 43, 0.06);
+}
+.nav-quick-dismiss svg {
+  width: 13px;
+  height: 13px;
 }
 .nav-quick-item strong {
   position: relative;

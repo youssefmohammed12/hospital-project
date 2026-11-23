@@ -34,6 +34,9 @@
     settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="6.2"/><circle cx="12" cy="12" r="2.6"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>',
     site: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>',
+    markAll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></svg>',
+    dismiss: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
     chevron: '<svg class="patient-profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
     collapse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>',
@@ -45,7 +48,7 @@
         window.HealthBridgeBrand.markup("dashboard.html", "patient-topbar__brand") +
         '<div class="patient-topbar__content"><span class="patient-workspace-kicker">PATIENT WORKSPACE</span><div class="patient-topbar__actions">' +
           '<div class="patient-notification-menu"><button class="patient-icon-button" id="patient-notification-trigger" type="button" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="patient-notification-dropdown">' + icons.bell + '<span class="patient-notification-badge" id="patient-notification-badge" hidden>0</span></button>' +
-            '<div class="patient-notification-dropdown" id="patient-notification-dropdown" aria-hidden="true" inert><div class="patient-dropdown-heading">Notifications</div><p class="patient-notification-empty">Your latest updates will appear here.</p><a href="notifications.html">View all notifications</a></div></div>' +
+            '<div class="patient-notification-dropdown" id="patient-notification-dropdown" aria-hidden="true" inert><div class="patient-dropdown-heading"><span>Notifications</span><span class="patient-dropdown-actions"><button type="button" class="patient-dropdown-action" id="patient-bell-mark-all" aria-label="Mark all as read" title="Mark all as read">' + icons.markAll + '</button><button type="button" class="patient-dropdown-action" id="patient-bell-dismiss-all" aria-label="Dismiss all" title="Dismiss all">' + icons.trash + '</button></span></div><p class="patient-notification-empty">Your latest updates will appear here.</p><a class="patient-dropdown-viewall" href="notifications.html">View all notifications</a></div></div>' +
           '<a class="patient-icon-button" href="settings.html" aria-label="Settings" title="Settings">' + icons.settings + '</a>' +
           '<button class="patient-icon-button theme-toggle" type="button" aria-label="Change appearance" title="Change appearance"></button>' +
           '<div class="patient-profile-menu"><button class="patient-profile-trigger" id="patient-profile-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="patient-profile-dropdown"><span class="patient-profile-avatar" id="patient-profile-avatar" aria-hidden="true">PT</span><span class="patient-profile-name" id="patient-profile-name">Patient</span>' + icons.chevron + '</button>' +
@@ -256,9 +259,39 @@
     window.addEventListener("resize", moveIndicator, { passive: true });
   }
 
-  /* Opening the bell marks the notifications read on the server (the
-     standard bell pattern) and clears the badge in place; the items
-     stay listed, only their unread styling goes. bellUnread mirrors
+  /* Pop-up dismissals are view-only: dismissed notification ids live
+     in localStorage under a per-area, per-user key, so a dismissed
+     item leaves the pop-up but stays in the Notifications page with
+     its read state untouched, and one account's dismissals never
+     hide another's. The set is capped so it cannot grow unbounded. */
+  function bellDismissKey() {
+    const user = typeof getUser === "function" ? getUser() : null;
+    return "hb_bell_dismissed:patient:" + (user?.id ?? "unknown");
+  }
+  function loadBellDismissed() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(bellDismissKey()) || "[]");
+      return new Set(Array.isArray(parsed)
+        ? parsed.map(Number).filter(Number.isFinite) : []);
+    } catch { return new Set(); }
+  }
+  function saveBellDismissed(set) {
+    try {
+      localStorage.setItem(bellDismissKey(), JSON.stringify([...set].slice(-200)));
+    } catch {}
+  }
+  function syncBellEmpty(dropdown) {
+    const empty = dropdown?.querySelector(".patient-notification-empty");
+    if (!empty) return;
+    const hasRows = Boolean(dropdown.querySelector(".patient-notification-row"));
+    empty.hidden = hasRows;
+    if (!hasRows) empty.textContent = "No new notifications";
+  }
+
+  /* The pop-up header's "Mark all as read" control marks the
+     notifications read on the server and clears the badge in place;
+     the items stay listed, only their unread styling goes. Opening
+     the pop-up never marks anything by itself. bellUnread mirrors
      the count populateNotifications() last computed, so the POST only
      fires when there is something to clear. */
   let bellUnread = 0;
@@ -302,13 +335,18 @@
           badge.hidden = unread === 0;
           badge.textContent = unread > 99 ? "99+" : String(unread);
         }
-        if (dropdown && items.length) {
-          dropdown.querySelector(".patient-notification-empty")?.remove();
-          const viewAll = dropdown.querySelector("a");
+        if (dropdown) {
+          const dismissed = loadBellDismissed();
+          const viewAll = dropdown.querySelector(".patient-dropdown-viewall");
           items.slice(0, 4).forEach((item) => {
-            const row = document.createElement("a");
-            row.href = "notifications.html";
-            row.className = "patient-notification-item" +
+            const id = Number(item.id);
+            if (dismissed.has(id)) return;
+            const row = document.createElement("div");
+            row.className = "patient-notification-row";
+            row.dataset.notificationId = String(id);
+            const link = document.createElement("a");
+            link.href = "notifications.html";
+            link.className = "patient-notification-item" +
               (Number(item.is_read) === 0 ? " is-unread" : "");
             const title = document.createElement("strong");
             title.textContent = String(item.title || "Notification");
@@ -317,9 +355,24 @@
             when.textContent = Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString(undefined, {
               month: "short", day: "numeric",
             });
-            row.append(title, when);
+            link.append(title, when);
+            const dismiss = document.createElement("button");
+            dismiss.type = "button";
+            dismiss.className = "patient-notification-dismiss";
+            dismiss.setAttribute("aria-label", "Dismiss notification");
+            dismiss.title = "Dismiss";
+            dismiss.innerHTML = icons.dismiss;
+            dismiss.addEventListener("click", () => {
+              const set = loadBellDismissed();
+              set.add(id);
+              saveBellDismissed(set);
+              row.remove();
+              syncBellEmpty(dropdown);
+            });
+            row.append(link, dismiss);
             dropdown.insertBefore(row, viewAll);
           });
+          syncBellEmpty(dropdown);
         }
       })
       .catch(() => { /* the badge simply stays hidden */ });
@@ -382,8 +435,23 @@
       const open = noticeTrigger.getAttribute("aria-expanded") !== "true";
       setMenu(profileTrigger, profileDropdown, false);
       setMenu(noticeTrigger, noticeDropdown, open);
-      if (open) markBellNotificationsRead();
     });
+
+    document.getElementById("patient-bell-mark-all")
+      ?.addEventListener("click", () => markBellNotificationsRead());
+    document.getElementById("patient-bell-dismiss-all")
+      ?.addEventListener("click", () => {
+        if (!noticeDropdown) return;
+        const set = loadBellDismissed();
+        noticeDropdown.querySelectorAll(".patient-notification-row")
+          .forEach((row) => {
+            const id = Number(row.dataset.notificationId);
+            if (Number.isFinite(id)) set.add(id);
+            row.remove();
+          });
+        saveBellDismissed(set);
+        syncBellEmpty(noticeDropdown);
+      });
 
     document.addEventListener("pointerdown", (event) => {
       const target = event.target;
