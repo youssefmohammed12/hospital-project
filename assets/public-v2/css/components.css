@@ -390,15 +390,6 @@ html[data-theme="light"] .nav-account-dropdown {
   background: var(--na-border);
 }
 
-/* Inside the mobile navigation panel the chip sits at the left edge,
-   so its dropdown opens from the left instead of off-screen. */
-@media (max-width: 768px) {
-  .nav-account-dropdown {
-    right: auto;
-    left: 0;
-  }
-}
-
 /* Phone widths: the name gives way so the header stays uncrowded —
    avatar and chevron carry the chip. */
 @media (max-width: 640px) {
@@ -407,7 +398,7 @@ html[data-theme="light"] .nav-account-dropdown {
   }
 }
 
-/* Signed-in quick access (notifications + settings) in the public header. */
+/* Signed-in quick access (notifications) in the public header. */
 .nav-quick-icons {
   display: inline-flex;
   align-items: center;
@@ -1200,19 +1191,11 @@ html[data-theme="light"] .public-signal-strip {
   }
 }
 
-/* "How it was built" panel — one shared component, stamped identically
-   on the About, Doctors and Services pages. Its theme variables are
-   scoped to the component itself (dark default, light override), so
-   it renders the same on every page regardless of the page's own
+/* "How it was built" panel — the About page's hero card. Its theme
+   variables are scoped to the component itself (dark default, light
+   override), so it renders the same regardless of the page's own
    variable prefix. The logo in its header is the shared navbar brand
    mark (.home-brand-mark), not a redraw. */
-.public-build-section {
-  padding: 72px 0 88px;
-}
-
-.public-build-section .public-build-panel {
-  margin-inline: auto;
-}
 
 .public-build-panel {
   --built-surface: #132725;
@@ -1528,10 +1511,6 @@ html[data-theme="light"] .public-build-panel {
 
   .public-build-panel__caption {
     font-size: 0.61rem;
-  }
-
-  .public-build-section {
-    padding: 56px 0 64px;
   }
 }
 

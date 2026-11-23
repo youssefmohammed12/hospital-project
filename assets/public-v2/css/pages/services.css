@@ -372,18 +372,58 @@ html[data-theme="light"] body.services-page .nav-toggle {
   padding: 0 0 18px;
 }
 
+/* The overview card follows the page theme like the About hero card:
+   its colours are scoped variables (dark default, light override),
+   never hard-coded dark values. */
 .services-overview {
+  --so-surface: #163734;
+  --so-copy: #edf3ee;
+  --so-soft: #d6e3dc;
+  --so-muted: #c1d1c9;
+  --so-faint: #d0ded6;
+  --so-line: rgba(226, 238, 233, 0.22);
+  --so-line-soft: rgba(226, 238, 233, 0.16);
+  --so-line-mid: rgba(226, 238, 233, 0.15);
+  --so-line-strong: rgba(226, 238, 233, 0.19);
+  --so-line-faint: rgba(226, 238, 233, 0.12);
+  --so-accent: #d9bf96;
+  --so-accent-soft: #e6cca3;
+  --so-accent-2: #b6d2c8;
+  --so-fill: rgba(255, 255, 255, 0.035);
+  --so-fill-2: rgba(255, 255, 255, 0.045);
   position: relative;
   overflow: hidden;
   padding: clamp(22px, 3vw, 34px);
   padding-bottom: 88px;
-  border: 1px solid rgba(226, 238, 233, 0.22);
+  border: 1px solid var(--so-line);
   border-radius: 12px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 52%),
-    #163734;
+    var(--so-surface);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.23);
-  color: #edf3ee;
+  color: var(--so-copy);
+}
+
+html[data-theme="light"] .services-overview {
+  --so-surface: #fff;
+  --so-copy: #102b2b;
+  --so-soft: #29443d;
+  --so-muted: #50645d;
+  --so-faint: #50645d;
+  --so-line: rgba(16, 43, 43, 0.16);
+  --so-line-soft: rgba(16, 43, 43, 0.12);
+  --so-line-mid: rgba(16, 43, 43, 0.12);
+  --so-line-strong: rgba(16, 43, 43, 0.15);
+  --so-line-faint: rgba(16, 43, 43, 0.09);
+  --so-accent: #76552f;
+  --so-accent-soft: #76552f;
+  --so-accent-2: #28675e;
+  --so-fill: rgba(16, 43, 43, 0.03);
+  --so-fill-2: rgba(16, 43, 43, 0.045);
+  background:
+    linear-gradient(145deg, rgba(16, 43, 43, 0.04), transparent 52%),
+    var(--so-surface);
+  box-shadow: 0 24px 56px rgba(16, 43, 43, 0.14);
 }
 
 .services-overview::before {
@@ -392,7 +432,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
   right: -115px;
   width: 330px;
   height: 330px;
-  border: 1px solid rgba(226, 238, 233, 0.12);
+  border: 1px solid var(--so-line-faint);
   border-radius: 50%;
   content: "";
   pointer-events: none;
@@ -410,52 +450,34 @@ html[data-theme="light"] body.services-page .nav-toggle {
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 20px;
-  border-bottom: 1px solid rgba(226, 238, 233, 0.16);
+  border-bottom: 1px solid var(--so-line-soft);
 }
 
 .services-overview__brand {
   gap: 10px;
-  color: #d6e3dc;
+  color: var(--so-soft);
   font-size: 0.63rem;
   font-weight: 750;
   letter-spacing: 0.15em;
 }
 
+/* The brand tile is the shared navbar logo (.home-brand-mark) at card
+   scale — the site's gold building mark, not the old teal "+". */
 .services-overview__mark {
-  position: relative;
-  display: grid;
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
-  place-items: center;
-  border: 1px solid rgba(184, 149, 99, 0.5);
   border-radius: 8px;
-  background: #17645f;
 }
 
-.services-overview__mark::before,
-.services-overview__mark::after,
-.services-overview__mark span {
-  position: absolute;
-  display: block;
-  border-radius: 2px;
-  background: #f6f7f3;
-  content: "";
-}
-
-.services-overview__mark::before {
-  width: 15px;
-  height: 4px;
-}
-
-.services-overview__mark::after {
-  width: 4px;
-  height: 15px;
+.services-overview__mark .auth-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .services-overview__status {
   gap: 7px;
-  color: #d9bf96;
+  color: var(--so-accent);
   font-size: 0.57rem;
   font-weight: 750;
   letter-spacing: 0.12em;
@@ -477,14 +499,14 @@ html[data-theme="light"] body.services-page .nav-toggle {
 }
 
 .services-overview__heading > span {
-  color: #c1d1c9;
+  color: var(--so-muted);
   font-size: 0.6rem;
   font-weight: 750;
   letter-spacing: 0.15em;
 }
 
 .services-overview__heading strong {
-  color: #edf3ee;
+  color: var(--so-copy);
   font-family: var(--services-display);
   font-size: clamp(1.55rem, 2.7vw, 2.05rem);
   font-weight: 500;
@@ -493,7 +515,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
 }
 
 .services-overview__heading em {
-  color: #d9bf96;
+  color: var(--so-accent);
   font-weight: 500;
 }
 
@@ -533,13 +555,13 @@ html[data-theme="light"] body.services-page .nav-toggle {
   align-items: center;
   gap: 8px;
   padding: 9px;
-  border: 1px solid rgba(226, 238, 233, 0.15);
+  border: 1px solid var(--so-line-mid);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--so-fill);
 }
 
 .services-system-map__number {
-  color: #d9bf96;
+  color: var(--so-accent);
   font-family: var(--services-display);
   font-size: 0.78rem;
 }
@@ -549,10 +571,10 @@ html[data-theme="light"] body.services-page .nav-toggle {
   width: 32px;
   height: 32px;
   place-items: center;
-  border: 1px solid rgba(226, 238, 233, 0.18);
+  border: 1px solid var(--so-line-strong);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.045);
-  color: #d9bf96;
+  background: var(--so-fill-2);
+  color: var(--so-accent);
 }
 
 .services-system-map__icon svg {
@@ -561,7 +583,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
 }
 
 .services-system-map__role--clinician .services-system-map__icon {
-  color: #b6d2c8;
+  color: var(--so-accent-2);
 }
 
 .services-system-map__role-copy {
@@ -570,7 +592,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
 }
 
 .services-system-map__role-copy strong {
-  color: #edf3ee;
+  color: var(--so-copy);
   font-size: 0.7rem;
   font-weight: 720;
   line-height: 1.35;
@@ -613,7 +635,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
   margin: 0;
   padding: 0 2px;
   background: transparent;
-  color: #e6cca3;
+  color: var(--so-accent-soft);
   font-size: 0.55rem;
   font-weight: 760;
   letter-spacing: 0.03em;
@@ -664,10 +686,10 @@ html[data-theme="light"] body.services-page .nav-toggle {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: subgrid;
   padding: 0 10px 0 0;
-  border: 1px solid rgba(226, 238, 233, 0.19);
+  border: 1px solid var(--so-line-strong);
   border-left: 2px solid rgba(217, 191, 150, 0.82);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--so-fill-2);
 }
 
 .services-system-map__port {
@@ -680,9 +702,9 @@ html[data-theme="light"] body.services-page .nav-toggle {
   justify-self: start;
   align-self: center;
   margin-left: -6.5px;
-  border: 2px solid #d9bf96;
+  border: 2px solid var(--so-accent);
   border-radius: 50%;
-  background: #163734;
+  background: var(--so-surface);
 }
 
 .services-system-map__port--one {
@@ -722,7 +744,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
   place-items: center;
   border: 1px solid rgba(217, 191, 150, 0.72);
   border-radius: 50%;
-  color: #d9bf96;
+  color: var(--so-accent);
   font-family: var(--services-display);
   font-size: 1.25rem;
   line-height: 1;
@@ -735,7 +757,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
 }
 
 .services-system-map__core-copy small {
-  color: #e6cca3;
+  color: var(--so-accent-soft);
   font-size: 0.52rem;
   font-weight: 760;
   letter-spacing: 0.12em;
@@ -743,7 +765,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
 }
 
 .services-system-map__core-copy strong {
-  color: #edf3ee;
+  color: var(--so-copy);
   font-family: var(--services-display);
   font-size: 1.03rem;
   font-weight: 500;
@@ -751,7 +773,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
 }
 
 .services-system-map__core-copy > span {
-  color: #d0ded6;
+  color: var(--so-faint);
   font-size: 0.55rem;
   line-height: 1.5;
 }
@@ -837,7 +859,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
   align-items: center;
   gap: 8px;
   margin: 19px 0 0;
-  color: #c1d1c9;
+  color: var(--so-muted);
   font-size: 0.65rem;
   line-height: 1.55;
 }
@@ -847,7 +869,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
   height: 6px;
   flex: 0 0 6px;
   border-radius: 50%;
-  background: #d9bf96;
+  background: var(--so-accent);
 }
 
 .services-visual-note {
@@ -880,8 +902,12 @@ html[data-theme="light"] body.services-page .nav-toggle {
   place-items: center;
   border: 1px solid rgba(184, 149, 99, 0.55);
   color: var(--services-accent);
-  font-family: var(--services-display);
-  font-size: 1.2rem;
+}
+
+.services-visual-note__mark svg {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 /* Capability catalogue and role filters. */
@@ -1584,7 +1610,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
     left: 50%;
     width: 10px;
     height: 8px;
-    background: #e6cca3;
+    background: var(--so-accent-soft);
     clip-path: polygon(0 0, 100% 0, 50% 100%);
     content: "";
     transform: translateX(-50%);
@@ -1638,7 +1664,8 @@ html[data-theme="light"] body.services-page .nav-toggle {
     grid-template-columns: 16px 30px minmax(0, 1fr);
     gap: 7px;
     padding: 6px 9px;
-    background: #163734;
+    /* Opaque card colour in both themes: masks the spine behind. */
+    background: var(--so-surface);
   }
 
   .services-system-map__role::after {
@@ -1648,9 +1675,9 @@ html[data-theme="light"] body.services-page .nav-toggle {
     z-index: 4;
     width: 9px;
     height: 9px;
-    border: 2px solid #d9bf96;
+    border: 2px solid var(--so-accent);
     border-radius: 50%;
-    background: #163734;
+    background: var(--so-surface);
     content: "";
     transform: translateX(-50%);
     pointer-events: none;
@@ -1688,7 +1715,7 @@ html[data-theme="light"] body.services-page .nav-toggle {
     max-width: calc(50% - 14px);
     margin: 0 0 0 8px;
     padding: 2px 4px 2px 0;
-    background: #163734;
+    background: var(--so-surface);
     font-size: 0.6rem;
     line-height: 1.4;
     letter-spacing: 0.055em;

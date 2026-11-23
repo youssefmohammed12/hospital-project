@@ -395,7 +395,13 @@ function initPublicNavbar() {
 
     dropdown.append(identity, workspaceLink, settingsLink, divider, logoutButton);
     menu.append(trigger, dropdown);
-    authArea.appendChild(menu);
+    // The chip sits at the far right of the header — after the
+    // notifications icon and the theme toggle, before the mobile menu
+    // button — the same seat it holds in the workspace shells. The
+    // in-row auth area it used to occupy is emptied above, so hide it
+    // to keep the mobile panel free of a blank actions row.
+    authArea.style.display = "none";
+    container.insertBefore(menu, navToggle);
 
     const setAccountMenu = (open) => {
       dropdown.classList.toggle("is-open", open);

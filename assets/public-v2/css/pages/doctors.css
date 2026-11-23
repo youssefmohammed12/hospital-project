@@ -259,17 +259,60 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
 
 /* CSS-built directory preview — no remote imagery or fabricated metrics. */
 .doctors-hero__visual { position: relative; width: 100%; max-width: 570px; justify-self: end; }
+/* The preview card follows the page theme like the About hero card:
+   its colours are scoped variables (dark default, light override),
+   never hard-coded dark values. */
 .directory-preview {
+  --dp-surface: #163734;
+  --dp-raised: #183b37;
+  --dp-raised-2: #1a403b;
+  --dp-raised-3: #19403b;
+  --dp-avatar: #24534c;
+  --dp-avatar-ink: #e2eee9;
+  --dp-copy: #edf3ee;
+  --dp-soft: #d6e3dc;
+  --dp-muted: #c1d1c9;
+  --dp-faint: #aebfb6;
+  --dp-line: rgba(226,238,233,.22);
+  --dp-line-soft: rgba(226,238,233,.16);
+  --dp-line-mid: rgba(226,238,233,.17);
+  --dp-line-strong: rgba(226,238,233,.19);
+  --dp-line-faint: rgba(226,238,233,.13);
+  --dp-accent: #d9bf96;
+  --dp-accent-soft: #e2cda9;
   position: relative;
   overflow: hidden;
   padding: clamp(22px,3vw,34px);
-  border: 1px solid rgba(226,238,233,.22);
+  border: 1px solid var(--dp-line);
   border-radius: 12px;
   background:
     linear-gradient(145deg,rgba(255,255,255,.06),transparent 48%),
-    #163734;
+    var(--dp-surface);
   box-shadow: 0 24px 70px rgba(0,0,0,.23);
-  color: #edf3ee;
+  color: var(--dp-copy);
+}
+html[data-theme="light"] .directory-preview {
+  --dp-surface: #fff;
+  --dp-raised: #fff;
+  --dp-raised-2: #f2f6f3;
+  --dp-raised-3: #edf3ef;
+  --dp-avatar: #e2eee9;
+  --dp-avatar-ink: #24534c;
+  --dp-copy: #102b2b;
+  --dp-soft: #29443d;
+  --dp-muted: #50645d;
+  --dp-faint: #68796f;
+  --dp-line: rgba(16,43,43,.16);
+  --dp-line-soft: rgba(16,43,43,.12);
+  --dp-line-mid: rgba(16,43,43,.13);
+  --dp-line-strong: rgba(16,43,43,.15);
+  --dp-line-faint: rgba(16,43,43,.1);
+  --dp-accent: #76552f;
+  --dp-accent-soft: #76552f;
+  background:
+    linear-gradient(145deg,rgba(16,43,43,.04),transparent 48%),
+    var(--dp-surface);
+  box-shadow: 0 24px 56px rgba(16,43,43,.14);
 }
 .directory-preview::before {
   position: absolute;
@@ -277,60 +320,46 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
   right: -100px;
   width: 290px;
   height: 290px;
-  border: 1px solid rgba(226,238,233,.13);
+  border: 1px solid var(--dp-line-faint);
   border-radius: 50%;
   content: "";
 }
 .directory-preview__top,
 .directory-preview__brand,
 .directory-preview__status { display: flex; align-items: center; }
-.directory-preview__top { justify-content: space-between; gap: 12px; padding-bottom: 21px; border-bottom: 1px solid rgba(226,238,233,.16); }
-.directory-preview__brand { gap: 9px; color: #d6e3dc; font-size: .63rem; font-weight: 750; letter-spacing: .15em; }
+.directory-preview__top { justify-content: space-between; gap: 12px; padding-bottom: 21px; border-bottom: 1px solid var(--dp-line-soft); }
+.directory-preview__brand { gap: 9px; color: var(--dp-soft); font-size: .63rem; font-weight: 750; letter-spacing: .15em; }
+/* The brand tile is the shared navbar logo (.home-brand-mark) at card
+   scale — the site's gold building mark, not the old teal "+". */
 .directory-preview__mark {
-  position: relative;
-  display: inline-block;
   width: 27px;
   height: 27px;
   flex: 0 0 27px;
-  border: 1px solid rgba(184,149,99,.5);
   border-radius: 8px;
-  background: var(--doc-teal);
-  color: var(--doc-ivory);
 }
-.directory-preview__mark::before,
-.directory-preview__mark::after {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  border-radius: 2px;
-  background: currentColor;
-  content: "";
-  transform: translate(-50%, -50%);
-}
-.directory-preview__mark::before { width: 12px; height: 2px; }
-.directory-preview__mark::after { width: 2px; height: 12px; }
-.directory-preview__status { gap: 7px; color: #c1d1c9; font-size: .58rem; font-weight: 700; letter-spacing: .12em; }
-.directory-preview__status i { width: 6px; height: 6px; border-radius: 50%; background: #d9bf96; }
+.directory-preview__mark .auth-icon { width: 16px; height: 16px; }
+.directory-preview__status { gap: 7px; color: var(--dp-muted); font-size: .58rem; font-weight: 700; letter-spacing: .12em; }
+.directory-preview__status i { width: 6px; height: 6px; border-radius: 50%; background: var(--dp-accent); }
 .directory-preview__heading { padding: 29px 0 23px; }
-.directory-preview__eyebrow { color: #c1d1c9; font-size: .59rem; font-weight: 700; letter-spacing: .14em; }
+.directory-preview__eyebrow { color: var(--dp-muted); font-size: .59rem; font-weight: 700; letter-spacing: .14em; }
 .directory-preview__heading p {
   margin: 10px 0 0;
-  color: #edf3ee;
+  color: var(--dp-copy);
   font-family: var(--doc-display);
   font-size: clamp(2rem,3.5vw,3rem);
   font-weight: 500;
   letter-spacing: -.045em;
   line-height: 1.03;
 }
-.directory-preview__heading em { color: #d9bf96; font-weight: 500; }
+.directory-preview__heading em { color: var(--dp-accent); font-weight: 500; }
 .directory-preview__counts {
   display: flex;
   min-height: 51px;
   align-items: center;
   gap: 9px;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(226,238,233,.16);
-  color: #c1d1c9;
+  border-bottom: 1px solid var(--dp-line-soft);
+  color: var(--dp-muted);
   font-size: .67rem;
   letter-spacing: .025em;
 }
@@ -339,12 +368,12 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
   height: 6px;
   flex: 0 0 6px;
   border-radius: 50%;
-  background: #d9bf96;
+  background: var(--dp-accent);
   box-shadow: 0 0 0 3px rgba(217,191,150,.12);
 }
 .directory-preview__departments { display: flex; flex-wrap: wrap; gap: 7px; margin: 15px 0; }
-.directory-preview__departments span { padding: 7px 10px; border: 1px solid rgba(226,238,233,.17); border-radius: 4px; color: #c1d1c9; font-size: .61rem; }
-.directory-preview__departments .is-active { border-color: rgba(217,191,150,.62); color: #e2cda9; background: rgba(184,149,99,.12); }
+.directory-preview__departments span { padding: 7px 10px; border: 1px solid var(--dp-line-mid); border-radius: 4px; color: var(--dp-muted); font-size: .61rem; }
+.directory-preview__departments .is-active { border-color: rgba(217,191,150,.62); color: var(--dp-accent-soft); background: rgba(184,149,99,.12); }
 
 .directory-preview__profile-stack {
   position: relative;
@@ -356,9 +385,9 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
 .directory-preview__profile-stack::before,
 .directory-preview__profile-stack::after {
   position: absolute;
-  border: 1px solid rgba(226,238,233,.13);
+  border: 1px solid var(--dp-line-faint);
   border-radius: 7px;
-  background: #1a403b;
+  background: var(--dp-raised-2);
   content: "";
   pointer-events: none;
 }
@@ -375,7 +404,7 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
   bottom: -3px;
   left: 7px;
   z-index: 1;
-  background: #19403b;
+  background: var(--dp-raised-3);
 }
 .directory-preview__profile-slide {
   position: absolute;
@@ -386,9 +415,9 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid rgba(226,238,233,.19);
+  border: 1px solid var(--dp-line-strong);
   border-radius: 7px;
-  background: #183b37;
+  background: var(--dp-raised);
   box-shadow: 0 8px 18px rgba(0,0,0,.13);
   opacity: 0;
   animation: doctorsSampleProfileCycle 15s linear infinite;
@@ -408,8 +437,8 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
   place-items: center;
   border: 1px solid rgba(217,191,150,.24);
   border-radius: 10px;
-  background: #24534c;
-  color: #e2eee9;
+  background: var(--dp-avatar);
+  color: var(--dp-avatar-ink);
   font-family: var(--doc-display);
   font-size: 1rem;
 }
@@ -421,7 +450,7 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
 }
 .directory-preview__profile-copy strong {
   overflow: hidden;
-  color: #edf3ee;
+  color: var(--dp-copy);
   font-size: .73rem;
   font-weight: 700;
   line-height: 1.2;
@@ -430,14 +459,14 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
 }
 .directory-preview__profile-copy small {
   overflow: hidden;
-  color: #c1d1c9;
+  color: var(--dp-muted);
   font-size: .6rem;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .directory-preview__profile-copy .directory-preview__availability {
-  color: #e2cda9;
+  color: var(--dp-accent-soft);
   font-size: .59rem;
   font-weight: 650;
 }
@@ -458,7 +487,7 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
 }
 .directory-preview__caption {
   margin: 13px 0 0;
-  color: #aebfb6;
+  color: var(--dp-faint);
   font-size: .57rem;
   letter-spacing: .02em;
   text-align: right;
@@ -476,7 +505,8 @@ body.doctors-page a.btn.btn-primary.doctors-button:hover {
   background: var(--doc-raised);
   box-shadow: 0 12px 26px rgba(0,0,0,.15);
 }
-.doctors-hero__note-mark { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border: 1px solid rgba(184,149,99,.55); color: var(--doc-accent); font-family: Arial,sans-serif; font-size: 1.2rem; }
+.doctors-hero__note-mark { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border: 1px solid rgba(184,149,99,.55); color: var(--doc-accent); }
+.doctors-hero__note-mark svg { display: block; width: 17px; height: 17px; }
 .doctors-hero__note p { margin: 0; color: var(--doc-muted); font-size: .72rem; line-height: 1.55; }
 
 /* Directory controls and cards */
