@@ -1,0 +1,124 @@
+/*
+ * HealthBridge Admin — Support Messages area (Phase 6).
+ * The support inbox: summary line, the message table with sender
+ * kind + honest reply-status pills, and the detail/reply modal
+ * with its delivery panel (guest = cannot be delivered;
+ * registered = delivered in-app). Builds on admin-shell.css —
+ * shell and shared component classes are never redefined here.
+ */
+
+/* ================================================================
+   1. Inbox
+   ================================================================ */
+
+.asup-summary {
+  margin: 20px 0 14px;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+.asup-summary strong { color: var(--admin-text); }
+
+.asup-count {
+  margin-left: auto;
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.asup-table .asup-actions-col { text-align: right; }
+.asup-loading,
+.asup-empty-cell {
+  color: var(--admin-muted);
+  padding: 26px 16px !important;
+  text-align: center !important;
+}
+.asup-error {
+  margin: 16px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+.asup-name {
+  display: block;
+  color: var(--admin-text);
+  font-weight: 650;
+}
+.asup-email {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+  margin-top: 1px;
+}
+.asup-subject { font-weight: 600; }
+.asup-date { white-space: nowrap; }
+.asup-badges {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ================================================================
+   2. Detail + reply modal
+   ================================================================ */
+
+.asup-sender {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.asup-sender__name {
+  color: var(--admin-text);
+  font-weight: 700;
+  font-size: 1rem;
+}
+.asup-sender__meta {
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+}
+
+.asup-delivery {
+  padding: 13px 15px;
+  border: 1px solid var(--admin-border);
+  border-radius: 11px;
+  line-height: 1.6;
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+.asup-delivery.is-guest {
+  color: #e8b4ae;
+  background: rgba(216, 121, 112, 0.1);
+  border-color: rgba(216, 121, 112, 0.55);
+}
+html[data-theme="light"] .asup-delivery.is-guest {
+  color: #9c3a32;
+  background: rgba(216, 121, 112, 0.08);
+}
+.asup-delivery.is-registered {
+  color: var(--admin-text);
+  background: var(--admin-surface-raised);
+  border-color: rgba(63, 164, 106, 0.55);
+}
+.asup-delivery strong { font-weight: 700; }
+
+.asup-block { margin-bottom: 18px; }
+.asup-block h4 {
+  margin: 0 0 8px;
+  color: var(--admin-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.asup-message {
+  margin: 0;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.asup-reply-meta {
+  margin: 8px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+}

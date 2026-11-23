@@ -10,11 +10,13 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21" />
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-support.css?v=1" />
   <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-support.js?v=1"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -26,12 +28,83 @@
       <div class="admin-page">
         <p class="admin-page__eyebrow">Support</p>
         <h1>Support Messages</h1>
-        <p class="admin-page__lede">Contact-form messages and inquiries from both streams — registered senders can be replied to in-app; guest messages say plainly that no reply can reach the sender.</p>
-        <div class="admin-phase-note">
-          <strong>Phase 6 of the admin redesign.</strong> The support inbox — search, status filter, read states and the reply rules — is built in this phase. The current admin pages remain available in the meantime: <a href="admin.html">open the current admin dashboard</a>.
+        <p class="admin-page__lede">Messages sent through the public contact form. A reply to a <strong>registered</strong> sender is delivered to their HealthBridge account as an in-app notification. A <strong>guest</strong> left no account, and this system sends no email — a reply to a guest is saved on the message only and cannot reach them. Each message is labelled so the two cases are never confused.</p>
+
+        <p class="asup-summary" id="asup-summary" role="status">Loading messages…</p>
+
+        <div class="admin-filter-bar" role="search">
+          <input type="search" id="asup-search" placeholder="Search by sender, email, subject or message…" aria-label="Search support messages" />
+          <select id="asup-sender" aria-label="Filter by sender type">
+            <option value="">All senders</option>
+            <option value="registered">Registered</option>
+            <option value="guest">Guest</option>
+          </select>
+          <select id="asup-status" aria-label="Filter by reply status">
+            <option value="">All statuses</option>
+            <option value="awaiting">Awaiting reply</option>
+            <option value="replied">Replied</option>
+          </select>
+          <span class="asup-count" id="asup-count" aria-live="polite"></span>
         </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table asup-table">
+            <thead>
+              <tr>
+                <th scope="col">Sender</th>
+                <th scope="col">Subject</th>
+                <th scope="col">Department</th>
+                <th scope="col">Received</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="asup-actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="asup-tbody">
+              <tr><td colspan="6" class="asup-loading">Loading messages…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="asup-error" id="asup-error" role="alert" hidden>The support inbox could not be loaded. Check your connection and refresh the page.</p>
       </div>
     </main>
+  </div>
+
+  <!-- Message detail + reply modal -->
+  <div class="admin-modal-overlay" id="asup-detail-overlay" hidden>
+    <div class="admin-modal admin-modal--wide" role="dialog" aria-modal="true" aria-labelledby="asup-detail-title">
+      <div class="admin-modal__head">
+        <h3 id="asup-detail-title">Message</h3>
+        <button class="admin-modal__close" id="asup-detail-close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <div class="asup-sender" id="asup-sender-block"></div>
+
+      <div class="asup-delivery" id="asup-delivery-note"></div>
+
+      <div class="asup-block">
+        <h4>Message</h4>
+        <p class="asup-message" id="asup-message-body"></p>
+      </div>
+
+      <div class="asup-block" id="asup-reply-view" hidden>
+        <h4 id="asup-reply-view-title">Reply</h4>
+        <p class="asup-message" id="asup-reply-body"></p>
+        <p class="asup-reply-meta" id="asup-reply-meta"></p>
+      </div>
+
+      <form id="asup-reply-form" novalidate>
+        <div class="admin-field">
+          <label for="asup-reply-text" id="asup-reply-label">Your reply</label>
+          <textarea id="asup-reply-text" maxlength="5000" placeholder="Write the reply…"></textarea>
+          <span class="admin-field__hint" id="asup-reply-hint"></span>
+        </div>
+        <p class="admin-field__error" id="asup-reply-error" role="alert" hidden></p>
+        <div class="admin-modal__foot">
+          <button class="admin-btn admin-btn--ghost" id="asup-detail-cancel" type="button">Close</button>
+          <button class="admin-btn" id="asup-reply-submit" type="submit">Save Reply</button>
+        </div>
+      </form>
+    </div>
   </div>
 </body>
 </html>
