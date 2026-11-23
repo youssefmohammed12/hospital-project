@@ -9,25 +9,308 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=17" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=16" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=17" />
   <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=7"></script>
   <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=6"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-settings.js?v=1"></script>
 </head>
-<body>
+<body class="doctor-workspace doctor-settings-page">
   <div id="navbar-container"></div>
 
   <div class="dashboard">
     <div id="sidebar-container"></div>
 
-    <main class="main-content" id="doctor-main" aria-busy="true">
-      <div class="doctor-page">
-        <p class="doctor-page__eyebrow">Doctor workspace</p>
-        <h1>Settings</h1>
-        <p class="doctor-page__lede">Account, consultation preferences, appearance, and notifications.</p>
-        <div class="doctor-phase-note"><strong>Being rebuilt — Phase 6.</strong> This section is moving to the Public V2 design in its own phase of the doctor panel plan. Nothing about your data changes; the previous layout is preserved in the project's version history.</div>
+    <main class="main-content doctor-main--settings" id="doctor-main" aria-busy="true">
+      <div class="doctor-page doctor-settingspage dst-page">
+
+        <header class="doctor-listhead doctor-rise" style="--i:0">
+          <p class="doctor-page__eyebrow">Doctor workspace</p>
+          <h1>Settings</h1>
+          <p class="doctor-page__lede">Manage your account, consultation preferences, password, appearance and notifications — all in one place.</p>
+        </header>
+
+        <p class="dst-load-error" id="dst-load-error" role="alert" hidden></p>
+
+        <!-- ACCOUNT -->
+        <section class="dst-section" id="account" aria-labelledby="dst-account-heading">
+          <div class="dst-section-head">
+            <h2 id="dst-account-heading">Account</h2>
+            <p>Your personal information and account details.</p>
+          </div>
+          <div class="dst-card">
+            <form class="dst-form" id="dst-profile-form" novalidate>
+              <div class="dst-row">
+                <div class="dst-field">
+                  <label for="dst-name">Full name</label>
+                  <input type="text" id="dst-name" name="name" autocomplete="name" required minlength="2" maxlength="100">
+                </div>
+                <div class="dst-field">
+                  <label for="dst-email">Email address</label>
+                  <input type="email" id="dst-email" name="email" autocomplete="email" required maxlength="150">
+                </div>
+              </div>
+              <div class="dst-row">
+                <div class="dst-field">
+                  <label for="dst-phone">Phone number</label>
+                  <input type="text" id="dst-phone" name="phone" autocomplete="tel" maxlength="20">
+                </div>
+                <div class="dst-field">
+                  <label for="dst-role">Account type</label>
+                  <input type="text" id="dst-role" disabled>
+                </div>
+              </div>
+              <div class="dst-row">
+                <div class="dst-field">
+                  <label for="dst-created">Member since</label>
+                  <input type="text" id="dst-created" disabled>
+                </div>
+                <div class="dst-field">
+                  <label for="dst-status">Account status</label>
+                  <input type="text" id="dst-status" disabled>
+                </div>
+              </div>
+              <p class="dst-form-error" id="dst-profile-error" role="alert" hidden></p>
+              <div class="dst-actions">
+                <button type="submit" class="btn btn-primary">Save changes</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- DOCTOR PREFERENCES -->
+        <section class="dst-section" id="doctor-prefs" aria-labelledby="dst-prefs-heading">
+          <div class="dst-section-head">
+            <h2 id="dst-prefs-heading">Doctor preferences</h2>
+            <p>How your practice appears to patients and how consultations are booked.</p>
+          </div>
+          <div class="dst-card">
+            <form class="dst-form" id="dst-prefs-form" novalidate>
+              <div>
+                <div class="dst-toggle-row">
+                  <div>
+                    <span class="dst-toggle-label">Accept new patients</span>
+                    <span class="dst-toggle-desc">Patients who have never booked with you can request a first appointment.</span>
+                  </div>
+                  <label class="dst-switch">
+                    <input type="checkbox" id="dst-accept-new" name="accept_new_patients">
+                    <span class="dst-slider"></span>
+                  </label>
+                </div>
+                <div class="dst-toggle-row">
+                  <div>
+                    <span class="dst-toggle-label">Public profile visible</span>
+                    <span class="dst-toggle-desc">Your profile appears in the public doctor directory.</span>
+                  </div>
+                  <label class="dst-switch">
+                    <input type="checkbox" id="dst-profile-visible" name="profile_visible">
+                    <span class="dst-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="dst-row">
+                <div class="dst-field">
+                  <label for="dst-duration">Consultation duration</label>
+                  <select id="dst-duration" name="consultation_duration"></select>
+                  <p class="dst-hint">The length of one appointment slot — the same duration your Schedule page works with.</p>
+                </div>
+              </div>
+              <p class="dst-form-error" id="dst-prefs-error" role="alert" hidden></p>
+              <div class="dst-actions">
+                <button type="submit" class="btn btn-primary">Save preferences</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- PASSWORD -->
+        <section class="dst-section" id="password" aria-labelledby="dst-password-heading">
+          <div class="dst-section-head">
+            <h2 id="dst-password-heading">Password</h2>
+            <p>Choose a strong password you haven&rsquo;t used before.</p>
+          </div>
+          <div class="dst-card">
+            <form class="dst-form" id="dst-password-form" novalidate>
+              <div class="dst-field">
+                <label for="dst-current-pw">Current password</label>
+                <div class="dst-pw-wrap">
+                  <input type="password" id="dst-current-pw" autocomplete="current-password" required>
+                  <button type="button" class="dst-pw-toggle" data-dst-pw-toggle="dst-current-pw" aria-label="Show password">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="dst-row">
+                <div class="dst-field">
+                  <label for="dst-new-pw">New password</label>
+                  <div class="dst-pw-wrap">
+                    <input type="password" id="dst-new-pw" autocomplete="new-password" required>
+                    <button type="button" class="dst-pw-toggle" data-dst-pw-toggle="dst-new-pw" aria-label="Show password">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                  <div class="dst-strength" aria-hidden="true">
+                    <div class="dst-strength-bar"><span class="dst-strength-fill" id="dst-strength-fill"></span></div>
+                    <span class="dst-strength-label" id="dst-strength-label"></span>
+                  </div>
+                  <ul class="dst-rules" id="dst-rules">
+                    <li data-rule="min_length"><span class="dst-rule-dot">✓</span>At least 8 characters</li>
+                    <li data-rule="has_uppercase"><span class="dst-rule-dot">✓</span>An uppercase letter (A&ndash;Z)</li>
+                    <li data-rule="has_lowercase"><span class="dst-rule-dot">✓</span>A lowercase letter (a&ndash;z)</li>
+                    <li data-rule="has_number"><span class="dst-rule-dot">✓</span>A number (0&ndash;9)</li>
+                    <li data-rule="has_special"><span class="dst-rule-dot">✓</span>A special character (!, @, #, &hellip;)</li>
+                  </ul>
+                  <p class="dst-hint">Your password needs at least 4 of the 5 rules above.</p>
+                </div>
+                <div class="dst-field">
+                  <label for="dst-confirm-pw">Confirm new password</label>
+                  <div class="dst-pw-wrap">
+                    <input type="password" id="dst-confirm-pw" autocomplete="new-password" required>
+                    <button type="button" class="dst-pw-toggle" data-dst-pw-toggle="dst-confirm-pw" aria-label="Show password">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p class="dst-form-error" id="dst-password-error" role="alert" hidden></p>
+              <div class="dst-actions">
+                <button type="submit" class="btn btn-primary">Update password</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- APPEARANCE -->
+        <section class="dst-section" id="appearance" aria-labelledby="dst-appearance-heading">
+          <div class="dst-section-head">
+            <h2 id="dst-appearance-heading">Appearance</h2>
+            <p>Choose how HealthBridge looks. Changes apply right away and are saved to your account.</p>
+          </div>
+          <div class="dst-card">
+            <div class="dst-theme-options" role="group" aria-label="Theme">
+              <button type="button" class="dst-theme-option" data-theme-value="light">
+                <strong>Light</strong>
+                <span>Always use the light theme.</span>
+              </button>
+              <button type="button" class="dst-theme-option" data-theme-value="dark">
+                <strong>Dark</strong>
+                <span>Always use the dark theme.</span>
+              </button>
+              <button type="button" class="dst-theme-option" data-theme-value="system">
+                <strong>System</strong>
+                <span>Follow your device&rsquo;s light/dark setting.</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- NOTIFICATIONS -->
+        <section class="dst-section" id="notifications" aria-labelledby="dst-notifications-heading">
+          <div class="dst-section-head">
+            <h2 id="dst-notifications-heading">Notifications</h2>
+            <p>Control which notifications you receive.</p>
+          </div>
+          <div class="dst-card">
+            <form class="dst-form" id="dst-notif-form" novalidate>
+              <div>
+                <div class="dst-toggle-row">
+                  <div>
+                    <span class="dst-toggle-label">Appointment reminders</span>
+                    <span class="dst-toggle-desc">Get notified about upcoming appointments</span>
+                  </div>
+                  <label class="dst-switch">
+                    <input type="checkbox" name="notif_appointment">
+                    <span class="dst-slider"></span>
+                  </label>
+                </div>
+                <div class="dst-toggle-row">
+                  <div>
+                    <span class="dst-toggle-label">Rating notifications</span>
+                    <span class="dst-toggle-desc">Get notified when a patient rates one of your visits</span>
+                  </div>
+                  <label class="dst-switch">
+                    <input type="checkbox" name="notif_ratings">
+                    <span class="dst-slider"></span>
+                  </label>
+                </div>
+                <div class="dst-toggle-row">
+                  <div>
+                    <span class="dst-toggle-label">New messages</span>
+                    <span class="dst-toggle-desc">Get notified when you receive a support reply</span>
+                  </div>
+                  <label class="dst-switch">
+                    <input type="checkbox" name="notif_messages">
+                    <span class="dst-slider"></span>
+                  </label>
+                </div>
+                <div class="dst-toggle-row">
+                  <div>
+                    <span class="dst-toggle-label">System announcements</span>
+                    <span class="dst-toggle-desc">Important updates about HealthBridge</span>
+                  </div>
+                  <label class="dst-switch">
+                    <input type="checkbox" name="notif_announcements">
+                    <span class="dst-slider"></span>
+                  </label>
+                </div>
+                <div class="dst-toggle-row">
+                  <div>
+                    <span class="dst-toggle-label">Email notifications</span>
+                    <span class="dst-toggle-desc">Receive notifications via email</span>
+                  </div>
+                  <label class="dst-switch">
+                    <input type="checkbox" name="notif_email">
+                    <span class="dst-slider"></span>
+                  </label>
+                </div>
+              </div>
+              <p class="dst-form-error" id="dst-notif-error" role="alert" hidden></p>
+              <div class="dst-actions">
+                <button type="submit" class="btn btn-primary">Save notification settings</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- DANGER ZONE -->
+        <section class="dst-section" id="danger" aria-labelledby="dst-danger-heading">
+          <div class="dst-section-head">
+            <h2 id="dst-danger-heading">Danger Zone</h2>
+            <p>Deactivate sign-in while retaining your appointment and audit history.</p>
+          </div>
+          <div class="dst-card dst-card-danger">
+            <p class="dst-danger-note">Sign-in will be disabled. Appointments that have not started will be cancelled; your appointment, clinical, and audit history will be retained.</p>
+            <button type="button" class="dst-btn-danger" data-dst-action="open-delete">Deactivate my account</button>
+          </div>
+        </section>
+
       </div>
     </main>
   </div>
+
+  <!-- Deactivate confirmation modal -->
+  <div class="dst-modal-overlay" id="dst-delete-modal" hidden>
+    <div class="dst-modal" role="dialog" aria-modal="true" aria-labelledby="dst-delete-title">
+      <div class="dst-modal-head">
+        <h3 id="dst-delete-title">Deactivate account</h3>
+        <button type="button" class="dst-modal-close" data-dst-action="close-delete" aria-label="Close">&times;</button>
+      </div>
+      <p>This will disable sign-in and cancel appointments that have not started. Your appointment, clinical, and audit history will be retained.</p>
+      <form class="dst-form" id="dst-delete-form" novalidate>
+        <div class="dst-field">
+          <label for="dst-delete-pw">Enter your password to confirm</label>
+          <div class="dst-pw-wrap">
+            <input type="password" id="dst-delete-pw" autocomplete="current-password" required>
+            <button type="button" class="dst-pw-toggle" data-dst-pw-toggle="dst-delete-pw" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <p class="dst-form-error" id="dst-delete-error" role="alert" hidden></p>
+        <button type="submit" class="dst-btn-danger-solid">Deactivate my account</button>
+      </form>
+    </div>
+  </div>
+
 </body>
 </html>
