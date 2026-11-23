@@ -3,18 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="A read-only audit view over every prescription in the system." />
+  <meta name="description" content="A read-only audit view of every prescription in the system: patient, prescribing doctor, medications, status and dates." />
   <title>Prescriptions — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21" />
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-prescriptions.css?v=1" />
   <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-prescriptions.js?v=1"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -25,13 +27,73 @@
     <main class="main-content" id="admin-main" aria-busy="true">
       <div class="admin-page">
         <p class="admin-page__eyebrow">Prescriptions</p>
-        <h1>Prescriptions (Audit)</h1>
-        <p class="admin-page__lede">A read-only audit view over every prescription in the system. Prescriptions are written by their prescribing doctor; this page never edits them.</p>
-        <div class="admin-phase-note">
-          <strong>Phase 4 of the admin redesign.</strong> The prescription audit view — doctor, patient, status and date filters with a detail view — is built in this phase. The current admin pages remain available in the meantime: <a href="admin.html">open the current admin dashboard</a>.
+        <h1>Prescriptions</h1>
+        <p class="admin-page__lede">A read-only audit view of every prescription in the system. Only the doctor who prescribed can create, edit, complete or cancel a prescription — that rule is enforced by the server, so this page offers viewing and printing only.</p>
+
+        <p class="arx-summary" id="arx-summary" role="status">Loading prescriptions…</p>
+
+        <div class="admin-filter-bar" role="search">
+          <input type="search" id="arx-search" placeholder="Search by patient, doctor or medication…" aria-label="Search prescriptions" />
+          <select id="arx-status" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="Active">Active</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <select id="arx-doctor" aria-label="Filter by prescribing doctor">
+            <option value="">All doctors</option>
+          </select>
+          <label class="arx-date-label">From <input type="date" id="arx-from" aria-label="Issued from date" /></label>
+          <label class="arx-date-label">To <input type="date" id="arx-to" aria-label="Issued to date" /></label>
+          <span class="arx-count" id="arx-count" aria-live="polite"></span>
         </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table arx-table">
+            <thead>
+              <tr>
+                <th scope="col">Prescription</th>
+                <th scope="col">Patient</th>
+                <th scope="col">Prescribed by</th>
+                <th scope="col">Medications</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="arx-actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="arx-tbody">
+              <tr><td colspan="6" class="arx-loading">Loading prescriptions…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="arx-pager">
+          <button class="admin-btn admin-btn--ghost" id="arx-prev" type="button">Previous</button>
+          <span class="arx-pager__info" id="arx-page-info" aria-live="polite"></span>
+          <button class="admin-btn admin-btn--ghost" id="arx-next" type="button">Next</button>
+        </div>
+
+        <p class="arx-error" id="arx-error" role="alert" hidden>The prescriptions could not be loaded. Check your connection and refresh the page.</p>
       </div>
     </main>
+  </div>
+
+  <!-- Prescription detail (read-only) -->
+  <div class="admin-modal-overlay" id="arx-detail-overlay" hidden>
+    <div class="admin-modal admin-modal--wide" role="dialog" aria-modal="true" aria-labelledby="arx-detail-title">
+      <div class="admin-modal__head">
+        <h3 id="arx-detail-title">Prescription</h3>
+        <span id="arx-detail-pill"></span>
+        <button class="admin-modal__close" id="arx-detail-close" type="button" aria-label="Close">×</button>
+      </div>
+      <div id="arx-detail-body">
+        <p class="admin-modal__note">Loading the prescription…</p>
+      </div>
+      <div class="admin-modal__foot">
+        <span class="arx-detail-note" id="arx-detail-note"></span>
+        <a class="admin-btn admin-btn--ghost" id="arx-detail-print" href="#" target="_blank" rel="noopener">Print</a>
+        <button class="admin-btn" id="arx-detail-done" type="button">Done</button>
+      </div>
+    </div>
   </div>
 </body>
 </html>

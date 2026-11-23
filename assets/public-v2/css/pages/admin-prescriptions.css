@@ -1,0 +1,165 @@
+/*
+ * HealthBridge Admin — Prescriptions area (Phase 4).
+ * The read-only prescription audit view: filterable list over all 99
+ * prescriptions plus the read-only detail modal (record + medication
+ * table). No write controls exist here by design (plan Finding 8).
+ * Builds on admin-shell.css — shell and shared component classes are
+ * never redefined here.
+ */
+
+/* ================================================================
+   1. List
+   ================================================================ */
+
+.arx-summary {
+  margin: 20px 0 14px;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+.arx-summary strong { color: var(--admin-text); }
+
+.arx-count {
+  margin-left: auto;
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.arx-date-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.arx-date-label input[type="date"] {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.arx-loading,
+.arx-empty-cell {
+  color: var(--admin-muted);
+  padding: 26px 16px !important;
+  text-align: center !important;
+}
+.arx-error {
+  margin: 16px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+.arx-table .arx-actions-col { text-align: right; }
+
+.arx-id {
+  color: var(--admin-text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.arx-id__sub {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.arx-pat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 170px;
+}
+.arx-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #173532;
+  background: var(--admin-gold);
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.arx-pat__name {
+  color: var(--admin-text);
+  font-weight: 650;
+}
+
+.arx-meds {
+  max-width: 300px;
+  color: var(--admin-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.arx-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.arx-row-actions .admin-btn { min-height: 32px; padding: 5px 11px; font-size: 0.8rem; }
+
+/* ================================================================
+   2. Pager
+   ================================================================ */
+
+.arx-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+}
+.arx-pager__info {
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.arx-pager .admin-btn { min-height: 34px; padding: 6px 13px; font-size: 0.82rem; }
+
+/* ================================================================
+   3. Detail modal
+   ================================================================ */
+
+.arx-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px 18px;
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+}
+.arx-dl dt {
+  color: var(--admin-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+.arx-dl dd { margin: 0; color: var(--admin-text); overflow-wrap: anywhere; }
+
+.arx-meds-title {
+  margin: 18px 0 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.arx-meds-wrap { max-height: 320px; overflow-y: auto; }
+.arx-meds-table td { font-size: 0.84rem; }
+
+.arx-detail-note {
+  margin-right: auto;
+  color: var(--admin-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
