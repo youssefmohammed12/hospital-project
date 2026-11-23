@@ -765,6 +765,9 @@ html[data-theme="light"] .doctors-page .avail-badge.badge-full { border-color: #
 .doctor-grid > .empty-state h3 { margin: 0 0 7px; color: var(--doc-copy); font-size: 1.05rem; }
 .doctor-grid > .empty-state p { max-width: 340px; margin: 0; color: var(--doc-muted); font-size: .8rem; line-height: 1.6; }
 .directory-loading { grid-column: 1 / -1; display: flex; min-height: 150px; align-items: center; justify-content: center; gap: 12px; color: var(--doc-muted); font-size: .8rem; }
+/* Freeze round (Item 5): skeleton cards stand in for doctor cards until
+   the directory's first render replaces them. */
+.doctor-skel-card { min-height: 318px; }
 .directory-loading__spinner { width: 19px; height: 19px; border: 2px solid var(--doc-line); border-top-color: var(--doc-brass); border-radius: 50%; animation: doctorsSpin 850ms linear infinite; }
 @keyframes doctorsSpin { to { transform: rotate(360deg); } }
 .doctors-scope-strip {

@@ -12,8 +12,8 @@
     <script src="assets/public-v2/js/core/site.js?v=12"></script>
     <link rel="stylesheet" href="assets/public-v2/css/tokens.css?v=1" />
     <link rel="stylesheet" href="assets/public-v2/css/base.css?v=1" />
-    <link rel="stylesheet" href="assets/public-v2/css/components.css?v=21" />
-    <link rel="stylesheet" href="assets/public-v2/css/pages/doctors.css?v=12" />
+    <link rel="stylesheet" href="assets/public-v2/css/components.css?v=22" />
+    <link rel="stylesheet" href="assets/public-v2/css/pages/doctors.css?v=13" />
     <link rel="stylesheet" href="assets/public-v2/css/footer.css?v=4" />
     <script defer src="assets/public-v2/js/core/footer.js?v=3"></script>
   </head>
@@ -222,10 +222,50 @@
             <span class="directory-results-note">Profile information is illustrative</span>
           </div>
 
-          <div id="doctors-list" class="doctor-grid" aria-live="polite" aria-busy="true">
-            <div class="directory-loading" role="status">
-              <span class="directory-loading__spinner" aria-hidden="true"></span>
-              <span>Loading sample profiles…</span>
+          <div id="doctors-list" class="doctor-grid" aria-live="polite" aria-busy="true" aria-label="Loading sample profiles">
+            <!-- Skeleton cards shown until the directory renders (freeze
+                 round, Item 5); doctors.js replaces them on first render. -->
+            <div class="hb-skel-tile hb-skel-wrap doctor-skel-card" aria-hidden="true">
+              <span class="hb-skel-circle" style="width: 54px; height: 54px"></span>
+              <span class="hb-skel-line hb-skel-line--lg w55"></span>
+              <span class="hb-skel-line w75"></span>
+              <span class="hb-skel-line"></span>
+              <span class="hb-skel-line w35"></span>
+            </div>
+            <div class="hb-skel-tile hb-skel-wrap doctor-skel-card" aria-hidden="true">
+              <span class="hb-skel-circle" style="width: 54px; height: 54px"></span>
+              <span class="hb-skel-line hb-skel-line--lg w55"></span>
+              <span class="hb-skel-line w75"></span>
+              <span class="hb-skel-line"></span>
+              <span class="hb-skel-line w35"></span>
+            </div>
+            <div class="hb-skel-tile hb-skel-wrap doctor-skel-card" aria-hidden="true">
+              <span class="hb-skel-circle" style="width: 54px; height: 54px"></span>
+              <span class="hb-skel-line hb-skel-line--lg w55"></span>
+              <span class="hb-skel-line w75"></span>
+              <span class="hb-skel-line"></span>
+              <span class="hb-skel-line w35"></span>
+            </div>
+            <div class="hb-skel-tile hb-skel-wrap doctor-skel-card" aria-hidden="true">
+              <span class="hb-skel-circle" style="width: 54px; height: 54px"></span>
+              <span class="hb-skel-line hb-skel-line--lg w55"></span>
+              <span class="hb-skel-line w75"></span>
+              <span class="hb-skel-line"></span>
+              <span class="hb-skel-line w35"></span>
+            </div>
+            <div class="hb-skel-tile hb-skel-wrap doctor-skel-card" aria-hidden="true">
+              <span class="hb-skel-circle" style="width: 54px; height: 54px"></span>
+              <span class="hb-skel-line hb-skel-line--lg w55"></span>
+              <span class="hb-skel-line w75"></span>
+              <span class="hb-skel-line"></span>
+              <span class="hb-skel-line w35"></span>
+            </div>
+            <div class="hb-skel-tile hb-skel-wrap doctor-skel-card" aria-hidden="true">
+              <span class="hb-skel-circle" style="width: 54px; height: 54px"></span>
+              <span class="hb-skel-line hb-skel-line--lg w55"></span>
+              <span class="hb-skel-line w75"></span>
+              <span class="hb-skel-line"></span>
+              <span class="hb-skel-line w35"></span>
             </div>
           </div>
 
@@ -287,6 +327,6 @@
 
     <div data-shared-footer aria-busy="true"></div>
 
-    <script defer src="assets/public-v2/js/pages/doctors.js?v=3"></script>
+    <script defer src="assets/public-v2/js/pages/doctors.js?v=4"></script>
   </body>
 </html>

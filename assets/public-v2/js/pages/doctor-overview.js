@@ -65,6 +65,9 @@
   async function fetchJson(url, options) {
     const response = await fetch(ROOT + url, Object.assign({
       credentials: "same-origin", headers: { Accept: "application/json" },
+      // Freeze round (Item 5): a hung request must never leave the page on
+      // its loading skeleton forever — fail into the error state instead.
+      signal: AbortSignal.timeout(12000),
     }, options || {}));
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) throw new Error(url);
@@ -442,6 +445,21 @@
       if (attention) attention.innerHTML = '<p class="doctor-empty">Your requests could not be loaded.</p>';
     } finally {
       if (refreshBtn) refreshBtn.disabled = false;
+      // Freeze round (Item 5): on the FIRST load only, swap the skeleton
+      // for the real bento with a short opacity fade. Refresh clicks keep
+      // the content in place.
+      if (!loadAll.firstDone) {
+        loadAll.firstDone = true;
+        const skeleton = $("ov-skeleton");
+        if (skeleton) skeleton.remove();
+        const bento = $("ov-bento");
+        if (bento) {
+          bento.hidden = false;
+          bento.classList.add("hb-fade-in");
+        }
+        const main = $("doctor-main");
+        if (main) main.setAttribute("aria-busy", "false");
+      }
     }
 
     // Ratings and availability fill in independently; neither blocks the page.

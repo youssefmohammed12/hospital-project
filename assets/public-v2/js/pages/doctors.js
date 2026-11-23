@@ -110,6 +110,7 @@ function initDoctorsPage() {
     try {
       const res = await fetch((getBasePath() + "api/departments/get.php"), {
         credentials: "same-origin",
+        signal: AbortSignal.timeout(12000),
       });
       const result = await res.json();
       if (result.success && Array.isArray(result.departments)) {
@@ -167,7 +168,9 @@ function initDoctorsPage() {
   // ── Load doctors + availability in sequence ──────────────
   loadDepartmentChips()
     .then(() => {
-      return fetch((getBasePath() + "api/doctors/get.php"));
+      return fetch((getBasePath() + "api/doctors/get.php"), {
+        signal: AbortSignal.timeout(12000),
+      });
     })
     .then((r) => r.json())
     .then((result) => {
@@ -575,6 +578,12 @@ function initDoctorsPage() {
     }
     if (countEl) countEl.textContent = filtered.length === 1 ? '1 sample profile found' : filtered.length + ' sample profiles found';
     grid.setAttribute('aria-busy', 'false');
+    // Freeze round (Item 5): the first render replaces the skeleton cards —
+    // fade the real directory in once.
+    if (!grid.dataset.faded) {
+      grid.dataset.faded = '1';
+      grid.classList.add('hb-fade-in');
+    }
     if (filtered.length === 0) {
       grid.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">⌕</div><h3>No matching profiles</h3><p>Try a different name or department, or return to all departments to explore the full sample directory.</p></div>';
       return;

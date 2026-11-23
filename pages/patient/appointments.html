@@ -9,15 +9,15 @@
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1">
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1">
-  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21">
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=22">
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=20">
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-appointments.css?v=14">
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-appointments.css?v=16">
   <script>try{if(localStorage.getItem("hb_patient_sidebar")==="collapsed"){document.documentElement.classList.add("patient-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=15"></script>
-  <script defer src="../../assets/public-v2/js/pages/patient-appointments.js?v=9"></script>
+  <script defer src="../../assets/public-v2/js/pages/patient-appointments.js?v=11"></script>
 </head>
 <body class="patient-workspace patient-appointments-page">
   <div id="navbar-container"></div>
@@ -79,15 +79,43 @@
           </div>
         </section>
 
-        <section class="pa-next-appointment" id="appointments-next" hidden aria-label="Next scheduled appointment"></section>
+        <section class="pa-next-appointment" id="appointments-next" aria-label="Next scheduled appointment">
+          <!-- Skeleton reserving the featured card's space until the first
+               list lands (freeze round, Item 5); patient-appointments.js
+               replaces it, and hides the section when there is no next
+               appointment or the load fails. -->
+          <div class="hb-skel-tile hb-skel-wrap pa-skel-next" aria-hidden="true">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w55"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+        </section>
 
         <div class="pa-results-heading">
           <div><p class="pa-eyebrow">YOUR APPOINTMENT HISTORY</p><h2 id="appointments-results-title">All appointments</h2></div>
           <span id="appointments-results-count" class="pa-results-count" aria-live="polite"></span>
         </div>
 
-        <div id="appointments-loading" class="pa-loading" role="status" aria-live="polite">
-          <span class="pa-spinner" aria-hidden="true"></span> Loading your appointments…
+        <div id="appointments-loading" class="pa-loading pa-loading--skel" role="status" aria-live="polite" aria-label="Loading your appointments">
+          <!-- Skeleton rows shown until the first list lands (freeze round,
+               Item 5); patient-appointments.js hides this block on render. -->
+          <div class="hb-skel-wrap pa-skel-rows" aria-hidden="true">
+            <div class="hb-skel-tile pa-skel-row">
+              <span class="hb-skel-line hb-skel-line--lg w35"></span>
+              <span class="hb-skel-line w55"></span>
+              <span class="hb-skel-line w75"></span>
+            </div>
+            <div class="hb-skel-tile pa-skel-row">
+              <span class="hb-skel-line hb-skel-line--lg w35"></span>
+              <span class="hb-skel-line w55"></span>
+              <span class="hb-skel-line w75"></span>
+            </div>
+            <div class="hb-skel-tile pa-skel-row">
+              <span class="hb-skel-line hb-skel-line--lg w35"></span>
+              <span class="hb-skel-line w55"></span>
+              <span class="hb-skel-line w75"></span>
+            </div>
+          </div>
         </div>
         <div id="appointments-error" class="pa-state-card" hidden role="alert">
           <span class="pa-state-symbol" aria-hidden="true">!</span>

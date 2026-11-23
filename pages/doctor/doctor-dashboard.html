@@ -8,14 +8,14 @@
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=22" />
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=19" />
   <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=8"></script>
-  <script defer src="../../assets/public-v2/js/pages/doctor-overview.js?v=9"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-overview.js?v=10"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -48,7 +48,52 @@
           </div>
         </section>
 
-        <div class="doctor-bento">
+        <!-- Skeleton shown until the first data load lands (freeze round,
+             Item 5); doctor-overview.js removes it and fades the bento in. -->
+        <div class="doctor-bento hb-skel-wrap" id="ov-skeleton" aria-hidden="true">
+          <div class="hb-skel-tile" style="grid-column: span 8; min-height: 458px">
+            <span class="hb-skel-line hb-skel-line--lg w55"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w55"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 4; min-height: 458px">
+            <span class="hb-skel-line hb-skel-line--lg w75"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 8; min-height: 294px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line" style="height: 140px"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 4; min-height: 294px">
+            <span class="hb-skel-line hb-skel-line--lg w55"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+          </div>
+        </div>
+
+        <div class="doctor-bento" id="ov-bento" hidden>
           <section class="doctor-panel doctor-tile doctor-tile--schedule" aria-labelledby="ov-today-title">
             <div class="doctor-panel__head">
               <h2 id="ov-today-title">Today's schedule</h2>

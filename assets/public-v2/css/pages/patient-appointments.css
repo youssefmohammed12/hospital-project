@@ -541,6 +541,13 @@ html[data-theme="light"] .pa-next-copy .pa-eyebrow { color: #e3c99e; }
   border-radius: 50%;
   animation: pa-spin 700ms linear infinite;
 }
+/* Freeze round (Item 5): while the first list loads, the loading block
+   shows skeleton rows shaped like appointment cards instead of a spinner. */
+.pa-loading--skel { display: block; min-height: 0; }
+.pa-loading--skel[hidden] { display: none; }
+.pa-skel-rows { display: grid; gap: 14px; }
+.pa-skel-row { min-height: 118px; }
+.pa-skel-next { min-height: 159px; }
 @keyframes pa-spin { to { transform: rotate(360deg); } }
 .pa-state-card {
   display: grid;

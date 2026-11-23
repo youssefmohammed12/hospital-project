@@ -244,6 +244,9 @@
           credentials: "same-origin",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({}),
+          // Freeze round (Item 5): never sit on the loading skeleton
+          // forever — a hung request fails into the error state instead.
+          signal: AbortSignal.timeout(12000),
         });
         const data = await response.json().catch(() => null);
         return { ok: response.ok, status: response.status, data };

@@ -125,6 +125,9 @@
   async function apiRequest(url, options = {}) {
     const response = await fetch(url, {
       credentials: "same-origin",
+      // Freeze round (Item 5): a hung request must never leave the page on
+      // its loading skeleton forever — fail into the error state instead.
+      signal: AbortSignal.timeout(12000),
       headers: options.body ? { "Content-Type": "application/json", ...(options.headers || {}) } : (options.headers || {}),
       ...options,
     });
@@ -180,6 +183,12 @@
     $("appointments-grid").hidden = view !== "list";
     $("appointments-pagination").hidden = view !== "list" || state.pagination.total_pages <= 1;
     $("appointments-grid").setAttribute("aria-busy", view === "loading" ? "true" : "false");
+    // Freeze round (Item 5): fade the real list in the first time it
+    // replaces the skeleton rows.
+    if (view === "list" && !$("appointments-grid").dataset.faded) {
+      $("appointments-grid").dataset.faded = "1";
+      $("appointments-grid").classList.add("hb-fade-in");
+    }
   }
 
   function setError(message) {
@@ -191,7 +200,13 @@
   async function loadAppointments() {
     const token = ++state.loadToken;
     setViewState("loading");
-    $("appointments-next").hidden = true;
+    // Freeze round (Item 5): reserve the featured card's space with a
+    // skeleton while loading, so the results below do not jump when the
+    // real card lands. renderFeaturedAppointment() replaces it on success;
+    // the empty and error paths hide the section as before.
+    const nextSection = $("appointments-next");
+    nextSection.innerHTML = '<div class="hb-skel-tile hb-skel-wrap pa-skel-next" aria-hidden="true"><span class="hb-skel-line hb-skel-line--lg w35"></span><span class="hb-skel-line w55"></span><span class="hb-skel-line w75"></span></div>';
+    nextSection.hidden = false;
     const params = new URLSearchParams({
       page: String(state.page),
       limit: String(state.limit),

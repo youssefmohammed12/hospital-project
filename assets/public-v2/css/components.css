@@ -1551,3 +1551,38 @@ html[data-theme="light"] .public-build-panel {
     transform: none;
   }
 }
+
+/* ── Shared skeleton loading states (freeze round, Item 5) ─────────────────
+   Calm placeholders shaped like the real content while a page's data is in
+   flight. One quiet opacity pulse on the whole skeleton — no shimmer or
+   shine sweep — and an opacity-only fade when the real content lands.
+   Reduced motion disables both. The translucent sage tones sit on dark and
+   light surfaces alike, so no per-theme variants are needed. */
+.hb-skel-wrap { animation: hbSkeletonPulse 1.3s ease-in-out infinite alternate; }
+.hb-skel-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(141, 164, 152, 0.16);
+  border-radius: 14px;
+  background: rgba(141, 164, 152, 0.07);
+}
+.hb-skel-line { height: 12px; border-radius: 6px; background: rgba(141, 164, 152, 0.22); }
+.hb-skel-line--lg { height: 22px; }
+.hb-skel-line--sm { height: 9px; }
+.hb-skel-line.w35 { width: 35%; }
+.hb-skel-line.w55 { width: 55%; }
+.hb-skel-line.w75 { width: 75%; }
+.hb-skel-circle { flex: 0 0 auto; border-radius: 50%; background: rgba(141, 164, 152, 0.22); }
+.hb-fade-in { animation: hbFadeIn 180ms ease-out; }
+@keyframes hbSkeletonPulse { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes hbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .hb-skel-wrap { animation: none; }
+  .hb-fade-in { animation: none; }
+}
+/* The overview bentos start hidden behind their skeletons; their own
+   display:grid would otherwise override the hidden attribute. */
+.doctor-bento[hidden],
+.admin-bento[hidden] { display: none; }
