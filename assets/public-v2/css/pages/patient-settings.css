@@ -155,14 +155,6 @@ body.patient-workspace .st-field input:disabled {
 }
 
 .st-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 2px; }
-.st-saved {
-  color: var(--st-accent);
-  font-size: 0.86rem;
-  font-weight: 700;
-  opacity: 0;
-  transition: opacity 250ms ease;
-}
-.st-saved.is-visible { opacity: 1; }
 .st-form-error { color: var(--st-danger); font-size: 0.88rem; line-height: 1.5; margin: 0; }
 .st-form-error[hidden] { display: none; }
 
@@ -226,7 +218,6 @@ body.patient-workspace .st-pw-wrap input { padding-right: 46px; }
 .st-theme-option strong { font-size: 0.98rem; }
 .st-theme-option span { font-size: 0.83rem; color: var(--st-muted); line-height: 1.45; }
 .st-theme-option.is-selected { border-color: var(--st-accent); box-shadow: 0 0 0 1px var(--st-accent); }
-.st-theme-note { margin: 14px 0 0; color: var(--st-muted); font-size: 0.88rem; line-height: 1.55; }
 
 /* Notification toggles ------------------------------------------- */
 .st-toggle-row {
@@ -307,5 +298,5 @@ body.patient-workspace .st-pw-wrap input { padding-right: 46px; }
   .st-card, .st-modal { animation: none; }
   .st-theme-option { transition: none; }
   .st-theme-option:hover { transform: none; }
-  .st-strength-fill, .st-saved, .st-switch .st-slider, .st-switch .st-slider::after { transition: none; }
+  .st-strength-fill, .st-switch .st-slider, .st-switch .st-slider::after { transition: none; }
 }

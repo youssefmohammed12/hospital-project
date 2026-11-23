@@ -3384,13 +3384,6 @@ body.doctor-workspace .main-content.doctor-main--schedule {
   border-radius: 50%;
   background: var(--doctor-gold);
 }
-.doctor-sched-saved {
-  margin: 0;
-  color: #3fa46a;
-  font-size: 0.9rem;
-  font-weight: 650;
-}
-.doctor-sched-saved[hidden] { display: none; }
 .doctor-sched-btn {
   display: inline-flex;
   align-items: center;

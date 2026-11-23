@@ -14,8 +14,11 @@
  * resetToDefault: Mon–Fri 09:00–17:00, weekend off, 30-minute
  * appointments, max 25/day, no break, available — through update.php.
  *
- * Honest feedback: the saved note appears only after the server
- * confirms, and server validation messages are shown verbatim.
+ * Honest feedback: the confirmation toast appears only after the
+ * server confirms, and server validation messages are shown verbatim.
+ * Feedback uses the site-wide pop-up message (site.js showToast —
+ * the same treatment as the login page); there is no inline
+ * saved-note or error box on this page.
  * Nothing is hardcoded: days, times, bounds and counts all come from
  * the payloads above.
  */
@@ -238,8 +241,6 @@
     const save = $("sched-save");
     if (save) save.disabled = !dirty;
     if (dirty) {
-      const saved = $("sched-saved");
-      if (saved) saved.hidden = true;
       disarmReset();
     }
     refreshDerived();
@@ -322,22 +323,13 @@
   /* ---------- Feedback ---------- */
 
   function showError(message) {
-    const error = $("sched-error");
-    if (error) {
-      error.textContent = message;
-      error.hidden = false;
-    }
+    if (typeof showToast === "function") showToast(message, "error");
   }
   function clearError() {
-    const error = $("sched-error");
-    if (error) error.hidden = true;
+    // Pop-up messages dismiss themselves; nothing inline to clear.
   }
   function showSaved(message) {
-    const saved = $("sched-saved");
-    if (saved) {
-      saved.textContent = message;
-      saved.hidden = false;
-    }
+    if (typeof showToast === "function") showToast(message, "success");
   }
 
   /* ---------- Save / reset / refresh ---------- */

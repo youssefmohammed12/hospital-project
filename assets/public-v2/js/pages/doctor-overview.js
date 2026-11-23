@@ -370,10 +370,8 @@
     } catch {
       // Revert the switch to the state the server still holds.
       toggle.checked = !toggle.checked;
-      const error = $("ov-error");
-      if (error) {
-        error.textContent = "Your availability could not be changed. Please try again.";
-        error.hidden = false;
+      if (typeof showToast === "function") {
+        showToast("Your availability could not be changed. Please try again.", "error");
       }
     } finally {
       toggle.disabled = false;

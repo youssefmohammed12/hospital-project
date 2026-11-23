@@ -25,11 +25,22 @@
     return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
+  // Save confirmations use the site-wide pop-up message (site.js
+  // showToast — the same treatment as the login page). The id is the
+  // legacy per-form marker; the wording matches what each form's
+  // inline "Saved" note used to say.
+  const SAVED_MESSAGES = {
+    "st-profile-saved": "Saved",
+    "st-medical-saved": "Saved",
+    "st-password-saved": "Password updated",
+    "st-theme-saved": "Appearance saved",
+    "st-notif-saved": "Saved",
+  };
+
   function flashSaved(id) {
-    const node = $(id);
-    if (!node) return;
-    node.classList.add("is-visible");
-    window.setTimeout(() => node.classList.remove("is-visible"), 2600);
+    if (typeof showToast === "function") {
+      showToast(SAVED_MESSAGES[id] || "Saved", "success");
+    }
   }
 
   function formError(id, message) {

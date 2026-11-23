@@ -102,14 +102,23 @@
   const showToast = (message, type = "info") => {
     if (typeof window.showToast === "function") window.showToast(message, type);
     else {
+      // Fallback mirrors site.js showToast exactly — the site-wide
+      // pop-up treatment (same markup, classes and timing).
       const region = $("site-toast-region");
       if (!region) return;
-      const toast = document.createElement("p");
-      toast.className = "pa-toast";
-      toast.dataset.type = type;
+      const toast = document.createElement("div");
+      toast.className = "site-toast";
+      toast.dataset.type = ["success", "error", "info"].includes(type) ? type : "info";
+      toast.setAttribute("role", type === "error" ? "alert" : "status");
       toast.textContent = message;
       region.append(toast);
-      window.setTimeout(() => toast.remove(), 4200);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => toast.classList.add("is-visible"));
+      });
+      window.setTimeout(() => {
+        toast.classList.remove("is-visible");
+        window.setTimeout(() => toast.remove(), 220);
+      }, 4200);
     }
   };
 

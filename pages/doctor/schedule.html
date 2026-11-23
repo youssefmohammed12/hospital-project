@@ -9,11 +9,11 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=17" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=14" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=15" />
   <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=7"></script>
   <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=6"></script>
-  <script defer src="../../assets/public-v2/js/pages/doctor-schedule.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-schedule.js?v=2"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -104,15 +104,12 @@
 
           <div class="doctor-sched-actions doctor-rise" style="--i:5">
             <p class="doctor-sched-dirty" id="sched-dirty" hidden><span class="doctor-sched-dirty__dot" aria-hidden="true"></span>Unsaved changes</p>
-            <p class="doctor-sched-saved" id="sched-saved" role="status" hidden></p>
             <div class="doctor-sched-actions__btns">
               <button type="button" class="doctor-sched-btn doctor-sched-btn--ghost" id="sched-reset">Reset to defaults</button>
               <button type="button" class="doctor-sched-btn doctor-sched-btn--ghost" id="sched-refresh">Refresh</button>
               <button type="submit" class="doctor-sched-btn doctor-sched-btn--primary" id="sched-save" disabled>Save changes</button>
             </div>
           </div>
-
-          <p class="doctor-alert" id="sched-error" role="alert" hidden></p>
         </form>
 
       </div>
