@@ -158,14 +158,17 @@
     cacheElements() {
       [
         "dashboard-main", "dashboard-loading", "dashboard-content", "dashboard-error",
-        "welcome-greeting", "hero-subtitle", "dashboard-current-date",
+        "welcome-greeting-text", "welcome-greeting-name", "hero-subtitle", "dashboard-current-date",
         "hospital-status", "hospital-status-label", "hospital-status-hours",
         "next-appointment-card", "next-appointment-empty", "next-appointment-status",
+        "next-appointment-avatar",
         "next-appointment-doctor", "next-appointment-department", "next-appointment-date",
         "next-appointment-time", "next-appointment-change",
         "health-alerts-section", "health-alerts-list",
         "snapshot-completed", "snapshot-prescriptions", "snapshot-profile",
+        "snapshot-completed-ctx", "snapshot-prescriptions-ctx", "snapshot-profile-ctx",
         "profile-completion-section", "profile-completion-bar", "profile-completion-fill", "profile-completion-text",
+        "profile-completion-pct", "profile-completion-missing",
         "recent-activity-list", "recent-activity-empty",
       ].forEach((id) => { this.elements[id] = $(id); });
     },
@@ -189,6 +192,17 @@
       this.elements["dashboard-error"].hidden = true;
       this.elements["dashboard-content"].hidden = false;
       this.elements["dashboard-main"].setAttribute("aria-busy", "false");
+      // Entrance: staggered fade + rise runs once under .is-entering;
+      // the class (and its will-change) is removed when the last tile
+      // lands so hover transforms are never overridden afterwards.
+      if (!this.entered) {
+        this.entered = true;
+        const overview = document.querySelector(".patient-overview");
+        if (overview) {
+          overview.classList.add("is-entering");
+          window.setTimeout(() => overview.classList.remove("is-entering"), 1500);
+        }
+      }
     },
 
     async init() {
@@ -260,7 +274,8 @@
         ? overview.greeting.trim()
         : "Welcome back";
 
-      this.elements["welcome-greeting"].textContent = greeting + ", " + firstName;
+      this.elements["welcome-greeting-text"].textContent = greeting;
+      this.elements["welcome-greeting-name"].textContent = firstName;
       this.elements["hero-subtitle"].textContent = "Here’s what’s coming up in your care.";
       const now = new Date();
       this.elements["dashboard-current-date"].textContent = now.toLocaleDateString(undefined, {
@@ -335,13 +350,16 @@
       this.elements["next-appointment-status"].textContent = changePending
         ? "Change request pending"
         : isAwaitingConfirmation ? "Pending confirmation" : "Upcoming";
-      this.elements["next-appointment-status"].className = "appointment-state-badge"
+      this.elements["next-appointment-status"].className = "patient-pill"
         + (changePending ? " is-pending" : isAwaitingConfirmation ? " is-awaiting" : "");
 
-      this.elements["next-appointment-doctor"].textContent =
-        typeof appointment.doctor === "string" && appointment.doctor.trim()
-          ? appointment.doctor.trim()
-          : "Your care provider";
+      const doctorName = typeof appointment.doctor === "string" && appointment.doctor.trim()
+        ? appointment.doctor.trim()
+        : "Your care provider";
+      this.elements["next-appointment-doctor"].textContent = doctorName;
+      const nameParts = doctorName.split(/\s+/).filter((part) => !/^dr\.?$/i.test(part));
+      this.elements["next-appointment-avatar"].textContent = nameParts
+        .slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("") || "—";
 
       const department = typeof appointment.department === "string"
         ? appointment.department
@@ -388,13 +406,13 @@
           : "info";
         const route = getSafeAppointmentRoute(alert.action?.url);
         const action = route && typeof alert.action?.label === "string"
-          ? '<a class="dashboard-alert__action" href="' + escapeHTML(route) + '">' + escapeHTML(alert.action.label) + ' <span aria-hidden="true">→</span></a>'
+          ? '<a class="patient-att-row__action" href="' + escapeHTML(route) + '">' + escapeHTML(alert.action.label) + ' <span aria-hidden="true">→</span></a>'
           : "";
 
-        return '<article class="dashboard-alert is-' + severity + '">'
-          + '<span class="dashboard-alert__icon">' + getAlertIcon(type) + '</span>'
-          + '<div class="dashboard-alert__copy"><h3>' + escapeHTML(alert.title || "Update") + '</h3>'
-          + '<p>' + escapeHTML(alert.message || "") + '</p></div>'
+        return '<article class="patient-att-row is-' + severity + '">'
+          + '<span class="patient-att-row__icon">' + getAlertIcon(type) + '</span>'
+          + '<div class="patient-att-row__info"><strong>' + escapeHTML(alert.title || "Update") + '</strong>'
+          + '<span>' + escapeHTML(alert.message || "") + '</span></div>'
           + action
           + '</article>';
       }).join("");
@@ -423,6 +441,23 @@
       animateCount(this.elements["snapshot-completed"], safeCount(snapshot.completed_appointments));
       animateCount(this.elements["snapshot-prescriptions"], safeCount(snapshot.active_prescriptions));
       animateCount(this.elements["snapshot-profile"], Math.min(100, safeCount(snapshot.profile_completion)), "%");
+      // Context lines: computed from the same dashboard payload —
+      // nothing is hardcoded, and each falls back to the tile's
+      // standing description when its field is absent.
+      const lastVisit = typeof snapshot.last_visit === "string" ? snapshot.last_visit.trim() : "";
+      if (lastVisit) {
+        this.elements["snapshot-completed-ctx"].textContent = "Last visit · " + lastVisit;
+      }
+      const totalPrescriptions = safeCount(snapshot.total_prescriptions, -1);
+      if (totalPrescriptions > 0) {
+        this.elements["snapshot-prescriptions-ctx"].textContent =
+          "of " + totalPrescriptions + (totalPrescriptions === 1 ? " prescription" : " prescriptions") + " issued in your records";
+      }
+      const completion = this.data?.profile_completion;
+      if (completion && typeof completion.completed === "number" && typeof completion.total_checks === "number") {
+        this.elements["snapshot-profile-ctx"].textContent =
+          completion.completed + " of " + completion.total_checks + " details on file";
+      }
     },
 
     // Phase 5: the Health Insights merge — profile completeness now lives
@@ -434,10 +469,19 @@
       const pct = Math.max(0, Math.min(100, Math.round(completion.percentage)));
       const missing = Array.isArray(completion.missing_fields) ? completion.missing_fields : [];
       this.elements["profile-completion-bar"].setAttribute("aria-valuenow", String(pct));
-      this.elements["profile-completion-fill"].style.width = pct + "%";
+      this.elements["profile-completion-pct"].textContent = pct + "%";
+      // The bar grows via transform (scaleX) so the motion stays on the
+      // compositor — the fill element itself is always full width.
+      requestAnimationFrame(() => {
+        this.elements["profile-completion-fill"].style.transform = "scaleX(" + (pct / 100) + ")";
+      });
       this.elements["profile-completion-text"].textContent = missing.length
-        ? pct + "% complete — still missing: " + missing.map((f) => f.label || f.field).join(", ") + "."
+        ? pct + "% complete — a few details are still missing:"
         : pct + "% complete — everything is filled in, so your care team has the full picture.";
+      this.elements["profile-completion-missing"].innerHTML = missing.map((field) =>
+        '<li><span>' + escapeHTML(field.label || field.field || "Detail") + '</span>'
+        + '<a href="profile.html">Add <span aria-hidden="true">→</span></a></li>'
+      ).join("");
       section.hidden = false;
     },
 
@@ -460,7 +504,7 @@
       }
 
       this.elements["recent-activity-empty"].hidden = true;
-      this.elements["recent-activity-list"].innerHTML = events.map((event) => {
+      this.elements["recent-activity-list"].innerHTML = events.map((event, index) => {
         const title = typeof event.title === "string" && event.title.trim()
           ? event.title.trim()
           : "Care activity";
@@ -470,14 +514,23 @@
         const dateTime = parts
           ? localDateKey(parts.date)
           : "";
-        const dateLabel = parts ? formatDateParts(parts, { weekday: true }) : "";
+        const dateMain = parts ? parts.date.toLocaleDateString(undefined, {
+          weekday: "short", month: "short", day: "numeric",
+        }) : "";
+        const dateYear = parts ? String(parts.year) : "";
 
-        return '<li class="recent-activity-item">'
-          + '<span class="recent-activity-item__icon">' + getActivityIcon(event.type) + '</span>'
-          + '<div class="recent-activity-item__copy"><h3>' + escapeHTML(title) + '</h3>'
-          + (description ? '<p>' + escapeHTML(description) + '</p>' : "")
+        return '<li class="patient-tl-row">'
+          + '<div class="patient-tl-time">'
+          + (dateMain ? '<time datetime="' + escapeHTML(dateTime) + '">' + escapeHTML(dateMain)
+            + '<span class="patient-tl-year">' + escapeHTML(dateYear) + '</span></time>' : "")
           + '</div>'
-          + (dateLabel ? '<time class="recent-activity-item__date" datetime="' + escapeHTML(dateTime) + '">' + escapeHTML(dateLabel) + '</time>' : "")
+          + '<div class="patient-tl-rail" aria-hidden="true"><span class="patient-tl-dot'
+          + (index === 0 ? " is-filled" : "") + '"></span></div>'
+          + '<div class="patient-tl-main">'
+          + '<span class="patient-tl-icon">' + getActivityIcon(event.type) + '</span>'
+          + '<div class="patient-tl-copy"><h3>' + escapeHTML(title) + '</h3>'
+          + (description ? '<p>' + escapeHTML(description) + '</p>' : "")
+          + '</div></div>'
           + '</li>';
       }).join("");
     },
@@ -490,6 +543,11 @@
     if (!user || user.role !== "patient") return;
     Dashboard.init();
   };
+
+  // Idle animations pause while the tab is hidden.
+  document.addEventListener("visibilitychange", () => {
+    document.documentElement.classList.toggle("hb-anim-paused", document.hidden);
+  });
 
   document.addEventListener("patient:shell-ready", start);
 })();

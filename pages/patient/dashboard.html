@@ -9,10 +9,11 @@
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=16" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=15" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/patient-dashboard.css?v=17" />
+  <script>try{if(localStorage.getItem("hb_patient_sidebar")==="collapsed"){document.documentElement.classList.add("patient-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=5"></script>
-  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=10"></script>
-  <script defer src="../../assets/public-v2/js/pages/patient-dashboard.js?v=6"></script>
+  <script defer src="../../assets/public-v2/js/core/patient-shell.js?v=11"></script>
+  <script defer src="../../assets/public-v2/js/pages/patient-dashboard.js?v=7"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -20,7 +21,7 @@
   <div class="dashboard">
     <div id="sidebar-container"></div>
 
-    <main class="main-content" id="dashboard-main" aria-busy="true">
+    <main class="main-content patient-main--home" id="dashboard-main" aria-busy="true">
       <div class="portal-content patient-overview">
 
         <div id="dashboard-loading" class="dashboard-loading" aria-label="Loading your patient overview">
@@ -56,15 +57,15 @@
 
         <div id="dashboard-content" hidden>
 
-          <section class="dashboard-intro" aria-labelledby="welcome-greeting">
-            <div class="dashboard-intro__copy">
-              <p class="dashboard-eyebrow">PATIENT OVERVIEW</p>
-              <h1 id="welcome-greeting">Welcome back</h1>
-              <p id="hero-subtitle" class="dashboard-intro__subtitle">Here’s what’s coming up in your care.</p>
-              <time id="dashboard-current-date" class="dashboard-intro__date"></time>
+          <section class="patient-tile patient-intro" aria-labelledby="welcome-greeting">
+            <div class="patient-intro__copy">
+              <p class="patient-eyebrow">PATIENT OVERVIEW</p>
+              <h1 id="welcome-greeting"><span id="welcome-greeting-text">Welcome back</span>, <em id="welcome-greeting-name">there</em></h1>
+              <p id="hero-subtitle" class="patient-intro__subtitle">Here’s what’s coming up in your care.</p>
+              <time id="dashboard-current-date" class="patient-intro__date"></time>
             </div>
 
-            <div class="dashboard-intro__actions">
+            <div class="patient-intro__actions">
               <div id="hospital-status" class="hospital-status" hidden role="status" aria-live="polite">
                 <span class="hospital-status__dot" aria-hidden="true"></span>
                 <span class="hospital-status__copy">
@@ -72,7 +73,7 @@
                   <span id="hospital-status-hours"></span>
                 </span>
               </div>
-              <a href="appointments.html" id="book" class="btn btn-primary dashboard-book-button">
+              <a href="appointments.html" id="book" class="btn btn-primary patient-book-button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <rect x="3" y="5" width="18" height="16" rx="2"></rect>
                   <path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path>
@@ -82,166 +83,178 @@
             </div>
           </section>
 
-          <section class="dashboard-section dashboard-next-section" aria-labelledby="next-appointment-heading">
-            <div class="dashboard-section__heading">
-              <div>
-                <p class="dashboard-section__eyebrow">YOUR SCHEDULE</p>
-                <h2 id="next-appointment-heading">Next appointment</h2>
-              </div>
-              <a href="appointments.html" class="dashboard-text-link">All appointments <span aria-hidden="true">→</span></a>
-            </div>
+          <div class="patient-bento">
 
-            <article id="next-appointment-card" class="next-appointment-card" hidden>
-              <div class="next-appointment-card__date">
-                <span class="next-appointment-card__date-label">DATE &amp; TIME</span>
-                <strong id="next-appointment-date">—</strong>
-                <span id="next-appointment-time" class="next-appointment-card__time">—</span>
+            <section class="patient-tile patient-tile--hero" aria-labelledby="next-appointment-heading">
+              <div class="patient-panel__head">
+                <div>
+                  <p class="patient-eyebrow">YOUR SCHEDULE</p>
+                  <h2 id="next-appointment-heading">Next appointment</h2>
+                </div>
+                <a href="appointments.html">All appointments <span aria-hidden="true">→</span></a>
               </div>
-              <div class="next-appointment-card__details">
-                <span id="next-appointment-status" class="appointment-state-badge">Upcoming</span>
-                <h3 id="next-appointment-doctor">Your doctor</h3>
-                <p id="next-appointment-department"></p>
-                <p id="next-appointment-change" class="next-appointment-card__note" hidden></p>
-              </div>
-              <div class="next-appointment-card__action">
-                <a href="appointments.html" class="btn btn-outline">View appointment</a>
-              </div>
-            </article>
 
-            <div id="next-appointment-empty" class="next-appointment-empty" hidden>
-              <div class="next-appointment-empty__symbol" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="5" width="18" height="16" rx="2"></rect>
-                  <path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path>
-                </svg>
-              </div>
-              <div class="next-appointment-empty__copy">
-                <h3>No upcoming appointments</h3>
-                <p>When you’re ready, book a visit with a specialist.</p>
-              </div>
-              <a href="appointments.html" class="btn btn-primary">Find an appointment</a>
-            </div>
-          </section>
-
-          <section id="health-alerts-section" class="dashboard-section dashboard-alerts-section" aria-labelledby="health-alerts-heading" hidden>
-            <div class="dashboard-section__heading">
-              <div>
-                <p class="dashboard-section__eyebrow">A FEW THINGS TO CHECK</p>
-                <h2 id="health-alerts-heading">Updates to review</h2>
-              </div>
-              <a href="notifications.html" class="dashboard-text-link">Notifications <span aria-hidden="true">→</span></a>
-            </div>
-            <div id="health-alerts-list" class="dashboard-alert-list"></div>
-          </section>
-
-          <section class="dashboard-section" aria-labelledby="snapshot-heading">
-            <div class="dashboard-section__heading">
-              <div>
-                <p class="dashboard-section__eyebrow">AT A GLANCE</p>
-                <h2 id="snapshot-heading">Your care snapshot</h2>
-              </div>
-            </div>
-            <div id="snapshot-grid" class="snapshot-grid" role="list" aria-label="Patient account summary">
-              <article class="snapshot-card" role="listitem">
-                <span class="snapshot-card__label">Visits completed</span>
-                <strong id="snapshot-completed" class="snapshot-card__value">—</strong>
-                <span class="snapshot-card__detail">Appointments marked complete</span>
+              <article id="next-appointment-card" class="patient-next" hidden>
+                <div class="patient-next__main">
+                  <span class="patient-avatar" id="next-appointment-avatar" aria-hidden="true">—</span>
+                  <div class="patient-next__id">
+                    <span id="next-appointment-status" class="patient-pill">Upcoming</span>
+                    <h3 id="next-appointment-doctor">Your doctor</h3>
+                    <p id="next-appointment-department"></p>
+                  </div>
+                  <div class="patient-next__when">
+                    <span class="patient-next__when-label">DATE &amp; TIME</span>
+                    <strong id="next-appointment-date">—</strong>
+                    <span id="next-appointment-time">—</span>
+                  </div>
+                </div>
+                <p id="next-appointment-change" class="patient-next__note" hidden></p>
+                <div class="patient-next__action">
+                  <a href="appointments.html" class="btn btn-outline">View appointment</a>
+                </div>
               </article>
-              <article class="snapshot-card" role="listitem">
-                <span class="snapshot-card__label">Active prescriptions</span>
-                <strong id="snapshot-prescriptions" class="snapshot-card__value">—</strong>
-                <span class="snapshot-card__detail">Currently active in your records</span>
-              </article>
-              <article class="snapshot-card" role="listitem">
-                <span class="snapshot-card__label">Profile details</span>
-                <strong id="snapshot-profile" class="snapshot-card__value">—</strong>
-                <span class="snapshot-card__detail">Personal and care information on file</span>
-              </article>
-            </div>
-            <p class="snapshot-disclaimer">These are account-record summaries, not a medical assessment.</p>
-          </section>
 
-          <section class="dashboard-section" id="profile-completion-section" aria-labelledby="profile-completion-heading" hidden>
-            <div class="dashboard-section__heading">
-              <div>
-                <p class="dashboard-section__eyebrow">YOUR MEDICAL PROFILE</p>
-                <h2 id="profile-completion-heading">Profile completeness</h2>
-              </div>
-              <a class="dashboard-text-link" href="profile.html">View profile</a>
-            </div>
-            <div class="profile-completion">
-              <div class="profile-completion__bar" role="progressbar" aria-label="Medical profile completeness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="profile-completion-bar">
-                <span id="profile-completion-fill"></span>
-              </div>
-              <p class="profile-completion__text" id="profile-completion-text"></p>
-            </div>
-          </section>
-
-          <section class="dashboard-section" aria-labelledby="quick-actions-heading">
-            <div class="dashboard-section__heading">
-              <div>
-                <p class="dashboard-section__eyebrow">COMMON TASKS</p>
-                <h2 id="quick-actions-heading">Quick actions</h2>
-              </div>
-            </div>
-            <nav class="quick-actions-grid" aria-label="Quick actions">
-              <a href="appointments.html" class="quick-action-card">
-                <span class="quick-action-card__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <div id="next-appointment-empty" class="patient-next-empty" hidden>
+                <div class="patient-next-empty__symbol" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="5" width="18" height="16" rx="2"></rect>
                     <path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path>
                   </svg>
-                </span>
-                <span class="quick-action-card__copy">
-                  <strong>Appointments</strong>
-                  <span>Book or manage a visit</span>
-                </span>
-                <span class="quick-action-card__arrow" aria-hidden="true">→</span>
-              </a>
-              <a href="history.html" class="quick-action-card">
-                <span class="quick-action-card__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 12a8 8 0 1 0 2.4-5.7L4 8"></path>
-                    <path d="M4 3v5h5M12 7v5l3 2"></path>
-                  </svg>
-                </span>
-                <span class="quick-action-card__copy">
-                  <strong>Medical history</strong>
-                  <span>Review your health record</span>
-                </span>
-                <span class="quick-action-card__arrow" aria-hidden="true">→</span>
-              </a>
-              <a href="prescriptions.html" class="quick-action-card">
-                <span class="quick-action-card__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M8 3h8a2 2 0 0 1 2 2v2H6V5a2 2 0 0 1 2-2Z"></path>
-                    <path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Z"></path>
-                    <path d="M12 10v6M9 13h6"></path>
-                  </svg>
-                </span>
-                <span class="quick-action-card__copy">
-                  <strong>Prescriptions</strong>
-                  <span>Review current instructions</span>
-                </span>
-                <span class="quick-action-card__arrow" aria-hidden="true">→</span>
-              </a>
-            </nav>
-          </section>
-
-          <section class="dashboard-section dashboard-activity-section" aria-labelledby="recent-activity-heading">
-            <div class="dashboard-section__heading">
-              <div>
-                <p class="dashboard-section__eyebrow">YOUR LATEST UPDATES</p>
-                <h2 id="recent-activity-heading">Recent activity</h2>
+                </div>
+                <div class="patient-next-empty__copy">
+                  <h3>No upcoming appointments</h3>
+                  <p>When you’re ready, book a visit with a specialist.</p>
+                </div>
+                <a href="appointments.html" class="btn btn-primary">Find an appointment</a>
               </div>
-              <a href="history.html" class="dashboard-text-link">Medical history <span aria-hidden="true">→</span></a>
-            </div>
-            <ol id="recent-activity-list" class="recent-activity-list" aria-label="Recent patient activity"></ol>
-            <div id="recent-activity-empty" class="recent-activity-empty" hidden>
-              <p>Your recent appointments and care updates will appear here.</p>
-            </div>
-          </section>
+            </section>
 
+            <section id="health-alerts-section" class="patient-tile patient-tile--attention" aria-labelledby="health-alerts-heading" hidden>
+              <div class="patient-panel__head">
+                <div>
+                  <p class="patient-eyebrow">A FEW THINGS TO CHECK</p>
+                  <h2 id="health-alerts-heading">Updates to review</h2>
+                </div>
+                <a href="notifications.html">Notifications <span aria-hidden="true">→</span></a>
+              </div>
+              <div id="health-alerts-list" class="patient-att-list"></div>
+            </section>
+
+            <article class="patient-tile patient-stat">
+              <span class="patient-stat__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+              </span>
+              <strong id="snapshot-completed" class="patient-stat__value">—</strong>
+              <span class="patient-stat__label">Visits completed</span>
+              <span class="patient-stat__ctx" id="snapshot-completed-ctx">Appointments marked complete</span>
+            </article>
+
+            <article class="patient-tile patient-stat">
+              <span class="patient-stat__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8a2 2 0 0 1 2 2v2H6V5a2 2 0 0 1 2-2Z"/><path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Z"/><path d="M12 10v6M9 13h6"/></svg>
+              </span>
+              <strong id="snapshot-prescriptions" class="patient-stat__value">—</strong>
+              <span class="patient-stat__label">Active prescriptions</span>
+              <span class="patient-stat__ctx" id="snapshot-prescriptions-ctx">Currently active in your records</span>
+            </article>
+
+            <article class="patient-tile patient-stat">
+              <span class="patient-stat__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-1.5a7 7 0 0 1 14 0V21Z"/></svg>
+              </span>
+              <strong id="snapshot-profile" class="patient-stat__value">—</strong>
+              <span class="patient-stat__label">Profile details</span>
+              <span class="patient-stat__ctx" id="snapshot-profile-ctx">Personal and care information on file</span>
+            </article>
+
+            <p class="snapshot-disclaimer patient-bento__note">These are account-record summaries, not a medical assessment.</p>
+
+            <section id="profile-completion-section" class="patient-tile patient-tile--completeness" aria-labelledby="profile-completion-heading" hidden>
+              <div class="patient-panel__head">
+                <div>
+                  <p class="patient-eyebrow">YOUR MEDICAL PROFILE</p>
+                  <h2 id="profile-completion-heading">Profile completeness</h2>
+                </div>
+                <a href="profile.html">View profile</a>
+              </div>
+              <div class="patient-completion">
+                <div class="patient-completion__top">
+                  <strong class="patient-completion__pct" id="profile-completion-pct">—</strong>
+                  <div class="profile-completion__bar" role="progressbar" aria-label="Medical profile completeness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="profile-completion-bar">
+                    <span id="profile-completion-fill"></span>
+                  </div>
+                </div>
+                <p class="profile-completion__text" id="profile-completion-text"></p>
+                <ul class="patient-completion__missing" id="profile-completion-missing"></ul>
+              </div>
+            </section>
+
+            <section class="patient-tile patient-tile--quick" aria-labelledby="quick-actions-heading">
+              <div class="patient-panel__head">
+                <div>
+                  <p class="patient-eyebrow">COMMON TASKS</p>
+                  <h2 id="quick-actions-heading">Quick actions</h2>
+                </div>
+              </div>
+              <nav class="patient-quick-list" aria-label="Quick actions">
+                <a href="appointments.html" class="patient-quick-row">
+                  <span class="patient-quick-row__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                      <path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path>
+                    </svg>
+                  </span>
+                  <span class="patient-quick-row__copy">
+                    <strong>Appointments</strong>
+                    <span>Book or manage a visit</span>
+                  </span>
+                  <span class="patient-quick-row__arrow" aria-hidden="true">→</span>
+                </a>
+                <a href="history.html" class="patient-quick-row">
+                  <span class="patient-quick-row__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 12a8 8 0 1 0 2.4-5.7L4 8"></path>
+                      <path d="M4 3v5h5M12 7v5l3 2"></path>
+                    </svg>
+                  </span>
+                  <span class="patient-quick-row__copy">
+                    <strong>Medical history</strong>
+                    <span>Review your health record</span>
+                  </span>
+                  <span class="patient-quick-row__arrow" aria-hidden="true">→</span>
+                </a>
+                <a href="prescriptions.html" class="patient-quick-row">
+                  <span class="patient-quick-row__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M8 3h8a2 2 0 0 1 2 2v2H6V5a2 2 0 0 1 2-2Z"></path>
+                      <path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Z"></path>
+                      <path d="M12 10v6M9 13h6"></path>
+                    </svg>
+                  </span>
+                  <span class="patient-quick-row__copy">
+                    <strong>Prescriptions</strong>
+                    <span>Review current instructions</span>
+                  </span>
+                  <span class="patient-quick-row__arrow" aria-hidden="true">→</span>
+                </a>
+              </nav>
+            </section>
+
+            <section class="patient-tile patient-tile--activity" aria-labelledby="recent-activity-heading">
+              <div class="patient-panel__head">
+                <div>
+                  <p class="patient-eyebrow">YOUR LATEST UPDATES</p>
+                  <h2 id="recent-activity-heading">Recent activity</h2>
+                </div>
+                <a href="history.html">Medical history <span aria-hidden="true">→</span></a>
+              </div>
+              <ol id="recent-activity-list" class="patient-tl" aria-label="Recent patient activity"></ol>
+              <div id="recent-activity-empty" class="patient-tl-empty" hidden>
+                <p>Your recent appointments and care updates will appear here.</p>
+              </div>
+            </section>
+
+          </div>
         </div>
       </div>
     </main>

@@ -36,6 +36,7 @@
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>',
     chevron: '<svg class="patient-profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+    collapse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>',
   };
 
   function renderHeader(container) {
@@ -85,6 +86,7 @@
       const link = document.createElement("a");
       link.href = href;
       link.dataset.routeKey = href;
+      link.dataset.tip = label;
       link.innerHTML = icons[icon] + "<span>" + label + "</span>";
       if (href === currentPage) {
         link.classList.add("is-active");
@@ -97,9 +99,16 @@
     const footer = document.createElement("nav");
     footer.className = "patient-sidebar__footer";
     footer.setAttribute("aria-label", "Workspace and site links");
+    const sbToggle = document.createElement("button");
+    sbToggle.type = "button";
+    sbToggle.className = "patient-sb-toggle";
+    sbToggle.id = "patient-sb-toggle";
+    sbToggle.dataset.tip = "Collapse";
+    sbToggle.innerHTML = icons.collapse + "<span>Collapse</span>";
     const settings = document.createElement("a");
     settings.href = "settings.html";
     settings.dataset.routeKey = "settings.html";
+    settings.dataset.tip = "Settings";
     settings.innerHTML = icons.settings + "<span>Settings</span>";
     if (currentPage === "settings.html") {
       settings.classList.add("is-active");
@@ -108,8 +117,9 @@
     }
     const viewSite = document.createElement("a");
     viewSite.href = ROOT + "index.html";
+    viewSite.dataset.tip = "View Site";
     viewSite.innerHTML = icons.site + "<span>View Site</span>";
-    footer.append(settings, viewSite);
+    footer.append(sbToggle, settings, viewSite);
     sidebar.append(main, footer);
 
     const backdrop = document.createElement("button");
@@ -118,7 +128,7 @@
     backdrop.tabIndex = -1;
     backdrop.setAttribute("aria-label", "Close workspace navigation");
     container.replaceChildren(sidebar, backdrop);
-    return { sidebar, backdrop, navLinks: Array.from(nav.querySelectorAll("a")) };
+    return { sidebar, backdrop, sbToggle, navLinks: Array.from(nav.querySelectorAll("a")) };
   }
 
   function initials(name) {
@@ -366,6 +376,45 @@
   }
 
 
+  /* Desktop collapse: the sidebar folds to a 72px icon rail and the
+     content area widens into the freed space. The control is a row at
+     the top of the sidebar footer (rendered by renderSidebar): chevron
+     + "Collapse" while expanded; in the rail only the centred chevron
+     remains, turned to point right, with an "Expand" tooltip. The state
+     persists in localStorage ("hb_patient_sidebar"); each page's head
+     snippet applies it to <html> before first paint, and this binding
+     re-applies it in case the snippet was blocked, so class and storage
+     never disagree. On phone widths the row is hidden by CSS and the
+     off-canvas mobile pattern (bindMobileSidebar) rules instead.
+     Mirrors the doctor shell's collapse (hb_doctor_sidebar). */
+  function bindSidebarCollapse(parts) {
+    const btn = parts.sbToggle;
+    if (!btn) return null;
+    const label = btn.querySelector("span");
+    const sync = () => {
+      const collapsed = document.documentElement.classList.contains("patient-sb-collapsed");
+      btn.setAttribute("aria-expanded", String(!collapsed));
+      btn.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+      btn.dataset.tip = collapsed ? "Expand" : "Collapse";
+      if (label) label.textContent = collapsed ? "Expand" : "Collapse";
+    };
+    try {
+      if (localStorage.getItem("hb_patient_sidebar") === "collapsed") {
+        document.documentElement.classList.add("patient-sb-collapsed");
+      }
+    } catch {}
+    btn.addEventListener("click", () => {
+      const collapsed = document.documentElement.classList.toggle("patient-sb-collapsed");
+      try { localStorage.setItem("hb_patient_sidebar", collapsed ? "collapsed" : "expanded"); } catch {}
+      sync();
+      // Sidebar width changed the layout the route indicator measures
+      // against; let its resize listener re-measure.
+      window.dispatchEvent(new Event("resize"));
+    });
+    sync();
+    return btn;
+  }
+
   function bindMobileSidebar(parts) {
     const toggle = document.getElementById("patient-sidebar-toggle");
     const close = () => {
@@ -395,6 +444,7 @@
     const skeleton = buildRouteSkeleton(main);
     renderHeader(headerContainer);
     const sidebarParts = renderSidebar(sidebarContainer);
+    bindSidebarCollapse(sidebarParts);
     setActiveIndicator(sidebarParts.navLinks);
     const closeMenus = bindMenus();
     const closeSidebar = bindMobileSidebar(sidebarParts);
