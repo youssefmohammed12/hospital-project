@@ -243,6 +243,26 @@
 
   /* ---------- Your week ---------- */
 
+  // Bar heights are set in measured pixels, never in % of the
+  // flex-grown track — the same hardening as the admin chart,
+  // whose bars vanished when their height depended on a fragile
+  // resolution chain (owner report, 23 Nov 2026).
+  function layoutBars(chart) {
+    const max = Number(chart.dataset.max) || 1;
+    chart.querySelectorAll(".doctor-chart__day").forEach((cell) => {
+      const track = cell.querySelector(".doctor-chart__track");
+      const bar = cell.querySelector(".doctor-chart__bar");
+      if (!track || !bar) return;
+      const count = Number(bar.dataset.count) || 0;
+      bar.style.height = count === 0 ? "0px" :
+        Math.max(4, Math.round((track.clientHeight * count) / max)) + "px";
+    });
+  }
+
+  function layoutAllCharts() {
+    document.querySelectorAll(".doctor-chart").forEach(layoutBars);
+  }
+
   function renderWeek(appointments) {
     const host = $("ov-week");
     if (!host) return;
@@ -281,6 +301,7 @@
 
     const chart = document.createElement("div");
     chart.className = "doctor-chart";
+    chart.dataset.max = String(Math.max(1, max));
     chart.setAttribute("role", "img");
     chart.setAttribute("aria-label", "Bar chart of appointments per day this week: " +
       days.map((d) => d.name + " " + d.date + ": " + d.count).join(", ") + ".");
@@ -288,14 +309,14 @@
       const cell = document.createElement("div");
       cell.className = "doctor-chart__day" + (d.isToday ? " is-today" : "");
       // Normalised to this week's own max (owner fix, 23 Nov 2026):
-      // tallest day = 100% of the track, exact shares otherwise, a
-      // 3% / 4px stub for nonzero days, and no bar for a zero day.
-      // The bar sits in a track (as in the admin chart) so its
-      // height is never flex-squeezed by the count label.
-      const pct = d.count === 0 ? 0 : Math.max(3, Math.round((d.count / max) * 100));
+      // tallest day fills the track, exact shares otherwise, a 4px
+      // stub for nonzero days, and no bar for a zero day. Heights
+      // are set in measured pixels by layoutBars (never in % of
+      // the flex-grown track — that chain is what collapsed the
+      // admin chart's bars; see admin-overview.js).
       cell.innerHTML = '<span class="doctor-chart__count">' + d.count + "</span>" +
-        '<div class="doctor-chart__track"><div class="doctor-chart__bar" style="height:' + pct +
-        "%;min-height:" + (d.count === 0 ? "0" : "4px") + '"></div></div>';
+        '<div class="doctor-chart__track"><div class="doctor-chart__bar" data-count="' + d.count +
+        '" style="height:0px"></div></div>';
       chart.appendChild(cell);
     });
     const labels = document.createElement("div");
@@ -308,6 +329,7 @@
       labels.appendChild(label);
     });
     host.replaceChildren(chart, labels);
+    layoutBars(chart);
   }
 
   /* ---------- Latest review ---------- */
@@ -458,6 +480,18 @@
     document.addEventListener("visibilitychange", () => {
       document.documentElement.classList.toggle("hb-anim-paused", document.hidden);
     });
+    // Bar heights are pixel-measured (see layoutBars): re-measure
+    // on viewport resize and after late font loads, when the
+    // track height can change.
+    let resizeTick = false;
+    window.addEventListener("resize", () => {
+      if (resizeTick) return;
+      resizeTick = true;
+      requestAnimationFrame(() => { resizeTick = false; layoutAllCharts(); });
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(layoutAllCharts);
+    }
 
     loadAll();
   }

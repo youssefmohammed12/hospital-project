@@ -196,27 +196,51 @@
 
   /* ---------- Bar charts ---------- */
 
+  // Bar heights are set in measured pixels, never in %. The
+  // previous construction (bar height in % of a flex-grown track,
+  // plus a scaleY grow animation that starts at 0) made every
+  // bar's visibility depend on an animation advancing: in a
+  // hidden or restored tab the grow animation stays frozen at
+  // its first frame (scaleY(0)) and the chart renders counts and
+  // labels with no bars at all (owner report, 23 Nov 2026 —
+  // measured: track at full height, computed bar heights correct,
+  // painted height 0). Pixel heights measured from the track
+  // after layout can collapse in neither way.
+  function layoutBars(chart) {
+    const max = Number(chart.dataset.max) || 1;
+    chart.querySelectorAll(".admin-chart__day").forEach((cell) => {
+      const track = cell.querySelector(".admin-chart__track");
+      const bar = cell.querySelector(".admin-chart__bar");
+      if (!track || !bar) return;
+      const count = Number(bar.dataset.count) || 0;
+      bar.style.height = count === 0 ? "0px" :
+        Math.max(4, Math.round((track.clientHeight * count) / max)) + "px";
+    });
+  }
+
+  function layoutAllCharts() {
+    document.querySelectorAll(".admin-chart").forEach(layoutBars);
+  }
+
   function barChart(host, bars) {
     // bars: [{count, dn, dt, now}] — each chart is normalised to
     // its OWN series (owner fix, 23 Nov 2026): the tallest value
-    // fills the track (100%), every other bar is exactly its share
-    // of that max, a nonzero value keeps only a 3% / 4px stub so
-    // it stays visible, and zero renders no bar at all. (The old
-    // 16% floor + 88% cap compressed a 97:9 month into 5.5:1 and
-    // the CSS min-height drew fake 12px stubs for zero days.)
+    // fills the track, every other bar is exactly its share of
+    // that max, a nonzero value keeps a 4px stub so it stays
+    // visible, and zero renders no bar at all.
     const max = Math.max(1, ...bars.map((b) => b.count));
     const chart = document.createElement("div");
     chart.className = "admin-chart";
+    chart.dataset.max = String(max);
     chart.setAttribute("role", "img");
     chart.setAttribute("aria-label", "Bar chart: " +
       bars.map((b) => b.dn + ": " + b.count).join(", ") + ".");
-    bars.forEach((b, i) => {
+    bars.forEach((b) => {
       const cell = document.createElement("div");
       cell.className = "admin-chart__day" + (b.now ? " is-now" : "");
-      const pct = b.count === 0 ? 0 : Math.max(3, Math.round((b.count / max) * 100));
       cell.innerHTML = '<span class="admin-chart__count">' + b.count + "</span>" +
-        '<div class="admin-chart__track"><div class="admin-chart__bar" style="height:' + pct +
-        "%;min-height:" + (b.count === 0 ? "0" : "4px") + ";animation-delay:" + (i * 25) + 'ms"></div></div>';
+        '<div class="admin-chart__track"><div class="admin-chart__bar" data-count="' + b.count +
+        '" style="height:0px"></div></div>';
       chart.appendChild(cell);
     });
     const labels = document.createElement("div");
@@ -229,6 +253,7 @@
       labels.appendChild(label);
     });
     host.replaceChildren(chart, labels);
+    layoutBars(chart);
   }
 
   function renderWeekly(data, now) {
@@ -605,6 +630,19 @@
     document.addEventListener("visibilitychange", () => {
       document.documentElement.classList.toggle("hb-anim-paused", document.hidden);
     });
+    // Bar heights are pixel-measured (see layoutBars): re-measure
+    // when the track height can change — a viewport resize (the
+    // ≤560px breakpoint shortens the chart) or a late font load
+    // (the count label's height is what sets the track's).
+    let resizeTick = false;
+    window.addEventListener("resize", () => {
+      if (resizeTick) return;
+      resizeTick = true;
+      requestAnimationFrame(() => { resizeTick = false; layoutAllCharts(); });
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(layoutAllCharts);
+    }
 
     loadAll();
   }

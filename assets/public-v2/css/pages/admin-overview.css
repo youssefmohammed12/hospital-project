@@ -9,8 +9,9 @@
  * .admin-main--overview, the same treatment the doctor Overview uses.
  * Motion: transform/opacity only; entrance is a staggered fade+rise
  * gated on .is-entering (added/removed by JS so hover transforms are
- * never overridden afterwards); bars grow on first paint; everything
- * stills under prefers-reduced-motion and pauses while the tab is
+ * never overridden afterwards); bar heights are pixel-measured by
+ * the builder (no grow animation — it could freeze at scaleY(0));
+ * everything stills under prefers-reduced-motion and pauses while the tab is
  * hidden (html.hb-anim-paused, toggled by the overview script).
  */
 
@@ -358,14 +359,16 @@ html[data-theme="light"] .admin-stat__icon {
   margin: 0 auto;
   width: 72%;
   max-width: 38px;
-  /* No CSS min-height: the builder sets a 4px stub inline for
-     nonzero values only, so a zero day draws no bar (owner fix,
-     23 Nov 2026). */
+  /* No CSS min-height and NO grow animation: the builder sets
+     each bar's height in measured pixels (a 4px stub for nonzero
+     values, 0 for zero days). A scaleY grow animation made the
+     bars' visibility depend on the animation advancing — in a
+     hidden or restored tab it freezes at scaleY(0) and the chart
+     shows counts and labels with no bars (owner fix, 23 Nov
+     2026). */
   min-height: 0;
   border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg, #22756c, #17645f);
-  transform-origin: bottom;
-  animation: admin-bar-grow 200ms ease-out both;
 }
 .admin-chart__day.is-now .admin-chart__bar {
   background: linear-gradient(180deg, var(--admin-gold-hi), var(--admin-gold));
@@ -380,10 +383,6 @@ html[data-theme="light"] .admin-stat__icon {
   filter: blur(8px);
   animation: admin-bar-glow 4s ease-in-out infinite alternate;
   pointer-events: none;
-}
-@keyframes admin-bar-grow {
-  from { transform: scaleY(0); }
-  to { transform: scaleY(1); }
 }
 @keyframes admin-bar-glow {
   from { opacity: 0.35; }
@@ -861,7 +860,6 @@ html.hb-anim-paused .admin-chart__day.is-now .admin-chart__bar::after {
   .admin-intro h1 em::after,
   .admin-open-pill__dot::after,
   .admin-chart__day.is-now .admin-chart__bar::after,
-  .admin-chart__bar,
   .admin-dist__bar,
   .admin-demo__seg,
   .admin-demo__bar,
