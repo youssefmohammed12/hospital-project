@@ -141,7 +141,7 @@ function initDoctorsPage() {
           chip.dataset.departmentId = String(dep.id);
           chip.type = "button";
           chip.setAttribute("aria-pressed", "false");
-          chip.innerHTML = '<span class="chip-icon" aria-hidden="true">' + iconSvg("stethoscope") + '</span>' + escapeHTML(dep.name);
+          chip.innerHTML = '<span class="chip-icon" aria-hidden="true">' + departmentIconSvg(dep.name) + '</span>' + escapeHTML(dep.name);
           chip.addEventListener("click", () => {
             setActiveChip(chip);
             activeSpecialty = chip.dataset.specialty;
@@ -422,6 +422,30 @@ function initDoctorsPage() {
       info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'
     };
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || paths.info) + '</svg>';
+  }
+
+  // Department icons for the filter chips — the SAME path set the booking
+  // wizard uses for its department cards (DEPARTMENT_ICON_PATHS in
+  // patient-appointments.js; keep the two copies in sync). Keyed by
+  // normalized department name; unmapped departments get the neutral
+  // medical-cross fallback.
+  const DEPARTMENT_ICON_PATHS = {
+    cardiology: '<path d="M12 20.2C6.9 16.5 3.6 13.2 3.6 9.7 3.6 7.1 5.6 5.1 8.1 5.1c1.6 0 3.1.9 3.9 2.2.8-1.3 2.3-2.2 3.9-2.2 2.5 0 4.5 2 4.5 4.6 0 3.5-3.3 6.8-8.4 10.5Z"/><path d="M6.3 12h2.9l1.4-2.4 2.1 4 1.4-1.6h3.6"/>',
+    dentistry: '<path d="M12 6c-1.4-1.2-3.2-1.8-5-1.4C4.8 4.9 3.7 6.7 4 9c.2 2.2 1.3 3.3 1.8 5.1.4 1.6.6 4.2 1.2 5.7.3.8 1.5.8 2-.1.6-1.3.9-3.3 3-3.3s2.4 2 3 3.3c.5.9 1.7.9 2 .1.6-1.5.8-4.1 1.2-5.7.5-1.8 1.6-2.9 1.8-5.1.3-2.3-.8-4.1-3-4.4-1.8-.4-3.6.2-5 1.4Z"/>',
+    dermatology: '<path d="M12 3.4 20.3 7.7 12 11.6 3.7 7.7 12 3.4Z"/><path d="m4.2 12.4 7.8 4.3 7.8-4.3"/><path d="m4.2 15.9 7.8 4.3 7.8-4.3"/>',
+    "general practice": '<path d="M6 4v5a4 4 0 0 0 8 0V4M4 4h4M12 4h4M10 13v2a4 4 0 0 0 8 0v-1"/><circle cx="18" cy="12" r="1.5"/>',
+    gynecology: '<circle cx="12" cy="8.3" r="4.9"/><path d="M12 13.2v7.3M8.7 17.4h6.6"/>',
+    neurology: '<path d="M12 5.7C10.5 4.5 8.6 4.6 7.5 5.7 6.1 6.3 5.3 7.7 5.7 9.3 4.6 10.3 4.3 12 5.1 13.4 4.9 15.1 6 16.7 7.6 17.1 8.3 18.7 10 19.4 12 18.9Z"/><path d="M12 5.7c1.5-1.2 3.4-1.1 4.5 0 1.4.6 2.2 2 1.8 3.6 1.1 1 1.4 2.7.6 4.1.2 1.7-.9 3.3-2.5 3.7-.7 1.6-2.4 2.3-4.4 1.8V5.7Z"/>',
+    ophthalmology: '<path d="M2.8 12c2-3.9 5.3-6.3 9.2-6.3S19 8.1 21.2 12c-2 3.9-5.3 6.3-9.2 6.3S4.8 15.9 2.8 12Z"/><circle cx="12" cy="12" r="3.1"/>',
+    orthopedics: '<path d="M10.35 15.91 15.91 10.35A2.1 2.1 0 1 1 16.27 7.87L16.13 7.73A2.1 2.1 0 1 1 13.65 8.09L8.09 13.65A2.1 2.1 0 1 1 7.87 16.27L7.73 16.13A2.1 2.1 0 1 1 10.35 15.91Z"/>',
+    pediatrics: '<circle cx="12" cy="13" r="6.4"/><path d="M12 6.6c-.2-1.7.9-2.9 2.5-3"/><path d="M9.4 12.6h.01M14.6 12.6h.01"/><path d="M9.7 15.6a3.2 3.2 0 0 0 4.6 0"/>',
+  };
+  const DEPARTMENT_ICON_FALLBACK = '<circle cx="12" cy="12" r="8.6"/><path d="M12 8.8v6.4M8.8 12h6.4"/>';
+
+  function departmentIconSvg(name) {
+    const key = String(name || '').trim().toLowerCase();
+    const inner = DEPARTMENT_ICON_PATHS[key] || DEPARTMENT_ICON_FALLBACK;
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
   }
 
   function getDoctorInitials(name) {

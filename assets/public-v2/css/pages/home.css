@@ -257,22 +257,15 @@ html[data-theme="light"] body.home-page {
 }
 .home-role-tags button.is-active { border-color: var(--home-sage); background: var(--home-sage); color: var(--home-ink); font-weight: 700; }
 .home-hero__image-note { display: flex; align-items: center; gap: 12px; width: min(84%, 400px); margin: -22px 0 0 auto; padding: 15px 18px; position: relative; border: 1px solid var(--home-line); border-radius: 10px; background: var(--home-surface); box-shadow: 0 9px 25px rgba(0, 0, 0, 0.09); }
+/* The note tile is the shared navbar logo (.home-brand-mark) at note
+   scale — the site's gold building mark, not the old CSS "+". */
 .home-note-mark {
-  display: inline-flex;
   width: 31px;
   height: 31px;
   flex: 0 0 31px;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  padding-bottom: 2px;
-  border: 1px solid rgba(184, 149, 99, 0.55);
-  color: var(--home-brass);
-  font-family: Arial, sans-serif;
-  font-size: 1.25rem;
-  line-height: 1;
-  text-align: center;
+  border-radius: 9px;
 }
+.home-note-mark .auth-icon { width: 18px; height: 18px; }
 .home-hero__image-note p { margin: 0; color: var(--home-muted); font-size: 0.72rem; line-height: 1.5; }
 
 /* Three direct routes below the hero — editorial columns, not repeated cards. */
