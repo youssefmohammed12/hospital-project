@@ -269,9 +269,16 @@ final class HealthBridgeMailService
     }
 
     /**
-     * Shared email-safe HealthBridge layout. The markup uses nested
-     * presentation tables and inline styles so it remains legible in common
-     * desktop and mobile email clients without external assets.
+     * Shared email-safe HealthBridge layout, restyled to the Public V2
+     * design language (Batch 2 email stage): ivory background, deep-green
+     * header/footer bands echoing the site footer, Georgia serif headline
+     * with a gold italic accent word, gold small-caps labels, brass
+     * (#B89563) accents and the V2 teal (#17645F) call-to-action. The
+     * markup uses nested presentation tables and inline styles only, with
+     * bgcolor attributes forcing the light palette in dark-mode clients,
+     * so it remains legible in common desktop and mobile email clients
+     * without external assets. Presentation only — callers' subjects,
+     * wording, links and plain-text bodies are unchanged.
      *
      * @param string[] $details Plain-text paragraphs rendered with HTML escaping.
      */
@@ -299,13 +306,24 @@ final class HealthBridgeMailService
             'UTF-8'
         );
 
+        // V2 headline treatment: the final word carries the site's gold
+        // italic accent. Text content is unchanged — markup only.
+        $headingHtml = $escape($heading);
+        $headingSplit = strrpos($heading, ' ');
+        if ($headingSplit !== false && $headingSplit > 0) {
+            $headingHtml = $escape(substr($heading, 0, $headingSplit))
+                . ' <span style="color:#B89563;font-style:italic;">'
+                . $escape(substr($heading, $headingSplit + 1))
+                . '</span>';
+        }
+
         $detailsHtml = '';
         foreach ($details as $detail) {
             if (!is_string($detail)) {
                 throw new InvalidArgumentException('Email detail paragraphs must be plain text.');
             }
             $detailsHtml .= '<tr><td style="padding:0 0 13px 0;font-family:Arial,Helvetica,sans-serif;'
-                . 'font-size:15px;line-height:24px;color:#425466;">'
+                . 'font-size:15px;line-height:24px;color:#2E4038;">'
                 . $escape($detail)
                 . '</td></tr>';
         }
@@ -316,20 +334,20 @@ final class HealthBridgeMailService
             $safeButtonUrl = $escape($buttonUrl);
             $buttonHtml = '<tr><td align="left" style="padding:12px 0 22px 0;">'
                 . '<table role="presentation" border="0" cellspacing="0" cellpadding="0">'
-                . '<tr><td align="center" bgcolor="#0F766E" style="border-radius:7px;">'
+                . '<tr><td align="center" bgcolor="#17645F" style="border-radius:7px;">'
                 . '<a href="' . $safeButtonUrl . '" target="_blank" '
                 . 'style="display:inline-block;padding:14px 25px;font-family:Arial,Helvetica,sans-serif;'
                 . 'font-size:15px;font-weight:bold;line-height:20px;color:#FFFFFF;text-decoration:none;'
-                . 'border:1px solid #0F766E;border-radius:7px;">'
+                . 'border:1px solid #17645F;border-radius:7px;">'
                 . $escape($buttonLabel)
                 . '</a></td></tr></table></td></tr>';
 
             if ($fallbackLabel !== null && $fallbackLabel !== '') {
                 $fallbackHtml = '<tr><td style="padding:0 0 18px 0;font-family:Arial,Helvetica,sans-serif;'
-                    . 'font-size:13px;line-height:21px;color:#64748B;">'
+                    . 'font-size:13px;line-height:21px;color:#5C6F66;">'
                     . $escape($fallbackLabel)
                     . '<br><a href="' . $safeButtonUrl . '" target="_blank" '
-                    . 'style="color:#0F766E;text-decoration:underline;word-break:break-all;">'
+                    . 'style="color:#17645F;text-decoration:underline;word-break:break-all;">'
                     . $safeButtonUrl
                     . '</a></td></tr>';
             }
@@ -339,9 +357,9 @@ final class HealthBridgeMailService
         if ($securityNote !== null && $securityNote !== '') {
             $securityHtml = '<tr><td style="padding:0 0 24px 0;">'
                 . '<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" '
-                . 'bgcolor="#F1F7F7" style="width:100%;background-color:#F1F7F7;border-left:3px solid #0F766E;">'
+                . 'bgcolor="#F6F1E3" style="width:100%;background-color:#F6F1E3;border-left:3px solid #B89563;">'
                 . '<tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;'
-                . 'font-size:13px;line-height:21px;color:#38515F;">'
+                . 'font-size:13px;line-height:21px;color:#4F4632;">'
                 . $escape($securityNote)
                 . '</td></tr></table></td></tr>';
         }
@@ -350,36 +368,38 @@ final class HealthBridgeMailService
             . '<html lang="en"><head><meta charset="UTF-8">'
             . '<meta name="viewport" content="width=device-width,initial-scale=1.0">'
             . '<meta name="x-apple-disable-message-reformatting">'
+            . '<meta name="color-scheme" content="light">'
+            . '<meta name="supported-color-schemes" content="light">'
             . '<title>' . $escape($heading) . '</title></head>'
-            . '<body style="margin:0;padding:0;background-color:#F2F6F8;">'
+            . '<body style="margin:0;padding:0;background-color:#F6F7F3;">'
             . '<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;'
             . 'opacity:0;overflow:hidden;mso-hide:all;color:transparent;">'
             . $escape($preheader) . '</div>'
             . '<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" '
-            . 'bgcolor="#F2F6F8" style="width:100%;background-color:#F2F6F8;">'
+            . 'bgcolor="#F6F7F3" style="width:100%;background-color:#F6F7F3;">'
             . '<tr><td align="center" style="padding:32px 14px;">'
             . '<table role="presentation" width="600" border="0" cellspacing="0" cellpadding="0" '
-            . 'style="width:100%;max-width:600px;background-color:#FFFFFF;border:1px solid #E2E8F0;'
+            . 'style="width:100%;max-width:600px;background-color:#FFFFFF;border:1px solid #DDD6C2;'
             . 'border-radius:12px;overflow:hidden;">'
-            . '<tr><td bgcolor="#17324D" style="padding:25px 30px;background-color:#17324D;'
-            . 'border-bottom:4px solid #0F766E;">'
-            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:23px;font-weight:bold;'
-            . 'letter-spacing:-0.4px;line-height:30px;color:#FFFFFF;">Health<span style="color:#5EEAD4;">Bridge</span></div>'
+            . '<tr><td bgcolor="#163734" style="padding:25px 30px;background-color:#163734;'
+            . 'border-bottom:4px solid #B89563;">'
+            . '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:25px;'
+            . 'letter-spacing:-0.2px;line-height:31px;color:#F6F7F3;">Health<span style="color:#D9BF96;font-style:italic;">Bridge</span></div>'
             . '<div style="padding-top:5px;font-family:Arial,Helvetica,sans-serif;font-size:10px;'
-            . 'font-weight:bold;letter-spacing:1.5px;line-height:16px;color:#C5D5E2;">PATIENT SERVICES</div>'
+            . 'font-weight:bold;letter-spacing:1.5px;line-height:16px;color:#D9BF96;">PATIENT SERVICES</div>'
             . '</td></tr>'
             . '<tr><td style="padding:34px 30px 12px 30px;">'
             . '<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">'
             . '<tr><td style="padding:0 0 11px 0;font-family:Arial,Helvetica,sans-serif;'
-            . 'font-size:11px;font-weight:bold;letter-spacing:1.3px;line-height:16px;color:#0F766E;">'
+            . 'font-size:11px;font-weight:bold;letter-spacing:1.3px;line-height:16px;color:#8A7658;">'
             . $escape($eyebrow)
             . '</td></tr>'
-            . '<tr><td style="padding:0 0 13px 0;font-family:Arial,Helvetica,sans-serif;'
-            . 'font-size:27px;font-weight:bold;letter-spacing:-0.5px;line-height:34px;color:#17324D;">'
-            . $escape($heading)
+            . '<tr><td style="padding:0 0 13px 0;font-family:Georgia,\'Times New Roman\',serif;'
+            . 'font-size:27px;letter-spacing:-0.3px;line-height:34px;color:#102B2B;">'
+            . $headingHtml
             . '</td></tr>'
             . '<tr><td style="padding:0 0 20px 0;font-family:Arial,Helvetica,sans-serif;'
-            . 'font-size:15px;line-height:25px;color:#425466;">'
+            . 'font-size:15px;line-height:25px;color:#2E4038;">'
             . $escape($intro)
             . '</td></tr>'
             . $detailsHtml
@@ -387,12 +407,13 @@ final class HealthBridgeMailService
             . $fallbackHtml
             . $securityHtml
             . '</table></td></tr>'
-            . '<tr><td bgcolor="#F8FAFC" style="padding:19px 30px;background-color:#F8FAFC;'
-            . 'border-top:1px solid #E8EEF2;">'
-            . '<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;'
-            . 'color:#64748B;">This is an automated message from HealthBridge. Please do not reply to this email.</div>'
+            . '<tr><td bgcolor="#102B2B" style="padding:19px 30px;background-color:#102B2B;">'
+            . '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:14px;line-height:20px;'
+            . 'color:#F6F7F3;">Health<span style="color:#D9BF96;font-style:italic;">Bridge</span></div>'
+            . '<div style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;'
+            . 'color:#C1D1C9;">This is an automated message from HealthBridge. Please do not reply to this email.</div>'
             . '<div style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:11px;'
-            . 'line-height:17px;color:#94A3B8;">HealthBridge · Patient Services</div>'
+            . 'line-height:17px;color:#7D968A;">HealthBridge · Patient Services</div>'
             . '</td></tr></table>'
             . '</td></tr></table></body></html>';
     }
