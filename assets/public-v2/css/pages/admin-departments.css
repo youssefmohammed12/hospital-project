@@ -1,0 +1,78 @@
+/*
+ * HealthBridge Admin — Departments area (Phase 5).
+ * The Departments page: summary line, the department table with
+ * doctor/appointment counts, and its row actions. Create/edit,
+ * doctor assignment and the activate/deactivate/delete confirms
+ * ride the shared admin components from admin-shell.css.
+ * Builds on admin-shell.css — shell and shared component classes
+ * are never redefined here.
+ */
+
+/* ================================================================
+   1. Departments page
+   ================================================================ */
+
+.adept-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.adept-head > div { flex: 1 1 320px; }
+.adept-head__add { margin-top: 26px; flex: none; }
+.adept-head__add svg { width: 15px; height: 15px; }
+
+.adept-summary {
+  margin: 20px 0 14px;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+.adept-summary strong { color: var(--admin-text); }
+
+.adept-count {
+  margin-left: auto;
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.adept-table .adept-actions-col { text-align: right; }
+.adept-loading,
+.adept-empty-cell {
+  color: var(--admin-muted);
+  padding: 26px 16px !important;
+  text-align: center !important;
+}
+.adept-error {
+  margin: 16px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+.adept-name {
+  color: var(--admin-text);
+  font-weight: 650;
+}
+.adept-desc {
+  display: block;
+  margin-top: 2px;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.adept-num {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.adept-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.adept-row-actions .admin-btn { min-height: 32px; padding: 5px 11px; font-size: 0.8rem; }
+
+@media (max-width: 560px) {
+  .adept-head__add { margin-top: 4px; }
+}

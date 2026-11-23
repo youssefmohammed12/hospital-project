@@ -3,18 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Create, edit, activate and deactivate departments." />
+  <meta name="description" content="Create, edit, activate, deactivate and delete departments, and assign doctors to them." />
   <title>Departments — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=21" />
   <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-departments.css?v=1" />
   <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
   <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
   <script defer src="../../assets/public-v2/js/core/shell-core.js?v=3"></script>
   <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-departments.js?v=1"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -24,14 +26,123 @@
 
     <main class="main-content" id="admin-main" aria-busy="true">
       <div class="admin-page">
-        <p class="admin-page__eyebrow">Departments</p>
-        <h1>Departments</h1>
-        <p class="admin-page__lede">Create, edit, activate and deactivate departments, with doctor and appointment counts for each.</p>
-        <div class="admin-phase-note">
-          <strong>Phase 5 of the admin redesign.</strong> Department management — the full create / edit / activate / deactivate set — is built in this phase. The current admin pages remain available in the meantime: <a href="admin.html">open the current admin dashboard</a>.
+        <div class="adept-head">
+          <div>
+            <p class="admin-page__eyebrow">Departments</p>
+            <h1>Departments</h1>
+            <p class="admin-page__lede">Create, edit, activate and deactivate departments, with doctor and appointment counts for each. A department that still has doctors or appointment history cannot be deleted — the server refuses, and deactivation is the way to retire it.</p>
+          </div>
+          <button class="admin-btn adept-head__add" id="adept-add-open" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Add Department
+          </button>
         </div>
+
+        <p class="adept-summary" id="adept-summary" role="status">Loading departments…</p>
+
+        <div class="admin-filter-bar" role="search">
+          <input type="search" id="adept-search" placeholder="Search by name or description…" aria-label="Search departments" />
+          <select id="adept-status" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <span class="adept-count" id="adept-count" aria-live="polite"></span>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table adept-table">
+            <thead>
+              <tr>
+                <th scope="col">Department</th>
+                <th scope="col">Status</th>
+                <th scope="col">Doctors</th>
+                <th scope="col">Appointments</th>
+                <th scope="col" class="adept-actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adept-tbody">
+              <tr><td colspan="5" class="adept-loading">Loading departments…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="adept-error" id="adept-error" role="alert" hidden>The department list could not be loaded. Check your connection and refresh the page.</p>
       </div>
     </main>
+  </div>
+
+  <!-- Create / Edit department modal -->
+  <div class="admin-modal-overlay" id="adept-form-overlay" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adept-form-title">
+      <div class="admin-modal__head">
+        <h3 id="adept-form-title">Add Department</h3>
+        <button class="admin-modal__close" id="adept-form-close" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="adept-form" novalidate>
+        <div class="admin-field">
+          <label for="adept-form-name">Department name</label>
+          <input id="adept-form-name" name="name" type="text" autocomplete="off" maxlength="100" required />
+          <span class="admin-field__hint">Names must be unique — the server refuses a name another department already uses.</span>
+        </div>
+        <div class="admin-field">
+          <label for="adept-form-desc">Description</label>
+          <textarea id="adept-form-desc" name="description" maxlength="2000"></textarea>
+          <span class="admin-field__hint">Optional. Leave empty if the department has no description yet.</span>
+        </div>
+        <div class="admin-field" id="adept-form-status-field" hidden>
+          <label for="adept-form-status">Status</label>
+          <select id="adept-form-status" name="status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <p class="admin-field__error" id="adept-form-error" role="alert" hidden></p>
+        <div class="admin-modal__foot">
+          <button class="admin-btn admin-btn--ghost" id="adept-form-cancel" type="button">Cancel</button>
+          <button class="admin-btn" id="adept-form-submit" type="submit">Save Department</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Assign doctor modal -->
+  <div class="admin-modal-overlay" id="adept-assign-overlay" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adept-assign-title">
+      <div class="admin-modal__head">
+        <h3 id="adept-assign-title">Assign Doctor</h3>
+        <button class="admin-modal__close" id="adept-assign-close" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="admin-modal__note" id="adept-assign-note"></p>
+      <form id="adept-assign-form" novalidate>
+        <div class="admin-field">
+          <label for="adept-assign-doctor">Doctor</label>
+          <select id="adept-assign-doctor" name="doctor_id" required>
+            <option value="">Choose a doctor…</option>
+          </select>
+          <span class="admin-field__hint">Assigning moves the doctor here from their current department, and their specialty follows the department name.</span>
+        </div>
+        <p class="admin-field__error" id="adept-assign-error" role="alert" hidden></p>
+        <div class="admin-modal__foot">
+          <button class="admin-btn admin-btn--ghost" id="adept-assign-cancel" type="button">Cancel</button>
+          <button class="admin-btn" id="adept-assign-submit" type="submit">Assign Doctor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirm modal (activate / deactivate / delete) -->
+  <div class="admin-modal-overlay" id="adept-confirm-overlay" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adept-confirm-title">
+      <div class="admin-modal__head">
+        <h3 id="adept-confirm-title">Confirm</h3>
+        <button class="admin-modal__close" id="adept-confirm-close" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="admin-modal__note" id="adept-confirm-text"></p>
+      <div class="admin-modal__foot">
+        <button class="admin-btn admin-btn--ghost" id="adept-confirm-cancel" type="button">Keep as is</button>
+        <button class="admin-btn admin-btn--danger" id="adept-confirm-ok" type="button">Confirm</button>
+      </div>
+    </div>
   </div>
 </body>
 </html>

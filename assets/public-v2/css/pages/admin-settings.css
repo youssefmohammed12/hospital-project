@@ -1,0 +1,90 @@
+/*
+ * HealthBridge Admin — System Settings area (Phase 5).
+ * The hospital settings page: identity card, appointment-hours
+ * card, and the hours-conflict review list. The conflict confirm
+ * itself rides the shared admin modal from admin-shell.css.
+ * Builds on admin-shell.css — shell and shared component classes
+ * are never redefined here.
+ */
+
+/* ================================================================
+   1. Settings cards and forms
+   ================================================================ */
+
+.aset-card {
+  padding: 24px 26px;
+  margin-top: 22px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+}
+.aset-card h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.aset-card__note {
+  margin: 8px 0 20px;
+  max-width: 68ch;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.aset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+
+.aset-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--admin-border);
+}
+.aset-dirty {
+  margin-right: auto;
+  color: var(--admin-gold);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.aset-error {
+  margin: 18px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+/* ================================================================
+   2. Hours-conflict review
+   ================================================================ */
+
+.aset-conflict-list {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.aset-conflict-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+}
+.aset-conflict-list li + li { border-top: 1px solid var(--admin-border); }
+.aset-conflict-list strong { font-weight: 650; }
+.aset-conflict-list span { color: var(--admin-muted); white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .aset-grid { grid-template-columns: 1fr; }
+  .aset-card { padding: 20px; }
+}
