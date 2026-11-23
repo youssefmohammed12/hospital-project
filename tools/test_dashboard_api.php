@@ -11,6 +11,11 @@
  * Refuses hosted/live databases before opening a connection.
  */
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit(1);
+}
+
 $diagnosticHostValue = getenv('DB_HOST');
 $diagnosticNameValue = getenv('DB_NAME');
 $explicitOptIn = getenv('HB_ALLOW_LOCAL_DB_DIAGNOSTICS') === '1';

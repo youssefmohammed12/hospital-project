@@ -466,6 +466,12 @@ try {
         }
 
         case 'delete_account': {
+            // Intentionally NOT role-gated at this endpoint (PHP audit,
+            // 23 Nov 2026, finding L1): self-deactivation is a supported
+            // feature for every role, and per-role safety — including the
+            // last-admin guard — is enforced inside
+            // AccountLifecycleRepository::deactivateSelf(). Do not add a
+            // role check here without moving that protection first.
             $confirm = $data['confirm_password'] ?? '';
             if (!is_string($confirm) || $confirm === '') {
                 http_response_code(400);

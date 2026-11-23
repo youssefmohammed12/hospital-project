@@ -38,9 +38,20 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     http_response_code(400);
     jsonResponse(false, ['message' => 'Invalid email address.']);
 }
-if (mb_strlen($name) > 100 || mb_strlen($email) > 150 || mb_strlen($password) < 8 || mb_strlen($password) > 200) {
+if (mb_strlen($name) > 100 || mb_strlen($email) > 150 || mb_strlen($password) > 200) {
     http_response_code(400);
     jsonResponse(false, ['message' => 'Doctor details or password do not meet the required length limits.']);
+}
+// Password strength follows the shared policy, like every other creation
+// path (PHP audit, 23 Nov 2026, finding M2). validatePassword() is the
+// single source of truth for the rule.
+$passwordValidation = validatePassword($password);
+if (!$passwordValidation['valid']) {
+    http_response_code(400);
+    jsonResponse(false, [
+        'message' => implode(' ', $passwordValidation['errors']),
+        'errors' => $passwordValidation['errors'],
+    ]);
 }
 if ($departmentId === null || $departmentId <= 0) {
     http_response_code(400);

@@ -92,9 +92,13 @@ try {
         (string)($_SERVER['REMOTE_ADDR'] ?? '')
     );
 } catch (Throwable $e) {
+    // Fail soft, mirroring login (PHP audit, 23 Nov 2026, finding M3): when
+    // the limiter cannot reach its state storage, let this attempt proceed
+    // without throttling rather than taking registration down for everyone.
+    // The failure is logged; normal limiting resumes by itself once the
+    // storage is healthy again.
     error_log('Authentication Abuse Rate Limiter Error: ' . $e->getMessage());
-    http_response_code(503);
-    jsonResponse(false, ['message' => 'Registration is temporarily unavailable. Please try again later.']);
+    $retryAfter = 0;
 }
 
 if ($retryAfter > 0) {

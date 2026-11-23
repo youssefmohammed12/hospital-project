@@ -57,6 +57,14 @@ function isSameRequestOrigin(string $origin): bool
  * No Access-Control-Allow-Origin header is sent: this application uses same-origin
  * pages and API requests. State-changing requests are protected by Origin and
  * Fetch Metadata checks in addition to SameSite cookies.
+ *
+ * CSRF posture (decided; PHP audit, 23 Nov 2026, finding L2): this
+ * application deliberately uses NO CSRF tokens. The defence is the
+ * combination of SameSite=Lax session cookies, the strict same-origin
+ * Origin check below, and the Sec-Fetch-Site check on state-changing
+ * requests — verified live in the audit, where cross-origin and
+ * cross-site POSTs were refused with 403. Do not "fix" the absence of
+ * tokens without revisiting that decision.
  */
 function sendCorsHeaders(): void
 {

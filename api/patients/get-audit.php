@@ -101,6 +101,16 @@ try {
     }
     $entries = $stmt->fetchAll();
 
+    // A patient viewing their own trail must not receive other users'
+    // network metadata (PHP audit, 23 Nov 2026, finding L5). Admin and
+    // doctor views keep the full record.
+    if (($user['role'] ?? '') === 'patient') {
+        foreach ($entries as &$entry) {
+            unset($entry['ip_address'], $entry['user_agent']);
+        }
+        unset($entry);
+    }
+
     jsonResponse(true, ['entries' => $entries]);
 
 } catch (Throwable $e) {

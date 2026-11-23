@@ -7,11 +7,32 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/AuthAbuseRateLimiter.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
     header('Allow: POST');
     jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
+// Throttle unauthenticated submissions by source IP (PHP audit,
+// 23 Nov 2026, finding L3). Fail soft on limiter storage faults, mirroring
+// the auth endpoints: log the failure and let the submission proceed
+// unthrottled rather than breaking the public form for everyone.
+try {
+    $contactLimiter = new AuthAbuseRateLimiter();
+    $contactRetryAfter = $contactLimiter->recordContactSubmission(
+        (string)($_SERVER['REMOTE_ADDR'] ?? '')
+    );
+} catch (Throwable $limiterError) {
+    error_log('Contact Rate Limiter Error: ' . $limiterError->getMessage());
+    $contactRetryAfter = 0;
+}
+
+if ($contactRetryAfter > 0) {
+    http_response_code(429);
+    header('Retry-After: ' . $contactRetryAfter);
+    jsonResponse(false, ['message' => 'Too many messages. Please try again later.']);
 }
 
 $data = getJsonInput();

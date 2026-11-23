@@ -114,6 +114,29 @@ final class AuthAbuseRateLimiter
     }
 
     /**
+     * Limit public contact-form submissions by source IP.
+     * Five submissions per IP are allowed in a 10-minute window. Shares the
+     * auth limiter's storage and locking; keys live in their own
+     * 'contact-' namespace so the counters never interact.
+     */
+    public function recordContactSubmission(string $remoteAddress): int
+    {
+        $secret = $this->loadSecret();
+        $now = time();
+        $ip = filter_var($remoteAddress, FILTER_VALIDATE_IP) !== false
+            ? strtolower($remoteAddress)
+            : 'unknown';
+
+        return $this->updateState([
+            [
+                'key' => 'contact-ip:' . hash_hmac('sha256', $ip, $secret),
+                'window_seconds' => 600,
+                'limit' => 5,
+            ],
+        ], $now);
+    }
+
+    /**
      * Limit registration-verification resends without storing submitted email
      * addresses. Three attempts per email and ten per IP are allowed per hour.
      */
