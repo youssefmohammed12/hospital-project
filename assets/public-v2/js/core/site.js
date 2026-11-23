@@ -59,6 +59,9 @@ const PUBLIC_GEAR_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 const PUBLIC_MARK_ALL_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></svg>`;
 const PUBLIC_TRASH_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></svg>`;
 const PUBLIC_DISMISS_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
+const PUBLIC_CHEVRON_SVG = `<svg class="nav-account-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`;
+const PUBLIC_WORKSPACE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>`;
+const PUBLIC_LOGOUT_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>`;
 
 function getBasePath() {
   const path = window.location.pathname;
@@ -301,36 +304,163 @@ function initPublicNavbar() {
       ? user.name.trim().slice(0, 80)
       : "Account";
     const dashboard = getDashboardUrl(user.role);
+    // The chip's Settings item keeps the destination the old header
+    // settings icon used: the patient settings page for patients,
+    // the role's workspace for doctor and admin.
+    const settingsHref = user.role === "patient"
+      ? getBasePath() + "pages/patient/settings.html"
+      : dashboard;
+    const roleLabel = typeof user.role === "string" && user.role.trim()
+      ? user.role.trim().charAt(0).toUpperCase() + user.role.trim().slice(1)
+      : "Account";
+    const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase()).join("") || "A";
 
     authArea.replaceChildren();
 
-    const name = document.createElement("span");
-    name.className = "nav-user-name";
-    name.textContent = displayName;
+    // One account chip replaces the old name + workspace link + logout
+    // button trio. It mirrors the workspace shells' profile menu
+    // (shell-core.js): trigger with avatar, name and chevron; a menu
+    // with an identity header, the destinations, a divider and Logout.
+    const menu = document.createElement("div");
+    menu.className = "nav-account-menu";
 
-    const dashboardLink = document.createElement("a");
-    dashboardLink.className = "nav-dashboard-link";
-    dashboardLink.href = dashboard;
-    dashboardLink.textContent = "Open workspace";
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "nav-account-trigger";
+    trigger.id = "nav-account-trigger";
+    trigger.setAttribute("aria-haspopup", "true");
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.setAttribute("aria-controls", "nav-account-dropdown");
+    const avatar = document.createElement("span");
+    avatar.className = "nav-account-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.textContent = initials;
+    const name = document.createElement("span");
+    name.className = "nav-account-name";
+    name.textContent = displayName;
+    trigger.append(avatar, name);
+    trigger.insertAdjacentHTML("beforeend", PUBLIC_CHEVRON_SVG);
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "nav-account-dropdown";
+    dropdown.id = "nav-account-dropdown";
+    dropdown.setAttribute("role", "menu");
+    dropdown.setAttribute("aria-label", "Account");
+    dropdown.setAttribute("aria-hidden", "true");
+    dropdown.inert = true;
+
+    const identity = document.createElement("div");
+    identity.className = "nav-account-identity";
+    const identityName = document.createElement("span");
+    identityName.className = "nav-account-identity__name";
+    identityName.textContent = displayName;
+    const identityRole = document.createElement("span");
+    identityRole.className = "nav-account-identity__role";
+    identityRole.textContent = roleLabel;
+    identity.append(identityName, identityRole);
+
+    const workspaceLink = document.createElement("a");
+    workspaceLink.href = dashboard;
+    workspaceLink.setAttribute("role", "menuitem");
+    workspaceLink.innerHTML = PUBLIC_WORKSPACE_SVG;
+    const workspaceLabel = document.createElement("span");
+    workspaceLabel.textContent = "Workspace";
+    workspaceLink.appendChild(workspaceLabel);
+
+    const settingsLink = document.createElement("a");
+    settingsLink.href = settingsHref;
+    settingsLink.setAttribute("role", "menuitem");
+    settingsLink.innerHTML = PUBLIC_GEAR_SVG;
+    const settingsLabel = document.createElement("span");
+    settingsLabel.textContent = "Settings";
+    settingsLink.appendChild(settingsLabel);
+
+    const divider = document.createElement("div");
+    divider.className = "nav-account-dropdown__divider";
+    divider.setAttribute("role", "separator");
 
     const logoutButton = document.createElement("button");
-    logoutButton.className = "btn btn-outline btn-sm";
     logoutButton.type = "button";
-    logoutButton.textContent = "Log out";
-    logoutButton.addEventListener("click", logoutUser);
+    logoutButton.className = "is-danger";
+    logoutButton.setAttribute("role", "menuitem");
+    logoutButton.innerHTML = PUBLIC_LOGOUT_SVG;
+    const logoutLabel = document.createElement("span");
+    logoutLabel.textContent = "Logout";
+    logoutButton.appendChild(logoutLabel);
+    logoutButton.addEventListener("click", () => {
+      setAccountMenu(false);
+      logoutUser();
+    });
 
-    authArea.append(name, dashboardLink, logoutButton);
+    dropdown.append(identity, workspaceLink, settingsLink, divider, logoutButton);
+    menu.append(trigger, dropdown);
+    authArea.appendChild(menu);
+
+    const setAccountMenu = (open) => {
+      dropdown.classList.toggle("is-open", open);
+      dropdown.setAttribute("aria-hidden", String(!open));
+      dropdown.inert = !open;
+      trigger.setAttribute("aria-expanded", String(open));
+    };
+    const menuItems = () =>
+      Array.from(dropdown.querySelectorAll("[role='menuitem']"));
+
+    trigger.addEventListener("click", () => {
+      setAccountMenu(trigger.getAttribute("aria-expanded") !== "true");
+    });
+    trigger.addEventListener("keydown", (event) => {
+      if (!["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) return;
+      if (trigger.getAttribute("aria-expanded") === "true") return;
+      event.preventDefault();
+      setAccountMenu(true);
+      const items = menuItems();
+      const target = event.key === "ArrowUp" ? items[items.length - 1] : items[0];
+      target?.focus({ preventScroll: true });
+    });
+    dropdown.addEventListener("keydown", (event) => {
+      const items = menuItems();
+      if (!items.length) return;
+      if (event.key === "Tab") {
+        setAccountMenu(false);
+        return;
+      }
+      const currentIndex = items.indexOf(document.activeElement);
+      let nextIndex = null;
+      if (event.key === "ArrowDown") nextIndex = (currentIndex + 1 + items.length) % items.length;
+      if (event.key === "ArrowUp") nextIndex = (currentIndex - 1 + items.length) % items.length;
+      if (event.key === "Home") nextIndex = 0;
+      if (event.key === "End") nextIndex = items.length - 1;
+      if (nextIndex !== null) {
+        event.preventDefault();
+        items[nextIndex].focus();
+      }
+    });
+    dropdown.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("a")) {
+        setAccountMenu(false);
+      }
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target instanceof Node && !menu.contains(event.target)) {
+        setAccountMenu(false);
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" &&
+          trigger.getAttribute("aria-expanded") === "true") {
+        setAccountMenu(false);
+        trigger.focus();
+      }
+    });
   }
 
-  // Quick access for signed-in visitors: notifications + settings
-  // icons beside the theme toggle, on every public page.
+  // Quick access for signed-in visitors: the notifications icon
+  // beside the theme toggle, on every public page.
   if (user && !container.querySelector(".nav-quick-icons")) {
     const base = getBasePath();
     const bellHref = user.role === "patient"
       ? base + "pages/patient/notifications.html"
-      : getDashboardUrl(user.role);
-    const gearHref = user.role === "patient"
-      ? base + "pages/patient/settings.html"
       : getDashboardUrl(user.role);
 
     const group = document.createElement("div");
@@ -472,13 +602,9 @@ function initPublicNavbar() {
       if (event.key === "Escape") setQuickPanel(false);
     });
 
-    const gear = document.createElement("a");
-    gear.href = gearHref;
-    gear.setAttribute("aria-label", "Settings");
-    gear.title = "Settings";
-    gear.innerHTML = PUBLIC_GEAR_SVG;
-
-    group.append(bellMenu, gear);
+    // Settings now lives in the account chip's menu (see above); the
+    // quick-access group keeps only the notifications bell.
+    group.append(bellMenu);
     container.insertBefore(group, themeToggle);
 
     const formatQuickDate = (value) => {

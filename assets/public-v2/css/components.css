@@ -213,33 +213,198 @@ html[data-theme="light"] body.doctors-page .nav-toggle {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-.nav-actions .nav-user-name {
+/* Signed-in account chip: one control carrying Workspace, Settings
+   and Logout on the public pages. It mirrors the workspace shells'
+   profile menu (shell-core.js) — same trigger shape, avatar, chevron
+   and dropdown behaviour — expressed in the public chrome's own
+   variables. The public header is dark green in both themes, so the
+   trigger keeps the shells' dark treatment; the dropdown follows the
+   theme like the notifications pop-up above. */
+.nav-account-menu {
+  position: relative;
+}
+
+.nav-account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 11px 4px 5px;
+  color: #f2f5f0;
+  background: transparent;
+  border: 1px solid var(--public-border-dark);
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.nav-account-trigger:hover,
+.nav-account-trigger[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(212, 180, 126, 0.55);
+}
+
+.nav-account-trigger:focus-visible {
+  outline: 2px solid var(--public-brass);
+  outline-offset: 3px;
+}
+
+.nav-account-avatar {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #173532;
+  background: #d9bf96;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.nav-account-name {
   max-width: 170px;
   overflow: hidden;
-  color: var(--public-muted);
-  font-size: 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.nav-actions .nav-dashboard-link {
-  display: inline-flex;
-  min-height: 38px;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
-  border: 1px solid var(--public-border-dark);
-  border-radius: 7px;
-  color: var(--public-text);
-  font-size: 0.8rem;
-  font-weight: 650;
-  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+.nav-account-chevron {
+  width: 14px;
+  height: 14px;
+  color: #b9c9c0;
 }
 
-.nav-actions .nav-dashboard-link:hover {
-  color: #e8d1a8;
-  border-color: rgba(212, 180, 126, 0.55);
-  background: rgba(255, 255, 255, 0.07);
+.nav-account-dropdown {
+  --na-bg: #132725;
+  --na-text: #edf3ee;
+  --na-muted: #b2c4bb;
+  --na-border: rgba(226, 238, 233, 0.14);
+  --na-raised: #19332f;
+  --na-danger: #d87970;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 1200;
+  width: 224px;
+  padding: 7px;
+  color: var(--na-text);
+  background: var(--na-bg);
+  border: 1px solid var(--na-border);
+  border-radius: 13px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  transform: translateY(-5px);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 180ms ease, opacity 180ms ease, visibility 180ms;
+}
+
+html[data-theme="light"] .nav-account-dropdown {
+  --na-bg: #fdfcf8;
+  --na-text: #17302c;
+  --na-muted: #5f7268;
+  --na-border: rgba(16, 43, 43, 0.13);
+  --na-raised: #edf3ef;
+  --na-danger: #b23c31;
+  box-shadow: 0 18px 42px rgba(16, 43, 43, 0.18);
+}
+
+.nav-account-dropdown.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.nav-account-identity {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 5px;
+  padding: 8px 11px 10px;
+  border-bottom: 1px solid var(--na-border);
+}
+
+.nav-account-identity__name {
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-account-identity__role {
+  color: var(--na-muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.nav-account-dropdown a,
+.nav-account-dropdown button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 9px 11px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-account-dropdown a:hover,
+.nav-account-dropdown button:hover {
+  background: var(--na-raised);
+}
+
+.nav-account-dropdown a:focus-visible,
+.nav-account-dropdown button:focus-visible {
+  outline: 2px solid var(--public-brass);
+  outline-offset: -2px;
+}
+
+.nav-account-dropdown svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.nav-account-dropdown .is-danger {
+  color: var(--na-danger);
+}
+
+.nav-account-dropdown__divider {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--na-border);
+}
+
+/* Inside the mobile navigation panel the chip sits at the left edge,
+   so its dropdown opens from the left instead of off-screen. */
+@media (max-width: 768px) {
+  .nav-account-dropdown {
+    right: auto;
+    left: 0;
+  }
+}
+
+/* Phone widths: the name gives way so the header stays uncrowded —
+   avatar and chevron carry the chip. */
+@media (max-width: 640px) {
+  .nav-account-name {
+    display: none;
+  }
 }
 
 /* Signed-in quick access (notifications + settings) in the public header. */
@@ -1032,5 +1197,356 @@ html[data-theme="light"] .public-signal-strip {
 
   .hb-wordmark__letter {
     transform: none !important;
+  }
+}
+
+/* "How it was built" panel — one shared component, stamped identically
+   on the About, Doctors and Services pages. Its theme variables are
+   scoped to the component itself (dark default, light override), so
+   it renders the same on every page regardless of the page's own
+   variable prefix. The logo in its header is the shared navbar brand
+   mark (.home-brand-mark), not a redraw. */
+.public-build-section {
+  padding: 72px 0 88px;
+}
+
+.public-build-section .public-build-panel {
+  margin-inline: auto;
+}
+
+.public-build-panel {
+  --built-surface: #132725;
+  --built-copy: #edf3ee;
+  --built-muted: #b2c4bb;
+  --built-line: rgba(226, 238, 233, 0.17);
+  --built-brass: #b89563;
+  --built-accent: #d4b47e;
+  --built-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  width: min(100%, 445px);
+  padding: 25px;
+  border: 1px solid var(--built-line);
+  border-radius: 15px;
+  background: var(--built-surface);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.2);
+  color: var(--built-copy);
+}
+
+html[data-theme="light"] .public-build-panel {
+  --built-surface: #fff;
+  --built-copy: #102b2b;
+  --built-muted: #50645d;
+  --built-line: rgba(16, 43, 43, 0.14);
+  --built-accent: #76552f;
+}
+
+.public-build-panel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.public-build-panel__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--built-copy);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.public-build-panel__brand .home-brand-mark {
+  width: 27px;
+  height: 27px;
+  flex-basis: 27px;
+  border-radius: 8px;
+}
+
+.public-build-panel__brand .home-brand-mark .auth-icon { width: 16px; height: 16px; }
+
+.public-build-panel__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--built-muted);
+  font-size: 0.59rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.public-build-panel__status > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8ac4a0;
+}
+
+.public-build-panel__eyebrow {
+  margin: 26px 0 9px;
+  color: var(--built-muted);
+  font-size: 0.63rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+}
+
+.public-build-panel h2 {
+  margin: 0 0 24px;
+  color: var(--built-copy);
+  font-family: var(--built-display);
+  font-size: clamp(1.55rem, 2.7vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.public-build-panel h2 em {
+  color: var(--built-accent);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.public-build-journey {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+}
+
+.public-build-journey__spine {
+  position: absolute;
+  top: 5px;
+  left: 4.5px;
+  z-index: 0;
+  width: 1px;
+  height: calc(100% - 65px);
+  background: linear-gradient(
+    to bottom,
+    rgba(184, 149, 99, 0.34),
+    rgba(184, 149, 99, 0.82) 48%,
+    rgba(184, 149, 99, 0.34)
+  );
+  pointer-events: none;
+}
+
+.public-build-journey__signal {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  z-index: 3;
+  width: 10px;
+  height: calc(100% - 65px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
+  animation: public-build-travel 4s linear infinite;
+}
+
+.public-build-journey__signal-dot {
+  position: absolute;
+  bottom: -4.5px;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f2c878;
+  box-shadow: 0 0 0 3px rgba(242, 200, 120, 0.16), 0 0 12px rgba(242, 200, 120, 0.72);
+}
+
+.public-build-journey__list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-auto-rows: 65px;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 25px;
+  list-style: none;
+}
+
+.public-build-milestone {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  align-content: start;
+}
+
+.public-build-milestone__marker {
+  position: absolute;
+  top: 0;
+  left: -25px;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--built-accent);
+  border-radius: 50%;
+  background: var(--built-surface);
+}
+
+.public-build-milestone__marker::after {
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--built-brass);
+  border-radius: 50%;
+  content: "";
+  opacity: 0;
+  transform: scale(0.65);
+  animation: public-build-arrival 4s ease-out infinite;
+  pointer-events: none;
+}
+
+.public-build-milestone:nth-child(1) .public-build-milestone__marker::after {
+  animation-delay: -0.16s;
+}
+
+.public-build-milestone:nth-child(2) .public-build-milestone__marker::after {
+  animation-delay: 1.44s;
+}
+
+.public-build-milestone:nth-child(3) .public-build-milestone__marker::after {
+  animation-delay: 3.04s;
+}
+
+.public-build-milestone:nth-child(4) .public-build-milestone__marker::after {
+  animation-delay: 3.04s;
+}
+
+.public-build-milestone__content {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.public-build-milestone__stage {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 4px;
+  margin: 0;
+  color: var(--built-accent);
+  font-size: 0.53rem;
+  font-weight: 800;
+  letter-spacing: 0.095em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.public-build-milestone__stage time {
+  color: var(--built-muted);
+  font-size: 0.5rem;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+}
+
+.public-build-milestone h3 {
+  margin: 1px 0 0;
+  color: var(--built-copy);
+  font-size: 0.79rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.public-build-milestone__content > p:last-child {
+  margin: 0;
+  color: var(--built-muted);
+  font-size: 0.68rem;
+  line-height: 1.42;
+}
+
+@keyframes public-build-travel {
+  0%, 4% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  8%, 13% {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+  48%, 53% {
+    opacity: 1;
+    transform: translateY(calc(-100% + 50%));
+  }
+  88%, 93% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  97%, 100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+@keyframes public-build-arrival {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  12% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  24% {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+
+.public-build-panel__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 17px 0 0;
+  color: var(--built-muted);
+  font-size: 0.7rem;
+}
+
+.public-build-panel__foot > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8ac4a0;
+}
+
+.public-build-panel__caption {
+  display: block;
+  margin: 13px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--built-line);
+  color: var(--built-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .public-build-panel {
+    padding: 19px;
+  }
+
+  .public-build-panel__caption {
+    font-size: 0.61rem;
+  }
+
+  .public-build-section {
+    padding: 56px 0 64px;
+  }
+}
+
+@media (max-width: 380px) {
+  .public-build-panel__top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-build-journey__signal,
+  .public-build-milestone__marker::after {
+    animation: none !important;
+    opacity: 0;
+    transform: none;
   }
 }

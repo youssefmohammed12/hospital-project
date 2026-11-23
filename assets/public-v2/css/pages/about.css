@@ -292,8 +292,7 @@ html[data-theme="light"] body.about-page .nav-toggle {
   line-height: 0.99;
 }
 
-.about-hero h1 em,
-.about-product-card h2 em {
+.about-hero h1 em {
   color: var(--about-accent);
   font-style: italic;
   font-weight: 500;
@@ -397,286 +396,8 @@ html[data-theme="light"] body.about-page .nav-toggle {
   transform: rotate(27deg);
 }
 
-.about-product-card {
-  width: min(100%, 445px);
-  padding: 25px;
-  border: 1px solid var(--about-line);
-  border-radius: 15px;
-  background: var(--about-surface);
-  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.2);
-}
-
-.about-product-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.about-product-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--about-copy);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.about-product-brand .home-brand-mark {
-  width: 27px;
-  height: 27px;
-  flex-basis: 27px;
-  border-radius: 8px;
-}
-
-.about-product-brand .home-brand-mark .auth-icon { width: 16px; height: 16px; }
-
-.about-product-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--about-muted);
-  font-size: 0.59rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.about-product-status > span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #8ac4a0;
-}
-
-.about-product-card__eyebrow {
-  margin: 26px 0 9px;
-  color: var(--about-muted);
-  font-size: 0.63rem;
-  font-weight: 750;
-  letter-spacing: 0.14em;
-}
-
-.about-product-card h2 {
-  margin: 0 0 24px;
-  color: var(--about-copy);
-  font-family: var(--about-display);
-  font-size: clamp(1.55rem, 2.7vw, 2rem);
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
-}
-
-.about-build-journey {
-  position: relative;
-  min-width: 0;
-  margin: 0;
-}
-
-.about-build-journey__spine {
-  position: absolute;
-  top: 5px;
-  left: 4.5px;
-  z-index: 0;
-  width: 1px;
-  height: 146px;
-  background: linear-gradient(
-    to bottom,
-    rgba(184, 149, 99, 0.34),
-    rgba(184, 149, 99, 0.82) 48%,
-    rgba(184, 149, 99, 0.34)
-  );
-  pointer-events: none;
-}
-
-.about-build-journey__signal {
-  position: absolute;
-  top: 5px;
-  left: 0;
-  z-index: 3;
-  width: 10px;
-  height: 146px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-100%);
-  animation: about-journey-travel 4s linear infinite;
-}
-
-.about-build-journey__signal-dot {
-  position: absolute;
-  bottom: -4.5px;
-  left: 0;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #f2c878;
-  box-shadow: 0 0 0 3px rgba(242, 200, 120, 0.16), 0 0 12px rgba(242, 200, 120, 0.72);
-}
-
-.about-build-journey__list {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-rows: repeat(3, 65px);
-  gap: 8px;
-  margin: 0;
-  padding: 0 0 0 25px;
-  list-style: none;
-}
-
-.about-build-milestone {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  align-content: start;
-}
-
-.about-build-milestone__marker {
-  position: absolute;
-  top: 0;
-  left: -25px;
-  z-index: 2;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--about-accent);
-  border-radius: 50%;
-  background: var(--about-surface);
-}
-
-.about-build-milestone__marker::after {
-  position: absolute;
-  inset: -4px;
-  border: 1px solid var(--about-brass);
-  border-radius: 50%;
-  content: "";
-  opacity: 0;
-  transform: scale(0.65);
-  animation: about-journey-arrival 4s ease-out infinite;
-  pointer-events: none;
-}
-
-.about-build-milestone:nth-child(1) .about-build-milestone__marker::after {
-  animation-delay: -0.16s;
-}
-
-.about-build-milestone:nth-child(2) .about-build-milestone__marker::after {
-  animation-delay: 1.44s;
-}
-
-.about-build-milestone:nth-child(3) .about-build-milestone__marker::after {
-  animation-delay: 3.04s;
-}
-
-.about-build-milestone__content {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.about-build-milestone__stage {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 3px 4px;
-  margin: 0;
-  color: var(--about-accent);
-  font-size: 0.53rem;
-  font-weight: 800;
-  letter-spacing: 0.095em;
-  line-height: 1.3;
-  text-transform: uppercase;
-}
-
-.about-build-milestone__stage time {
-  color: var(--about-muted);
-  font-size: 0.5rem;
-  font-weight: 750;
-  letter-spacing: 0.055em;
-}
-
-.about-build-milestone h3 {
-  margin: 1px 0 0;
-  color: var(--about-copy);
-  font-size: 0.79rem;
-  font-weight: 750;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-}
-
-.about-build-milestone__content > p:last-child {
-  margin: 0;
-  color: var(--about-muted);
-  font-size: 0.68rem;
-  line-height: 1.42;
-}
-
-@keyframes about-journey-travel {
-  0%, 4% {
-    opacity: 0;
-    transform: translateY(-100%);
-  }
-  8%, 13% {
-    opacity: 1;
-    transform: translateY(-100%);
-  }
-  48%, 53% {
-    opacity: 1;
-    transform: translateY(calc(-100% + 50%));
-  }
-  88%, 93% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  97%, 100% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-}
-
-@keyframes about-journey-arrival {
-  0%, 100% {
-    opacity: 0;
-    transform: scale(0.65);
-  }
-  12% {
-    opacity: 0.7;
-    transform: scale(1);
-  }
-  24% {
-    opacity: 0;
-    transform: scale(1.75);
-  }
-}
-
-.about-product-card__foot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 17px 0 0;
-  color: var(--about-muted);
-  font-size: 0.7rem;
-}
-
-.about-product-card__foot > span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #8ac4a0;
-}
-
-.about-visual-caption {
-  display: block;
-  margin: 13px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--about-line);
-  color: var(--about-muted);
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
-  line-height: 1.5;
-  text-align: right;
-}
+/* The "How it was built" panel is the shared .public-build-panel
+   component (components.css) — its styles live there, once. */
 
 /* Project narrative */
 .about-section {
@@ -1085,10 +806,6 @@ html[data-theme="light"] body.about-page .nav-toggle {
     min-height: 385px;
   }
 
-  .about-product-card {
-    padding: 19px;
-  }
-
   .about-visual-orbit {
     width: 320px;
     height: 270px;
@@ -1097,10 +814,6 @@ html[data-theme="light"] body.about-page .nav-toggle {
   .about-visual-orbit--two {
     width: 270px;
     height: 350px;
-  }
-
-  .about-visual-caption {
-    font-size: 0.61rem;
   }
 
   .about-section {
@@ -1175,21 +888,9 @@ html[data-theme="light"] body.about-page .nav-toggle {
     font-size: 0.64rem;
   }
 
-  .about-product-card__top {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .about-build-journey__signal,
-  .about-build-milestone__marker::after {
-    animation: none !important;
-    opacity: 0;
-    transform: none;
-  }
-
   .about-page *,
   .about-page *::before,
   .about-page *::after {
