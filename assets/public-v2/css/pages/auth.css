@@ -505,6 +505,29 @@ html[data-theme="light"] body.auth-entry-page {
   margin-inline: auto;
 }
 
+/* Token pages (reset password, verify email): same centred panel measure */
+.auth-entry-page .auth-form-panel > .auth-token-panel {
+  width: 100%;
+  max-width: 490px;
+  margin-inline: auto;
+}
+
+.auth-entry-page .auth-token-status[data-state="success"] { color: var(--auth-success); }
+.auth-entry-page .auth-token-status[data-state="error"] { color: var(--auth-danger); }
+
+.auth-entry-page .reset-success-icon.auth-token-icon--danger { color: var(--auth-danger); }
+.auth-entry-page .reset-success-icon.auth-token-icon--muted { color: var(--auth-muted); }
+
+.auth-entry-page .auth-token-spinner {
+  width: 26px;
+  height: 26px;
+  margin: 6px auto 14px;
+  border: 3px solid var(--auth-line);
+  border-top-color: var(--auth-accent, #d4b47e);
+  border-radius: 50%;
+  animation: authEntrySpin 700ms linear infinite;
+}
+
 .auth-entry-page .auth-form-panel > .auth-form-header,
 .auth-entry-page .auth-form-panel > #wizard-progress,
 .auth-entry-page .auth-form-panel > .wizard-step,

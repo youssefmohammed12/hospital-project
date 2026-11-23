@@ -107,7 +107,7 @@ try {
     $dashboardUrl = '';
     if ($currentRole === 'patient') $dashboardUrl = '../../pages/patient/prescriptions.html';
     elseif ($currentRole === 'doctor') $dashboardUrl = '../../pages/doctor/doctor-dashboard.html#prescriptions';
-    elseif ($currentRole === 'admin') $dashboardUrl = '../../pages/admin/admin.html#prescriptions';
+    elseif ($currentRole === 'admin') $dashboardUrl = '../../pages/admin/prescriptions.html';
 
 ?><!DOCTYPE html>
 <html lang="en">

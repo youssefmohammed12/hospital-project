@@ -161,7 +161,7 @@ try {
     $dashboardUrl = '';
     if ($currentRole === 'patient') $dashboardUrl = '../../pages/patient/downloads.html';
     elseif ($currentRole === 'doctor') $dashboardUrl = '../../pages/doctor/appointments.html';
-    elseif ($currentRole === 'admin') $dashboardUrl = '../../pages/admin/admin.html';
+    elseif ($currentRole === 'admin') $dashboardUrl = '../../pages/admin/admin-dashboard.html';
 
     $renderHeader = static function () use ($esc, $hospitalName, $hospitalContactLine): void {
 ?>
