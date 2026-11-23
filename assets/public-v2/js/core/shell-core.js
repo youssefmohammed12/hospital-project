@@ -2,12 +2,13 @@
  * HealthBridge Workspace Shell Core — Public V2.
  *
  * The single implementation of the dashboard shell shared by the
- * patient and doctor workspaces: header, sidebar (desktop collapse
+ * patient, doctor and admin workspaces: header, sidebar (desktop collapse
  * + mobile off-canvas), header bell, account menu, identity gate and
  * route reveal. patient-shell.js and doctor-shell.js carry no logic
  * of their own — they only call HealthBridgeShell.create() with the
  * per-workspace configuration (class prefix, role, route table,
- * labels, storage keys), so a shell fix lands once, here.
+ * labels, storage keys, bell visibility, account-menu links), so a
+ * shell fix lands once, here.
  *
  * Every rendered class/id is built from the configured prefix, which
  * is why the two dashboard CSS files keep matching unchanged.
@@ -45,6 +46,10 @@
       prescriptions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8a2 2 0 0 1 2 2v2H6V5a2 2 0 0 1 2-2Z"/><path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Z"/><path d="M12 10v6M9 13h6"/></svg>',
       notifications: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>',
       documents: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10Z"/><path d="M13 3v7h7M8 14h8M8 17h6"/></svg>',
+      doctors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v6a4 4 0 0 0 8 0V3"/><path d="M4.5 3h3M12.5 3h3"/><path d="M10 13v2.5A4.5 4.5 0 0 0 14.5 20h.6A4.5 4.5 0 0 0 19.5 15.5V14"/><circle cx="19.5" cy="11" r="2.2"/></svg>',
+      patients: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="3.2"/><path d="M5.8 20.5a6.2 6.2 0 0 1 12.4 0"/><path d="M12 14.6v4.2M9.9 16.7h4.2"/></svg>',
+      departments: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 7v6M9 10h6"/><path d="M9.5 21v-3.5h5V21"/></svg>',
+      support: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13.5" width="4" height="6.5" rx="2"/><rect x="17" y="13.5" width="4" height="6.5" rx="2"/><path d="M19 20v.5a2.5 2.5 0 0 1-2.5 2.5H13"/></svg>',
       profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-1.5a7 7 0 0 1 14 0V21Z"/></svg>',
       settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="6.2"/><circle cx="12" cy="12" r="2.6"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>',
       site: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
@@ -58,16 +63,22 @@
     };
 
     function renderHeader(container) {
+      /* Bell visibility is a per-workspace config choice: the admin
+         shell hides it (nothing produces admin notifications — admin
+         plan, Decision D4). Workspaces that do not set showBell keep
+         the default: the bell renders exactly as before. */
+      const bellMarkup = config.showBell === false ? "" :
+        '<div class="' + p + '-notification-menu"><button class="' + p + '-icon-button" id="' + p + '-notification-trigger" type="button" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="' + p + '-notification-dropdown">' + icons.bell + '<span class="' + p + '-notification-badge" id="' + p + '-notification-badge" hidden>0</span></button>' +
+              '<div class="' + p + '-notification-dropdown" id="' + p + '-notification-dropdown" aria-hidden="true" inert><div class="' + p + '-dropdown-heading"><span>Notifications</span><span class="' + p + '-dropdown-actions"><button type="button" class="' + p + '-dropdown-action" id="' + p + '-bell-mark-all" aria-label="Mark all as read" title="Mark all as read">' + icons.markAll + '</button><button type="button" class="' + p + '-dropdown-action" id="' + p + '-bell-dismiss-all" aria-label="Dismiss all" title="Dismiss all">' + icons.trash + '</button></span></div><p class="' + p + '-notification-empty">Your latest updates will appear here.</p><a class="' + p + '-dropdown-viewall" href="notifications.html">View all notifications</a></div></div>';
       container.innerHTML =
         '<header class="' + p + '-topbar">' +
           window.HealthBridgeBrand.markup(config.homePage, p + "-topbar__brand") +
           '<div class="' + p + '-topbar__content"><span class="' + p + '-workspace-kicker">' + config.kicker + '</span><div class="' + p + '-topbar__actions">' +
-            '<div class="' + p + '-notification-menu"><button class="' + p + '-icon-button" id="' + p + '-notification-trigger" type="button" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="' + p + '-notification-dropdown">' + icons.bell + '<span class="' + p + '-notification-badge" id="' + p + '-notification-badge" hidden>0</span></button>' +
-              '<div class="' + p + '-notification-dropdown" id="' + p + '-notification-dropdown" aria-hidden="true" inert><div class="' + p + '-dropdown-heading"><span>Notifications</span><span class="' + p + '-dropdown-actions"><button type="button" class="' + p + '-dropdown-action" id="' + p + '-bell-mark-all" aria-label="Mark all as read" title="Mark all as read">' + icons.markAll + '</button><button type="button" class="' + p + '-dropdown-action" id="' + p + '-bell-dismiss-all" aria-label="Dismiss all" title="Dismiss all">' + icons.trash + '</button></span></div><p class="' + p + '-notification-empty">Your latest updates will appear here.</p><a class="' + p + '-dropdown-viewall" href="notifications.html">View all notifications</a></div></div>' +
+            bellMarkup +
             '<button class="' + p + '-icon-button theme-toggle" type="button" aria-label="Change appearance" title="Change appearance"></button>' +
             '<div class="' + p + '-profile-menu"><button class="' + p + '-profile-trigger" id="' + p + '-profile-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="' + p + '-profile-dropdown"><span class="' + p + '-profile-avatar" id="' + p + '-profile-avatar" aria-hidden="true">' + config.fallbackInitials + '</span><span class="' + p + '-profile-name" id="' + p + '-profile-name">' + config.fallbackName + '</span>' + icons.chevron + '</button>' +
               '<div class="' + p + '-profile-dropdown" id="' + p + '-profile-dropdown" role="menu" aria-label="' + config.accountLabel + '" aria-hidden="true" inert>' +
-                '<a href="profile.html" role="menuitem" tabindex="-1">' + icons.profile + '<span>Profile</span></a><a href="settings.html" role="menuitem" tabindex="-1">' + icons.settings + '<span>Settings</span></a><div class="' + p + '-profile-dropdown__divider" role="separator"></div><button type="button" class="is-danger" data-' + p + '-action="logout" role="menuitem" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>Logout</span></button>' +
+                '<a href="' + (config.profileHref || "profile.html") + '" role="menuitem" tabindex="-1">' + icons.profile + '<span>Profile</span></a><a href="' + (config.settingsHref || "settings.html") + '" role="menuitem" tabindex="-1">' + icons.settings + '<span>Settings</span></a><div class="' + p + '-profile-dropdown__divider" role="separator"></div><button type="button" class="is-danger" data-' + p + '-action="logout" role="menuitem" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>Logout</span></button>' +
               '</div></div>' +
             '<button class="' + p + '-sidebar-toggle" id="' + p + '-sidebar-toggle" type="button" aria-label="Open workspace navigation" aria-controls="' + p + '-sidebar" aria-expanded="false">' + icons.menu + '</button>' +
           '</div></div></header>';
