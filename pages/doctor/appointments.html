@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Your bookings, with reschedule requests you can approve, reject, or answer with a new time." />
+  <meta name="description" content="Every booking on your calendar — search, filter, and open the clinical workspace." />
   <title>Appointments — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
   <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
   <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=16" />
-  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=8" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=9" />
   <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
   <script src="../../assets/public-v2/js/core/site.js?v=5"></script>
   <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-appointments.js?v=1"></script>
 </head>
 <body>
   <div id="navbar-container"></div>
@@ -20,12 +21,30 @@
   <div class="dashboard">
     <div id="sidebar-container"></div>
 
-    <main class="main-content" id="doctor-main" aria-busy="true">
-      <div class="doctor-page">
-        <p class="doctor-page__eyebrow">Patient care</p>
-        <h1>Appointments</h1>
-        <p class="doctor-page__lede">Your bookings, with reschedule requests you can approve, reject, or answer with a new time.</p>
-        <div class="doctor-phase-note"><strong>Being rebuilt — Phase 2.</strong> This section is moving to the Public V2 design in its own phase of the doctor panel plan. Nothing about your data changes; the previous layout is preserved in the project's version history.</div>
+    <main class="main-content doctor-main--list" id="doctor-main" aria-busy="true">
+      <div class="doctor-page doctor-listpage doctor-appts">
+
+        <header class="doctor-listhead doctor-rise" style="--i:0">
+          <p class="doctor-page__eyebrow">Patient care</p>
+          <h1>Appointments</h1>
+          <p class="doctor-page__lede">Every booking on your calendar — search, filter, and open the clinical workspace.</p>
+        </header>
+
+        <section class="doctor-panel doctor-controls doctor-rise" style="--i:1" aria-label="Search and filter appointments">
+          <label class="doctor-search">
+            <span class="doctor-search__label">Search appointments</span>
+            <input type="search" id="a-search" placeholder="Search by patient name…" autocomplete="off" />
+          </label>
+          <div class="doctor-filters" id="a-filters" role="group" aria-label="Filter appointments by status"></div>
+          <p class="doctor-results" id="a-results" aria-live="polite"></p>
+        </section>
+
+        <section class="doctor-panel doctor-alist" aria-label="All appointments">
+          <div id="a-rows"><p class="doctor-empty">Loading your appointments…</p></div>
+        </section>
+
+        <p class="doctor-alert" id="a-error" role="alert" hidden>Your appointments could not be loaded. Check your connection and refresh the page.</p>
+
       </div>
     </main>
   </div>
