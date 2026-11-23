@@ -680,6 +680,7 @@ html[data-theme="light"] .pa-next-card { background: linear-gradient(115deg, #16
   background: rgba(184, 149, 99, 0.08);
 }
 .pa-choice-symbol { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--pa-line); border-radius: 8px; color: var(--pa-accent); }
+.pa-choice-symbol svg { display: block; width: 18px; height: 18px; }
 .pa-choice-card strong { overflow-wrap: anywhere; font-size: 0.8rem; }
 .pa-choice-card small { color: var(--pa-muted); font-size: 0.68rem; }
 .pa-doctor-choice-list { display: grid; gap: 8px; }
@@ -1104,6 +1105,11 @@ body.patient-appointments-page [hidden] {
 .pa-dialog--wizard .pa-department-grid .pa-choice-symbol {
   width: 20px;
   height: 20px;
+}
+
+.pa-dialog--wizard .pa-department-grid .pa-choice-symbol svg {
+  width: 14px;
+  height: 14px;
 }
 
 .pa-dialog--wizard .pa-selected-doctor,
