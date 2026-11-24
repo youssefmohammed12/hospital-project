@@ -96,6 +96,33 @@ function initDoctorsPage() {
     });
   }
 
+  // Hero quick-jump pills: scroll to the directory, then activate the
+  // matching department chip through its own click handler, so chip
+  // state, filtering and result counts stay owned by one mechanism.
+  document.querySelectorAll(".doctors-hero__jump-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const target = pill.dataset.jumpSpecialty;
+      const directory = document.getElementById("doctor-directory");
+      if (directory) {
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        directory.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      }
+      // Department chips render after the departments fetch resolves;
+      // wait briefly for the target chip, then click it.
+      let attempts = 0;
+      const activateChip = () => {
+        const chip = chipsContainer?.querySelector('.chip[data-specialty="' + target + '"]');
+        if (chip) {
+          chip.click();
+          return;
+        }
+        attempts += 1;
+        if (attempts < 30) window.setTimeout(activateChip, 100);
+      };
+      activateChip();
+    });
+  });
+
   // Pre-fill search from URL ?q=
   const initialQuery = new URLSearchParams(window.location.search).get("q");
   if (searchInput && initialQuery) searchInput.value = initialQuery;

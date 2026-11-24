@@ -872,7 +872,10 @@ html[data-theme="light"] .services-overview {
   background: var(--so-accent);
 }
 
-.services-visual-note {
+/* Mini workflow trace in the old note's slot: the booking flow the
+   site implements, shown as three connected steps. Static by design —
+   it illustrates the flow, it is not a live status. */
+.services-flow-trace {
   position: absolute;
   right: -12px;
   bottom: 0;
@@ -881,7 +884,7 @@ html[data-theme="light"] .services-overview {
   width: min(84%, 355px);
   min-height: 62px;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   padding: 12px 17px;
   border: 1px solid var(--services-line);
   border-left: 3px solid var(--services-accent);
@@ -889,25 +892,35 @@ html[data-theme="light"] .services-overview {
   background: var(--services-raised);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
   color: var(--services-copy);
+}
+
+.services-flow-trace__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.services-flow-trace__dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--services-accent);
+  box-shadow: 0 0 0 3px rgba(184, 149, 99, 0.18);
+}
+
+.services-flow-trace__label {
   font-size: 0.72rem;
   font-weight: 650;
   line-height: 1.45;
 }
 
-.services-visual-note__mark {
-  display: grid;
-  width: 31px;
-  height: 31px;
-  flex: 0 0 31px;
-  place-items: center;
-  border: 1px solid rgba(184, 149, 99, 0.55);
-  color: var(--services-accent);
-}
-
-.services-visual-note__mark svg {
-  display: block;
-  width: 18px;
-  height: 18px;
+.services-flow-trace__line {
+  height: 1px;
+  min-width: 10px;
+  flex: 1 1 12px;
+  background: var(--services-line);
 }
 
 /* Capability catalogue and role filters. */
@@ -1523,12 +1536,16 @@ html[data-theme="light"] .services-overview {
     font-size: 0.59rem;
   }
 
-  .services-visual-note {
+  .services-flow-trace {
     right: 2px;
     width: min(91%, 340px);
     min-height: 54px;
+    gap: 6px;
     padding: 9px 12px;
-    font-size: 0.65rem;
+  }
+
+  .services-flow-trace__label {
+    font-size: 0.62rem;
   }
 
   .services-capabilities-section {

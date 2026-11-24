@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="assets/public-v2/css/tokens.css?v=1" />
     <link rel="stylesheet" href="assets/public-v2/css/base.css?v=1" />
     <link rel="stylesheet" href="assets/public-v2/css/components.css?v=22" />
-    <link rel="stylesheet" href="assets/public-v2/css/pages/doctors.css?v=13" />
+    <link rel="stylesheet" href="assets/public-v2/css/pages/doctors.css?v=14" />
     <link rel="stylesheet" href="assets/public-v2/css/footer.css?v=4" />
     <script defer src="assets/public-v2/js/core/footer.js?v=4"></script>
   </head>
@@ -120,9 +120,14 @@
               </div>
               <p class="directory-preview__caption">Samples from the directory below · Synthetic records</p>
             </div>
-            <div class="doctors-hero__note">
-              <span class="doctors-hero__note-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v5a4 4 0 0 0 8 0V4M4 4h4M12 4h4M10 13v2a4 4 0 0 0 8 0v-1"></path><circle cx="18" cy="12" r="1.5"></circle></svg></span>
-              <p>Thoughtful discovery, with the details kept close at hand.</p>
+            <div class="doctors-hero__jump">
+              <span class="doctors-hero__jump-label" id="doctors-jump-label">Jump to</span>
+              <div class="doctors-hero__jump-pills" role="group" aria-labelledby="doctors-jump-label">
+                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="Cardiology">Cardiology</button>
+                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="Dentistry">Dentistry</button>
+                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="Dermatology">Dermatology</button>
+                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="all">All 9 departments</button>
+              </div>
             </div>
           </div>
         </div>
@@ -327,6 +332,6 @@
 
     <div data-shared-footer aria-busy="true"></div>
 
-    <script defer src="assets/public-v2/js/pages/doctors.js?v=4"></script>
+    <script defer src="assets/public-v2/js/pages/doctors.js?v=5"></script>
   </body>
 </html>

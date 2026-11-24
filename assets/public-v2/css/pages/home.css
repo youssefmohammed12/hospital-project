@@ -266,13 +266,14 @@ html[data-theme="light"] body.home-page {
   border-radius: 9px;
 }
 .home-note-mark .auth-icon { width: 18px; height: 18px; }
-/* Gentle idle float for the note tile — transform only, so the layout
-   around it never moves; disabled entirely under reduced-motion. */
+/* Gentle idle float for the whole note card — slow and small so it
+   reads as calm, never busy. Transform only, so the layout around it
+   never moves; disabled entirely under reduced-motion. */
 @keyframes home-note-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
 }
-.home-note-mark { animation: home-note-float 6s ease-in-out infinite; }
+.home-hero__image-note { animation: home-note-float 8s ease-in-out infinite; }
 .home-hero__image-note p { margin: 0; color: var(--home-muted); font-size: 0.72rem; line-height: 1.5; }
 
 /* Three direct routes below the hero — editorial columns, not repeated cards. */
@@ -587,7 +588,7 @@ html[data-theme="light"] body.home-page .home-footer .footer-bottom {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-note-mark { animation: none !important; }
+  .home-hero__image-note { animation: none !important; }
   .home-page .home-hero__photo img,
   .home-page .home-role-tags button { transition: none !important; }
 
