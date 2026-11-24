@@ -902,6 +902,8 @@ function showSuccessScreen(registrationEmail = "") {
   if (ws3) ws3.classList.remove("active");
   const wp = document.getElementById("wizard-progress");
   if (wp) wp.classList.add("is-hidden");
+  const rpn = document.getElementById("reg-privacy-note");
+  if (rpn) rpn.classList.add("is-hidden");
   const afh = document.querySelector(".auth-form-header");
   if (afh) afh.classList.add("is-hidden");
 

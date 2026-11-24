@@ -10,8 +10,9 @@ require_once __DIR__ . '/HealthBridgeMailService.php';
 /**
  * Durable encrypted registration intake.
  *
- * The web request validates, hashes, encrypts and inserts one queue row.
- * This service's CLI worker performs uniqueness checks and account creation.
+ * The web request validates, refuses an identity that is already registered
+ * (via findIdentityConflict), hashes, encrypts and inserts one queue row.
+ * This service's CLI worker re-checks uniqueness and performs account creation.
  * PII and password hashes are never written to queue columns in plaintext.
  */
 final class RegistrationIntakeService
@@ -883,26 +884,39 @@ final class RegistrationIntakeService
     }
 
     /**
+     * Identify which unique identity field of a validated profile already
+     * belongs to an existing account, if any. Shared by the registration
+     * endpoint (which refuses a conflicting submission up front, with a
+     * clear message) and the CLI worker (which still classifies a queued
+     * row whose identity was claimed after submission as 'duplicate').
+     *
      * Perform non-locking existence reads. Do not use SELECT ... FOR UPDATE
      * here: gap locks on absent identity values can deadlock concurrent inserts.
+     *
+     * @return 'email'|'phone'|'national_id'|null
      */
-    private function hasIdentityConflict(array $profile): bool
+    public function findIdentityConflict(array $profile): ?string
     {
         $checks = [
-            ['SELECT id FROM users WHERE email = ? LIMIT 1', $profile['email']],
-            ['SELECT id FROM users WHERE phone_normalized = ? LIMIT 1', normalizePhoneForComparison($profile['phone'])],
-            ['SELECT id FROM users WHERE national_id = ? LIMIT 1', $profile['national_id']],
+            'email' => ['SELECT id FROM users WHERE email = ? LIMIT 1', $profile['email']],
+            'phone' => ['SELECT id FROM users WHERE phone_normalized = ? LIMIT 1', normalizePhoneForComparison($profile['phone'])],
+            'national_id' => ['SELECT id FROM users WHERE national_id = ? LIMIT 1', $profile['national_id']],
         ];
 
-        foreach ($checks as [$sql, $value]) {
+        foreach ($checks as $field => [$sql, $value]) {
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$value]);
             if ($stmt->fetchColumn()) {
-                return true;
+                return $field;
             }
         }
 
-        return false;
+        return null;
+    }
+
+    private function hasIdentityConflict(array $profile): bool
+    {
+        return $this->findIdentityConflict($profile) !== null;
     }
 
     /**
