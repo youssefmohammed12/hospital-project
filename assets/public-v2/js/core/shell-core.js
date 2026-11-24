@@ -29,7 +29,7 @@
 
     function sharedBrandMarkup(href, modifierClass = "") {
       return '<a class="logo ' + modifierClass + '" href="' + href + '" aria-label="' + config.brandLabel + '">' +
-        '<div class="logo-icon"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h16v17M8 8h2m4 0h2M8 12h2m4 0h2M9 21v-4h6v4M12 1v5m-3-3h6"></path></svg></div>' +
+        '<div class="logo-icon"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"></path><path d="M12 7.6v6.2"></path><path d="M8.9 10.7h6.2"></path><path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"></path></svg></div>' +
         sharedWordmark +
         '</a>';
     }

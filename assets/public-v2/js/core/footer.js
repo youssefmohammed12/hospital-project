@@ -57,7 +57,7 @@
   }
 
   async function renderFooter(host, siteRoot) {
-    const fragmentUrl = new URL("includes/fragments/footer.html?v=3", siteRoot);
+    const fragmentUrl = new URL("includes/fragments/footer.html?v=4", siteRoot);
     const response = await fetch(fragmentUrl.href, {
       credentials: "same-origin",
       headers: { Accept: "text/html" },
