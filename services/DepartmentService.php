@@ -30,10 +30,12 @@ class DepartmentService
      */
     public function getAllDepartments(bool $includeInactive = false): array
     {
-        $sql = "SELECT d.*,
-                       (SELECT COUNT(*) FROM doctors WHERE department_id = d.id) as doctor_count,
-                       (SELECT COUNT(*) FROM appointments WHERE department_id = d.id) as appointment_count
-                FROM departments d";
+            $sql = "SELECT d.*,
+                           (SELECT COUNT(*) FROM doctor_profiles dp
+                            JOIN users u ON u.id=dp.doctor_user_id AND u.role='doctor'
+                            WHERE dp.department_id=d.id) AS doctor_count,
+                           (SELECT COUNT(*) FROM appointments a WHERE a.department_id=d.id) AS appointment_count
+                    FROM departments d";
 
         if (!$includeInactive) {
             $sql .= " WHERE d.status = 'active'";
@@ -53,39 +55,20 @@ class DepartmentService
      */
     public function getDepartmentById(int $id): ?array
     {
-        $stmt = $this->db->prepare(
-            "SELECT d.*,
-                    (SELECT COUNT(*) FROM doctors WHERE department_id = d.id) as doctor_count,
-                    (SELECT COUNT(*) FROM appointments WHERE department_id = d.id) as appointment_count
-             FROM departments d
-             WHERE d.id = ?"
-        );
+            $stmt = $this->db->prepare(
+                "SELECT d.*,
+                        (SELECT COUNT(*) FROM doctor_profiles dp
+                         JOIN users u ON u.id=dp.doctor_user_id AND u.role='doctor'
+                         WHERE dp.department_id=d.id) AS doctor_count,
+                        (SELECT COUNT(*) FROM appointments a WHERE a.department_id=d.id) AS appointment_count
+                 FROM departments d WHERE d.id=?"
+            );
         $stmt->execute([$id]);
         $result = $stmt->fetch();
         return $result ?: null;
     }
 
-    /**
-     * Get doctors assigned to a department.
-     *
-     * @param int $departmentId
-     * @return array
-     */
-    public function getDepartmentDoctors(int $departmentId): array
-    {
-        $stmt = $this->db->prepare(
-            "SELECT d.id, d.user_id, d.name, d.specialty, d.rating, d.exp, d.available,
-                    u.email, u.phone, u.is_active,
-                    dss.is_available as schedule_available
-             FROM doctors d
-             JOIN users u ON d.user_id = u.id
-             LEFT JOIN doctor_schedule_settings dss ON d.user_id = dss.doctor_id
-             WHERE d.department_id = ?
-             ORDER BY d.name ASC"
-        );
-        $stmt->execute([$departmentId]);
-        return $stmt->fetchAll();
-    }
+
 
     /**
      * Create a new department.
@@ -271,19 +254,27 @@ class DepartmentService
             throw new Exception('Cannot assign doctors to inactive departments.');
         }
 
-        // Verify doctor exists
-        $stmt = $this->db->prepare("SELECT id FROM doctors WHERE id = ?");
-        $stmt->execute([$doctorId]);
-        if (!$stmt->fetch()) {
-            throw new Exception('Doctor not found.');
-        }
-
-        $stmt = $this->db->prepare(
-            "UPDATE doctors SET department_id = ? WHERE id = ?"
-        );
-        $stmt->execute([$departmentId, $doctorId]);
-
-        return $stmt->rowCount() > 0;
+            $stmt = $this->db->prepare(
+                "UPDATE doctor_profiles dp
+                 JOIN users u ON u.id=dp.doctor_user_id AND u.role='doctor'
+                 SET dp.department_id=?
+                 WHERE dp.doctor_user_id=?"
+            );
+            $stmt->execute([$departmentId, $doctorId]);
+            if ($stmt->rowCount() === 0) {
+                $exists = $this->db->prepare("SELECT id FROM users WHERE id=? AND role='doctor' LIMIT 1");
+                $exists->execute([$doctorId]);
+                if (!$exists->fetchColumn()) {
+                    throw new Exception('Doctor not found.');
+                }
+                $check = $this->db->prepare('SELECT department_id FROM doctor_profiles WHERE doctor_user_id=?');
+                $check->execute([$doctorId]);
+                if ((int)$check->fetchColumn() === $departmentId) {
+                    return true;
+                }
+                throw new RuntimeException('The doctor department assignment was not updated.');
+            }
+            return true;
     }
 
     /**
@@ -295,11 +286,10 @@ class DepartmentService
      */
     public function removeDoctorFromDepartment(int $doctorId): bool
     {
-        $stmt = $this->db->prepare(
-            "UPDATE doctors SET department_id = NULL WHERE id = ?"
-        );
+            $stmt = $this->db->prepare(
+                'UPDATE doctor_profiles SET department_id=NULL WHERE doctor_user_id=?'
+            );
         $stmt->execute([$doctorId]);
-
         return $stmt->rowCount() > 0;
     }
 
@@ -312,10 +302,12 @@ class DepartmentService
      */
     public function searchDepartments(string $query, bool $includeInactive = false): array
     {
-        $sql = "SELECT d.*,
-                       (SELECT COUNT(*) FROM doctors WHERE department_id = d.id) as doctor_count
-                FROM departments d
-                WHERE (d.name LIKE ? OR d.description LIKE ?)";
+            $sql = "SELECT d.*,
+                           (SELECT COUNT(*) FROM doctor_profiles dp
+                            JOIN users u ON u.id=dp.doctor_user_id AND u.role='doctor'
+                            WHERE dp.department_id=d.id) AS doctor_count
+                    FROM departments d
+                    WHERE (d.name LIKE ? OR d.description LIKE ?)";
 
         if (!$includeInactive) {
             $sql .= " AND d.status = 'active'";

@@ -30,22 +30,29 @@ require_once __DIR__ . '/../../services/PatientPortalService.php';
 
 // ── Authentication & Authorization ────────────────────────
 $user = requireAuth();
-$userId = (int)$user['id'];
-$role = $user['role'] ?? '';
 
-// Only patients can access their own dashboard
-if ($role !== 'patient') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Patient access required.']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
+
+$user = assertRole($user, 'patient');
+$userId = (int)$user['id'];
 
 // ── Parse optional input ─────────────────────────────────
 $input = getJsonInput();
-$searchQuery = trim($input['search'] ?? '');
+$searchValue = $input['search'] ?? '';
 
-// ── Response Caching Headers ─────────────────────────────
-header('Cache-Control: private, max-age=30, must-revalidate');
-header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 30) . ' GMT');
+if (!is_string($searchValue)) {
+    http_response_code(400);
+    jsonResponse(false, ['message' => 'Search query must be text.']);
+}
+
+$searchQuery = trim($searchValue);
+
+// Patient dashboard data includes private clinical and account information.
+// Keep the shared Cache-Control: no-store policy from the auth bootstrap.
 
 // ── Execute with detailed error catching ─────────────────
 try {
@@ -61,7 +68,26 @@ try {
         return;
     }
 
-    // Return complete dashboard data (both preview keys for dashboard and full section keys for portal pages)
+    // Page controllers may request a bounded set of canonical portal sections.
+    // Requests without "sections" retain the complete legacy response below.
+    if (array_key_exists('sections', $input)) {
+        if (!is_array($input['sections'])) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Invalid section selection.']);
+        }
+
+        try {
+            $selectedData = $portal->getSelected($userId, $input['sections']);
+        } catch (InvalidArgumentException $e) {
+            http_response_code(400);
+            jsonResponse(false, ['message' => 'Invalid section selection.']);
+        }
+
+        jsonResponse(true, ['data' => $selectedData]);
+        return;
+    }
+
+    // Preserve the complete legacy dashboard payload for existing callers.
     $allData = $portal->getAll($userId);
     
     jsonResponse(true, ['data' => array_merge($allData, [

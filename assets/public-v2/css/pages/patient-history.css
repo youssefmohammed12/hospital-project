@@ -1,0 +1,169 @@
+/*
+ * HealthBridge Public V2 — Patient Medical History (Phase 3)
+ * Built new for Public V2; loads nothing from the legacy frontend.
+ * Tokens mirror the patient appointments page so the workspace matches.
+ */
+body.patient-history-page {
+  --mh-bg: #0b1918;
+  --mh-panel: #132725;
+  --mh-panel-raised: #19332f;
+  --mh-panel-soft: rgba(226, 238, 233, 0.045);
+  --mh-copy: #edf3ee;
+  --mh-muted: #b7c9c1;
+  --mh-faint: #a6b9af;
+  --mh-line: rgba(226, 238, 233, 0.14);
+  --mh-accent: #d4b47e;
+  --mh-green: #9dc9b2;
+  --mh-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  background: var(--mh-bg);
+  color: var(--mh-copy);
+}
+
+html[data-theme="light"] body.patient-history-page {
+  --mh-bg: #f2f5f0;
+  --mh-panel: #ffffff;
+  --mh-panel-raised: #f7f9f5;
+  --mh-panel-soft: #f7f9f5;
+  --mh-copy: #183532;
+  --mh-muted: #536961;
+  --mh-faint: #5f7168;
+  --mh-line: rgba(16, 43, 43, 0.13);
+  --mh-accent: #a9844f;
+  --mh-green: #276d4c;
+  --mh-shadow: 0 18px 44px rgba(19, 46, 39, 0.09);
+}
+
+body.patient-history-page .main-content {
+  min-width: 0;
+  padding: 0;
+  background: var(--mh-bg);
+}
+
+.mh-page {
+  width: min(1240px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 48px) clamp(18px, 3.5vw, 44px) 64px;
+  color: var(--mh-copy);
+}
+
+.mh-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+.mh-eyebrow {
+  color: var(--mh-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0 0 10px;
+}
+.mh-page-header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 0 10px;
+}
+.mh-page-header p { color: var(--mh-muted); margin: 0; max-width: 56ch; line-height: 1.55; }
+.mh-download-button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--public-brand-700);
+  background: var(--public-brand-700);
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mh-download-button:hover { filter: brightness(1.07); }
+.mh-download-button:disabled { opacity: 0.55; cursor: default; }
+
+/* Controls */
+.mh-controls {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border: 1px solid var(--mh-line); border-radius: 14px; background: var(--mh-panel);
+  margin-bottom: 14px;
+}
+.mh-filters { display: flex; flex-wrap: wrap; gap: 7px; }
+.mh-filter {
+  padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--mh-line); background: transparent; color: var(--mh-muted);
+  font: inherit; font-size: 0.76rem; font-weight: 700;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+.mh-filter:hover { border-color: var(--mh-accent); color: var(--mh-copy); }
+.mh-filter[aria-pressed="true"] { background: var(--mh-accent); border-color: var(--mh-accent); color: #172f2b; }
+html[data-theme="light"] .mh-filter[aria-pressed="true"] { color: #fff; }
+.mh-search { flex: 1 1 220px; max-width: 320px; }
+/* The body-class prefix outranks the shell stylesheet's global input
+   background rule, which otherwise overrides this field's own colour. */
+body.patient-workspace .mh-search input {
+  width: 100%; min-height: 38px; padding: 8px 13px; border-radius: 10px;
+  border: 1px solid var(--mh-line); background: var(--mh-panel-soft); color: var(--mh-copy);
+  font: inherit; font-size: 0.84rem;
+}
+.mh-search input::placeholder { color: var(--mh-faint); }
+.mh-count { color: var(--mh-muted); font-size: 0.78rem; margin: 0 2px 14px; }
+
+/* Timeline */
+.mh-timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+.mh-timeline::before {
+  content: ""; position: absolute; top: 8px; bottom: 8px; left: 7px; width: 2px;
+  background: var(--mh-line); border-radius: 2px;
+}
+.mh-event {
+  position: relative; padding: 0 0 14px 34px;
+  animation: mh-rise-in 380ms ease both;
+  animation-delay: calc(var(--mh-i, 0) * 35ms);
+}
+.mh-event:last-child { padding-bottom: 2px; }
+.mh-dot {
+  position: absolute; left: 0; top: 16px; width: 16px; height: 16px; border-radius: 50%;
+  border: 3px solid var(--mh-bg); background: var(--mh-faint);
+}
+.mh-dot[data-type="visit_completed"] { background: var(--mh-green); }
+.mh-dot[data-type="prescription_issued"] { background: var(--mh-accent); }
+.mh-dot[data-type="appointment_booked"] { background: #7fb3d5; }
+.mh-dot[data-type="rating_submitted"] { background: #c9a86a; }
+.mh-dot[data-type="registration"] { background: var(--mh-faint); }
+.mh-card {
+  border: 1px solid var(--mh-line); border-radius: 12px; background: var(--mh-panel);
+  padding: 14px 17px;
+}
+.mh-card-topline { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; justify-content: space-between; }
+.mh-card h3 { margin: 0; font-size: 0.95rem; }
+.mh-date { color: var(--mh-faint); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+.mh-card p { margin: 6px 0 0; color: var(--mh-muted); font-size: 0.84rem; line-height: 1.55; }
+.mh-tag {
+  display: inline-block; margin-top: 9px; padding: 3px 9px; border-radius: 999px;
+  background: var(--mh-panel-soft); color: var(--mh-muted); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em;
+}
+
+/* States */
+.mh-state {
+  border: 1px solid var(--mh-line); border-radius: 14px; background: var(--mh-panel);
+  padding: 34px 22px; text-align: center;
+}
+.mh-state h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; margin: 0 0 8px; font-size: 1.3rem; }
+.mh-state p { color: var(--mh-muted); margin: 0 auto 14px; max-width: 46ch; line-height: 1.55; }
+.mh-button {
+  min-height: 36px; padding: 8px 16px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--public-brand-700); background: var(--public-brand-700); color: #fff;
+  font: inherit; font-size: 0.8rem; font-weight: 700;
+}
+
+@keyframes mh-rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-event { animation: none; }
+  .mh-filter { transition: none; }
+}
+@media (max-width: 760px) {
+  .mh-page { padding: 24px 16px 48px; }
+  .mh-page-header { flex-direction: column; }
+  .mh-search { max-width: none; }
+}

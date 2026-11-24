@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="One profile per patient: account, appointments, reviews, support messages and audit history." />
+  <title>Patient Profile — HealthBridge</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=23" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=2" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-patients.css?v=1" />
+  <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
+  <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/core/shell-core.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-patient-profile.js?v=1"></script>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main-content" id="admin-main" aria-busy="true">
+      <div class="admin-page">
+        <a class="admin-back-link" href="patients.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Back to Patients</a>
+
+        <div id="appf-error" class="admin-phase-note" role="alert" hidden>
+          <strong>This profile could not be loaded.</strong>
+          <span id="appf-error-text">The patient may not exist, or the request failed.</span>
+          <a href="patients.html">Return to the Patients register</a>.
+        </div>
+
+        <div id="appf-body" hidden>
+          <section class="appf-header" id="appf-header" aria-label="Patient summary"></section>
+
+          <div class="appf-stats" id="appf-stats"></div>
+
+          <div class="appf-tabs" role="tablist" aria-label="Patient profile sections">
+            <button class="appf-tab is-active" role="tab" id="appf-tabbtn-overview" aria-controls="appf-tab-overview" aria-selected="true" data-tab="overview" type="button">Overview</button>
+            <button class="appf-tab" role="tab" id="appf-tabbtn-account" aria-controls="appf-tab-account" aria-selected="false" data-tab="account" type="button">Account</button>
+            <button class="appf-tab" role="tab" id="appf-tabbtn-appointments" aria-controls="appf-tab-appointments" aria-selected="false" data-tab="appointments" type="button">Appointments</button>
+            <button class="appf-tab" role="tab" id="appf-tabbtn-activity" aria-controls="appf-tab-activity" aria-selected="false" data-tab="activity" type="button">Reviews &amp; Messages</button>
+            <button class="appf-tab" role="tab" id="appf-tabbtn-audit" aria-controls="appf-tab-audit" aria-selected="false" data-tab="audit" type="button">Audit</button>
+          </div>
+
+          <!-- Overview -->
+          <section class="appf-panel" id="appf-tab-overview" role="tabpanel" aria-labelledby="appf-tabbtn-overview">
+            <div class="appf-grid">
+              <div class="appf-card">
+                <h2>Account &amp; contact</h2>
+                <dl class="appf-dl" id="appf-account"></dl>
+                <p class="appf-note">This is everything the admin endpoints expose for a patient account — the endpoints return no national ID or other government identifier.</p>
+              </div>
+              <div class="appf-card">
+                <h2>Doctors visited</h2>
+                <div id="appf-doctors"></div>
+              </div>
+            </div>
+            <div class="appf-card">
+              <h2>Latest appointments</h2>
+              <div id="appf-recent"></div>
+            </div>
+          </section>
+
+          <!-- Account -->
+          <section class="appf-panel" id="appf-tab-account" role="tabpanel" aria-labelledby="appf-tabbtn-account" hidden>
+            <div class="appf-card">
+              <h2>Edit account</h2>
+              <form id="appf-edit-form" novalidate>
+                <div class="appf-form-grid">
+                  <div class="admin-field">
+                    <label for="appf-edit-name">Full name</label>
+                    <input id="appf-edit-name" type="text" maxlength="100" autocomplete="off" />
+                  </div>
+                  <div class="admin-field">
+                    <label for="appf-edit-email">Email</label>
+                    <input id="appf-edit-email" type="email" maxlength="150" autocomplete="off" />
+                  </div>
+                  <div class="admin-field">
+                    <label for="appf-edit-phone">Phone</label>
+                    <input id="appf-edit-phone" type="tel" maxlength="20" autocomplete="off" />
+                  </div>
+                </div>
+                <p class="appf-note">Name, email and phone are the fields the update endpoint can change and the profile endpoint can read back. Gender and date of birth exist in the patient's profile record but no admin endpoint returns them, so they are not edited here — a form that cannot show the saved value would be guessing.</p>
+                <p class="admin-field__error" id="appf-edit-error" role="alert" hidden></p>
+                <div class="appf-form-foot">
+                  <span class="appf-saved" id="appf-edit-saved" role="status"></span>
+                  <button class="admin-btn" id="appf-edit-save" type="submit">Save changes</button>
+                </div>
+              </form>
+            </div>
+            <div class="appf-card">
+              <h2>Account access</h2>
+              <p class="appf-note" id="appf-access-note" style="margin-top:0"></p>
+              <div class="appf-form-foot">
+                <button class="admin-btn admin-btn--danger" id="appf-toggle" type="button">Deactivate account</button>
+                <button class="admin-btn admin-btn--danger" id="appf-archive" type="button">Archive account</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Appointments -->
+          <section class="appf-panel" id="appf-tab-appointments" role="tabpanel" aria-labelledby="appf-tabbtn-appointments" hidden>
+            <div class="appf-card">
+              <h2 id="appf-appts-title">Appointments</h2>
+              <div id="appf-appts"></div>
+            </div>
+          </section>
+
+          <!-- Reviews & Messages -->
+          <section class="appf-panel" id="appf-tab-activity" role="tabpanel" aria-labelledby="appf-tabbtn-activity" hidden>
+            <div class="appf-card">
+              <h2>Reviews submitted</h2>
+              <div id="appf-reviews"></div>
+            </div>
+            <div class="appf-card">
+              <h2>Support messages</h2>
+              <div id="appf-messages"></div>
+            </div>
+          </section>
+
+          <!-- Audit -->
+          <section class="appf-panel" id="appf-tab-audit" role="tabpanel" aria-labelledby="appf-tabbtn-audit" hidden>
+            <div class="appf-card">
+              <h2>Audit trail for this patient</h2>
+              <p class="appf-note" id="appf-audit-summary" style="margin-top:0">Loading the audit trail…</p>
+              <div id="appf-audit"></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Confirm modal (deactivate / reactivate / archive) -->
+  <div class="admin-modal-overlay" id="appf-confirm-overlay" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="appf-confirm-title">
+      <div class="admin-modal__head">
+        <h3 id="appf-confirm-title">Confirm</h3>
+        <button class="admin-modal__close" id="appf-confirm-close" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="admin-modal__note" id="appf-confirm-text"></p>
+      <div class="admin-modal__foot">
+        <button class="admin-btn admin-btn--ghost" id="appf-confirm-cancel" type="button">Keep as is</button>
+        <button class="admin-btn admin-btn--danger" id="appf-confirm-ok" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

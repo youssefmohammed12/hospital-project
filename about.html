@@ -3,290 +3,286 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Learn about HealthBridge — our mission, vision, and the team behind the platform."
-    />
-    <title>About Us — HealthBridge</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="assets/css/style.css?v=2" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
-    />
-    <link rel="stylesheet" href="assets/css/pages/about.css?v=2" />
-    <link rel="stylesheet" href="assets/css/pages/settings.css?v=2" />
+    <meta name="description" content="About HealthBridge, a student-built hospital management system demonstration. Explore its goals, workspaces and technology. Synthetic records only." />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#102B2B" />
+    <title>About the Project — HealthBridge</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
+    <script src="assets/public-v2/js/core/site.js?v=12"></script>
+    <link rel="stylesheet" href="assets/public-v2/css/tokens.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/base.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/components.css?v=23" />
+    <link rel="stylesheet" href="assets/public-v2/css/pages/about.css?v=10" />
+    <link rel="stylesheet" href="assets/public-v2/css/footer.css?v=4" />
+    <script defer src="assets/public-v2/js/core/footer.js?v=4"></script>
   </head>
-  <body>
-    <!-- Navbar -->
-    <nav class="navbar" id="navbar">
-      <div class="nav-container">
-        <a href="index.html" class="logo">
-          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-          <span>HealthBridge</span>
+  <body class="about-page" data-csp-page="about">
+    <a class="about-skip-link" href="#main-content">Skip to main content</a>
+
+    <nav class="navbar" id="navbar" aria-label="Main navigation">
+      <div class="nav-container about-container">
+        <a href="index.html" class="logo home-brand" aria-label="HealthBridge home">
+          <span class="home-brand-mark" aria-hidden="true"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"></path><path d="M12 7.6v6.2"></path><path d="M8.9 10.7h6.2"></path><path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"></path></svg></span>
+          <span class="home-brand-name hb-wordmark"><span class="hb-wordmark__letter" data-letter="H">H</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__letter" data-letter="a">a</span><span class="hb-wordmark__letter" data-letter="l">l</span><span class="hb-wordmark__letter" data-letter="t">t</span><span class="hb-wordmark__letter" data-letter="h">h</span><span class="hb-wordmark__letter" data-letter="B">B</span><span class="hb-wordmark__letter" data-letter="r">r</span><span class="hb-wordmark__letter" data-letter="i">i</span><span class="hb-wordmark__letter" data-letter="d">d</span><span class="hb-wordmark__letter" data-letter="g">g</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__shimmer" aria-hidden="true">HealthBridge</span></span>
         </a>
-        <div class="nav-row">
+        <div class="nav-row" id="nav-menu">
           <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
             <li><a href="doctors.html">Doctors</a></li>
             <li><a href="services.html">Services</a></li>
-            <li><a href="about.html" class="active">About</a></li>
+            <li><a href="about.html" class="active" aria-current="page">About</a></li>
             <li><a href="contact.html">Contact</a></li>
           </ul>
           <div class="nav-actions" id="auth-links">
-            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
-            <a href="pages/auth/login.html#signup" class="btn btn-primary btn-sm"
-              >Sign Up</a
-            >
+            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Log in</a>
+            <a href="pages/auth/register.html" class="btn btn-primary btn-sm">Create account</a>
           </div>
         </div>
       </div>
     </nav>
 
-    <section
-      class="hero hero-sm has-bg"
-      style="
-        background-image: url(&quot;https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=1600&q=80&quot;);
-      "
-    >
-      <div class="hero-content">
-        <h1>About <span>HealthBridge</span></h1>
-        <p>Bridging the gap between patients and quality healthcare.</p>
-      </div>
-    </section>
-
-    <!-- Our Story -->
-    <section class="section story-section">
-      <div class="grid-2">
-        <div class="fade-in">
-          <h2 style="font-size: 2rem; margin-bottom: var(--s5)">
-            Our <span style="color: var(--primary)">Story</span>
-          </h2>
-          <p style="line-height: 1.8; margin-bottom: var(--s4)">
-            Founded in 2026, HealthBridge was born from a simple idea:
-            healthcare should be accessible, transparent, and patient-centered.
-            We started with a small team of healthcare professionals and
-            technologists who believed the patient experience could be better.
-          </p>
-          <p style="line-height: 1.8">
-            Today, we serve thousands of patients — connecting them with
-            top-tier medical professionals and providing tools to manage their
-            entire health journey in one place.
-          </p>
-        </div>
-        <div class="story-visual fade-in">
-          <div class="visual-blob"></div>
-          <div class="main-card">
-            <span class="icon"><i class="fas fa-hospital" aria-hidden="true"></i></span>
-            <h4>HealthBridge Clinic</h4>
-            <p>Connecting Patients &amp; Doctors</p>
-          </div>
-          <div class="floating-badge badge-1">
-            <span class="dot"></span>
-            <span>10k+ Patient Bookings</span>
-          </div>
-          <div class="floating-badge badge-2">
-            <span class="icon-small"><i class="fas fa-bolt" aria-hidden="true"></i></span>
-            <span>Instant Scheduling</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Mission & Vision -->
-    <section
-      style="background: var(--bg-surface); padding: var(--s16) var(--s8)"
-    >
-      <div style="max-width: 1100px; margin: 0 auto">
-        <h2 class="section-title">Mission &amp; <span>Vision</span></h2>
-        <div
-          class="card-grid fade-in-stagger"
-          style="max-width: 800px; margin: 0 auto"
-        >
-          <div class="card mission-card">
-            <div style="font-size: 3rem; margin-bottom: var(--s4)"><i class="fas fa-bullseye" aria-hidden="true"></i></div>
-            <h3 style="margin-bottom: var(--s3)">Our Mission</h3>
-            <p style="line-height: 1.8">
-              To make quality healthcare accessible to everyone by simplifying
-              the appointment booking process and connecting patients with the
-              right medical professionals at the right time.
+    <main id="main-content">
+      <section class="about-hero" aria-labelledby="about-title">
+        <div class="about-container about-hero__layout">
+          <div class="about-hero__copy" data-public-reveal="left">
+            <p class="about-eyebrow"><span aria-hidden="true"></span> About the project / HealthBridge</p>
+            <p class="about-demo-badge">
+              <span class="about-demo-badge__dot" aria-hidden="true"></span>
+              <span>Student-built demonstration</span>
+              <span class="about-demo-badge__divider" aria-hidden="true"></span>
+              <strong>Synthetic records only</strong>
             </p>
-          </div>
-          <div class="card mission-card vision">
-            <div style="font-size: 3rem; margin-bottom: var(--s4)"><i class="fas fa-eye" aria-hidden="true"></i></div>
-            <h3 style="margin-bottom: var(--s3)">Our Vision</h3>
-            <p style="line-height: 1.8">
-              A world where everyone has access to quality healthcare, where
-              booking a doctor's appointment is as easy as ordering a ride, and
-              no one delays care due to complexity or inconvenience.
+            <h1 id="about-title">A closer look at the work behind <em>HealthBridge.</em></h1>
+            <p class="about-hero__intro">
+              HealthBridge is a student-built hospital management system demonstration.
+              It explores how patient, clinician and administrative workflows can fit
+              together in one application—with clear interfaces and role-aware spaces.
             </p>
+            <div class="about-hero__actions">
+              <a class="btn btn-primary" href="services.html">Explore the capabilities <span aria-hidden="true">→</span></a>
+              <a class="about-text-link" href="#project-story">Read the project story <span aria-hidden="true">↓</span></a>
+            </div>
+            <p class="about-hero__boundary"><span aria-hidden="true"></span> A software project demonstration, not a live healthcare service.</p>
+          </div>
+
+          <div class="about-hero__visual" aria-hidden="true" data-public-reveal="right">
+            <div class="about-visual-orbit about-visual-orbit--one"></div>
+            <div class="about-visual-orbit about-visual-orbit--two"></div>
+            <div class="public-build-panel">
+              <div class="public-build-panel__top">
+                <span class="public-build-panel__brand"><span class="home-brand-mark" aria-hidden="true"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"></path><path d="M12 7.6v6.2"></path><path d="M8.9 10.7h6.2"></path><path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"></path></svg></span> HEALTHBRIDGE</span>
+                <span class="public-build-panel__status"><span></span> DEMO WORKSPACE</span>
+              </div>
+              <p class="public-build-panel__eyebrow">HOW IT WAS BUILT</p>
+              <h2>Different roles.<br /><em>Connected workflows.</em></h2>
+              <div class="public-build-journey" aria-label="HealthBridge project milestones">
+                <span class="public-build-journey__spine" aria-hidden="true"></span>
+                <span class="public-build-journey__signal" aria-hidden="true">
+                  <span class="public-build-journey__signal-dot"></span>
+                </span>
+                <ol class="public-build-journey__list">
+                  <li class="public-build-milestone">
+                    <span class="public-build-milestone__marker" aria-hidden="true"></span>
+                    <div class="public-build-milestone__content">
+                      <p class="public-build-milestone__stage">THE FOUNDATION</p>
+                      <h3>Three connected workspaces</h3>
+                      <p>Booking, medical records and prescriptions in one application.</p>
+                    </div>
+                  </li>
+                  <li class="public-build-milestone">
+                    <span class="public-build-milestone__marker" aria-hidden="true"></span>
+                    <div class="public-build-milestone__content">
+                      <p class="public-build-milestone__stage">
+                        <span>MILESTONE 2</span>
+                        <time datetime="2026-11-20">COMPLETED · 20 NOV 2026</time>
+                      </p>
+                      <h3>Security and data design</h3>
+                      <p>Local security and reliability hardening, alongside the V2 database redesign.</p>
+                    </div>
+                  </li>
+                  <li class="public-build-milestone">
+                    <span class="public-build-milestone__marker" aria-hidden="true"></span>
+                    <div class="public-build-milestone__content">
+                      <p class="public-build-milestone__stage">
+                        <span>MILESTONE 3</span>
+                        <time datetime="2026-11-21">COMPLETED · 21 NOV 2026</time>
+                      </p>
+                      <h3>Public V2 redesign</h3>
+                      <p>A page-by-page rebuild of the public experience.</p>
+                    </div>
+                  </li>
+                  <li class="public-build-milestone">
+                    <span class="public-build-milestone__marker" aria-hidden="true"></span>
+                    <div class="public-build-milestone__content">
+                      <p class="public-build-milestone__stage">
+                        <span>MILESTONE 4</span>
+                        <time datetime="2026-11-23">COMPLETED · 23 NOV 2026</time>
+                      </p>
+                      <h3>Patient and doctor dashboards</h3>
+                      <p>Both role workspaces rebuilt in the Public V2 design language.</p>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+              <p class="public-build-panel__foot"><span aria-hidden="true"></span> Sample records are synthetic</p>
+              <span class="public-build-panel__caption">A learning project, designed as a connected system.</span>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Core Values -->
-    <section class="section">
-      <div style="max-width: 1100px; margin: 0 auto">
-        <h2 class="section-title">Our Core <span>Values</span></h2>
-        <p class="section-subtitle">
-          The principles that guide our platform and healthcare network daily.
-        </p>
-        <div class="values-grid fade-in-stagger">
-          <div class="value-card">
-            <div class="value-icon"><i class="fas fa-handshake" aria-hidden="true"></i></div>
-            <h3>Patient-Centric Care</h3>
+      <section class="public-signal-strip" aria-label="Project at a glance">
+        <div class="about-container public-signal-strip__grid">
+          <div class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">01</span>
+            <div class="public-signal__copy"><strong class="public-signal__title">Role-based workspaces</strong><p class="public-signal__detail">Patient, clinician and administrator</p></div>
+          </div>
+          <div class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">02</span>
+            <div class="public-signal__copy"><strong class="public-signal__title">Connected application</strong><p class="public-signal__detail">Shared workflows and data layer</p></div>
+          </div>
+          <div class="public-signal">
+            <span class="public-signal__value public-signal__value--label">DEMO</span>
+            <div class="public-signal__copy"><strong class="public-signal__title">Synthetic data only</strong><p class="public-signal__detail">No real patient records</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-section about-story" id="project-story" aria-labelledby="story-title">
+        <div class="about-container about-story-grid">
+          <div class="about-section-heading" data-public-reveal="rise">
+            <p class="about-kicker">01 / THE PROJECT</p>
+            <h2 id="story-title">Built to understand how a complex application fits together.</h2>
+          </div>
+          <div class="about-story-copy" data-public-reveal="rise">
             <p>
-              We put patients at the center of our decisions, prioritizing
-              active listening, clear communication, and personalized clinical
-              guidance.
+              The goal was to build more than a collection of disconnected screens.
+              HealthBridge brings patient booking, clinician workflows and hospital
+              administration into one role-aware application, with shared information
+              and clear boundaries between responsibilities.
             </p>
-          </div>
-          <div class="value-card">
-            <div class="value-icon"><i class="fas fa-shield-halved" aria-hidden="true"></i></div>
-            <h3>Medical Trust &amp; Safety</h3>
             <p>
-              Every medical practitioner on HealthBridge goes through rigorous
-              background and credential validation to ensure reliable,
-              high-quality care.
+              Patients can find a doctor, book through a four-step wizard with real-time
+              availability checks, reschedule appointments, review their records and
+              prescriptions, and leave ratings after appointments.
             </p>
-          </div>
-          <div class="value-card">
-            <div class="value-icon"><i class="fas fa-globe" aria-hidden="true"></i></div>
-            <h3>Boundless Accessibility</h3>
             <p>
-              We work tirelessly to break down systemic healthcare barriers,
-              making consultations, files, and scheduling simple and accessible
-              for everyone.
+              Clinicians can configure weekly availability, slot intervals, breaks and
+              leave; manage appointment queues; document visits with SOAP encounter
+              notes and EMR workflows; and prepare prescriptions in the digital
+              prescription studio.
             </p>
-          </div>
-          <div class="value-card">
-            <div class="value-icon"><i class="fas fa-bolt" aria-hidden="true"></i></div>
-            <h3>Digital Health Innovation</h3>
             <p>
-              From telemedicine to secure instant notifications and real-time
-              calendars, we design smart tech that makes getting well faster.
+              Administrators get analytics for patient volume, revenue estimates,
+              department load and completion rates, alongside staff and department
+              management, an audit trail, and a support-message inbox for patient
+              inquiries and replies.
+            </p>
+            <aside class="about-stack-card" aria-label="Technology foundation">
+              <p class="about-stack-card__label">TECHNOLOGY FOUNDATION</p>
+              <div class="about-stack-list">
+                <span>PHP 8+ / OOP</span>
+                <span>PDO</span>
+                <span>MariaDB</span>
+                <span>Vanilla JavaScript ES6+</span>
+                <span>Modular CSS3</span>
+                <span>No frontend framework</span>
+              </div>
+              <p>Server-rendered PHP pages use PDO for database access; browser interactions are built with vanilla ES6+ JavaScript and modular CSS3, without a frontend framework.</p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-principles" aria-labelledby="principles-title">
+        <div class="about-container">
+          <div class="about-centered-heading" data-public-reveal="rise">
+            <p class="about-kicker">02 / WHAT GUIDES THE WORK</p>
+            <h2 id="principles-title">A few principles shape every part of the experience.</h2>
+            <p>These are engineering goals for the demonstration—not claims about a real healthcare provider.</p>
+          </div>
+          <div class="about-principle-grid">
+            <article class="about-principle-card" data-public-reveal="card">
+              <span class="about-principle-index">01</span>
+              <h3>Clear journeys</h3>
+              <p>Keep navigation and task steps understandable, from exploring the doctor directory to reviewing an appointment.</p>
+            </article>
+            <article class="about-principle-card" data-public-reveal="card">
+              <span class="about-principle-index">02</span>
+              <h3>Role-aware access</h3>
+              <p>Organize patient, clinician and administrator tools around distinct responsibilities and access boundaries.</p>
+            </article>
+            <article class="about-principle-card" data-public-reveal="card">
+              <span class="about-principle-index">03</span>
+              <h3>Maintainable engineering</h3>
+              <p>Favor consistent patterns, focused modules and predictable behavior over disconnected one-off solutions.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-section about-workspaces" aria-labelledby="workspaces-title">
+        <div class="about-container">
+          <div class="about-centered-heading" data-public-reveal="rise">
+            <p class="about-kicker">03 / THE WORKSPACES</p>
+            <h2 id="workspaces-title">Different responsibilities. One application.</h2>
+            <p>Each workspace presents a different view of the same demonstration environment.</p>
+          </div>
+          <div class="about-workspace-grid">
+            <article class="about-workspace-card" data-public-reveal="card">
+              <div class="about-workspace-card__head"><span>01 / PATIENTS</span><span class="about-workspace-card__rule" aria-hidden="true"></span></div>
+              <h3>Patient portal</h3>
+              <p>Use the four-step booking wizard with real-time doctor-availability checks, manage and reschedule appointments, review records and prescriptions, and leave ratings after appointments.</p>
+              <a href="pages/auth/login.html">Open demo sign-in <span aria-hidden="true">→</span></a>
+            </article>
+            <article class="about-workspace-card" data-public-reveal="card">
+              <div class="about-workspace-card__head"><span>02 / CLINICIANS</span><span class="about-workspace-card__rule" aria-hidden="true"></span></div>
+              <h3>Doctor workspace</h3>
+              <p>Set weekly availability, slot intervals, breaks and leave; manage appointment queues; document visits with SOAP encounter notes and EMR workflows; and prepare digital prescriptions in the prescription studio.</p>
+              <a href="pages/auth/login.html">Open demo sign-in <span aria-hidden="true">→</span></a>
+            </article>
+            <article class="about-workspace-card" data-public-reveal="card">
+              <div class="about-workspace-card__head"><span>03 / ADMINISTRATION</span><span class="about-workspace-card__rule" aria-hidden="true"></span></div>
+              <h3>Admin console</h3>
+              <p>Track patient volume, revenue estimates, department load and completion rates; manage staff and departments; review the audit trail; and handle patient support messages and replies.</p>
+              <a href="pages/auth/login.html">Open demo sign-in <span aria-hidden="true">→</span></a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-boundary" aria-labelledby="boundary-title">
+        <div class="about-container about-boundary__inner" data-public-reveal="rise">
+          <div class="about-boundary__mark" aria-hidden="true">!</div>
+          <div>
+            <p class="about-kicker">IMPORTANT PROJECT SCOPE</p>
+            <h2 id="boundary-title">A software demonstration—not a healthcare provider.</h2>
+            <p>
+              HealthBridge is a student portfolio project. It does not provide medical care,
+              medical advice, emergency assistance or real-world appointments. All sample
+              records are synthetic. Do not enter real personal, account or health information.
             </p>
           </div>
+          <a class="about-boundary__link" href="contact.html">Project feedback <span aria-hidden="true">↗</span></a>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Platform Impact Metrics -->
-    <section
-      style="
-        background: linear-gradient(
-          180deg,
-          var(--bg-surface) 0%,
-          var(--bg-base) 100%
-        );
-        padding: var(--s16) var(--s8);
-      "
-    >
-      <div style="max-width: 1100px; margin: 0 auto; text-align: center">
-        <h2 class="section-title">HealthBridge by the <span>Numbers</span></h2>
-        <p class="section-subtitle">
-          Measuring our commitment to improving the patient-doctor connection.
-        </p>
-        <div class="impact-grid fade-in-stagger" style="margin-top: var(--s10)">
-          <div class="impact-card">
-            <div class="impact-num">99.8%</div>
-            <p>Appointment Success Rate</p>
+      <section class="about-bottom-cta" aria-labelledby="about-cta-title">
+        <div class="about-container about-bottom-cta__inner">
+          <div data-public-reveal="left">
+            <p class="about-kicker">TAKE A CLOSER LOOK</p>
+            <h2 id="about-cta-title">Explore the HealthBridge demonstration.</h2>
+            <p>Browse the public directory or see how the workspaces fit together.</p>
           </div>
-          <div class="impact-card">
-            <div class="impact-num">15 Min</div>
-            <p>Avg. Connection Time</p>
-          </div>
-          <div class="impact-card">
-            <div class="impact-num">50+</div>
-            <p>Verified Local Clinics</p>
-          </div>
-          <div class="impact-card">
-            <div class="impact-num">24/7</div>
-            <p>System Availability</p>
+          <div class="about-hero__actions" data-public-reveal="right">
+            <a href="doctors.html" class="btn btn-outline">Browse directory</a>
+            <a href="services.html" class="btn btn-primary">Explore capabilities <span aria-hidden="true">→</span></a>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="footer-inner">
-        <!-- Brand -->
-        <div class="footer-brand">
-          <a href="index.html" class="footer-logo">
-            <span style="font-size: 1.3rem"><i class="fas fa-hospital" aria-hidden="true"></i></span>
-            <span>HealthBridge</span>
-          </a>
-          <p>
-            Modern healthcare at your fingertips. Book appointments, track your
-            health, and connect with certified medical professionals — anytime,
-            anywhere.
-          </p>
-        </div>
-
-        <!-- Navigation -->
-        <div class="footer-nav-cols">
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Company</div>
-            <ul class="footer-nav-list">
-              <li><a href="index.html">Home</a></li>
-              <li><a href="about.html">About Us</a></li>
-              <li><a href="contact.html">Contact Us</a></li>
-            </ul>
-          </div>
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Services</div>
-            <ul class="footer-nav-list">
-              <li><a href="doctors.html">Find a Doctor</a></li>
-              <li><a href="services.html">Our Services</a></li>
-              <li><a href="pages/auth/login.html#signup">Get Started</a></li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Contact -->
-        <div class="footer-contact">
-          <div class="footer-contact-label">Get in Touch</div>
-          <div class="footer-contact-items">
-            <a href="tel:+12345678900">
-              <span>+1 (234) 567-890</span>
-              <span class="contact-icon"><i class="fas fa-phone" aria-hidden="true"></i></span>
-            </a>
-            <a href="mailto:support@healthbridge.com">
-              <span>support@healthbridge.com</span>
-              <span class="contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
-            </a>
-            <span>
-              <span>El-Nabawy El-Mohandes St, Faiyum, Egypt</span>
-              <span class="contact-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom bar -->
-      <div class="footer-bottom">
-        <p>
-          &copy; 2026 HealthBridge. All rights reserved. Built for better
-          healthcare.
-        </p>
-        <div class="footer-socials">
-          <a href="#" aria-label="Twitter" title="Twitter">𝕏</a>
-          <a href="#" aria-label="Facebook" title="Facebook">f</a>
-          <a href="#" aria-label="Instagram" title="Instagram">◎</a>
-          <a href="#" aria-label="LinkedIn" title="LinkedIn">in</a>
-        </div>
-      </div>
-    </footer>
-
-    <script src="assets/js/core/main.js?v=2"></script>
+    <div data-shared-footer aria-busy="true"></div>
   </body>
 </html>
-
-
-

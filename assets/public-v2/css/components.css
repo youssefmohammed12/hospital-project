@@ -1,0 +1,1598 @@
+/*
+ * HealthBridge Public V2 — shared components and site chrome.
+ * No selector in this file relies on the legacy stylesheet.
+ */
+
+/* Public navigation */
+.navbar {
+  position: fixed;
+  z-index: 1000;
+  inset: 0 0 auto;
+  width: 100%;
+}
+
+.nav-container {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nav-row {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.nav-links {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Shared wordmark and brand mark: one alignment contract for every page. */
+.logo,
+.footer-logo {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 11px;
+}
+.logo .home-brand-name,
+.footer-logo .home-brand-name {
+  background: none;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+.home-brand-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: 1px solid rgba(217, 191, 150, 0.48);
+  border-radius: 11px;
+  background: transparent;
+}
+.home-brand-mark .auth-icon { display: block; width: 21px; height: 21px; color: #e8d1a8; }
+
+/* Exact Login navbar brand-mark component, shared across authenticated workspaces. */
+.logo-icon {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  place-items: center;
+  border: 1px solid rgba(217, 191, 150, 0.48);
+  border-radius: 12px;
+  background: transparent;
+  color: #e8d1a8;
+}
+.logo-icon .auth-icon {
+  display: block;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+}
+
+/* Shared desktop and mobile link treatment, including the active underline. */
+.nav-links a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--public-muted);
+  font-size: 0.84rem;
+  font-weight: 550;
+  transition: color 160ms ease, background 160ms ease;
+}
+.nav-links a::before { display: none; }
+.nav-links a::after {
+  position: absolute;
+  right: 12px;
+  bottom: 3px;
+  left: 12px;
+  height: 1px;
+  background: var(--public-brass);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 220ms var(--public-ease);
+}
+.nav-links a:hover::after,
+.nav-links a.active::after { transform: scaleX(1); }
+.nav-links a:hover,
+.nav-links a.active {
+  background: rgba(184, 149, 99, 0.09);
+  color: var(--public-text);
+}
+
+/* Both migrated pages share one dark-green navigation surface in light mode. */
+html[data-theme="light"] body.home-page .navbar,
+html[data-theme="light"] body.home-page .navbar.scrolled,
+html[data-theme="light"] body.doctors-page .navbar,
+html[data-theme="light"] body.doctors-page .navbar.scrolled {
+  background: #102b2b;
+  border-bottom-color: rgba(226, 238, 233, 0.17);
+  box-shadow: none;
+}
+html[data-theme="light"] body.home-page .navbar .logo .home-brand-name,
+html[data-theme="light"] body.doctors-page .navbar .logo .home-brand-name {
+  background: none;
+  color: #f6f7f3;
+  -webkit-text-fill-color: #f6f7f3;
+}
+html[data-theme="light"] body.home-page .nav-links a,
+html[data-theme="light"] body.doctors-page .nav-links a {
+  color: #c1d1c9;
+}
+html[data-theme="light"] body.home-page .nav-links a:hover,
+html[data-theme="light"] body.home-page .nav-links a.active,
+html[data-theme="light"] body.doctors-page .nav-links a:hover,
+html[data-theme="light"] body.doctors-page .nav-links a.active {
+  color: #f6f7f3;
+}
+html[data-theme="light"] body.home-page .nav-actions .btn-outline,
+html[data-theme="light"] body.home-page .theme-toggle,
+html[data-theme="light"] body.home-page .nav-toggle,
+html[data-theme="light"] body.doctors-page .nav-actions .btn-outline,
+html[data-theme="light"] body.doctors-page .theme-toggle,
+html[data-theme="light"] body.doctors-page .nav-toggle {
+  border-color: rgba(226, 238, 233, 0.28);
+  color: #f6f7f3;
+}
+
+.nav-actions {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-toggle,
+.theme-toggle {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  padding: 8px;
+  border: 1px solid var(--public-border-dark);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--public-text);
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.theme-toggle:hover,
+.nav-toggle:hover {
+  color: #e8d1a8;
+  border-color: rgba(212, 180, 126, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.nav-toggle {
+  display: none;
+}
+
+.nav-toggle svg,
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-toggle .ham-line {
+  transform-origin: center;
+  transition: transform 180ms ease, opacity 150ms ease;
+}
+
+.nav-toggle.open .ham-top {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.nav-toggle.open .ham-mid {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.nav-toggle.open .ham-bot {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Signed-in account chip: one control carrying Workspace, Settings
+   and Logout on the public pages. It mirrors the workspace shells'
+   profile menu (shell-core.js) — same trigger shape, avatar, chevron
+   and dropdown behaviour — expressed in the public chrome's own
+   variables. The public header is dark green in both themes, so the
+   trigger keeps the shells' dark treatment; the dropdown follows the
+   theme like the notifications pop-up above. */
+.nav-account-menu {
+  position: relative;
+}
+
+.nav-account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 11px 4px 5px;
+  color: #f2f5f0;
+  background: transparent;
+  border: 1px solid var(--public-border-dark);
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.nav-account-trigger:hover,
+.nav-account-trigger[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(212, 180, 126, 0.55);
+}
+
+.nav-account-trigger:focus-visible {
+  outline: 2px solid var(--public-brass);
+  outline-offset: 3px;
+}
+
+.nav-account-avatar {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #173532;
+  background: #d9bf96;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.nav-account-name {
+  max-width: 170px;
+  overflow: hidden;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-account-chevron {
+  width: 14px;
+  height: 14px;
+  color: #b9c9c0;
+}
+
+.nav-account-dropdown {
+  --na-bg: #132725;
+  --na-text: #edf3ee;
+  --na-muted: #b2c4bb;
+  --na-border: rgba(226, 238, 233, 0.14);
+  --na-raised: #19332f;
+  --na-danger: #d87970;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 1200;
+  width: 224px;
+  padding: 7px;
+  color: var(--na-text);
+  background: var(--na-bg);
+  border: 1px solid var(--na-border);
+  border-radius: 13px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  transform: translateY(-5px);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 180ms ease, opacity 180ms ease, visibility 180ms;
+}
+
+html[data-theme="light"] .nav-account-dropdown {
+  --na-bg: #fdfcf8;
+  --na-text: #17302c;
+  --na-muted: #5f7268;
+  --na-border: rgba(16, 43, 43, 0.13);
+  --na-raised: #edf3ef;
+  --na-danger: #b23c31;
+  box-shadow: 0 18px 42px rgba(16, 43, 43, 0.18);
+}
+
+.nav-account-dropdown.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.nav-account-identity {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 5px;
+  padding: 8px 11px 10px;
+  border-bottom: 1px solid var(--na-border);
+}
+
+.nav-account-identity__name {
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-account-identity__role {
+  color: var(--na-muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.nav-account-dropdown a,
+.nav-account-dropdown button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 9px 11px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-account-dropdown a:hover,
+.nav-account-dropdown button:hover {
+  background: var(--na-raised);
+}
+
+.nav-account-dropdown a:focus-visible,
+.nav-account-dropdown button:focus-visible {
+  outline: 2px solid var(--public-brass);
+  outline-offset: -2px;
+}
+
+.nav-account-dropdown svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.nav-account-dropdown .is-danger {
+  color: var(--na-danger);
+}
+
+.nav-account-dropdown__divider {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--na-border);
+}
+
+/* Phone widths: the name gives way so the header stays uncrowded —
+   avatar and chevron carry the chip. */
+@media (max-width: 640px) {
+  .nav-account-name {
+    display: none;
+  }
+}
+
+/* Very small phones: the wordmark gives way too — the gold brand mark
+   stays, and the footer keeps the full lockup. */
+@media (max-width: 420px) {
+  .navbar .logo .home-brand-name {
+    display: none;
+  }
+}
+
+/* Signed-in quick access (notifications) in the public header. */
+.nav-quick-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+.nav-quick-icons > a,
+.nav-quick-bell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--public-border-dark);
+  border-radius: 9px;
+  color: #edf3ee;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+/* The public header is always dark green chrome, in both themes, so
+   its controls keep one light treatment on every page. These
+   ID-scoped rules exist because several page stylesheets restyle
+   header anchors and the theme toggle per page, which made the
+   settings icon inherit the dark page ink (invisible on the dark
+   header) and gave the toggle a different hover per page/theme. */
+#navbar .nav-quick-icons > a,
+#navbar .nav-quick-bell {
+  color: #edf3ee;
+}
+#navbar .theme-toggle {
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+#navbar .theme-toggle:hover {
+  color: #e8d1a8;
+  border-color: rgba(212, 180, 126, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+}
+.nav-quick-icons > a:hover,
+.nav-quick-bell:hover {
+  color: #e8d1a8;
+  border-color: rgba(212, 180, 126, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+}
+.nav-quick-bell {
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.nav-quick-menu {
+  position: relative;
+}
+/* Dark is the default theme (no data-theme attribute); light is the
+   override — the same convention as the rest of Public V2. */
+.nav-quick-dropdown {
+  --nq-bg: #132725;
+  --nq-text: #edf3ee;
+  --nq-muted: #b2c4bb;
+  --nq-border: rgba(226, 238, 233, 0.14);
+  --nq-accent: #d4b47e;
+  --nq-dot: #d4b47e;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 1200;
+  width: min(320px, calc(100vw - 28px));
+  padding: 17px;
+  color: var(--nq-text);
+  background: var(--nq-bg);
+  border: 1px solid var(--nq-border);
+  border-radius: 13px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+  transform: translateY(-5px);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 180ms ease, opacity 180ms ease, visibility 180ms;
+}
+html[data-theme="light"] .nav-quick-dropdown {
+  --nq-bg: #fdfcf8;
+  --nq-text: #17302c;
+  --nq-muted: #5f7268;
+  --nq-border: rgba(16, 43, 43, 0.13);
+  --nq-accent: #17645f;
+  --nq-dot: #b89563;
+  box-shadow: 0 18px 42px rgba(16, 43, 43, 0.18);
+}
+.nav-quick-dropdown.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+.nav-quick-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.nav-quick-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-quick-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--nq-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.nav-quick-action:hover {
+  color: var(--nq-accent);
+  border-color: var(--nq-border);
+  background: rgba(255, 255, 255, 0.05);
+}
+html[data-theme="light"] .nav-quick-action:hover {
+  background: rgba(16, 43, 43, 0.05);
+}
+.nav-quick-action svg {
+  width: 16px;
+  height: 16px;
+}
+.nav-quick-list {
+  margin-top: 6px;
+}
+.nav-quick-empty {
+  margin: 0 0 13px;
+  color: var(--nq-muted);
+  font-size: 0.82rem;
+}
+.nav-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--nq-border);
+}
+.nav-quick-item {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  color: var(--nq-text);
+  text-decoration: none;
+}
+.nav-quick-dismiss {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--nq-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease;
+}
+.nav-quick-dismiss:hover {
+  color: var(--nq-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="light"] .nav-quick-dismiss:hover {
+  background: rgba(16, 43, 43, 0.06);
+}
+.nav-quick-dismiss svg {
+  width: 13px;
+  height: 13px;
+}
+.nav-quick-item strong {
+  position: relative;
+  font-size: 0.86rem;
+  font-weight: 550;
+}
+.nav-quick-item time {
+  flex: 0 0 auto;
+  color: var(--nq-muted);
+  font-size: 0.74rem;
+}
+.nav-quick-item.is-unread strong {
+  padding-left: 13px;
+  font-weight: 700;
+}
+.nav-quick-item.is-unread strong::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  content: "";
+  background: var(--nq-dot);
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+.nav-quick-item:hover strong {
+  color: var(--nq-accent);
+}
+.nav-quick-viewall {
+  display: inline-flex;
+  margin-top: 12px;
+  color: var(--nq-accent);
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+.nav-quick-icons svg {
+  width: 18px;
+  height: 18px;
+}
+.nav-quick-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  place-items: center;
+  color: #173532;
+  background: #d9bf96;
+  border: 2px solid #102b2b;
+  border-radius: 20px;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+.nav-quick-badge[hidden] {
+  display: none;
+}
+
+/* Badge pulse: same values as the dashboard shells' badge pulses.
+   Plays once per area entry — site.js adds .hb-bell-still to the root
+   when the visitor is already inside the public area, and the rule
+   below then keeps the badge still for that load. */
+.nav-quick-badge:not([hidden]) {
+  animation: nav-badge-pulse 550ms ease 2;
+}
+@keyframes nav-badge-pulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+.hb-bell-still .nav-quick-badge:not([hidden]) { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-quick-badge:not([hidden]) { animation: none; }
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    color var(--public-duration-fast) ease,
+    background var(--public-duration-fast) ease,
+    border-color var(--public-duration-fast) ease,
+    box-shadow var(--public-duration-fast) ease,
+    transform var(--public-duration-fast) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.btn-sm {
+  min-height: 38px;
+  padding: 8px 13px;
+  font-size: 0.8rem;
+}
+
+.btn-primary {
+  border-color: var(--public-brand-700);
+  background: var(--public-brand-700);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  border-color: #267a73;
+  background: #267a73;
+}
+
+.btn-outline {
+  border-color: var(--public-border-dark);
+  background: transparent;
+  color: inherit;
+}
+
+.btn-outline:hover {
+  border-color: var(--public-brass);
+  color: var(--public-brass-light);
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+button:disabled,
+.btn:disabled {
+  opacity: 0.55;
+  transform: none;
+}
+
+/* Toast feedback */
+.site-toast-region {
+  position: fixed;
+  z-index: 2000;
+  right: 20px;
+  bottom: 20px;
+  display: grid;
+  width: min(360px, calc(100vw - 32px));
+  gap: 10px;
+  pointer-events: none;
+}
+
+.site-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 15px;
+  border: 1px solid rgba(226, 238, 233, 0.18);
+  border-radius: 10px;
+  background: #163734;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+  color: #edf3ee;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.site-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.site-toast::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--public-brass-light);
+  content: "";
+}
+
+.site-toast[data-type="success"]::before { background: #8ac4a0; }
+.site-toast[data-type="error"]::before { background: #e18a82; }
+
+/* Consistent shared footer baseline */
+.footer {
+  position: relative;
+  margin: 0;
+}
+
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.footer-bottom p {
+  margin: 0;
+}
+
+/* Layout safety */
+@media (max-width: 768px) {
+  /* The signed-in header cluster (logo, bell, theme toggle, account
+     chip, menu button) is fixed-width, and at phone widths its natural
+     width outgrew the container — the last item (the menu button)
+     ended ~1px past the viewport edge at 390px on Doctors, more at
+     narrower widths. Tighten the container gap and drop the bell
+     group's desktop margin so the cluster fits with room to spare. */
+  .nav-container {
+    gap: 8px;
+  }
+
+  .nav-quick-icons {
+    margin-left: 0;
+  }
+
+  .nav-row {
+    position: absolute;
+    top: var(--public-nav-height);
+    right: 0;
+    left: 0;
+    display: none;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 20px 22px;
+    border-bottom: 1px solid var(--public-border-dark);
+    background: var(--public-brand-950);
+    box-shadow: 0 14px 24px rgba(0, 0, 0, 0.16);
+  }
+
+  .nav-row.open {
+    display: flex;
+  }
+
+  .nav-links {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .nav-links a {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 12px 14px;
+  }
+
+  .nav-actions {
+    width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding: 12px 0 0;
+  }
+
+  .nav-toggle {
+    display: inline-grid;
+  }
+
+  /* Directional scroll reveals become vertical on narrow screens. */
+  .public-reveal-pending[data-public-reveal="left"],
+  .public-reveal-pending[data-public-reveal="right"] {
+    transform: translateY(22px);
+  }
+  .public-reveal-enter[data-public-reveal="left"],
+  .public-reveal-enter[data-public-reveal="right"] {
+    animation-name: publicRevealRise;
+  }
+}
+
+@media (max-width: 560px) {
+  .home-brand-mark {
+    width: 33px;
+    height: 33px;
+    flex-basis: 33px;
+  }
+
+  .site-toast-region {
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+  }
+
+  .footer-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* Reusable, fail-open scroll reveals for redesigned public pages. */
+.public-reveal-pending {
+  opacity: 0;
+  transform: translateY(22px);
+}
+.public-reveal-pending[data-public-reveal="left"] { transform: translateX(-28px); }
+.public-reveal-pending[data-public-reveal="right"] { transform: translateX(28px); }
+.public-reveal-pending[data-public-reveal="card"] { transform: translateY(24px) scale(0.975); }
+.public-reveal-enter {
+  animation: publicRevealRise 650ms var(--public-ease) both;
+}
+.public-reveal-enter[data-public-reveal="left"] { animation-name: publicRevealFromLeft; }
+.public-reveal-enter[data-public-reveal="right"] { animation-name: publicRevealFromRight; }
+.public-reveal-enter[data-public-reveal="card"] { animation-name: publicRevealCard; }
+
+@keyframes publicRevealRise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes publicRevealFromLeft {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes publicRevealFromRight {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes publicRevealCard {
+  from { opacity: 0; transform: translateY(24px) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-reveal-pending,
+  .public-reveal-enter {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* Shared three-column information strip used across Public V2 routes. */
+.public-signal-strip {
+  --signal-surface: var(--public-brand-900);
+  --signal-line: var(--public-border-dark);
+  --signal-copy: var(--public-text);
+  --signal-muted: var(--public-muted);
+  --signal-accent: var(--public-brass-light);
+  border-block: 1px solid var(--signal-line);
+  background: var(--signal-surface);
+}
+
+html[data-theme="light"] .public-signal-strip {
+  --signal-surface: #fff;
+  --signal-line: var(--public-border-light);
+  --signal-copy: #102b2b;
+  --signal-muted: #50645d;
+  --signal-accent: #76552f;
+}
+
+.public-signal-strip__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+
+.public-signal {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-right: 1px solid var(--signal-line);
+}
+
+.public-signal:first-child {
+  padding-left: 0;
+}
+
+.public-signal:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.public-signal__value {
+  flex: 0 0 auto;
+  color: var(--signal-accent);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.public-signal__value--label {
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.public-signal__copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.public-signal-strip .public-signal__title {
+  margin: 0;
+  color: var(--signal-copy);
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+}
+
+.public-signal-strip .public-signal__detail {
+  margin: 0;
+  color: var(--signal-muted);
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .public-signal-strip__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-signal {
+    padding: 15px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--signal-line);
+  }
+
+  .public-signal:last-child {
+    border-bottom: 0;
+  }
+}
+
+
+/*
+ * Keep directional reveals within the viewport until they enter.
+ * This follows the generic reveal selectors intentionally so it wins
+ * the cascade for phones and compact tablet layouts.
+ */
+@media (max-width: 900px) {
+  .public-reveal-pending[data-public-reveal="left"],
+  .public-reveal-pending[data-public-reveal="right"] {
+    transform: translateY(22px);
+  }
+
+  .public-reveal-enter[data-public-reveal="left"],
+  .public-reveal-enter[data-public-reveal="right"] {
+    animation-name: publicRevealRise;
+  }
+}
+
+
+/* Shared HealthBridge wordmark motion: readable hover wave + quiet 10s idle shimmer. */
+.hb-wordmark {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.hb-wordmark__letter {
+  position: relative;
+  display: inline-block;
+}
+
+.hb-wordmark__letter::after {
+  position: absolute;
+  inset: 0;
+  color: #e8d1a8;
+  content: attr(data-letter);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0);
+}
+
+.hb-wordmark__shimmer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  white-space: nowrap;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(108deg, transparent 38%, rgba(232, 209, 168, 0) 44%, rgba(232, 209, 168, 0.64) 50%, rgba(232, 209, 168, 0) 56%, transparent 62%);
+  background-repeat: no-repeat;
+  background-position: 130% 0;
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  opacity: 0;
+  pointer-events: none;
+  animation: hbWordmarkShimmer 10s linear infinite;
+}
+
+.hb-wordmark::before {
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 209, 168, 0.94) 18%, #e8d1a8 50%, rgba(232, 209, 168, 0.94) 82%, transparent);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: hbWordmarkUnderline 10s ease-in-out infinite;
+}
+
+.hb-wordmark__letter:nth-child(1) { --hb-wordmark-index: 0; }
+.hb-wordmark__letter:nth-child(2) { --hb-wordmark-index: 1; }
+.hb-wordmark__letter:nth-child(3) { --hb-wordmark-index: 2; }
+.hb-wordmark__letter:nth-child(4) { --hb-wordmark-index: 3; }
+.hb-wordmark__letter:nth-child(5) { --hb-wordmark-index: 4; }
+.hb-wordmark__letter:nth-child(6) { --hb-wordmark-index: 5; }
+.hb-wordmark__letter:nth-child(7) { --hb-wordmark-index: 6; }
+.hb-wordmark__letter:nth-child(8) { --hb-wordmark-index: 7; }
+.hb-wordmark__letter:nth-child(9) { --hb-wordmark-index: 8; }
+.hb-wordmark__letter:nth-child(10) { --hb-wordmark-index: 9; }
+.hb-wordmark__letter:nth-child(11) { --hb-wordmark-index: 10; }
+.hb-wordmark__letter:nth-child(12) { --hb-wordmark-index: 11; }
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .hb-wordmark:hover::before {
+    animation-play-state: paused;
+    opacity: 0 !important;
+    transform: scaleX(0) !important;
+  }
+
+  .hb-wordmark:hover .hb-wordmark__shimmer {
+    animation-play-state: paused;
+    opacity: 0 !important;
+  }
+
+  .hb-wordmark:hover .hb-wordmark__letter {
+    animation: hbWordmarkWave 175ms ease-out both;
+    animation-delay: calc(var(--hb-wordmark-index, 0) * 25ms);
+  }
+
+  .hb-wordmark:hover .hb-wordmark__letter::after {
+    animation: hbWordmarkTint 175ms ease-out both;
+    animation-delay: calc(var(--hb-wordmark-index, 0) * 25ms);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .logo:focus-visible .hb-wordmark::before,
+  .site-footer__brand-link:focus-visible .hb-wordmark::before {
+    animation-play-state: paused;
+    opacity: 0 !important;
+    transform: scaleX(0) !important;
+  }
+
+  .logo:focus-visible .hb-wordmark .hb-wordmark__shimmer,
+  .site-footer__brand-link:focus-visible .hb-wordmark .hb-wordmark__shimmer {
+    animation-play-state: paused;
+    opacity: 0 !important;
+  }
+
+  .logo:focus-visible .hb-wordmark .hb-wordmark__letter,
+  .site-footer__brand-link:focus-visible .hb-wordmark .hb-wordmark__letter {
+    animation: hbWordmarkWave 175ms ease-out both;
+    animation-delay: calc(var(--hb-wordmark-index, 0) * 25ms);
+  }
+
+  .logo:focus-visible .hb-wordmark .hb-wordmark__letter::after,
+  .site-footer__brand-link:focus-visible .hb-wordmark .hb-wordmark__letter::after {
+    animation: hbWordmarkTint 175ms ease-out both;
+    animation-delay: calc(var(--hb-wordmark-index, 0) * 25ms);
+  }
+}
+
+@keyframes hbWordmarkShimmer {
+  0%, 77% { background-position: 130% 0; opacity: 0; }
+  79% { opacity: 0.5; }
+  89% { background-position: -130% 0; opacity: 0.5; }
+  91%, 100% { background-position: -130% 0; opacity: 0; }
+}
+
+@keyframes hbWordmarkWave {
+  0%, 100% { transform: translateY(0); }
+  38% { transform: translateY(-2px); }
+}
+
+@keyframes hbWordmarkTint {
+  0%, 100% { opacity: 0; }
+  35% { opacity: 0.86; }
+  72% { opacity: 0; }
+}
+
+@keyframes hbWordmarkUnderline {
+  0%, 77% { opacity: 0; transform: scaleX(0); }
+  80% { opacity: 0.92; transform: scaleX(1); }
+  88% { opacity: 0.92; transform: scaleX(1); }
+  91%, 100% { opacity: 0; transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hb-wordmark::before,
+  .hb-wordmark__shimmer,
+  .hb-wordmark__letter,
+  .hb-wordmark__letter::after {
+    animation: none !important;
+  }
+
+  .hb-wordmark::before,
+  .hb-wordmark__shimmer,
+  .hb-wordmark__letter::after {
+    opacity: 0 !important;
+    transform: scaleX(0) !important;
+  }
+
+  .hb-wordmark__letter {
+    transform: none !important;
+  }
+}
+
+/* "How it was built" panel — the About page's hero card. Its theme
+   variables are scoped to the component itself (dark default, light
+   override), so it renders the same regardless of the page's own
+   variable prefix. The logo in its header is the shared navbar brand
+   mark (.home-brand-mark), not a redraw. */
+
+.public-build-panel {
+  --built-surface: #132725;
+  --built-copy: #edf3ee;
+  --built-muted: #b2c4bb;
+  --built-line: rgba(226, 238, 233, 0.17);
+  --built-brass: #b89563;
+  --built-accent: #d4b47e;
+  --built-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  width: min(100%, 445px);
+  padding: 25px;
+  border: 1px solid var(--built-line);
+  border-radius: 15px;
+  background: var(--built-surface);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.2);
+  color: var(--built-copy);
+}
+
+html[data-theme="light"] .public-build-panel {
+  --built-surface: #fff;
+  --built-copy: #102b2b;
+  --built-muted: #50645d;
+  --built-line: rgba(16, 43, 43, 0.14);
+  --built-accent: #76552f;
+}
+
+.public-build-panel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.public-build-panel__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--built-copy);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.public-build-panel__brand .home-brand-mark {
+  width: 27px;
+  height: 27px;
+  flex-basis: 27px;
+  border-radius: 8px;
+}
+
+.public-build-panel__brand .home-brand-mark .auth-icon { width: 16px; height: 16px; }
+
+.public-build-panel__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--built-muted);
+  font-size: 0.59rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.public-build-panel__status > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8ac4a0;
+}
+
+.public-build-panel__eyebrow {
+  margin: 26px 0 9px;
+  color: var(--built-muted);
+  font-size: 0.63rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+}
+
+.public-build-panel h2 {
+  margin: 0 0 24px;
+  color: var(--built-copy);
+  font-family: var(--built-display);
+  font-size: clamp(1.55rem, 2.7vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.public-build-panel h2 em {
+  color: var(--built-accent);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.public-build-journey {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+}
+
+.public-build-journey__spine {
+  position: absolute;
+  top: 5px;
+  left: 4.5px;
+  z-index: 0;
+  width: 1px;
+  height: calc(100% - 65px);
+  background: linear-gradient(
+    to bottom,
+    rgba(184, 149, 99, 0.34),
+    rgba(184, 149, 99, 0.82) 48%,
+    rgba(184, 149, 99, 0.34)
+  );
+  pointer-events: none;
+}
+
+.public-build-journey__signal {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  z-index: 3;
+  width: 10px;
+  height: calc(100% - 65px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
+  animation: public-build-travel 5.2s linear infinite;
+}
+
+.public-build-journey__signal-dot {
+  position: absolute;
+  bottom: -2.5px;
+  left: 2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f2c878;
+  box-shadow: 0 0 0 2px rgba(242, 200, 120, 0.16), 0 0 12px rgba(242, 200, 120, 0.72);
+}
+
+.public-build-journey__list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-auto-rows: 65px;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 25px;
+  list-style: none;
+}
+
+.public-build-milestone {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  align-content: start;
+}
+
+.public-build-milestone__marker {
+  position: absolute;
+  top: 0;
+  left: -25px;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--built-accent);
+  border-radius: 50%;
+  background: var(--built-surface);
+}
+
+.public-build-milestone__marker::after {
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--built-brass);
+  border-radius: 50%;
+  content: "";
+  opacity: 0;
+  transform: scale(0.65);
+  animation: public-build-arrival 5.2s ease-out infinite;
+  pointer-events: none;
+}
+
+/* Arrival pings are timed to the travelling dot's per-node arrivals in
+   public-build-travel (6% / 30% / 55% / 80% of the 5.2s cycle); each
+   delay places the ping's 12% peak exactly on its node's arrival. */
+.public-build-milestone:nth-child(1) .public-build-milestone__marker::after {
+  animation-delay: -0.312s;
+}
+
+.public-build-milestone:nth-child(2) .public-build-milestone__marker::after {
+  animation-delay: 0.936s;
+}
+
+.public-build-milestone:nth-child(3) .public-build-milestone__marker::after {
+  animation-delay: 2.236s;
+}
+
+.public-build-milestone:nth-child(4) .public-build-milestone__marker::after {
+  animation-delay: 3.536s;
+}
+
+.public-build-milestone__content {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.public-build-milestone__stage {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 4px;
+  margin: 0;
+  color: var(--built-accent);
+  font-size: 0.53rem;
+  font-weight: 800;
+  letter-spacing: 0.095em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.public-build-milestone__stage time {
+  color: var(--built-muted);
+  font-size: 0.5rem;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+}
+
+.public-build-milestone h3 {
+  margin: 1px 0 0;
+  color: var(--built-copy);
+  font-size: 0.79rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.public-build-milestone__content > p:last-child {
+  margin: 0;
+  color: var(--built-muted);
+  font-size: 0.68rem;
+  line-height: 1.42;
+}
+
+/* The dot dwells at each of the four milestone rings — measured at
+   0% / 33.33% / 66.67% / 100% of the spine's travel — instead of
+   pausing mid-line where no node exists. */
+@keyframes public-build-travel {
+  0%, 3% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  6%, 12% {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+  30%, 37% {
+    opacity: 1;
+    transform: translateY(-66.67%);
+  }
+  55%, 62% {
+    opacity: 1;
+    transform: translateY(-33.33%);
+  }
+  80%, 88% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  94%, 100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+@keyframes public-build-arrival {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  12% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  24% {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+
+.public-build-panel__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 17px 0 0;
+  color: var(--built-muted);
+  font-size: 0.7rem;
+}
+
+.public-build-panel__foot > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8ac4a0;
+}
+
+.public-build-panel__caption {
+  display: block;
+  margin: 13px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--built-line);
+  color: var(--built-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .public-build-panel {
+    padding: 19px;
+  }
+
+  .public-build-panel__caption {
+    font-size: 0.61rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .public-build-panel__top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-build-journey__signal,
+  .public-build-milestone__marker::after {
+    animation: none !important;
+    opacity: 0;
+    transform: none;
+  }
+}
+
+/* ── Shared skeleton loading states (freeze round, Item 5) ─────────────────
+   Calm placeholders shaped like the real content while a page's data is in
+   flight. One quiet opacity pulse on the whole skeleton — no shimmer or
+   shine sweep — and an opacity-only fade when the real content lands.
+   Reduced motion disables both. The translucent sage tones sit on dark and
+   light surfaces alike, so no per-theme variants are needed. */
+.hb-skel-wrap { animation: hbSkeletonPulse 1.3s ease-in-out infinite alternate; }
+.hb-skel-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(141, 164, 152, 0.16);
+  border-radius: 14px;
+  background: rgba(141, 164, 152, 0.07);
+}
+.hb-skel-line { height: 12px; border-radius: 6px; background: rgba(141, 164, 152, 0.22); }
+.hb-skel-line--lg { height: 22px; }
+.hb-skel-line--sm { height: 9px; }
+.hb-skel-line.w35 { width: 35%; }
+.hb-skel-line.w55 { width: 55%; }
+.hb-skel-line.w75 { width: 75%; }
+.hb-skel-circle { flex: 0 0 auto; border-radius: 50%; background: rgba(141, 164, 152, 0.22); }
+.hb-fade-in { animation: hbFadeIn 180ms ease-out; }
+@keyframes hbSkeletonPulse { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes hbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .hb-skel-wrap { animation: none; }
+  .hb-fade-in { animation: none; }
+}
+/* The overview bentos start hidden behind their skeletons; their own
+   display:grid would otherwise override the hidden attribute. */
+.doctor-bento[hidden],
+.admin-bento[hidden] { display: none; }

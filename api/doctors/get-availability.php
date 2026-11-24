@@ -8,7 +8,13 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/ScheduleService.php';
 
-$userId = requireRole('doctor')['id'];
+$userId = (int)requireRole('doctor')['id'];
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 try {
     $db = getDB();
@@ -20,20 +26,13 @@ try {
     if ($schedule) {
         $available = (int)$schedule['settings']['is_available'];
     } else {
-        // Fallback to old doctors table
-        $stmt = $db->prepare('SELECT available FROM doctors WHERE user_id = ? LIMIT 1');
-        $stmt->execute([$userId]);
-        $doctor = $stmt->fetch();
-        if (!$doctor) {
-            http_response_code(404);
-            jsonResponse(false, ['message' => 'Doctor profile not found.']);
-        }
-        $available = (int)$doctor['available'];
+        http_response_code(404);
+        jsonResponse(false, ['message' => 'Doctor schedule profile not found.']);
     }
 
     jsonResponse(true, ['available' => $available]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get Doctor Availability Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to load availability status.']);

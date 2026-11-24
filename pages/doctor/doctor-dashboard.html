@@ -3,511 +3,171 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="HealthBridge Doctor EMR Portal - Manage your clinical schedule, patient queue, EMR records, and appointments." />
-  <title>Doctor EMR Portal - HealthBridge</title>
+  <meta name="description" content="Your day at a glance — today's appointments, who is waiting, and anything that needs your decision." />
+  <title>Overview — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-  <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/pages/admin.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/modules/schedule.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/pages/doctor-dashboard.css?v=3" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=23" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=19" />
+  <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
+  <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/core/shell-core.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=8"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-overview.js?v=10"></script>
 </head>
-<body class="doctor-portal-body">
-  <nav class="navbar" id="navbar">
-    <div class="nav-container">
-      <a href="../../index.html" class="logo">
-        <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-        <span>HealthBridge</span>
-      </a>
-      <div class="nav-row">
-        <ul class="nav-links">
-          <li><a href="../../index.html">Home</a></li>
-          <li><a href="../../doctors.html">Doctors</a></li>
-          <li><a href="../../services.html">Services</a></li>
-          <li><a href="../../about.html">About</a></li>
-          <li><a href="../../contact.html">Contact</a></li>
-        </ul>
-        <div class="nav-actions" id="auth-links">
-          <button type="button" class="btn btn-icon btn-outline" id="doctor-notif-bell" aria-label="Notifications" title="Notifications" style="position: relative;">
-            <i class="fas fa-bell" aria-hidden="true"></i>
-            <span class="badge badge-danger" id="doctor-notif-badge" style="display: none; position: absolute; top: -4px; right: -4px; font-size: 0.65rem; padding: 2px 5px; border-radius: 10px;">0</span>
-          </button>
-          <div class="doctor-nav-user" id="doctor-nav-user-info">
-            <span class="doctor-badge-online"><i class="fas fa-circle"></i> EMR Online</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </nav>
+<body>
+  <div id="navbar-container"></div>
 
   <div class="dashboard">
-    <aside class="sidebar" aria-label="Doctor Sidebar Navigation">
-      <div>
-        <div class="sidebar-user">
-          <div class="sidebar-avatar-container">
-            <div class="sidebar-avatar" id="doctor-sidebar-avatar" style="background: var(--primary-glow); border-color: var(--border)">DR</div>
-            <div class="status-dot" id="doctor-sidebar-status-dot" title="System Status: Online"></div>
-          </div>
-          <h3 id="doctor-sidebar-name">Doctor Panel</h3>
-          <p id="doctor-sidebar-email">doctor@healthbridge.com</p>
-          <span class="doctor-dept-chip" id="doctor-sidebar-dept">Medical Specialist</span>
-        </div>
-        <nav class="sidebar-nav" role="tablist" aria-label="Main Navigation">
-          <a href="#overview" class="active" role="tab" aria-selected="true" id="nav-tab-overview"><i class="fas fa-chart-line" aria-hidden="true"></i> Dashboard</a>
-          <a href="#queue" role="tab" aria-selected="false" id="nav-tab-queue"><i class="fas fa-users-rectangle" aria-hidden="true"></i> Patient Queue</a>
-          <a href="#appointments" role="tab" aria-selected="false" id="nav-tab-appointments"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments</a>
-          <a href="#schedule" role="tab" aria-selected="false" id="nav-tab-schedule"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Schedule</a>
-          <a href="#notifications" role="tab" aria-selected="false" id="nav-tab-notifications"><i class="fas fa-bell" aria-hidden="true"></i> Notifications</a>
-          <a href="#reviews" role="tab" aria-selected="false" id="nav-tab-reviews"><i class="fas fa-star" aria-hidden="true"></i> Reviews</a>
-          <a href="#profile" role="tab" aria-selected="false" id="nav-tab-profile"><i class="fas fa-user-doctor" aria-hidden="true"></i> Profile</a>
-          <a href="#settings" role="tab" aria-selected="false" id="nav-tab-settings"><i class="fas fa-gear" aria-hidden="true"></i> Settings</a>
-        </nav>
-      </div>
-      <div class="sidebar-footer">
-        <nav class="sidebar-nav">
-          <a href="../../index.html"><i class="fas fa-globe" aria-hidden="true"></i> View Site</a>
-          <button type="button" class="sidebar-link-btn logout-link" id="doctor-logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Logout</button>
-        </nav>
-      </div>
-    </aside>
+    <div id="sidebar-container"></div>
 
-    <main class="main-content" id="doctor-main-content">
+    <main class="main-content doctor-main--overview" id="doctor-main" aria-busy="true">
+      <div class="doctor-page doctor-overview">
 
-      <!-- ============================================================
-           OVERVIEW TAB (Hero, KPI Cards, Queue, Timeline, Activity)
-           ============================================================ -->
-      <section id="overview" class="active" role="tabpanel" aria-labelledby="nav-tab-overview">
-
-        <!-- Hero Header -->
-        <div class="doctor-overview-hero">
-          <div class="doctor-hero-content">
-            <div class="doctor-hero-badge-row">
-              <span class="doctor-hero-greeting-chip">
-                <i class="fas fa-stethoscope" aria-hidden="true"></i> Clinical EMR Workspace
-              </span>
-              <span class="doctor-hero-date-chip" id="doctor-hero-date">
-                <i class="far fa-calendar-alt" aria-hidden="true"></i> Today
-              </span>
-            </div>
-            <h1 id="doctor-welcome-name" class="doctor-hero-name">Welcome, Doctor</h1>
-            <p class="doctor-hero-subtitle" id="doctor-hero-subtitle">
-              Manage patient consultations, review today's schedule, issue prescriptions, and update EMR records.
-            </p>
+        <section class="doctor-intro doctor-tile">
+          <div class="doctor-intro__copy">
+            <p class="doctor-page__eyebrow" id="ov-date">Doctor workspace</p>
+            <h1 id="ov-greeting">Welcome</h1>
+            <p class="doctor-page__lede">Today's appointments, who is waiting, and anything that needs your decision.</p>
           </div>
-          <div class="doctor-hero-actions">
-            <div class="doctor-hero-status-pill" id="doctor-status-pill">
-              <span class="status-dot-inline"></span>
-              <span id="doctor-hero-status-text">Available for Bookings</span>
-            </div>
-            <button class="btn btn-outline btn-sm" id="doctor-refresh-btn" type="button" aria-label="Refresh Dashboard">
-              <i class="fas fa-rotate" aria-hidden="true"></i> Refresh Data
-            </button>
-          </div>
-        </div>
-
-        <!-- KPI Cards Grid (8 Core Metrics) -->
-        <div class="doctor-stats-grid">
-          <!-- Total Appointments -->
-          <div class="doctor-stat-card clickable" data-tab="appointments">
-            <div class="doctor-stat-icon icon-blue">
-              <i class="fas fa-calendar-days" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="total-appts">0</div>
-              <div class="doctor-stat-label">Total Appointments</div>
-            </div>
-            <div class="doctor-stat-trend"><i class="fas fa-angle-right"></i></div>
-          </div>
-
-          <!-- Waiting Patients / Queue -->
-          <div class="doctor-stat-card clickable" data-tab="queue">
-            <div class="doctor-stat-icon icon-amber">
-              <i class="fas fa-hourglass-half" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="pending-appts">0</div>
-              <div class="doctor-stat-label">Waiting / Pending</div>
-            </div>
-            <div class="doctor-stat-trend"><i class="fas fa-angle-right"></i></div>
-          </div>
-
-          <!-- Confirmed Bookings -->
-          <div class="doctor-stat-card clickable" data-tab="appointments">
-            <div class="doctor-stat-icon icon-emerald">
-              <i class="fas fa-circle-check" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="confirmed-appts">0</div>
-              <div class="doctor-stat-label">Confirmed Bookings</div>
-            </div>
-            <div class="doctor-stat-trend"><i class="fas fa-angle-right"></i></div>
-          </div>
-
-          <!-- Active Visits -->
-          <div class="doctor-stat-card clickable" data-tab="queue">
-            <div class="doctor-stat-icon icon-indigo">
-              <i class="fas fa-user-doctor" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="active-visits-count">0</div>
-              <div class="doctor-stat-label">In Progress Visits</div>
-            </div>
-            <div class="doctor-stat-trend"><i class="fas fa-angle-right"></i></div>
-          </div>
-
-          <!-- Completed Visits -->
-          <div class="doctor-stat-card clickable" data-tab="appointments">
-            <div class="doctor-stat-icon icon-teal">
-              <i class="fas fa-clipboard-check" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="completed-visits-count">0</div>
-              <div class="doctor-stat-label">Completed Visits</div>
-            </div>
-            <div class="doctor-stat-trend"><i class="fas fa-angle-right"></i></div>
-          </div>
-
-          <!-- Pending Prescriptions / Notes -->
-          <div class="doctor-stat-card clickable" data-tab="appointments">
-            <div class="doctor-stat-icon icon-purple">
-              <i class="fas fa-prescription" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="pending-notes-count">0</div>
-              <div class="doctor-stat-label">Pending EMR Notes</div>
-            </div>
-            <div class="doctor-stat-trend"><i class="fas fa-angle-right"></i></div>
-          </div>
-
-          <!-- Average Rating -->
-          <div class="doctor-stat-card clickable" data-tab="reviews">
-            <div class="doctor-stat-icon icon-gold">
-              <i class="fas fa-star" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="doctor-avg-rating">5.0</div>
-              <div class="doctor-stat-label">Patient Satisfaction</div>
-            </div>
-            <div class="doctor-stat-trend"><i class="fas fa-angle-right"></i></div>
-          </div>
-
-          <!-- Availability Switch Card -->
-          <div class="doctor-stat-card">
-            <div class="doctor-stat-icon" id="avail-status-icon">
-              <i class="fas fa-toggle-on" aria-hidden="true"></i>
-            </div>
-            <div class="doctor-stat-info">
-              <div class="doctor-stat-value" id="avail-status-text" style="font-size: 1.1rem;">Available</div>
-              <div class="doctor-stat-label" id="avail-switch-label">Booking Status</div>
-            </div>
-            <label class="switch" title="Toggle Booking Availability">
-              <input type="checkbox" id="avail-toggle-switch" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Dashboard Multi-Column Grid -->
-        <div class="doctor-dashboard-main-grid">
-
-          <!-- Patient Queue Card Widget -->
-          <div class="doctor-card-widget">
-            <div class="widget-header">
-              <div class="widget-title">
-                <i class="fas fa-users-rectangle" aria-hidden="true"></i>
-                Patient Queue &amp; Today's Visits
-              </div>
-              <a href="#queue" class="btn btn-link btn-sm" id="view-all-queue-btn">View Full Queue &rarr;</a>
-            </div>
-            <div class="widget-body" id="dashboard-queue-container">
-              <p class="text-muted text-center" style="padding: var(--s6);">Loading queue...</p>
-            </div>
-          </div>
-
-          <!-- Right Column: Today's Schedule & Recent Activity -->
-          <div class="doctor-dashboard-side-column">
-
-            <!-- Today's Schedule Timeline Card -->
-            <div class="doctor-card-widget">
-              <div class="widget-header">
-                <div class="widget-title">
-                  <i class="fas fa-clock" aria-hidden="true"></i>
-                  Today's Timeline
-                </div>
-                <span class="badge badge-info" id="today-timeline-count">0 Sessions</span>
-              </div>
-              <div class="widget-body" id="dashboard-timeline-container">
-                <p class="text-muted text-center" style="padding: var(--s4);">No appointments scheduled for today.</p>
-              </div>
-            </div>
-
-            <!-- Recent Activity Timeline Card -->
-            <div class="doctor-card-widget">
-              <div class="widget-header">
-                <div class="widget-title">
-                  <i class="fas fa-stream" aria-hidden="true"></i>
-                  Recent Clinical Activity
-                </div>
-              </div>
-              <div class="widget-body" id="dashboard-activity-container">
-                <p class="text-muted text-center" style="padding: var(--s4);">Loading recent activity...</p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </section>
-
-      <!-- ============================================================
-           PATIENT QUEUE TAB
-           ============================================================ -->
-      <section id="queue" role="tabpanel" aria-labelledby="nav-tab-queue">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="doctor-section-header">
-            <div class="doctor-section-header-left">
-              <h2 class="doctor-section-title">
-                <i class="fas fa-users-rectangle" aria-hidden="true"></i>
-                Patient Queue Management
-              </h2>
-              <p class="doctor-section-subtitle">Monitor patients waiting in clinic, review consultation urgency, and launch EMR workspace.</p>
-            </div>
-          </div>
-          <div class="queue-full-list" id="queue-full-container">
-            <p class="text-muted text-center" style="padding: var(--s8);">Loading queue...</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============================================================
-           APPOINTMENTS TAB
-           ============================================================ -->
-      <section id="appointments" role="tabpanel" aria-labelledby="nav-tab-appointments">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="doctor-section-header">
-            <div class="doctor-section-header-left">
-              <h2 class="doctor-section-title">
-                <i class="fas fa-calendar-days" aria-hidden="true"></i>
-                My Appointments
-              </h2>
-              <p class="doctor-section-subtitle">Accept or reject patient booking requests, suggest reschedules, and manage visit workflows.</p>
-            </div>
-          </div>
-          <div class="table-controls">
-            <div class="search-box">
-              <input type="text" id="doctor-appt-search" placeholder="Search by patient name, department, or notes..." />
-            </div>
-            <div class="filter-group">
-              <label for="doctor-status-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Status Filter:</label>
-              <select id="doctor-status-filter">
-                <option value="">All Statuses</option>
-                <option value="pending">Pending Requests</option>
-                <option value="confirmed">Confirmed Bookings</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-          <div class="table-wrap" style="border: none; border-radius: 0">
-            <div id="appointments-container">
-              <p style="color: var(--text-secondary); text-align: center; padding: var(--s8)">Loading appointments...</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============================================================
-           SCHEDULE TAB
-           ============================================================ -->
-      <section id="schedule" role="tabpanel" aria-labelledby="nav-tab-schedule">
-        <div class="schedule-outer-card">
-          <div class="doctor-section-header">
-            <div class="doctor-section-header-left">
-              <h2 class="doctor-section-title">
-                <i class="fas fa-calendar-alt" aria-hidden="true"></i>
-                Working Schedule &amp; Hours
-              </h2>
-              <p class="doctor-section-subtitle">Configure your weekly operating days, consultation hours, lunch breaks, and appointment slot durations.</p>
-            </div>
-          </div>
-          <div class="schedule-outer-body">
-            <!-- Hospital Operating Hours Notice -->
-            <div class="schedule-hospital-notice" id="schedule-hospital-notice">
-              <i class="fas fa-hospital" aria-hidden="true"></i>
-              <span class="notice-label">Hospital Operating Hours:</span>
-              <span class="notice-hours" id="schedule-hospital-hours">Loading operating hours...</span>
-              <span class="notice-hint">Your schedule and breaks must remain within hospital operating hours.</span>
-            </div>
-            <div id="doctor-schedule-container"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============================================================
-           NOTIFICATIONS TAB
-           ============================================================ -->
-      <section id="notifications" role="tabpanel" aria-labelledby="nav-tab-notifications">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="doctor-section-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <div class="doctor-section-header-left">
-              <h2 class="doctor-section-title">
-                <i class="fas fa-bell" aria-hidden="true"></i>
-                Doctor Notification Center
-              </h2>
-              <p class="doctor-section-subtitle">Real-time alerts for appointment requests, reschedule updates, and clinical notices.</p>
-            </div>
-            <button class="btn btn-outline btn-sm" id="mark-all-read-btn" type="button">
-              <i class="fas fa-check-double" aria-hidden="true"></i> Mark All as Read
-            </button>
-          </div>
-          <div class="table-controls">
-            <div class="filter-group">
-              <label for="doctor-notif-filter" style="font-size: 0.8rem; color: var(--text-secondary)">Filter:</label>
-              <select id="doctor-notif-filter">
-                <option value="all">All Notifications</option>
-                <option value="unread">Unread Only</option>
-                <option value="appointments">Appointments</option>
-                <option value="system">System Alerts</option>
-              </select>
-            </div>
-          </div>
-          <div class="doctor-notifications-list" id="doctor-notifications-container" style="padding: var(--s4);">
-            <p class="text-muted text-center" style="padding: var(--s8);">Loading notifications...</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============================================================
-           REVIEWS TAB
-           ============================================================ -->
-      <section id="reviews" role="tabpanel" aria-labelledby="nav-tab-reviews">
-        <div class="card" style="padding: 0; overflow: hidden">
-          <div class="doctor-section-header">
-            <div class="doctor-section-header-left">
-              <h2 class="doctor-section-title">
-                <i class="fas fa-star" aria-hidden="true"></i>
-                Patient Feedback &amp; Reviews
-              </h2>
-              <p class="doctor-section-subtitle">Verified feedback and ratings submitted by patients following completed consultations.</p>
-            </div>
-          </div>
-
-          <!-- Overall Rating Summary Dashboard -->
-          <div class="reviews-summary-container">
-            <div class="rating-score-box">
-              <div class="rating-score-num" id="doctor-reviews-avg-num">5.0</div>
-              <div class="rating-score-stars" id="doctor-reviews-avg-stars">
-                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-              </div>
-              <div class="rating-score-total" id="doctor-reviews-total-text">Based on 0 reviews</div>
-            </div>
-            <div class="rating-bars-wrap" id="doctor-reviews-bars">
-              <div class="rating-bar-row"><span>5 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-5-count">0</span></div>
-              <div class="rating-bar-row"><span>4 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-4-count">0</span></div>
-              <div class="rating-bar-row"><span>3 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-3-count">0</span></div>
-              <div class="rating-bar-row"><span>2 Stars</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-2-count">0</span></div>
-              <div class="rating-bar-row"><span>1 Star</span><div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div><span id="star-1-count">0</span></div>
-            </div>
-          </div>
-
-          <!-- Reviews Grid -->
-          <div class="reviews-cards-grid" id="doctor-reviews-grid">
-            <p class="text-muted text-center" style="grid-column: 1 / -1; padding: var(--s8);">Loading patient reviews...</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============================================================
-           PROFILE TAB
-           ============================================================ -->
-      <section id="profile" role="tabpanel" aria-labelledby="nav-tab-profile">
-        <div class="card doctor-card-padded">
-          <div class="doctor-profile-header-card">
-            <div class="doctor-profile-avatar" id="doctor-profile-avatar-large">DR</div>
-            <div class="doctor-profile-details">
-              <h2 id="doctor-profile-fullname">Dr. Medical Specialist</h2>
-              <p id="doctor-profile-dept-spec" class="text-muted">Cardiology • Senior Specialist</p>
-              <div class="doctor-profile-pills">
-                <span class="pill-tag"><i class="fas fa-envelope"></i> <span id="doctor-profile-email-val">-</span></span>
-                <span class="pill-tag"><i class="fas fa-phone"></i> <span id="doctor-profile-phone-val">-</span></span>
-                <span class="pill-tag pill-success"><i class="fas fa-check-circle"></i> Active License</span>
-              </div>
-            </div>
-          </div>
-          <div class="doctor-profile-grid" style="margin-top: var(--s6);">
-            <div class="doctor-profile-stat-box">
-              <i class="fas fa-stethoscope"></i>
-              <div class="number" id="doctor-profile-total-visits">0</div>
-              <div class="label">Total Patients Consulted</div>
-            </div>
-            <div class="doctor-profile-stat-box">
-              <i class="fas fa-star"></i>
-              <div class="number" id="doctor-profile-rating-score">5.0</div>
-              <div class="label">Average Rating</div>
-            </div>
-            <div class="doctor-profile-stat-box">
-              <i class="fas fa-clock"></i>
-              <div class="number">10+ Yrs</div>
-              <div class="label">Clinical Experience</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============================================================
-           SETTINGS TAB
-           ============================================================ -->
-      <section id="settings" role="tabpanel" aria-labelledby="nav-tab-settings">
-        <div class="card doctor-card-padded">
-          <div class="doctor-section-header" style="margin-bottom: var(--s6); border-radius: var(--r-md);">
-            <div class="doctor-section-header-left">
-              <h2 class="doctor-section-title"><i class="fas fa-gear"></i> Doctor Portal Settings</h2>
-              <p class="doctor-section-subtitle">Customize workspace preferences, notification rules, and EMR autosave intervals.</p>
-            </div>
-          </div>
-          <form id="doctor-settings-form" class="form-grid" novalidate style="padding: 0 var(--s2);">
-            <div class="form-group">
-              <label for="pref-visit-duration">Default Consultation Duration (Minutes)</label>
-              <select id="pref-visit-duration" class="form-control">
-                <option value="15">15 Minutes</option>
-                <option value="30" selected>30 Minutes</option>
-                <option value="45">45 Minutes</option>
-                <option value="60">60 Minutes</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="pref-autosave-interval">EMR Notes Autosave Interval</label>
-              <select id="pref-autosave-interval" class="form-control">
-                <option value="5000">5 Seconds</option>
-                <option value="12000" selected>12 Seconds (Recommended)</option>
-                <option value="30000">30 Seconds</option>
-              </select>
-            </div>
-            <div class="form-group" style="grid-column: 1 / -1; margin-top: var(--s2);">
-              <label class="checkbox-label" style="display:inline-flex; align-items:center; gap: var(--s3); cursor:pointer;">
-                <input type="checkbox" id="pref-notif-email" checked style="width:18px; height:18px; accent-color:var(--primary);" />
-                <span style="font-size:0.9rem; color:var(--text-primary);">Receive email notifications for urgent patient appointment requests</span>
+          <div class="doctor-intro__actions">
+            <div class="doctor-availability" id="ov-availability" hidden>
+              <span class="doctor-availability__dot" aria-hidden="true"></span>
+              <span id="ov-availability-text">Accepting appointments</span>
+              <label class="doctor-switch" title="Toggle whether patients can book you">
+                <input type="checkbox" id="ov-availability-toggle" aria-label="Accepting appointments" />
+                <span class="doctor-switch__track" aria-hidden="true"></span>
               </label>
             </div>
-            <div class="form-actions" style="grid-column: 1 / -1; margin-top: var(--s4);">
-              <button type="submit" class="btn btn-primary" id="doctor-save-settings-btn">
-                <i class="fas fa-save"></i> Save Settings
-              </button>
-            </div>
-          </form>
-        </div>
-      </section>
+            <button class="doctor-refresh-btn" id="ov-refresh" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"></path></svg>
+              Refresh
+            </button>
+          </div>
+        </section>
 
+        <!-- Skeleton shown until the first data load lands (freeze round,
+             Item 5); doctor-overview.js removes it and fades the bento in. -->
+        <div class="doctor-bento hb-skel-wrap" id="ov-skeleton" aria-hidden="true">
+          <div class="hb-skel-tile" style="grid-column: span 8; min-height: 458px">
+            <span class="hb-skel-line hb-skel-line--lg w55"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w55"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 4; min-height: 458px">
+            <span class="hb-skel-line hb-skel-line--lg w75"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 3; min-height: 216px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line w75"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 8; min-height: 294px">
+            <span class="hb-skel-line hb-skel-line--lg w35"></span>
+            <span class="hb-skel-line" style="height: 140px"></span>
+          </div>
+          <div class="hb-skel-tile" style="grid-column: span 4; min-height: 294px">
+            <span class="hb-skel-line hb-skel-line--lg w55"></span>
+            <span class="hb-skel-line"></span>
+            <span class="hb-skel-line w75"></span>
+            <span class="hb-skel-line"></span>
+          </div>
+        </div>
+
+        <div class="doctor-bento" id="ov-bento" hidden>
+          <section class="doctor-panel doctor-tile doctor-tile--schedule" aria-labelledby="ov-today-title">
+            <div class="doctor-panel__head">
+              <h2 id="ov-today-title">Today's schedule</h2>
+              <span class="doctor-tile__badge" id="ov-today-count">— today</span>
+              <a href="queue.html">Patient queue</a>
+            </div>
+            <div class="doctor-tl">
+              <div id="ov-today"><p class="doctor-empty">Loading your appointments…</p></div>
+              <div class="doctor-tl-row doctor-tl-row--sub">
+                <div class="doctor-tl-time" aria-hidden="true"></div>
+                <div class="doctor-tl-rail" aria-hidden="true"></div>
+                <div class="doctor-tl-main doctor-tl-subhead">
+                  <h3>Up next</h3>
+                  <a href="appointments.html">All appointments</a>
+                </div>
+              </div>
+              <div id="ov-upnext"><p class="doctor-empty">Loading your appointments…</p></div>
+            </div>
+          </section>
+
+          <section class="doctor-panel doctor-tile doctor-tile--attention" aria-labelledby="ov-attention-title">
+            <div class="doctor-panel__head">
+              <h2 id="ov-attention-title">Needs your attention</h2>
+              <span class="doctor-tile__badge" id="ov-attention-count" hidden></span>
+            </div>
+            <div id="ov-attention"><p class="doctor-empty">Loading your requests…</p></div>
+          </section>
+
+          <a class="doctor-stat doctor-tile" href="queue.html">
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+            <strong class="doctor-stat__value" id="ov-stat-waiting">0</strong>
+            <span class="doctor-stat__label">Waiting</span>
+            <span class="doctor-stat__ctx" id="ov-stat-waiting-ctx">visits not yet started</span>
+          </a>
+          <a class="doctor-stat doctor-tile" href="appointments.html">
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9 15.8l2.1 2.1 3.9-4.4"/></svg></span>
+            <strong class="doctor-stat__value" id="ov-stat-confirmed">0</strong>
+            <span class="doctor-stat__label">Confirmed</span>
+            <span class="doctor-stat__ctx" id="ov-stat-confirmed-ctx">bookings confirmed</span>
+          </a>
+          <a class="doctor-stat doctor-tile" href="appointments.html">
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.4l2.5 2.5 4.7-5.3"/></svg></span>
+            <strong class="doctor-stat__value" id="ov-stat-completed">0</strong>
+            <span class="doctor-stat__label">Completed</span>
+            <span class="doctor-stat__ctx" id="ov-stat-completed-ctx">visits completed</span>
+          </a>
+          <a class="doctor-stat doctor-tile" href="reviews.html">
+            <span class="doctor-stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7L12 3.6Z"/></svg></span>
+            <strong class="doctor-stat__value" id="ov-stat-rating">—</strong>
+            <span class="doctor-stat__label">Rating</span>
+            <span class="doctor-stat__ctx" id="ov-stat-rating-ctx">out of 5</span>
+          </a>
+
+          <section class="doctor-panel doctor-tile doctor-tile--week" aria-labelledby="ov-week-title">
+            <div class="doctor-panel__head">
+              <h2 id="ov-week-title">Your week</h2>
+              <span class="doctor-week-note" id="ov-week-note"></span>
+            </div>
+            <div id="ov-week"><p class="doctor-empty">Loading your week…</p></div>
+          </section>
+
+          <section class="doctor-panel doctor-tile doctor-tile--review" aria-labelledby="ov-review-title">
+            <div class="doctor-panel__head">
+              <h2 id="ov-review-title">Latest review</h2>
+              <a href="reviews.html">All reviews</a>
+            </div>
+            <div id="ov-review"><p class="doctor-empty">Loading your reviews…</p></div>
+          </section>
+        </div>
+
+        <p class="doctor-alert" id="ov-error" role="alert" hidden>Your overview could not be loaded completely. Check your connection and refresh the page.</p>
+
+      </div>
     </main>
   </div>
-
-  <script src="../../assets/js/core/main.js?v=3"></script>
-  <script src="../../assets/js/modules/schedule.js?v=3"></script>
-  <script src="../../assets/js/modules/notifications.js?v=3"></script>
-  <script src="../../assets/js/pages/settings.js?v=3"></script>
-  <script src="../../assets/js/pages/doctor-dashboard.js?v=3"></script>
 </body>
 </html>

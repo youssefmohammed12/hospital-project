@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Your weekly working hours, and whether you are currently accepting appointments." />
+  <title>Schedule &amp; Availability — HealthBridge</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=23" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=19" />
+  <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
+  <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/core/shell-core.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=8"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-schedule.js?v=3"></script>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main-content doctor-main--schedule" id="doctor-main" aria-busy="true">
+      <div class="doctor-page doctor-schedpage doctor-sched">
+
+        <header class="doctor-listhead doctor-rise" style="--i:0">
+          <p class="doctor-page__eyebrow">Your practice</p>
+          <h1>Schedule &amp; Availability</h1>
+          <p class="doctor-page__lede">Your weekly working hours, and whether you are currently accepting appointments.</p>
+        </header>
+
+        <section class="doctor-sched-avail doctor-rise" style="--i:1" aria-label="Availability">
+          <div class="doctor-sched-avail__main">
+            <p class="doctor-sched-avail__label">Availability</p>
+            <p class="doctor-sched-avail__status" id="sched-avail-status">Loading your availability…</p>
+            <p class="doctor-sched-avail__note">Applies immediately — this is the same switch as on your Overview.</p>
+          </div>
+          <label class="doctor-switch doctor-switch--lg">
+            <input type="checkbox" id="sched-avail-toggle" aria-label="Accepting appointments" disabled />
+            <span class="doctor-switch__track"></span>
+          </label>
+        </section>
+
+        <section class="doctor-qsum doctor-sched-sum doctor-rise" style="--i:2" aria-label="Schedule summary">
+          <div class="doctor-qsum__item">
+            <strong class="doctor-qsum__value" id="sched-sum-days">–</strong>
+            <span class="doctor-qsum__label">Working days</span>
+            <span class="doctor-qsum__ctx">days switched on below</span>
+          </div>
+          <div class="doctor-qsum__item">
+            <strong class="doctor-qsum__value" id="sched-sum-hours">–</strong>
+            <span class="doctor-qsum__label">Weekly hours</span>
+            <span class="doctor-qsum__ctx">across your working days</span>
+          </div>
+          <div class="doctor-qsum__item">
+            <strong class="doctor-qsum__value" id="sched-sum-slots">–</strong>
+            <span class="doctor-qsum__label">Est. slots / week</span>
+            <span class="doctor-qsum__ctx">at the appointment length set below</span>
+          </div>
+          <div class="doctor-qsum__item">
+            <strong class="doctor-qsum__value" id="sched-sum-hospital">–</strong>
+            <span class="doctor-qsum__label">Hospital hours</span>
+            <span class="doctor-qsum__ctx">your hours must fall inside these</span>
+          </div>
+        </section>
+
+        <p class="doctor-alert" id="sched-load-error" role="alert" hidden>Your schedule could not be loaded. Check your connection and refresh the page.</p>
+
+        <form id="sched-form" novalidate hidden>
+          <section class="doctor-sched-card doctor-rise" style="--i:3" aria-label="Weekly hours">
+            <div class="doctor-sched-card__head">
+              <h2>Weekly hours</h2>
+              <p>Switch a day off to close it. Times step in 30 minutes inside hospital hours.</p>
+            </div>
+            <div id="sched-days"></div>
+          </section>
+
+          <section class="doctor-sched-card doctor-rise" style="--i:4" aria-label="Appointment settings">
+            <div class="doctor-sched-card__head">
+              <h2>Appointments &amp; break</h2>
+              <p>How long each appointment runs, how many you take in a day, and your daily break.</p>
+            </div>
+            <div class="doctor-sched-settings">
+              <div class="doctor-sched-field">
+                <label for="sched-duration">Appointment duration</label>
+                <select id="sched-duration"></select>
+              </div>
+              <div class="doctor-sched-field">
+                <label for="sched-max">Max appointments / day</label>
+                <input type="number" id="sched-max" min="1" max="100" step="1" inputmode="numeric" />
+              </div>
+              <div class="doctor-sched-field">
+                <label for="sched-break-start">Break start</label>
+                <select id="sched-break-start"></select>
+              </div>
+              <div class="doctor-sched-field">
+                <label for="sched-break-end">Break end</label>
+                <select id="sched-break-end"></select>
+              </div>
+            </div>
+            <p class="doctor-sched-hint">Leave both break fields on “No break” to work straight through. A break has to sit inside every working day's hours.</p>
+          </section>
+
+          <div class="doctor-sched-actions doctor-rise" style="--i:5">
+            <p class="doctor-sched-dirty" id="sched-dirty" hidden><span class="doctor-sched-dirty__dot" aria-hidden="true"></span>Unsaved changes</p>
+            <div class="doctor-sched-actions__btns">
+              <button type="button" class="doctor-sched-btn doctor-sched-btn--ghost" id="sched-reset">Reset to defaults</button>
+              <button type="button" class="doctor-sched-btn doctor-sched-btn--ghost" id="sched-refresh">Refresh</button>
+              <button type="submit" class="doctor-sched-btn doctor-sched-btn--primary" id="sched-save" disabled>Save changes</button>
+            </div>
+          </div>
+        </form>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

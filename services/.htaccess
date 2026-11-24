@@ -1,0 +1,2 @@
+# PHP service classes must only be loaded by application code.
+Require all denied

@@ -18,6 +18,11 @@ require_once __DIR__ . '/../../services/RescheduleService.php';
 
 // ── Authentication & Authorization ────────────────────────
 $user = requireAuth();
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 $userId = (int)$user['id'];
 $userRole = $user['role'] ?? '';
 
@@ -29,14 +34,13 @@ if ($userRole !== 'patient' && $userRole !== 'admin') {
 
 // ── Parse Input ──────────────────────────────────────────
 $input = json_decode(file_get_contents('php://input'), true);
+$appointmentId = is_array($input) ? parsePositiveInt($input['appointment_id'] ?? null) : null;
 
-if (!$input || empty($input['appointment_id'])) {
+if ($appointmentId === null) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Missing required field: appointment_id.']);
+    echo json_encode(['success' => false, 'message' => 'A valid appointment_id is required.']);
     exit;
 }
-
-$appointmentId = (int)$input['appointment_id'];
 
 // ── Execute ──────────────────────────────────────────────
 try {

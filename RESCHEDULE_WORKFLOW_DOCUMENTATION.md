@@ -46,12 +46,14 @@
 
 | Column | Type | Default | Description |
 |--------|------|---------|-------------|
-| `pending_reschedule_date` | DATE | NULL | Requested new date (pending approval) |
-| `pending_reschedule_time` | VARCHAR(20) | NULL | Requested new time (pending approval) |
+| `pending_reschedule_date` | DATE | NULL | Current pending/suggested target date |
+| `pending_reschedule_time` | VARCHAR(20) | NULL | Current pending/suggested target time |
+| `requested_reschedule_date` | DATE | NULL | Original date requested by the patient; retained if a doctor suggests an alternative |
+| `requested_reschedule_time` | VARCHAR(20) | NULL | Original time requested by the patient; retained if a doctor suggests an alternative |
 | `reschedule_reason` | TEXT | NULL | Patient reason for rescheduling |
 | `reschedule_requested_at` | DATETIME | NULL | When the reschedule was requested |
 | `reschedule_requested_by` | INT | NULL | User ID who requested the reschedule |
-| `reschedule_status` | ENUM('none','pending','approved','rejected') | 'none' | Current reschedule workflow status |
+| `reschedule_status` | ENUM('none','pending','suggested','approved','rejected') | 'none' | Current reschedule workflow status |
 | `reschedule_responded_at` | DATETIME | NULL | When doctor approved/rejected |
 | `reschedule_responded_by` | INT | NULL | Doctor user ID who responded |
 | `reschedule_response_notes` | TEXT | NULL | Doctor notes on approval/rejection |
@@ -59,16 +61,22 @@
 ### Modified ENUM on `appointments.status`
 - Added: `'Reschedule Requested'`
 - Current valid values: `'Pending', 'Confirmed', 'Cancelled', 'Reschedule Requested'`
+- `reschedule_status` also includes `'suggested'` to represent a doctor-proposed alternative awaiting patient response.
 
 ### New Indexes
 - `idx_appt_reschedule_status` ON `appointments(reschedule_status)`
 - `idx_appt_reschedule_requested` ON `appointments(reschedule_requested_at)`
+- `idx_appt_doctor_date_status` ON `appointments(doctor_id, date, status)`
+- `idx_appt_doctor_pending_reschedule` ON `appointments(doctor_id, pending_reschedule_date, reschedule_status)`
+- `idx_appt_doctor_requested_reschedule` ON `appointments(doctor_id, requested_reschedule_date, reschedule_status)`
 
 ### Migration Command
 ```sql
--- Run the migration file
+-- Back up the target database first, then run from the project root.
 SOURCE database/migrations/phase10_reschedule_workflow.sql;
 ```
+
+The active migration is at `database/migrations/phase10_reschedule_workflow.sql`. It adds the `suggested` enum value, original-request date/time fields, and doctor/date/reschedule indexes. Existing `pending` requests can be backfilled from `pending_reschedule_*`. For legacy rows already in `suggested` state, the earlier implementation overwrote the patient's original request; that lost value cannot be reconstructed safely. The migration leaves the new original-request fields NULL for those rows, and declining such a legacy suggestion asks the user to cancel and submit a new request rather than inventing historical data.
 
 ---
 
@@ -119,7 +127,7 @@ SOURCE database/migrations/phase10_reschedule_workflow.sql;
 - `approveReschedule(int $appointmentId, string $doctorNotes): array`
   - Validates: pending request exists, actor is appointment's doctor
   - Re-validates slot availability (may have been taken since request)
-  - Updates: date/time/time_range → pending values, status → 'Confirmed', reschedule_status → 'approved'
+  - Updates: date/time/time_range → accepted target, status → 'Confirmed', reschedule_status → 'approved'; original request remains in `requested_reschedule_*` for history
   - Notifies: patient, all admins
   - Audits: full audit entry
 
@@ -137,7 +145,9 @@ SOURCE database/migrations/phase10_reschedule_workflow.sql;
 ### 2. `services/ScheduleService.php` (MODIFIED)
 
 - `getBookedRanges()` changed from `private` to `public` to allow `RescheduleService` to use it
-- Status filter in `getBookedRanges()` now includes `'Reschedule Requested'` to exclude pending reschedule slots from availability
+- `getBookedRanges()` reserves the original appointment slot and active pending target. While a doctor suggestion is awaiting the patient, it additionally reserves the patient's original requested target. These ranges count as one appointment for daily capacity.
+- Schedule retrieval fills missing weekday rows in memory only; GET requests do not create schedule rows.
+- Booking and reschedule mutations serialize on the doctor's user row and revalidate slot availability within the transaction.
 
 ### 3. `services/NotificationService.php` (MODIFIED)
 
@@ -454,3 +464,49 @@ All reschedule workflow components have been implemented with:
 - **Transaction safety** — approval/rejection use DB transactions
 - **Role-based access** — patients can only request, doctors can only act on their appointments
 </write_file>
+
+## 80. HB-REL-001 — transactional reschedule notifications (6 November 2026)
+
+### Implementation
+- Moved the existing notification enqueue calls into the seven transaction-owning `RescheduleService` mutations: `requestReschedule`, `suggestReschedule`, `acceptRescheduleSuggestion`, `declineRescheduleSuggestion`, `cancelRescheduleRequest`, `approveReschedule`, and `rejectReschedule`.
+- Each transition now records its existing audit event, enqueues the existing recipient notifications through `NotificationService::create()` on the same PDO transaction, and only then commits. A notification preference read or outbox insert failure therefore reaches the existing service catch/rollback path and prevents a state change from committing without its required event.
+- After commit, a shared best-effort dispatcher calls `NotificationService::processOutbox(50)`. Delivery failure is logged and leaves committed events for the existing CLI worker; it does not convert a successful reschedule into a false failure.
+- Preserved notification types, titles, message text, recipients, reference IDs, route payloads, authorization checks, state transitions, slot revalidation, and audit calls. No duplicate notification logic was added to API routes.
+- The `approveReschedule` unavailable-slot path still rolls back before sending its explanatory notification. That branch commits no appointment mutation to couple to an outbox event, so its independent notification remains best-effort after rollback.
+- Preserved the existing lock order: pre-transaction doctor ID lookup, doctor `users` row lock, then appointment row lock. `getAppointment(..., true)` continues to lock only `appointments` and read patient display name without a locking join. Notification preferences use a normal non-locking SELECT, and `notification_outbox` intentionally has no recipient FK.
+
+### Verification
+- PHP syntax: `services/RescheduleService.php` passed.
+- Transaction-order assertions: **7/7** notification enqueue calls now precede the corresponding commit; all seven dispatch calls follow commit.
+- Disposable MariaDB integration: **64/64 assertions passed** across all seven service operations. Each operation was tested both normally and with a temporary `BEFORE INSERT` trigger forcing an outbox failure. In every forced-failure case the service operation failed, appointment state rolled back, and no outbox row remained. In every normal case the expected transition committed and all newly queued events reached a delivered/skipped terminal state with no pending events.
+- Two-connection lock-order regression passed: an archive-style transaction locked the patient row first and then waited on the appointment; a concurrent reschedule-style transaction locked doctor then appointment, performed the non-locking patient/preferences reads, and inserted to the no-FK outbox. Both transactions committed; no deadlock was reported.
+- QA source was an isolated copy of the local synthetic `healthbridge` database (157 users, 486 appointments, 99 prescriptions, 545 notifications). A generated `phone_normalized` collation mismatch was corrected only in the disposable SQL dump using a simplified expression; the real schema and generated column were not changed.
+- Disposable schema and test harnesses were removed after testing. The SQL dump and test logs remain under `C:\xampp85\migration-backups\healthbridge`.
+- Read-only post-test counts from the real local database remained **157 users / 486 appointments / 99 prescriptions / 545 notifications / 0 outbox rows**. No real appointment, audit, notification, preference, or schema row was changed.
+- No commit, push, deployment, hosted database operation, or branch change was performed. Branch and HEAD remain unchanged.
+
+### Remaining under HB-REL-001
+- HB-REL-001 remains **P2 open / partially mitigated**. Transactional enqueue now covers the five appointment routes, all seven reschedule workflow mutations, four prescription mutations, and clinical visit completion.
+- Remaining producers still require individual transaction and lock-order reviews: other clinical writers, account lifecycle/archive/status paths, registration/doctor creation, ratings, settings, and support replies. Do not bulk-move them or undo prior archive/deadlock protections.
+- Periodic CLI worker scheduling and monitoring remain operational requirements. No Windows scheduled task or hosted scheduler was configured in this local pass.
+## 81. HB-REL-001 — additional clinical notification writers (6 November 2026)
+
+### Implementation
+- `api/medical/add-visit-note.php` now enqueues the existing `TYPE_VISIT_NOTE_ADDED` event after its visit-note write and required audit, but before the existing transaction commits. The event therefore commits or rolls back with note creation/update and audit. Prompt delivery is attempted through `processOutbox(50)` after commit; dispatch errors are logged and left for the CLI worker.
+- `api/medical/update-record.php` now enqueues the existing `TYPE_MEDICAL_RECORD_UPDATED` event inside the same transaction as the record update and universal audit, then attempts delivery after commit. Doctor/admin message wording, type, recipient, and `medical_record` reference are unchanged.
+- Preserved existing authorization, validation, account lock ordering, appointment locking, and audit semantics. Doctor clinical paths continue to lock doctor then patient then appointment where applicable; administrator medical-record updates lock the patient before the medical-record row. The outbox still has no recipient FK and preference reads remain non-locking.
+
+### Verification
+- PHP syntax passed **2/2** for the changed endpoints; targeted `git diff --check` passed (only existing LF/CRLF working-copy warnings).
+- Disposable integration on the existing `healthbridge_repair_test` schema passed **23/23 assertions** across visit-note create, visit-note update, and medical-record update. Each operation was tested with a forced `BEFORE INSERT` outbox failure and with normal delivery. Forced failures rolled back the associated clinical write and audit with no outbox event; successful operations committed and delivered their existing notice.
+- The older repair-test schema was missing Phase 15's outbox table and the current `visit_notes.follow_up_instructions` column. The Phase 15 outbox migration and the missing visit-note column were applied only to `healthbridge_repair_test` so the fixture matches the current app schema. Test data was restored afterward: appointment 1 has no QA note, patient 2's medical_notes value was restored, and QA admin_audit/notifications/outbox rows were removed. The test schema remains aligned with the current application.
+- Read-only verification of the populated local `healthbridge` database remained **157 users / 486 appointments / 99 prescriptions / 545 notifications / 0 outbox rows / 216 visit notes / 124 medical records**. No populated local clinical, audit, or notification rows were changed.
+- No commit, push, deployment, hosted database operation, or branch change occurred.
+
+### Remaining under HB-REL-001
+- Transactional enqueue now also covers the remaining identified clinical API notification producers (`add-visit-note.php` and `update-record.php`). The completed clinical group is appointment lifecycle, seven reschedule transitions, four prescription mutations, visit completion, visit-note create/update, and medical-record update.
+- Next review group: account lifecycle/archive/status and registration/doctor creation notification producers. Preserve the account-first lock order and the prior archive/reschedule deadlock fixes; do not move notifications in bulk.
+- Ratings, settings, and support replies still require transaction ownership review. Periodic CLI worker scheduling and monitoring remain outstanding; no Windows scheduled task was created.
+## Maintenance status note - 6 November 2026
+
+The seven reschedule transitions now enqueue their existing notification events in the same transaction as the reschedule mutation and audit, then attempt delivery after commit. The implementation and 64/64 disposable MariaDB assertions, including forced outbox-insert failures and lock-order regression, are recorded in Section 80 of HEALTHBRIDGE_REPAIR_PLAN_AND_HANDOFF.md. This transactional reliability note does not replace the remaining scheduling/slot, API, and browser regression work in the active engineering roadmap.

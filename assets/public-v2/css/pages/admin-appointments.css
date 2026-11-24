@@ -1,0 +1,134 @@
+/*
+ * HealthBridge Admin — Appointments area (Phase 4).
+ * The pending queue (bookings awaiting approve/decline + reschedule
+ * requests awaiting approve/reject) and the full appointment book with
+ * client-side filters and pagination. Builds on admin-shell.css —
+ * shell and shared component classes are never redefined here.
+ */
+
+/* ================================================================
+   1. Page head + summary
+   ================================================================ */
+
+.aapt-note {
+  margin: 14px 0 0;
+  max-width: 62ch;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.aapt-summary {
+  margin: 20px 0 6px;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+.aapt-summary strong { color: var(--admin-text); }
+
+.aapt-count {
+  margin-left: auto;
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.aapt-loading,
+.aapt-empty-cell {
+  color: var(--admin-muted);
+  padding: 26px 16px !important;
+  text-align: center !important;
+}
+.aapt-error {
+  margin: 16px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+/* ================================================================
+   2. Queue sections + the book
+   ================================================================ */
+
+.aapt-queue,
+.aapt-book { margin-top: 26px; }
+
+.aapt-queue__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.aapt-queue__head h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.aapt-queue__count {
+  color: var(--admin-gold);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aapt-table .aapt-actions-col { text-align: right; }
+
+.aapt-pat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 180px;
+}
+.aapt-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #173532;
+  background: var(--admin-gold);
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.aapt-pat__name {
+  color: var(--admin-text);
+  font-weight: 650;
+}
+
+.aapt-reason-cell {
+  max-width: 260px;
+  color: var(--admin-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.aapt-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.aapt-row-actions .admin-btn { min-height: 32px; padding: 5px 11px; font-size: 0.8rem; }
+.aapt-no-actions { color: var(--admin-muted); }
+
+/* ================================================================
+   3. Pager
+   ================================================================ */
+
+.aapt-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+}
+.aapt-pager__info {
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.aapt-pager .admin-btn { min-height: 34px; padding: 6px 13px; font-size: 0.82rem; }

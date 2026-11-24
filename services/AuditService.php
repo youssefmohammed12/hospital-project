@@ -64,23 +64,19 @@ class AuditService
 
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO admin_audit (actor_id, actor_role, action, entity_type, entity_id, patient_id, doctor_id, old_value, new_value, description, ip_address, user_agent)
+                "INSERT INTO audit_events
+                    (actor_user_id, actor_role_snapshot, action_code, entity_type,
+                     entity_id, patient_user_id, doctor_user_id, old_value, new_value,
+                     description, ip_address, user_agent)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
-            $stmt->execute([
-                $this->actorId,
-                $this->actorRole,
-                $action,
-                $entityType,
-                $entityId,
-                $patientId,
-                $doctorId,
-                $oldValue,
-                $newValue,
-                $description,
-                $ipAddress,
-                $userAgent
-            ]);
+            $params = [
+                $this->actorId, $this->actorRole, $action, $entityType,
+                $entityId !== null ? (string)$entityId : null,
+                $patientId, $doctorId, $oldValue, $newValue, $description,
+                $ipAddress, $userAgent,
+            ];
+            $stmt->execute($params);
 
             return true;
         } catch (Exception $e) {
@@ -251,19 +247,35 @@ class AuditService
     {
         $allowedEntityTypes = ['department', 'hospital_settings', 'doctor', 'patient', 'appointment', 'prescription'];
 
-        // Perform LEFT JOIN users so that logs remain visible and searchable even if the user/actor is deleted
-        $countSql = "SELECT COUNT(*) as total FROM admin_audit a LEFT JOIN users u ON a.actor_id = u.id WHERE 1=1";
-        $dataSql = "SELECT a.*, COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role, 1, 1)), SUBSTRING(a.actor_role, 2))) as actor_name
-                    FROM admin_audit a
-                    LEFT JOIN users u ON a.actor_id = u.id
-                    WHERE 1=1";
+        // Audit history lives in audit_events; the V2 column names are projected
+        // to the established admin audit API response shape (legacy DTO aliases).
+        $table = 'audit_events';
+        $actorColumn = 'actor_user_id';
+        $roleColumn = 'actor_role_snapshot';
+        $actionColumn = 'action_code';
+        $patientColumn = 'patient_user_id';
+        $doctorColumn = 'doctor_user_id';
+        $dateColumn = 'occurred_at';
+
+        // Keep deleted actors visible while projecting the V2 column names to the
+        // established admin audit API response shape.
+        $projection = "a.id, a.actor_user_id AS actor_id, a.actor_role_snapshot AS actor_role,
+                       a.action_code AS action, a.entity_type, a.entity_id,
+                       a.patient_user_id AS patient_id, a.doctor_user_id AS doctor_id,
+                       a.old_value, a.new_value, a.description, a.ip_address,
+                       a.user_agent, a.occurred_at AS created_at";
+        $actorName = "COALESCE(u.name, CONCAT('Deleted ', UPPER(SUBSTRING(a.actor_role_snapshot, 1, 1)), SUBSTRING(a.actor_role_snapshot, 2)))";
+
+        $join = " FROM {$table} a LEFT JOIN users u ON a.{$actorColumn} = u.id ";
+        $countSql = "SELECT COUNT(*) as total" . $join . "WHERE 1=1";
+        $dataSql = "SELECT {$projection}, {$actorName} AS actor_name" . $join . "WHERE 1=1";
 
         $params = [];
 
         // Search across multiple fields
         if (!empty($filters['search'])) {
             $searchTerm = '%' . $filters['search'] . '%';
-            $searchClause = " AND (a.action LIKE ? OR a.entity_type LIKE ? OR u.name LIKE ? OR a.description LIKE ?)";
+            $searchClause = " AND (a.{$actionColumn} LIKE ? OR a.entity_type LIKE ? OR u.name LIKE ? OR a.description LIKE ?)";
             $countSql .= $searchClause;
             $dataSql .= $searchClause;
             $params[] = $searchTerm;
@@ -276,8 +288,8 @@ class AuditService
         if (!empty($filters['action'])) {
             $action = preg_replace('/[^a-z_]/', '', strtolower($filters['action']));
             if ($action !== '') {
-                $countSql .= " AND a.action = ?";
-                $dataSql .= " AND a.action = ?";
+                $countSql .= " AND a.{$actionColumn} = ?";
+                $dataSql .= " AND a.{$actionColumn} = ?";
                 $params[] = $action;
             }
         }
@@ -303,24 +315,24 @@ class AuditService
         // Patient ID filter (contextual — shows all activity for a patient)
         if (!empty($filters['patient_id'])) {
             $patientId = (int)$filters['patient_id'];
-            $countSql .= " AND a.patient_id = ?";
-            $dataSql .= " AND a.patient_id = ?";
+            $countSql .= " AND a.{$patientColumn} = ?";
+            $dataSql .= " AND a.{$patientColumn} = ?";
             $params[] = $patientId;
         }
 
         // Doctor ID filter (contextual — shows all activity for a doctor)
         if (!empty($filters['doctor_id'])) {
             $doctorId = (int)$filters['doctor_id'];
-            $countSql .= " AND a.doctor_id = ?";
-            $dataSql .= " AND a.doctor_id = ?";
+            $countSql .= " AND a.{$doctorColumn} = ?";
+            $dataSql .= " AND a.{$doctorColumn} = ?";
             $params[] = $doctorId;
         }
 
         // Actor filter (supports admin_id alias for backward compatibility)
         $actorId = !empty($filters['actor_id']) ? (int)$filters['actor_id'] : (!empty($filters['admin_id']) ? (int)$filters['admin_id'] : 0);
         if ($actorId > 0) {
-            $countSql .= " AND a.actor_id = ?";
-            $dataSql .= " AND a.actor_id = ?";
+            $countSql .= " AND a.{$actorColumn} = ?";
+            $dataSql .= " AND a.{$actorColumn} = ?";
             $params[] = $actorId;
         }
 
@@ -328,8 +340,8 @@ class AuditService
         if (!empty($filters['actor_role'])) {
             $role = strtolower($filters['actor_role']);
             if (in_array($role, ['admin', 'doctor', 'patient'], true)) {
-                $countSql .= " AND a.actor_role = ?";
-                $dataSql .= " AND a.actor_role = ?";
+                $countSql .= " AND a.{$roleColumn} = ?";
+                $dataSql .= " AND a.{$roleColumn} = ?";
                 $params[] = $role;
             }
         }
@@ -338,8 +350,8 @@ class AuditService
         if (!empty($filters['date_from'])) {
             $d = trim($filters['date_from']);
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
-                $countSql .= " AND a.created_at >= ?";
-                $dataSql .= " AND a.created_at >= ?";
+                $countSql .= " AND a.{$dateColumn} >= ?";
+                $dataSql .= " AND a.{$dateColumn} >= ?";
                 $params[] = $d . ' 00:00:00';
             }
         }
@@ -347,8 +359,8 @@ class AuditService
         if (!empty($filters['date_to'])) {
             $d = trim($filters['date_to']);
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
-                $countSql .= " AND a.created_at <= ?";
-                $dataSql .= " AND a.created_at <= ?";
+                $countSql .= " AND a.{$dateColumn} <= ?";
+                $dataSql .= " AND a.{$dateColumn} <= ?";
                 $params[] = $d . ' 23:59:59';
             }
         }
@@ -359,7 +371,7 @@ class AuditService
         $total = (int)$countStmt->fetchColumn();
 
         // Get data with ordering and pagination
-        $dataSql .= " ORDER BY a.created_at DESC";
+        $dataSql .= " ORDER BY a.{$dateColumn} DESC";
 
         $limit = !empty($filters['limit']) ? max(1, min(100, (int)$filters['limit'])) : 20;
         $page = !empty($filters['page']) ? max(1, (int)$filters['page']) : 1;
@@ -383,22 +395,11 @@ class AuditService
     }
 
     /**
-     * Get audit log for a specific entity.
-     */
-    public function getEntityAuditLog(string $entityType, int $entityId): array
-    {
-        return $this->getAuditLog([
-            'entity_type' => $entityType,
-            'entity_id' => $entityId
-        ]);
-    }
-
-    /**
      * Get distinct entity types that exist in the audit log.
      */
     public function getDistinctEntityTypes(): array
     {
-        $stmt = $this->db->query("SELECT DISTINCT entity_type FROM admin_audit ORDER BY entity_type ASC");
+        $stmt = $this->db->query("SELECT DISTINCT entity_type FROM audit_events ORDER BY entity_type ASC");
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
@@ -407,7 +408,7 @@ class AuditService
      */
     public function getDistinctActions(): array
     {
-        $stmt = $this->db->query("SELECT DISTINCT action FROM admin_audit ORDER BY action ASC");
+        $stmt = $this->db->query("SELECT DISTINCT action_code FROM audit_events ORDER BY action_code ASC");
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 

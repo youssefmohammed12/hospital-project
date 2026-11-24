@@ -1,93 +1,73 @@
 <?php
 /**
- * HealthBridge — Admin: Delete Doctor
- * Removes a doctor account, their profile, cancels active appointments, and notifies patients.
+ * HealthBridge — Admin: Archive Doctor
+ *
+ * Disables sign-in while retaining the doctor's profile, schedule, clinical
+ * records and audit history. Only untouched appointments are cancelled.
  * POST { id }
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../services/AdminAuditService.php';
+require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/Repositories/DoctorManagementRepository.php';
 
-requireRole('admin');
+$user = requireRole('admin');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 
 $data = getJsonInput();
-$id   = (int)($data['id'] ?? 0);
+$id = parsePositiveInt($data['id'] ?? null);
 
-if (!$id) {
+if ($id <= 0) {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Invalid doctor ID.']);
 }
 
 try {
     $db = getDB();
 
-    // Verify doctor exists (fetch email for audit)
-    $check = $db->prepare('SELECT id, name, email FROM users WHERE id = ? AND role = "doctor" LIMIT 1');
-    $check->execute([$id]);
-    $doctor = $check->fetch();
+    // The live application remains on v1. The repository has a separately
+    // tested v2 adapter; changing this mode belongs to the approved cutover.
+    $management = new DoctorManagementRepository($db);
+    $result = $management->archiveDoctor($id, (int)$user['id']);
 
-    if (!$doctor) {
-        jsonResponse(false, ['message' => 'Doctor not found.']);
+    if (!$result['changed']) {
+        http_response_code(409);
+        jsonResponse(false, ['message' => 'This doctor account is already disabled.']);
     }
 
-    $db->beginTransaction();
-
-    // Delete doctor profile first (FK constraint)
-    $db->prepare('DELETE FROM doctors WHERE user_id = ?')->execute([$id]);
-
-    // Cancel active appointments and notify patients
-    $apptStmt = $db->prepare(
-        'SELECT id, user_id, date, time FROM appointments
-         WHERE doctor_id = ? AND status IN ("Pending","Confirmed")'
-    );
-    $apptStmt->execute([$id]);
-
-    foreach ($apptStmt->fetchAll() as $appt) {
-        $db->prepare('UPDATE appointments SET status = "Cancelled" WHERE id = ?')->execute([$appt['id']]);
-
-        if ($appt['user_id']) {
-            try {
-                $db->prepare(
-                    'INSERT INTO notifications (user_id, type, title, message, ref_type, ref_id, created_at)
-                     VALUES (?, "appointment", "Appointment Cancelled", ?, "appointment", ?, NOW())'
-                )->execute([
-                    $appt['user_id'],
-                    "Your appointment on {$appt['date']} at {$appt['time']} was cancelled because the doctor was removed from HealthBridge.",
-                    $appt['id']
-                ]);
-            } catch (Exception $ex) {
-                error_log('Patient notification failed: ' . $ex->getMessage());
-            }
-        }
-    }
-
-    // Log deletion BEFORE the user row is hard-deleted so actor FK is still valid
+    // The repository has committed the doctor transition and cancellation
+    // notices. Dispatch is best-effort; durable outbox rows remain retryable.
+    $notifications = new NotificationService($db);
     try {
-        $audit = new AdminAuditService($db, (int)$_SESSION['user_id']);
-        $audit->log(
-            'delete',
-            'doctor',
-            $id,
-            ['name' => $doctor['name'], 'email' => $doctor['email'] ?? 'N/A', 'id' => $id],
-            null,
-            "Doctor account deleted: {$doctor['name']}",
-            null,
-            $id
-        );
-    } catch (Exception $auditErr) {
-        error_log('Audit log error (delete_doctor): ' . $auditErr->getMessage());
+        $notifications->processOutbox(50);
+    } catch (Throwable $dispatchError) {
+        error_log('Doctor archive committed; notification dispatch deferred: ' . get_class($dispatchError));
     }
 
-    // Delete doctor user account
-    $db->prepare('DELETE FROM users WHERE id = ? AND role = "doctor"')->execute([$id]);
-
-    $db->commit();
-
-    jsonResponse(true, ['message' => "Doctor '{$doctor['name']}' deleted successfully."]);
-
-} catch (Exception $e) {
-    if (isset($db) && $db->inTransaction()) $db->rollBack();
-    error_log('Delete Doctor Error: ' . $e->getMessage());
+    jsonResponse(true, [
+        'message' => "Dr. '{$result['doctor_name']}' archived. Sign-in is disabled; clinical and audit history has been retained.",
+        'cancelled_appointments' => (int)$result['cancelled_appointments'],
+        'is_active' => 0,
+    ]);
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    if ($message === 'Doctor account not found.') {
+        http_response_code(404);
+        $message = 'Doctor not found.';
+    } elseif (str_contains($message, 'active visit')) {
+        http_response_code(409);
+    } else {
+        http_response_code(403);
+        $message = 'An active administrator is required to archive a doctor account.';
+    }
+    jsonResponse(false, ['message' => $message]);
+} catch (Throwable $e) {
+    error_log('Archive Doctor Error: ' . $e->getMessage());
     http_response_code(500);
-    jsonResponse(false, ['message' => 'Failed to delete doctor. Please try again.']);
+    jsonResponse(false, ['message' => 'Failed to archive doctor. Please try again.']);
 }
-

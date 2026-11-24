@@ -10,15 +10,22 @@
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/ScheduleService.php';
+require_once __DIR__ . '/../../services/AuditService.php';
 
 $user = requireRole('admin');
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $input = getJsonInput();
 
-$doctorId = (int)($input['doctor_id'] ?? 0);
-if ($doctorId <= 0) {
+$doctorId = parsePositiveInt($input['doctor_id'] ?? null);
+if ($doctorId === null) {
     http_response_code(400);
-    jsonResponse(false, ['message' => 'Doctor ID is required.']);
-    exit;
+    jsonResponse(false, ['message' => 'A valid doctor ID is required.']);
 }
 
 // Validate doctor exists
@@ -34,7 +41,28 @@ if (!$doctor) {
 try {
     $db = getDB();
     $ss = new ScheduleService($db);
+    $oldSchedule = $ss->getSchedule($doctorId);
     $ss->resetToDefault($doctorId);
+    $newSchedule = $ss->getSchedule($doctorId);
+
+    // Record the reset in the audit trail, as schedule updates already do
+    // (PHP audit, 23 Nov 2026, finding L4). A failed audit write must not
+    // fail the reset itself.
+    try {
+        $audit = new AuditService($db, (int)$user['id'], $user['role']);
+        $audit->log(
+            'reset_schedule',
+            'doctor',
+            $doctorId,
+            $oldSchedule,
+            $newSchedule,
+            'Schedule reset to defaults for ' . $doctor['name'] . '.',
+            null,
+            $doctorId
+        );
+    } catch (Throwable $auditErr) {
+        error_log('Audit log error (reset_schedule): ' . $auditErr->getMessage());
+    }
 
     jsonResponse(true, [
         'message' => 'Schedule reset to defaults for ' . $doctor['name'] . '.',

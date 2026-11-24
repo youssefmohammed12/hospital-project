@@ -1,74 +1,72 @@
 <?php
 /**
  * HealthBridge — Toggle Doctor Status
- * Activates or deactivates a doctor account and notifies them.
+ *
+ * Disabling revokes existing sessions, blocks new public bookings, cancels
+ * untouched appointments, and refuses while unfinished clinical work exists.
+ * Re-enabling permits fresh sign-in.
+ * POST { id }
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../services/AdminAuditService.php';
+require_once __DIR__ . '/../../services/Repositories/DoctorManagementRepository.php';
 
-header('Content-Type: application/json');
+$user = requireRole('admin');
 
-$user = requireAuth();
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $input = getJsonInput();
-$doctorId = (int)($input['id'] ?? 0);
+$doctorId = parsePositiveInt($input['id'] ?? null);
 
 if ($doctorId <= 0) {
+    http_response_code(400);
     jsonResponse(false, ['message' => 'Invalid doctor ID.']);
 }
 
 try {
     $db = getDB();
 
-    $stmt = $db->prepare("SELECT id, is_active FROM users WHERE id = ? AND role = 'doctor'");
-    $stmt->execute([$doctorId]);
-    $doctor = $stmt->fetch();
+    // The live application remains on v1. The repository has a separately
+    // tested v2 adapter; changing this mode belongs to the approved cutover.
+    $management = new DoctorManagementRepository($db);
+    $result = $management->toggleDoctorActive($doctorId, (int)$user['id']);
 
-    if (!$doctor) {
-        jsonResponse(false, ['message' => 'Doctor not found.']);
-    }
+    $newStatus = (int)$result['is_active'];
+    $statusText = $newStatus === 1 ? 'activated' : 'deactivated';
 
-    $newStatus = $doctor['is_active'] ? 0 : 1;
-    $stmt = $db->prepare("UPDATE users SET is_active = ? WHERE id = ?");
-    $stmt->execute([$newStatus, $doctorId]);
-
-    $statusText = $newStatus ? 'activated' : 'deactivated';
-
-    // Log the action
+    // Status and appointment notifications were enqueued in the same database
+    // transaction as the transition. Dispatch is best-effort after commit.
+    $notifications = new NotificationService($db);
     try {
-        $audit = new AdminAuditService($db, (int)$user['id']);
-        $action = $newStatus ? 'activate' : 'deactivate';
-        $statusDesc = $newStatus ? 'Account status changed: Inactive → Active' : 'Account status changed: Active → Inactive';
-        $audit->log($action, 'doctor', $doctorId,
-            $newStatus ? 'inactive' : 'active',
-            $newStatus ? 'active' : 'inactive',
-            $statusDesc,
-            null,
-            $doctorId
-        );
-    } catch (Exception $auditErr) {
-        error_log('Audit log error (toggle_doctor): ' . $auditErr->getMessage());
+        $notifications->processOutbox(50);
+    } catch (Throwable $dispatchError) {
+        error_log('Doctor status committed; notification dispatch deferred: ' . get_class($dispatchError));
     }
-
-    // Notify the doctor
-    $ns = new NotificationService($db);
-    $ns->create(
-        $doctorId,
-        NotificationService::TYPE_ACCOUNT_STATUS_CHANGED,
-        'Account Status Changed',
-        "Your account has been {$statusText} by an administrator.",
-        'user',
-        $doctorId
-    );
 
     jsonResponse(true, [
         'message' => "Doctor {$statusText} successfully.",
         'is_active' => $newStatus,
+        'cancelled_appointments' => (int)$result['cancelled_appointments'],
     ]);
-
-} catch (Exception $e) {
+} catch (DomainException $e) {
+    $message = $e->getMessage();
+    if ($message === 'Doctor account not found.') {
+        http_response_code(404);
+        $message = 'Doctor not found.';
+    } elseif (str_contains($message, 'active visit')) {
+        http_response_code(409);
+    } else {
+        http_response_code(403);
+        $message = 'An active administrator is required to change doctor status.';
+    }
+    jsonResponse(false, ['message' => $message]);
+} catch (Throwable $e) {
     error_log('Toggle Doctor Status Error: ' . $e->getMessage());
     http_response_code(500);
-    jsonResponse(false, ['message' => 'Failed to toggle doctor status.']);
+    jsonResponse(false, ['message' => 'Failed to update doctor status.']);
 }

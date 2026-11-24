@@ -1,0 +1,185 @@
+/*
+ * HealthBridge Public V2 — Full patient EMR print view.
+ *
+ * The document chrome (cream paper, deep green ink, serif headings,
+ * gold accents, teal primary) comes from print-prescription.css,
+ * imported unchanged so the prescription print keeps its exact
+ * rendering; this file only adds the EMR-specific layout in the same
+ * design language: hospital header, patient context panel, stat row,
+ * record sections with tables and record cards, and the confidential
+ * footer. Replaces the legacy assets/css/print/medical-emr-print.css
+ * (and the legacy modules/print-prescription.css the page also loaded);
+ * the markup classes are unchanged.
+ */
+@import url("print-prescription.css");
+
+@page { margin: 15mm 18mm; size: A4 portrait; }
+
+/* Document panel (the base sheet caps body > * at 880px and centres it) */
+.print-container {
+  background: #fff;
+  border: 1px solid var(--pp-line);
+  border-radius: 14px;
+  padding: 26px 30px 24px;
+}
+
+/* Hospital header */
+.header {
+  text-align: center;
+  padding-bottom: 16px;
+  border-bottom: 3px solid var(--pp-gold);
+  margin-bottom: 20px;
+}
+.header h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.header p { margin: 4px 0 0; color: var(--pp-muted); font-size: 0.8rem; }
+
+/* Patient context */
+.patient-info {
+  background: var(--pp-panel);
+  border: 1px solid var(--pp-line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.patient-info h2 {
+  margin: 0 0 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+}
+.emr-patient-id { color: var(--pp-muted); font-size: 0.85rem; }
+.patient-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 20px;
+  font-size: 0.85rem;
+}
+.patient-grid .label {
+  color: var(--pp-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
+/* Statistics */
+.stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.stat-box {
+  flex: 1;
+  min-width: 80px;
+  background: var(--pp-panel);
+  border: 1px solid var(--pp-line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+}
+.stat-box .num {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--pp-teal);
+}
+.stat-box .lbl {
+  color: var(--pp-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Record sections */
+section { margin-bottom: 20px; }
+section h3 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--pp-line);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+/* Appointments table (same rhythm as the base sheet's medication table) */
+table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.82rem; margin-bottom: 8px; }
+th {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 2px solid var(--pp-gold);
+  color: var(--pp-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+td { padding: 10px; border-bottom: 1px solid var(--pp-line); vertical-align: top; }
+
+/* Record cards (medical information, prescriptions, visit notes) */
+.record-card {
+  background: var(--pp-panel);
+  border: 1px solid var(--pp-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.record-card p { margin: 3px 0; }
+.emr-prescription-status {
+  float: right;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--pp-gold-soft);
+  color: var(--pp-amber);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.emr-prescription-meta { color: var(--pp-muted); font-size: 0.78rem; }
+
+.no-data { color: var(--pp-muted); font-style: italic; font-size: 0.85rem; }
+
+/* Footer */
+.footer {
+  text-align: center;
+  color: var(--pp-muted);
+  font-size: 0.74rem;
+  border-top: 1px solid var(--pp-line);
+  padding-top: 12px;
+  margin-top: 22px;
+}
+.footer p { margin: 2px 0; }
+
+/* Keep long or hostile clinical text inside the EMR print viewport
+   (carried over from the legacy sheet). */
+.patient-grid > div,
+.record-card,
+td,
+th {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.patient-info h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .patient-grid { grid-template-columns: 1fr; }
+  .print-container { padding: 20px 18px; }
+}
+
+@media print {
+  .print-container { border: 0; border-radius: 0; padding: 0; }
+  .patient-info, .stat-box, .record-card {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    break-inside: avoid;
+  }
+  section { break-inside: auto; }
+}

@@ -1,0 +1,146 @@
+/*
+ * HealthBridge Admin — Audit Log area (Phase 6).
+ * The audit viewer: two-row filter bar, the entries table with
+ * compact one-line summaries, the pager, and the entry detail
+ * modal carrying the full field-by-field before / after diff.
+ * Builds on admin-shell.css — shell and shared component
+ * classes are never redefined here.
+ */
+
+/* ================================================================
+   1. Viewer
+   ================================================================ */
+
+.aalog-summary {
+  margin: 20px 0 14px;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+.aalog-summary strong { color: var(--admin-text); }
+
+.aalog-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+.aalog-inline input,
+.aalog-inline select {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.88rem;
+}
+.aalog-inline input[type="number"] { width: 92px; }
+
+.aalog-table .aalog-actions-col { text-align: right; }
+.aalog-loading,
+.aalog-empty-cell {
+  color: var(--admin-muted);
+  padding: 26px 16px !important;
+  text-align: center !important;
+}
+.aalog-error {
+  margin: 16px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+.aalog-date { white-space: nowrap; }
+.aalog-actor {
+  display: block;
+  color: var(--admin-text);
+  font-weight: 650;
+  white-space: nowrap;
+}
+.aalog-role {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  margin-top: 1px;
+}
+.aalog-entity-id { color: var(--admin-muted); }
+
+/* ---------- Row summary (compact one-liners) ---------- */
+
+/* Rows stay one line tall no matter how large an entry's payload
+   is: the summary is capped and ellipsised, and the full text is
+   one click away in the detail modal (owner fix, 23 Nov 2026). */
+.aalog-summary-col { max-width: 460px; }
+.aalog-summary-cell {
+  display: block;
+  max-width: 460px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+.aalog-nodiff { color: var(--admin-muted); font-size: 0.84rem; }
+
+/* ---------- Pager + footnote ---------- */
+
+.aalog-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.aalog-pager__info {
+  color: var(--admin-muted);
+  font-size: 0.86rem;
+}
+.aalog-pager__btns {
+  display: inline-flex;
+  gap: 8px;
+}
+
+/* ================================================================
+   2. Entry detail modal
+   ================================================================ */
+
+.aalog-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px 18px;
+  margin: 0 0 16px;
+}
+.aalog-meta div { display: grid; gap: 3px; }
+.aalog-meta dt {
+  color: var(--admin-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.aalog-meta dd {
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.aalog-detail-desc {
+  margin: 0 0 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+/* Big entries stay contained: the field-by-field table scrolls
+   inside the modal instead of stretching it (owner fix,
+   23 Nov 2026). */
+#aalog-detail-body .admin-table-wrap {
+  max-height: 46vh;
+  overflow: auto;
+}
+.aalog-diff-table td { overflow-wrap: anywhere; }
+.aalog-ua {
+  margin: 12px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}

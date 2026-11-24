@@ -25,6 +25,13 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/DashboardAnalyticsService.php';
 
 $user = requireAuth();
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 if ($user['role'] !== 'admin') {
     http_response_code(403);
     jsonResponse(false, ['message' => 'Admin access required.']);

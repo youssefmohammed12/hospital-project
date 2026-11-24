@@ -13,12 +13,14 @@ require_once __DIR__ . '/../../includes/auth.php';
 header('Content-Type: application/json');
 
 // Only accept GET
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405);
+    header('Allow: GET');
     jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
-$type = trim($_GET['type'] ?? '');
+$typeValue = $_GET['type'] ?? '';
+$type = is_string($typeValue) ? trim($typeValue) : '';
 
 try {
     $db = getDB();
@@ -28,8 +30,12 @@ try {
         jsonResponse(true, ['governorates' => $governorates]);
         
     } elseif ($type === 'cities') {
-        $governorateId = (int)($_GET['governorate_id'] ?? 0);
-        if ($governorateId <= 0) {
+        $governorateIdValue = $_GET['governorate_id'] ?? null;
+        $governorateId = is_string($governorateIdValue) && ctype_digit($governorateIdValue)
+            ? filter_var($governorateIdValue, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+            : false;
+
+        if ($governorateId === false) {
             http_response_code(400);
             jsonResponse(false, ['message' => 'Governorate ID is required.']);
         }

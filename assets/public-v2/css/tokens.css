@@ -1,0 +1,40 @@
+/*
+ * HealthBridge Public V2 — shared design tokens.
+ * This folder is the sole stylesheet source for redesigned public pages.
+ * Keep page-specific tokens in css/pages/<page>.css.
+ */
+:root {
+  color-scheme: dark;
+  --public-brand-950: #102b2b;
+  --public-brand-900: #163734;
+  --public-brand-800: #205149;
+  --public-brand-700: #17645f;
+  --public-brand-100: #e2eee9;
+  --public-ivory: #f6f7f3;
+  --public-brass: #b89563;
+  --public-brass-light: #d9bf96;
+  --public-text: #edf3ee;
+  --public-muted: #c1d1c9;
+  --public-border-dark: rgba(226, 238, 233, 0.17);
+  --public-border-light: rgba(16, 43, 43, 0.14);
+  --public-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --public-duration-fast: 160ms;
+  --public-duration-ui: 220ms;
+  --public-radius-control: 7px;
+  --public-radius-card: 12px;
+  --public-radius-panel: 18px;
+  --public-content-width: 1240px;
+  --public-gutter: 32px;
+  --public-nav-height: 72px;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+@media (max-width: 560px) {
+  :root {
+    --public-nav-height: 64px;
+    --public-gutter: 18px;
+  }
+}

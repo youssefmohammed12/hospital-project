@@ -1,0 +1,141 @@
+/*
+ * HealthBridge Public V2 — Patient Profile (Phase 5)
+ * Built new for Public V2; loads nothing from the legacy frontend.
+ * Tokens mirror the patient shell palette so the workspace matches.
+ * The National ID is masked by the page script (last 4 digits only).
+ */
+body.patient-profile-page {
+  --pf-bg: #0b1918;
+  --pf-panel: #132725;
+  --pf-panel-raised: #19332f;
+  --pf-panel-soft: rgba(226, 238, 233, 0.045);
+  --pf-copy: #edf3ee;
+  --pf-muted: #b2c4bb;
+  --pf-faint: #a6b9af;
+  --pf-line: rgba(226, 238, 233, 0.14);
+  --pf-accent: #d4b47e;
+  --pf-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  background: var(--pf-bg);
+  color: var(--pf-copy);
+}
+
+html[data-theme="light"] body.patient-profile-page {
+  --pf-bg: #f2f5f0;
+  --pf-panel: #ffffff;
+  --pf-panel-raised: #f7f9f5;
+  --pf-panel-soft: #f7f9f5;
+  --pf-copy: #183532;
+  --pf-muted: #536961;
+  --pf-faint: #5f7168;
+  --pf-line: rgba(16, 43, 43, 0.13);
+  --pf-accent: #a9844f;
+  --pf-shadow: 0 18px 44px rgba(19, 46, 39, 0.09);
+}
+
+body.patient-profile-page .main-content {
+  min-width: 0;
+  padding: 0;
+  background: var(--pf-bg);
+}
+
+.pf-page {
+  width: min(1240px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 48px) clamp(18px, 3.5vw, 44px) 64px;
+  color: var(--pf-copy);
+}
+
+.pf-eyebrow {
+  color: var(--pf-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0 0 10px;
+}
+.pf-page-header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 0 10px;
+}
+.pf-page-header > p { color: var(--pf-muted); margin: 0; max-width: 62ch; line-height: 1.55; }
+
+.pf-identity {
+  display: flex; flex-wrap: wrap; gap: 16px 22px; align-items: center;
+  margin: 26px 0 18px;
+  border: 1px solid var(--pf-line); border-radius: 14px; background: var(--pf-panel);
+  box-shadow: var(--pf-shadow);
+  padding: 20px 22px;
+  animation: pf-rise-in 380ms ease both;
+}
+.pf-avatar {
+  display: grid; place-items: center;
+  width: 62px; height: 62px; border-radius: 50%;
+  background: var(--pf-panel-raised); color: var(--pf-accent);
+  font-size: 1.25rem; font-weight: 800; letter-spacing: 0.03em;
+}
+.pf-identity h2 { margin: 0; font-size: 1.3rem; }
+.pf-identity-meta { color: var(--pf-muted); font-size: 0.82rem; margin-top: 4px; }
+
+.pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pf-card {
+  border: 1px solid var(--pf-line); border-radius: 14px; background: var(--pf-panel);
+  box-shadow: var(--pf-shadow);
+  padding: 19px 21px;
+  animation: pf-rise-in 380ms ease both;
+  animation-delay: calc(var(--pf-i, 0) * 50ms);
+}
+.pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.pf-card h3 {
+  margin: 0;
+  color: var(--pf-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.pf-edit {
+  padding: 6px 12px; border-radius: 8px; text-decoration: none;
+  border: 1px solid var(--pf-line); color: var(--pf-copy);
+  font-size: 0.74rem; font-weight: 700;
+}
+.pf-edit:hover { border-color: var(--pf-accent); }
+.pf-rows { display: grid; gap: 0; }
+.pf-row {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pf-line);
+}
+.pf-row:last-child { border-bottom: 0; }
+.pf-row dt { color: var(--pf-muted); font-size: 0.8rem; flex: 0 0 auto; }
+.pf-row dd { margin: 0; font-size: 0.84rem; font-weight: 620; text-align: right; overflow-wrap: anywhere; }
+.pf-note { color: var(--pf-faint); font-size: 0.74rem; margin: 10px 0 0; line-height: 1.5; }
+
+.pf-state {
+  border: 1px solid var(--pf-line); border-radius: 14px; background: var(--pf-panel);
+  padding: 34px 22px; text-align: center;
+}
+.pf-state h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; margin: 0 0 8px; font-size: 1.3rem; }
+.pf-state p { color: var(--pf-muted); margin: 0 auto 14px; max-width: 46ch; line-height: 1.55; }
+.pf-button {
+  min-height: 36px; padding: 8px 16px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--public-brand-700); background: var(--public-brand-700); color: #fff;
+  font: inherit; font-size: 0.8rem; font-weight: 700;
+}
+
+@keyframes pf-rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-identity, .pf-card { animation: none; }
+}
+@media (max-width: 860px) {
+  .pf-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .pf-page { padding: 24px 16px 48px; }
+}

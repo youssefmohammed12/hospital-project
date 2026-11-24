@@ -3,404 +3,333 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Explore HealthBridge services — general practice, specialized therapies, imaging, pathology, and online appointment booking."
-    />
-    <title>Our Services — HealthBridge</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="assets/css/style.css?v=2" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
-    />
-    <link rel="stylesheet" href="assets/css/pages/services.css?v=2" />
-    <link rel="stylesheet" href="assets/css/pages/settings.css?v=2" />
+    <meta name="description" content="Explore the patient, clinician and administrator workflows included in the HealthBridge student project demonstration." />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="theme-color" content="#102B2B" />
+    <title>Project Capabilities — HealthBridge</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
+    <script src="assets/public-v2/js/core/site.js?v=12"></script>
+    <link rel="stylesheet" href="assets/public-v2/css/tokens.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/base.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/components.css?v=23" />
+    <link rel="stylesheet" href="assets/public-v2/css/pages/services.css?v=11" />
+    <link rel="stylesheet" href="assets/public-v2/css/footer.css?v=4" />
+    <script defer src="assets/public-v2/js/core/footer.js?v=4"></script>
   </head>
-  <body>
-    <!-- Navbar -->
-    <nav class="navbar" id="navbar">
-      <div class="nav-container">
-        <a href="index.html" class="logo">
-          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-          <span>HealthBridge</span>
+  <body class="services-page" data-csp-page="services">
+    <a class="services-skip-link" href="#main-content">Skip to main content</a>
+
+    <nav class="navbar" id="navbar" aria-label="Main navigation">
+      <div class="nav-container services-container">
+        <a href="index.html" class="logo home-brand" aria-label="HealthBridge home">
+          <span class="home-brand-mark" aria-hidden="true"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"></path><path d="M12 7.6v6.2"></path><path d="M8.9 10.7h6.2"></path><path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"></path></svg></span>
+          <span class="home-brand-name hb-wordmark"><span class="hb-wordmark__letter" data-letter="H">H</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__letter" data-letter="a">a</span><span class="hb-wordmark__letter" data-letter="l">l</span><span class="hb-wordmark__letter" data-letter="t">t</span><span class="hb-wordmark__letter" data-letter="h">h</span><span class="hb-wordmark__letter" data-letter="B">B</span><span class="hb-wordmark__letter" data-letter="r">r</span><span class="hb-wordmark__letter" data-letter="i">i</span><span class="hb-wordmark__letter" data-letter="d">d</span><span class="hb-wordmark__letter" data-letter="g">g</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__shimmer" aria-hidden="true">HealthBridge</span></span>
         </a>
-        <div class="nav-row">
+        <div class="nav-row" id="nav-menu">
           <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
             <li><a href="doctors.html">Doctors</a></li>
-            <li><a href="services.html" class="active">Services</a></li>
+            <li><a href="services.html" class="active" aria-current="page">Services</a></li>
             <li><a href="about.html">About</a></li>
             <li><a href="contact.html">Contact</a></li>
           </ul>
           <div class="nav-actions" id="auth-links">
-            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
-            <a href="pages/auth/login.html#signup" class="btn btn-primary btn-sm"
-              >Sign Up</a
-            >
+            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Log in</a>
+            <a href="pages/auth/register.html" class="btn btn-primary btn-sm">Create account</a>
           </div>
         </div>
       </div>
     </nav>
 
-    <!-- Hero Header -->
-    <section
-      class="hero hero-sm has-bg"
-      style="
-        background-image: url(&quot;https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=1600&q=80&quot;);
-      "
-    >
-      <div class="hero-content">
-        <h1>Our Medical <span>Services</span></h1>
-        <p>
-          Bridging the gap to professional clinical care, diagnostic accuracy,
-          and wellness solutions.
-        </p>
-      </div>
-    </section>
-
-    <!-- Services Offerings -->
-    <section class="section">
-      <div style="max-width: 1200px; margin: 0 auto">
-        <h2 class="section-title">Comprehensive <span>Healthcare</span></h2>
-        <p class="section-subtitle">
-          Select a category below to filter our clinical departments and
-          offerings.
-        </p>
-
-        <!-- Category Filter Pills -->
-        <div class="services-filters fade-in">
-          <button class="filter-pill active" data-filter="all">
-            All Services
-          </button>
-          <button class="filter-pill" data-filter="general">
-            General Care
-          </button>
-          <button class="filter-pill" data-filter="specialist">
-            Specialized Care
-          </button>
-          <button class="filter-pill" data-filter="diagnostics">
-            Diagnostics &amp; Wellness
-          </button>
-        </div>
-
-        <!-- Services Cards Grid -->
-        <div class="services-grid fade-in-stagger">
-          <!-- Service 1: General Practitioner -->
-          <div class="service-card" data-category="general">
-            <div class="service-icon"><i class="fas fa-stethoscope" aria-hidden="true"></i></div>
-            <h3>General Consultation</h3>
-            <p>
-              Comprehensive health assessments, medical prescriptions, and
-              family healthcare guidance from experienced general practitioners.
+    <main id="main-content">
+      <section class="services-hero" aria-labelledby="services-title">
+        <div class="services-container services-hero__layout">
+          <div class="services-hero__copy" data-public-reveal="left">
+            <p class="services-eyebrow"><span aria-hidden="true"></span> HEALTHBRIDGE / CAPABILITIES</p>
+            <p class="services-demo-label"><span aria-hidden="true"></span> Student project · Synthetic data only</p>
+            <h1 id="services-title">One application.<br /><em>Different ways to work.</em></h1>
+            <p class="services-hero__lead">
+              Explore the main workflows built into this hospital-management system
+              demonstration, from the patient portal to clinician tools and
+              administration.
             </p>
-            <div class="service-meta">
-              <span class="service-badge">General Care</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            <div class="services-hero__actions">
+              <a href="#capabilities" class="btn btn-primary">Explore capabilities</a>
+              <a href="pages/auth/login.html" class="services-text-link" data-workspace-link>Open demo sign-in <span aria-hidden="true">→</span></a>
             </div>
           </div>
 
-          <!-- Service 2: Pediatrics -->
-          <div class="service-card" data-category="general">
-            <div class="service-icon"><i class="fas fa-baby" aria-hidden="true"></i></div>
-            <h3>Pediatrics Department</h3>
-            <p>
-              Loving and expert clinical care for infants, children, and
-              adolescents, covering vaccinations, growth tracking, and illness
-              treatment.
-            </p>
-            <div class="service-meta">
-              <span class="service-badge">General Care</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+          <div class="services-hero__visual" aria-hidden="true">
+            <div class="services-overview">
+              <div class="services-overview__top">
+                <div class="services-overview__brand">
+                  <span class="services-overview__mark home-brand-mark" aria-hidden="true"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6.75h5"></path><path d="M8.1 9l2.8 6"></path><path d="M15.9 9l-2.8 6"></path><circle cx="7" cy="6.75" r="2.5"></circle><circle cx="17" cy="6.75" r="2.5"></circle><circle cx="12" cy="17.25" r="2.5"></circle></svg></span>
+                  <span>HEALTHBRIDGE</span>
+                </div>
+                <span class="services-overview__status"><span></span> LOCAL DEMO</span>
+              </div>
+              <div class="services-overview__heading">
+                <span>WORKSPACE OVERVIEW</span>
+                <strong>Three roles.<br /><em>One connected system.</em></strong>
+              </div>
+              <div class="services-system-map" aria-label="Patient, doctor and admin workspaces connected through one shared system">
+                <span class="services-system-map__spine" aria-hidden="true">
+                  <span class="services-system-map__spine-runner">
+                    <span class="services-system-map__spine-dot"></span>
+                  </span>
+                </span>
+                <div class="services-system-map__rows">
+                  <div class="services-system-map__row">
+                    <div class="services-system-map__role services-system-map__role--patient">
+                      <span class="services-system-map__number">01</span>
+                      <span class="services-system-map__icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.3 2.8-5.2 6.5-5.2s6 1.9 6.5 5.2"/></svg>
+                      </span>
+                      <span class="services-system-map__role-copy"><strong>Patient portal</strong></span>
+                    </div>
+                    <div class="services-system-map__flow">
+                      <span class="services-system-map__flow-caption">Books appointment</span>
+                      <span class="services-system-map__signal-track" aria-hidden="true"><span class="services-system-map__signal-dot"></span></span>
+                    </div>
+                  </div>
+                  <div class="services-system-map__row">
+                    <div class="services-system-map__role services-system-map__role--clinician">
+                      <span class="services-system-map__number">02</span>
+                      <span class="services-system-map__icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3m8-3v3M6 6h12v14H6z"/><path d="M9 13h6m-3-3v6"/></svg>
+                      </span>
+                      <span class="services-system-map__role-copy"><strong>Doctor workspace</strong></span>
+                    </div>
+                    <div class="services-system-map__flow">
+                      <span class="services-system-map__flow-caption">Appears in doctor queue</span>
+                      <span class="services-system-map__signal-track" aria-hidden="true"><span class="services-system-map__signal-dot"></span></span>
+                    </div>
+                  </div>
+                  <div class="services-system-map__row">
+                    <div class="services-system-map__role services-system-map__role--admin">
+                      <span class="services-system-map__number">03</span>
+                      <span class="services-system-map__icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+                      </span>
+                      <span class="services-system-map__role-copy"><strong>Admin console</strong></span>
+                    </div>
+                    <div class="services-system-map__flow">
+                      <span class="services-system-map__flow-caption">Oversees departments, settings + audit trail</span>
+                      <span class="services-system-map__signal-track" aria-hidden="true"><span class="services-system-map__signal-dot"></span></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="services-system-map__core">
+                  <span class="services-system-map__port services-system-map__port--one"></span>
+                  <span class="services-system-map__port services-system-map__port--two"></span>
+                  <span class="services-system-map__port services-system-map__port--three"></span>
+                  <div class="services-system-map__core-content">
+                    <span class="services-system-map__core-mark" aria-hidden="true">+</span>
+                    <span class="services-system-map__core-copy">
+                      <small>ONE COMMON WORKSPACE</small>
+                      <strong>Shared system</strong>
+                      <span>Patient · Doctor · Admin</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p class="services-overview__foot"><span aria-hidden="true"></span> Example workflows, not live medical services</p>
             </div>
-          </div>
-
-          <!-- Service 3: Cardiology -->
-          <div class="service-card" data-category="specialist">
-            <div class="service-icon"><i class="fas fa-heart-pulse" aria-hidden="true"></i></div>
-            <h3>Cardiovascular Care</h3>
-            <p>
-              Advanced heart assessments, ECG analysis, hypertension management,
-              and expert consultations for long-term cardiovascular health.
-            </p>
-            <div class="service-meta">
-              <span class="service-badge">Specialist</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
-            </div>
-          </div>
-
-          <!-- Service 4: Neurology -->
-          <div class="service-card" data-category="specialist">
-            <div class="service-icon"><i class="fas fa-brain" aria-hidden="true"></i></div>
-            <h3>Neurological Science</h3>
-            <p>
-              Diagnostic testing, evaluations, and customized therapies for
-              nervous system disorders, migraines, epilepsy, and cognitive
-              health.
-            </p>
-            <div class="service-meta">
-              <span class="service-badge">Specialist</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
-            </div>
-          </div>
-
-          <!-- Service 5: Psychiatry & Therapy -->
-          <div class="service-card" data-category="specialist">
-            <div class="service-icon"><i class="fas fa-comments" aria-hidden="true"></i></div>
-            <h3>Mental Health Support</h3>
-            <p>
-              Compassionate therapy, counseling, stress management, and
-              psychiatric treatment designed to support emotional and mental
-              well-being.
-            </p>
-            <div class="service-meta">
-              <span class="service-badge">Specialist</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
-            </div>
-          </div>
-
-          <!-- Service 6: Laboratory & Pathology -->
-          <div class="service-card" data-category="diagnostics">
-            <div class="service-icon"><i class="fas fa-vial" aria-hidden="true"></i></div>
-            <h3>Laboratory &amp; Diagnostics</h3>
-            <p>
-              Fast and precise blood tests, pathology diagnostics, urine
-              analyses, and comprehensive lab screenings using advanced
-              technology.
-            </p>
-            <div class="service-meta">
-              <span class="service-badge">Diagnostics</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
-            </div>
-          </div>
-
-          <!-- Service 7: Radiology & Imaging -->
-          <div class="service-card" data-category="diagnostics">
-            <div class="service-icon"><i class="fas fa-x-ray" aria-hidden="true"></i></div>
-            <h3>Radiology &amp; Imaging</h3>
-            <p>
-              High-resolution X-rays, ultrasounds, MRI, and CT scan
-              interpretations by certified specialists to detect internal issues
-              early.
-            </p>
-            <div class="service-meta">
-              <span class="service-badge">Diagnostics</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
-            </div>
-          </div>
-
-          <!-- Service 8: Preventive Care -->
-          <div class="service-card" data-category="diagnostics">
-            <div class="service-icon"><i class="fas fa-leaf" aria-hidden="true"></i></div>
-            <h3>Preventive Wellness</h3>
-            <p>
-              Proactive screening packages, nutrition counseling, life-style
-              checks, and preventive education to maintain a healthy and vibrant
-              lifestyle.
-            </p>
-            <div class="service-meta">
-              <span class="service-badge">Diagnostics</span>
-              <a href="pages/auth/login.html" class="service-link">Book Now &rarr;</a>
+            <div class="services-flow-trace">
+              <span class="services-flow-trace__step">
+                <span class="services-flow-trace__dot" aria-hidden="true"></span>
+                <span class="services-flow-trace__label">Request</span>
+              </span>
+              <span class="services-flow-trace__line" aria-hidden="true"></span>
+              <span class="services-flow-trace__step">
+                <span class="services-flow-trace__dot" aria-hidden="true"></span>
+                <span class="services-flow-trace__label">Confirmed</span>
+              </span>
+              <span class="services-flow-trace__line" aria-hidden="true"></span>
+              <span class="services-flow-trace__step">
+                <span class="services-flow-trace__dot" aria-hidden="true"></span>
+                <span class="services-flow-trace__label">Visit summary</span>
+              </span>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- CTA Banner -->
-    <section class="section" style="padding-top: 0">
-      <div style="max-width: 1200px; margin: 0 auto">
-        <div class="services-cta fade-in">
-          <h2>Need Immediate Medical Attention?</h2>
-          <p>
-            Log in or sign up to schedule an instant online consultation or book
-            an in-person appointment with one of our certified specialists.
-          </p>
-          <div style="display: flex; justify-content: center; gap: var(--s4)">
-            <a href="pages/auth/login.html" class="btn btn-primary">Book an Appointment</a>
-            <a href="contact.html" class="btn btn-outline">Contact Clinic</a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- FAQ Section -->
-    <section
-      class="section"
-      style="background: var(--bg-surface); padding: var(--s16) var(--s8)"
-    >
-      <div class="faq-section">
-        <h2 class="section-title">Frequently Asked <span>Questions</span></h2>
-        <p class="section-subtitle">
-          Find quick answers to common questions about booking, payments, and
-          appointments.
-        </p>
-
-        <div class="faq-list fade-in-stagger">
-          <!-- FAQ 1 -->
-          <div class="faq-card">
-            <button class="faq-question" aria-expanded="false">
-              <span>How do I book an appointment?</span>
-              <span class="faq-toggle-icon">&plus;</span>
-            </button>
-            <div class="faq-answer">
-              <p>
-                Simply log in to your account, search for a specialist under the
-                "Doctors" tab, choose an available time slot, and click "Book".
-                If you don't have an account, click "Sign Up" in the navigation
-                bar to register.
-              </p>
+      <section class="services-capabilities-section" id="capabilities" aria-labelledby="capabilities-title">
+        <div class="services-container">
+          <div class="services-section-heading" data-public-reveal="rise">
+            <div>
+              <p class="services-kicker">01 / WHAT'S INCLUDED</p>
+              <h2 id="capabilities-title">Explore the application.</h2>
+              <p>Choose a workspace to see the capabilities represented in the demonstration.</p>
+            </div>
+            <div class="services-count">
+              <strong>06</strong>
+              <span>core areas</span>
             </div>
           </div>
 
-          <!-- FAQ 2 -->
-          <div class="faq-card">
-            <button class="faq-question" aria-expanded="false">
-              <span>Can I cancel or reschedule my appointment?</span>
-              <span class="faq-toggle-icon">&plus;</span>
-            </button>
-            <div class="faq-answer">
-              <p>
-                Yes, you can cancel or reschedule appointments directly from
-                your patient dashboard. Please go to the 'Appointments' tab in
-                your dashboard, locate the appointment you wish to change, and
-                select either cancel or reschedule. Make sure to do this at
-                least 24 hours in advance.
-              </p>
+          <div class="services-filter-wrap" data-public-reveal="rise">
+            <div class="services-filters" role="group" aria-label="Filter capabilities by workspace">
+              <button class="filter-pill is-active" type="button" data-filter="all" aria-pressed="true" aria-controls="capability-grid">All capabilities</button>
+              <button class="filter-pill" type="button" data-filter="patient" aria-pressed="false" aria-controls="capability-grid">Patient</button>
+              <button class="filter-pill" type="button" data-filter="clinician" aria-pressed="false" aria-controls="capability-grid">Clinician</button>
+              <button class="filter-pill" type="button" data-filter="admin" aria-pressed="false" aria-controls="capability-grid">Administration</button>
             </div>
+            <p id="capability-status" class="capability-status" role="status" aria-live="polite" aria-atomic="true">Showing all 6 capabilities.</p>
           </div>
 
-          <!-- FAQ 3 -->
-          <div class="faq-card">
-            <button class="faq-question" aria-expanded="false">
-              <span>Do you accept health insurance?</span>
-              <span class="faq-toggle-icon">&plus;</span>
-            </button>
-            <div class="faq-answer">
-              <p>
-                Yes! We partner with major healthcare insurance providers. You
-                can add your insurance policy details during check-in or update
-                your profile from your patient dashboard to see if your plan
-                covers your selected doctor's consultation.
-              </p>
-            </div>
-          </div>
+          <div class="services-grid" id="capability-grid">
+            <article class="service-card" data-category="patient" data-public-reveal="card">
+              <div class="service-card__top">
+                <span class="service-icon service-icon--patient" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.3 2.8-5.2 6.5-5.2s6 1.9 6.5 5.2"/></svg>
+                </span>
+                <span class="service-tag">PATIENT</span>
+              </div>
+              <h3>Patient portal</h3>
+              <p>Review a patient-facing dashboard with appointment history, profile details, prescriptions and synthetic medical-record views.</p>
+              <a href="pages/auth/login.html" class="service-link" data-workspace-link>Open demo sign-in</a>
+            </article>
 
-          <!-- FAQ 4 -->
-          <div class="faq-card">
-            <button class="faq-question" aria-expanded="false">
-              <span>Are online consultations available?</span>
-              <span class="faq-toggle-icon">&plus;</span>
-            </button>
-            <div class="faq-answer">
-              <p>
-                Absolutely. Many of our doctors support remote video
-                consultations. You can select the video call option when
-                scheduling your appointment from the dashboard. Once booked, you
-                will find the video link in your patient dashboard under the
-                appointments tab.
-              </p>
-            </div>
-          </div>
+            <article class="service-card" data-category="patient" data-public-reveal="card">
+              <div class="service-card__top">
+                <span class="service-icon service-icon--patient" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16m-11 4h6m-6 3h3"/></svg>
+                </span>
+                <span class="service-tag">PATIENT</span>
+              </div>
+              <h3>Appointment journey</h3>
+              <p>Use the four-step booking wizard with real-time doctor-availability checks, then manage cancellations and reschedule appointments using synthetic demonstration records.</p>
+              <a href="pages/auth/login.html" class="service-link" data-workspace-link>Open demo sign-in</a>
+            </article>
 
-          <!-- FAQ 5 -->
-          <div class="faq-card">
-            <button class="faq-question" aria-expanded="false">
-              <span>How can I access my lab test results?</span>
-              <span class="faq-toggle-icon">&plus;</span>
-            </button>
-            <div class="faq-answer">
-              <p>
-                Once your lab tests are completed by our diagnostics team, the
-                results are securely uploaded directly to your HealthBridge
-                patient dashboard. You will receive an email and notification as
-                soon as they are ready to view or download.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+            <article class="service-card" data-category="clinician" data-public-reveal="card">
+              <div class="service-card__top">
+                <span class="service-icon service-icon--clinician" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3m8-3v3M6 6h12v14H6z"/><path d="M9 13h6m-3-3v6"/></svg>
+                </span>
+                <span class="service-tag">CLINICIAN</span>
+              </div>
+              <h3>Doctor workspace</h3>
+              <p>Set weekly availability, slot intervals, breaks and leave; manage the appointment queue; document visits with SOAP encounter notes; and prepare prescriptions in the digital prescription studio.</p>
+              <a href="pages/auth/login.html" class="service-link" data-workspace-link>Open demo sign-in</a>
+            </article>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="footer-inner">
-        <!-- Brand -->
-        <div class="footer-brand">
-          <a href="index.html" class="footer-logo">
-            <span style="font-size: 1.3rem"><i class="fas fa-hospital" aria-hidden="true"></i></span>
-            <span>HealthBridge</span>
-          </a>
-          <p>
-            Modern healthcare at your fingertips. Book appointments, track your
-            health, and connect with certified medical professionals — anytime,
-            anywhere.
-          </p>
-        </div>
+            <article class="service-card" data-category="clinician" data-public-reveal="card">
+              <div class="service-card__top">
+                <span class="service-icon service-icon--clinician" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 12h5m-5 4h5"/></svg>
+                </span>
+                <span class="service-tag">CLINICIAN</span>
+              </div>
+              <h3>Records and prescriptions</h3>
+              <p>Explore the EMR with diagnosis history, visit summaries and lab reports, alongside printable prescription summaries—all with synthetic sample data.</p>
+              <a href="pages/auth/login.html" class="service-link" data-workspace-link>Open demo sign-in</a>
+            </article>
 
-        <!-- Navigation -->
-        <div class="footer-nav-cols">
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Company</div>
-            <ul class="footer-nav-list">
-              <li><a href="index.html">Home</a></li>
-              <li><a href="about.html">About Us</a></li>
-              <li><a href="contact.html">Contact Us</a></li>
-            </ul>
-          </div>
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Services</div>
-            <ul class="footer-nav-list">
-              <li><a href="doctors.html">Find a Doctor</a></li>
-              <li><a href="services.html">Our Services</a></li>
-              <li><a href="pages/auth/login.html#signup">Get Started</a></li>
-            </ul>
+            <article class="service-card" data-category="admin" data-public-reveal="card">
+              <div class="service-card__top">
+                <span class="service-icon service-icon--admin" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+                </span>
+                <span class="service-tag">ADMINISTRATION</span>
+              </div>
+              <h3>Departments and directory</h3>
+              <p>See how administrators manage departments, clinician assignments and the information shown in the public directory.</p>
+              <a href="pages/auth/login.html" class="service-link" data-workspace-link>Open demo sign-in</a>
+            </article>
+
+            <article class="service-card" data-category="admin" data-public-reveal="card">
+              <div class="service-card__top">
+                <span class="service-icon service-icon--admin" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5m0 14h17"/><path d="m7 15 4-4 3 2 5-6"/><path d="M16 7h3v3"/></svg>
+                </span>
+                <span class="service-tag">ADMINISTRATION</span>
+              </div>
+              <h3>Operations and oversight</h3>
+              <p>Review analytics for patient volume, revenue estimates, department load and completion rates; manage staff and departments; inspect the audit trail; and reply to patient inquiries in the support-message inbox.</p>
+              <a href="pages/auth/login.html" class="service-link" data-workspace-link>Open demo sign-in</a>
+            </article>
           </div>
         </div>
+      </section>
 
-        <!-- Contact -->
-        <div class="footer-contact">
-          <div class="footer-contact-label">Get in Touch</div>
-          <div class="footer-contact-items">
-            <a href="tel:+12345678900">
-              <span>+1 (234) 567-890</span>
-              <span class="contact-icon"><i class="fas fa-phone" aria-hidden="true"></i></span>
-            </a>
-            <a href="mailto:support@healthbridge.com">
-              <span>support@healthbridge.com</span>
-              <span class="contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
-            </a>
-            <span>
-              <span>El-Nabawy El-Mohandes St, Faiyum, Egypt</span>
-              <span class="contact-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
-            </span>
+      <section class="services-flow-section" aria-labelledby="flow-title">
+        <div class="services-container services-flow-layout">
+          <div class="services-flow-copy" data-public-reveal="left">
+            <p class="services-kicker">02 / HOW IT FITS TOGETHER</p>
+            <h2 id="flow-title">A connected workflow,<br /><em>not isolated screens.</em></h2>
+            <p>The project organizes information around a shared application and explicit user roles. Each workspace presents a different view of the same demonstration environment.</p>
+            <a href="about.html" class="services-text-link">More about the project <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="services-flow-steps" data-public-reveal="right">
+            <article class="services-flow-step">
+              <span class="services-flow-step__number">01</span>
+              <div><strong>Discover</strong><p>Browse the public doctor directory and department information.</p></div>
+            </article>
+            <article class="services-flow-step">
+              <span class="services-flow-step__number">02</span>
+              <div><strong>Sign in</strong><p>Choose a synthetic demonstration role from the local sign-in page.</p></div>
+            </article>
+            <article class="services-flow-step">
+              <span class="services-flow-step__number">03</span>
+              <div><strong>Explore</strong><p>Move through the patient, clinician or administrator workspace.</p></div>
+            </article>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Bottom bar -->
-      <div class="footer-bottom">
-        <p>
-          &copy; 2026 HealthBridge. All rights reserved. Built for better
-          healthcare.
-        </p>
-        <div class="footer-socials">
-          <a href="#" aria-label="Twitter" title="Twitter">𝕏</a>
-          <a href="#" aria-label="Facebook" title="Facebook">f</a>
-          <a href="#" aria-label="Instagram" title="Instagram">◎</a>
-          <a href="#" aria-label="LinkedIn" title="LinkedIn">in</a>
+      <section class="services-faq-section" aria-labelledby="faq-title">
+        <div class="services-container services-faq-layout">
+          <div class="services-faq-intro" data-public-reveal="left">
+            <p class="services-kicker">03 / PROJECT FAQ</p>
+            <h2 id="faq-title">A few things<br /><em>worth knowing.</em></h2>
+            <p>Important context before you explore the demonstration.</p>
+          </div>
+          <div class="faq-list" data-public-reveal="right">
+            <article class="faq-card">
+              <h3><button class="faq-question" id="faq-question-1" type="button" aria-expanded="false" aria-controls="faq-answer-1"><span>Is HealthBridge an operating hospital or healthcare provider?</span><span class="faq-question__mark" aria-hidden="true"></span></button></h3>
+              <div class="faq-answer" id="faq-answer-1" role="region" aria-labelledby="faq-question-1" hidden>
+                <p>No. HealthBridge is a student-built software project for demonstration and learning. It does not provide medical care, diagnosis, emergency response or real appointments.</p>
+              </div>
+            </article>
+            <article class="faq-card">
+              <h3><button class="faq-question" id="faq-question-2" type="button" aria-expanded="false" aria-controls="faq-answer-2"><span>Is the information shown in the application real?</span><span class="faq-question__mark" aria-hidden="true"></span></button></h3>
+              <div class="faq-answer" id="faq-answer-2" role="region" aria-labelledby="faq-question-2" hidden>
+                <p>No. The demonstration uses synthetic identities and sample records. Do not enter real patient information, personal medical details or sensitive credentials.</p>
+              </div>
+            </article>
+            <article class="faq-card">
+              <h3><button class="faq-question" id="faq-question-3" type="button" aria-expanded="false" aria-controls="faq-answer-3"><span>Which roles can be explored?</span><span class="faq-question__mark" aria-hidden="true"></span></button></h3>
+              <div class="faq-answer" id="faq-answer-3" role="region" aria-labelledby="faq-question-3" hidden>
+                <p>The local sign-in page provides the entry point for patient, doctor and administrator demonstration accounts. Available shortcuts depend on the local demo configuration.</p>
+              </div>
+            </article>
+            <article class="faq-card">
+              <h3><button class="faq-question" id="faq-question-4" type="button" aria-expanded="false" aria-controls="faq-answer-4"><span>Can I make a real appointment or request medical advice?</span><span class="faq-question__mark" aria-hidden="true"></span></button></h3>
+              <div class="faq-answer" id="faq-answer-4" role="region" aria-labelledby="faq-question-4" hidden>
+                <p>No. Booking and clinical screens are included only to demonstrate software workflows. They are not connected to a real clinic or care team.</p>
+              </div>
+            </article>
+          </div>
         </div>
-      </div>
-    </footer>
+      </section>
 
-    <script src="assets/js/core/main.js?v=2"></script>
-    <script src="assets/js/pages/services.js?v=2"></script>
+      <section class="services-bottom-cta" aria-labelledby="services-cta-title">
+        <div class="services-container services-bottom-cta__inner">
+          <div data-public-reveal="left">
+            <p class="services-kicker">READY TO EXPLORE?</p>
+            <h2 id="services-cta-title">Step inside the demonstration.</h2>
+            <p>Use the local sign-in page to explore one of the synthetic role workspaces.</p>
+          </div>
+          <a href="pages/auth/login.html" class="btn btn-primary services-cta-button" data-workspace-link>Open demo sign-in</a>
+        </div>
+      </section>
+    </main>
+
+    <div data-shared-footer aria-busy="true"></div>
+    <script defer src="assets/public-v2/js/pages/services.js?v=4"></script>
   </body>
 </html>
-
-
-

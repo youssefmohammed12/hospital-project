@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Your admin account: profile, password, appearance, notification preferences and your default landing tab." />
+  <title>Settings — HealthBridge</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=23" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-shell.css?v=2" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/admin-account-settings.css?v=3" />
+  <script>try{if(localStorage.getItem("hb_admin_sidebar")==="collapsed"){document.documentElement.classList.add("admin-sb-collapsed");}}catch(e){}</script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
+  <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/core/shell-core.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/core/admin-shell.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/pages/admin-account-settings.js?v=1"></script>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main-content" id="admin-main" aria-busy="true">
+      <div class="admin-page">
+        <p class="admin-page__eyebrow">Your account</p>
+        <h1>Settings</h1>
+        <p class="admin-page__lede">Your admin account in one place — profile, password, appearance, notification preferences and the section you land on when you open the workspace. This page is also your Profile: the admin account has no separate profile page.</p>
+
+        <p class="aacct-load-error" id="aacct-load-error" role="alert" hidden>Your account details could not be loaded. Check your connection and refresh the page.</p>
+
+        <!-- ACCOUNT -->
+        <section class="aacct-card" aria-labelledby="aacct-account-title">
+          <h2 id="aacct-account-title">Account</h2>
+          <p class="aacct-card__note">Your name, email and phone, as stored on the admin account.</p>
+          <form id="aacct-profile-form" novalidate>
+            <div class="aacct-grid">
+              <div class="admin-field">
+                <label for="aacct-name">Full name</label>
+                <input id="aacct-name" name="name" type="text" autocomplete="name" required minlength="2" maxlength="100" />
+              </div>
+              <div class="admin-field">
+                <label for="aacct-email">Email address</label>
+                <input id="aacct-email" name="email" type="email" autocomplete="email" required maxlength="150" />
+              </div>
+              <div class="admin-field">
+                <label for="aacct-phone">Phone number</label>
+                <input id="aacct-phone" name="phone" type="text" autocomplete="tel" maxlength="20" placeholder="Not set yet" />
+                <span class="admin-field__hint">An Egyptian mobile or landline, e.g. 010XXXXXXXX. Leave it empty to keep no phone on the account.</span>
+              </div>
+              <div class="admin-field">
+                <label for="aacct-role">Account type</label>
+                <input id="aacct-role" type="text" disabled />
+              </div>
+              <div class="admin-field">
+                <label for="aacct-created">Member since</label>
+                <input id="aacct-created" type="text" disabled />
+              </div>
+              <div class="admin-field">
+                <label for="aacct-status">Account status</label>
+                <input id="aacct-status" type="text" disabled />
+              </div>
+            </div>
+            <p class="aacct-form-error" id="aacct-profile-error" role="alert" hidden></p>
+            <div class="aacct-foot">
+              <span class="aacct-dirty" id="aacct-profile-dirty" hidden>Unsaved changes</span>
+              <button class="admin-btn" type="submit">Save changes</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- PASSWORD -->
+        <section class="aacct-card" aria-labelledby="aacct-password-title">
+          <h2 id="aacct-password-title">Password</h2>
+          <p class="aacct-card__note">Choose a strong password you haven&rsquo;t used before.</p>
+          <form id="aacct-password-form" novalidate>
+            <div class="admin-field">
+              <label for="aacct-current-pw">Current password</label>
+              <div class="aacct-pw-wrap">
+                <input id="aacct-current-pw" type="password" autocomplete="current-password" required />
+                <button type="button" class="aacct-pw-toggle" data-aacct-pw-toggle="aacct-current-pw" aria-label="Show password">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="aacct-grid">
+              <div class="admin-field">
+                <label for="aacct-new-pw">New password</label>
+                <div class="aacct-pw-wrap">
+                  <input id="aacct-new-pw" type="password" autocomplete="new-password" required />
+                  <button type="button" class="aacct-pw-toggle" data-aacct-pw-toggle="aacct-new-pw" aria-label="Show password">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <div class="aacct-strength" aria-hidden="true">
+                  <div class="aacct-strength-bar"><span class="aacct-strength-fill" id="aacct-strength-fill"></span></div>
+                  <span class="aacct-strength-label" id="aacct-strength-label"></span>
+                </div>
+                <ul class="aacct-rules" id="aacct-rules">
+                  <li data-rule="min_length"><span class="aacct-rule-dot">✓</span>At least 8 characters</li>
+                  <li data-rule="has_uppercase"><span class="aacct-rule-dot">✓</span>An uppercase letter (A&ndash;Z)</li>
+                  <li data-rule="has_lowercase"><span class="aacct-rule-dot">✓</span>A lowercase letter (a&ndash;z)</li>
+                  <li data-rule="has_number"><span class="aacct-rule-dot">✓</span>A number (0&ndash;9)</li>
+                  <li data-rule="has_special"><span class="aacct-rule-dot">✓</span>A special character (!, @, #, &hellip;)</li>
+                </ul>
+                <span class="admin-field__hint">Your password needs at least 4 of the 5 rules above.</span>
+              </div>
+              <div class="admin-field">
+                <label for="aacct-confirm-pw">Confirm new password</label>
+                <div class="aacct-pw-wrap">
+                  <input id="aacct-confirm-pw" type="password" autocomplete="new-password" required />
+                  <button type="button" class="aacct-pw-toggle" data-aacct-pw-toggle="aacct-confirm-pw" aria-label="Show password">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p class="aacct-form-error" id="aacct-password-error" role="alert" hidden></p>
+            <div class="aacct-foot">
+              <button class="admin-btn" type="submit">Update password</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- APPEARANCE -->
+        <section class="aacct-card" aria-labelledby="aacct-appearance-title">
+          <h2 id="aacct-appearance-title">Appearance</h2>
+          <p class="aacct-card__note">Choose how HealthBridge looks. Changes apply right away and are saved to your account.</p>
+          <div class="aacct-theme-options" role="group" aria-label="Theme">
+            <button type="button" class="aacct-theme-option" data-theme-value="light">
+              <strong>Light</strong>
+              <span>Always use the light theme.</span>
+            </button>
+            <button type="button" class="aacct-theme-option" data-theme-value="dark">
+              <strong>Dark</strong>
+              <span>Always use the dark theme.</span>
+            </button>
+            <button type="button" class="aacct-theme-option" data-theme-value="system">
+              <strong>System</strong>
+              <span>Follow your device&rsquo;s light/dark setting.</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- NOTIFICATIONS -->
+        <section class="aacct-card" aria-labelledby="aacct-notifications-title">
+          <h2 id="aacct-notifications-title">Notifications</h2>
+          <p class="aacct-card__note">These preferences are stored on your account. HealthBridge doesn&rsquo;t currently deliver notifications to the admin account — there is no admin bell — so they take effect if admin notifications are added later.</p>
+          <form id="aacct-notif-form" novalidate>
+            <div class="aacct-toggle-row">
+              <div>
+                <span class="aacct-toggle-label">Appointment notifications</span>
+                <span class="aacct-toggle-desc">Bookings, approvals and schedule changes</span>
+              </div>
+              <label class="aacct-switch">
+                <input type="checkbox" name="notif_appointment" />
+                <span class="aacct-switch__track"></span>
+              </label>
+            </div>
+            <div class="aacct-toggle-row">
+              <div>
+                <span class="aacct-toggle-label">Rating notifications</span>
+                <span class="aacct-toggle-desc">New patient ratings and reviews</span>
+              </div>
+              <label class="aacct-switch">
+                <input type="checkbox" name="notif_ratings" />
+                <span class="aacct-switch__track"></span>
+              </label>
+            </div>
+            <div class="aacct-toggle-row">
+              <div>
+                <span class="aacct-toggle-label">Message notifications</span>
+                <span class="aacct-toggle-desc">Support messages and replies</span>
+              </div>
+              <label class="aacct-switch">
+                <input type="checkbox" name="notif_messages" />
+                <span class="aacct-switch__track"></span>
+              </label>
+            </div>
+            <div class="aacct-toggle-row">
+              <div>
+                <span class="aacct-toggle-label">System announcements</span>
+                <span class="aacct-toggle-desc">Important updates about HealthBridge</span>
+              </div>
+              <label class="aacct-switch">
+                <input type="checkbox" name="notif_announcements" />
+                <span class="aacct-switch__track"></span>
+              </label>
+            </div>
+            <div class="aacct-toggle-row">
+              <div>
+                <span class="aacct-toggle-label">Email notifications</span>
+                <span class="aacct-toggle-desc">Receive notifications via email as well</span>
+              </div>
+              <label class="aacct-switch">
+                <input type="checkbox" name="notif_email" />
+                <span class="aacct-switch__track"></span>
+              </label>
+            </div>
+            <p class="aacct-form-error" id="aacct-notif-error" role="alert" hidden></p>
+            <div class="aacct-foot">
+              <span class="aacct-dirty" id="aacct-notif-dirty" hidden>Unsaved changes</span>
+              <button class="admin-btn" type="submit">Save notification settings</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- LANDING PREFERENCE -->
+        <section class="aacct-card" aria-labelledby="aacct-landing-title">
+          <h2 id="aacct-landing-title">Default landing section</h2>
+          <p class="aacct-card__note">The first time you open the admin workspace in a session, you are forwarded to this section. Going to the Overview directly afterwards always works — the forward happens once per session.</p>
+          <form id="aacct-landing-form" novalidate>
+            <div class="admin-field">
+              <label for="aacct-default-tab">Land on</label>
+              <select id="aacct-default-tab" name="admin_default_tab">
+                <option value="overview">Overview</option>
+                <option value="doctors">Doctors</option>
+                <option value="patients">Patients</option>
+                <option value="appointments">Appointments</option>
+                <option value="support-messages">Support Messages</option>
+              </select>
+              <span class="admin-field__hint">These are the sections the workspace can forward you to, exactly as the settings service accepts them.</span>
+            </div>
+            <p class="aacct-form-error" id="aacct-landing-error" role="alert" hidden></p>
+            <div class="aacct-foot">
+              <span class="aacct-dirty" id="aacct-landing-dirty" hidden>Unsaved changes</span>
+              <button class="admin-btn" type="submit">Save landing preference</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- NO DEACTIVATION — BY DESIGN -->
+        <div class="aacct-note-card">
+          <strong>About deactivating this account.</strong>
+          There is no deactivation control here, on purpose: this is the only administrator account, so deactivating it would lock the admin workspace with no other admin able to restore access. If this account ever needs to be retired, that is a deliberate, assisted change — not a settings toggle.
+        </div>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

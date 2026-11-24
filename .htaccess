@@ -1,0 +1,36 @@
+# HealthBridge — web-root protection and static-file security headers.
+#
+# The application root is the document root. Per-directory .htaccess files
+# already deny includes/, services/, database/, tools/ and docs/, but only
+# a root file can protect root-level files such as .env
+# (PHP audit, 23 Nov 2026, finding M1).
+
+# Never serve dotfiles (.env, .env.example, VCS metadata files).
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Dot-directories (.git/, .svn/, ...): FilesMatch above sees file basenames
+# only, so also refuse any URL whose path contains a dot-segment.
+<IfModule mod_alias.c>
+    RedirectMatch 403 (^|/)\.
+</IfModule>
+
+# Security headers for static files (HTML pages and assets). PHP/API
+# responses send the same set themselves via sendCorsHeaders() in
+# includes/response.php — keep the two in sync.
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; script-src-attr 'none'; style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com; style-src-attr 'none'; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com https://unpkg.com data:; img-src 'self' data: blob: https://images.unsplash.com https://*.basemaps.cartocdn.com https://unpkg.com; connect-src 'self'"
+
+    # Freshness controls mirror the API responses' no-store posture for
+    # HTML documents only; assets are cache-busted by version query
+    # strings and are deliberately left cacheable.
+    <FilesMatch "\.html?$">
+        Header set Cache-Control "no-store, private"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+</IfModule>

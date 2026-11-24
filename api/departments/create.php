@@ -9,10 +9,11 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/DepartmentService.php';
 require_once __DIR__ . '/../../services/AdminAuditService.php';
 
-$user = requireAuth();
-if ($user['role'] !== 'admin') {
-    http_response_code(403);
-    jsonResponse(false, ['message' => 'Admin access required.']);
+$user = requireRole('admin');
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
 }
 
 $input = getJsonInput();

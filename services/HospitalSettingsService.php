@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/Repositories/DoctorScheduleRepository.php';
+
 /**
  * HealthBridge — HospitalSettingsService
  *
@@ -48,6 +50,14 @@ class HospitalSettingsService
             );
             $stmt = $this->db->query("SELECT * FROM hospital_settings WHERE id = 1 LIMIT 1");
             $settings = $stmt->fetch();
+        }
+
+        if (is_array($settings)) {
+            foreach (['appointment_open_time', 'appointment_close_time'] as $field) {
+                if (isset($settings[$field])) {
+                    $settings[$field] = substr((string)$settings[$field], 0, 5);
+                }
+            }
         }
 
         $this->cache = $settings;
@@ -189,17 +199,30 @@ class HospitalSettingsService
      */
     public function checkScheduleConflicts(string $newOpenTime, string $newCloseTime): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT dsw.doctor_id, u.name as doctor_name, dsw.day_of_week, dsw.start_time, dsw.end_time
-             FROM doctor_schedule_weekly dsw
-             JOIN users u ON dsw.doctor_id = u.id
-             WHERE dsw.is_working = 1
-             AND (
-                 dsw.start_time < ? OR dsw.end_time > ?
-             )
-             ORDER BY u.name ASC, dsw.day_of_week ASC"
-        );
-        $stmt->execute([$newOpenTime, $newCloseTime]);
-        return $stmt->fetchAll();
+            $repository = new DoctorScheduleRepository($this->db);
+            $conflicts = [];
+            foreach ($repository->getAllSchedules() as $schedule) {
+                foreach ($schedule['weekly'] ?? [] as $day) {
+                    if ((int)($day['is_working'] ?? 0) !== 1) {
+                        continue;
+                    }
+                    $start = substr((string)($day['start_time'] ?? ''), 0, 5);
+                    $end = substr((string)($day['end_time'] ?? ''), 0, 5);
+                    if ($start < $newOpenTime || $end > $newCloseTime) {
+                        $conflicts[] = [
+                            'doctor_id' => (int)$schedule['doctor_id'],
+                            'doctor_name' => (string)($schedule['doctor_name'] ?? 'Unknown'),
+                            'day_of_week' => (int)$day['day_of_week'],
+                            'start_time' => $start,
+                            'end_time' => $end,
+                        ];
+                    }
+                }
+            }
+            usort($conflicts, static function (array $a, array $b): int {
+                $name = strcmp($a['doctor_name'], $b['doctor_name']);
+                return $name !== 0 ? $name : ($a['day_of_week'] <=> $b['day_of_week']);
+            });
+            return $conflicts;
     }
 }

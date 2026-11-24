@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Appointment requests, reschedule updates, and visit reminders." />
+  <title>Notifications — HealthBridge</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=23" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=19" />
+  <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
+  <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/core/shell-core.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=8"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-notifications.js?v=2"></script>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main-content doctor-main--notifs" id="doctor-main" aria-busy="true">
+      <div class="doctor-page doctor-notifpage doctor-notifs">
+
+        <header class="dnt-head doctor-rise" style="--i:0">
+          <div>
+            <p class="doctor-page__eyebrow">Your practice</p>
+            <h1>Notifications</h1>
+            <p class="doctor-page__lede">Appointment requests, reschedule updates, and visit reminders.</p>
+          </div>
+          <button class="dnt-mark-all" type="button" id="dnt-mark-all" hidden>Mark all as read</button>
+        </header>
+
+        <div class="dnt-state" id="dnt-loading" role="status">
+          <h2>Loading your notifications…</h2>
+          <p>Fetching your latest updates.</p>
+        </div>
+
+        <div class="dnt-state" id="dnt-error" hidden role="alert">
+          <h2>We couldn&rsquo;t load your notifications</h2>
+          <p id="dnt-error-message">Something went wrong while loading your notifications.</p>
+          <button type="button" class="dnt-button" data-dnt-action="retry">Try again</button>
+        </div>
+
+        <div class="dnt-state" id="dnt-empty" hidden>
+          <h2>No notifications yet</h2>
+          <p>When something changes with your appointments, patients or account, it will appear here.</p>
+        </div>
+
+        <div id="dnt-content" hidden>
+          <p class="dnt-count" id="dnt-count"></p>
+          <div id="dnt-groups"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

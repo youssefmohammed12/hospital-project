@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Your professional record — specialty, department, and what patients see when they book with you." />
+  <title>Profile — HealthBridge</title>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=23" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=19" />
+  <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
+  <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/core/shell-core.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=8"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-profile.js?v=2"></script>
+</head>
+<body class="doctor-workspace doctor-profile-page">
+  <div id="navbar-container"></div>
+
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main-content doctor-main--profile" id="doctor-main" aria-busy="true">
+      <div class="doctor-page doctor-profilepage">
+
+        <header class="doctor-listhead doctor-rise" style="--i:0">
+          <p class="doctor-page__eyebrow">Your practice</p>
+          <h1>Profile</h1>
+          <p class="doctor-page__lede">Your professional record — specialty, department, and what patients see when they book with you.</p>
+        </header>
+
+        <div class="dpf-state" id="dpf-loading" role="status">
+          <h2>Loading your profile…</h2>
+          <p>Fetching your professional record.</p>
+        </div>
+
+        <div class="dpf-state" id="dpf-error" hidden role="alert">
+          <h2>We couldn&rsquo;t load your profile</h2>
+          <p>Something went wrong while loading your professional record. Check your connection and try again.</p>
+          <button type="button" class="dpf-button" id="dpf-retry">Try again</button>
+        </div>
+
+        <div id="dpf-content" hidden>
+          <!-- Identity -->
+          <section class="dpf-identity doctor-rise" style="--i:1" aria-label="Identity">
+            <div class="dpf-avatar" id="dpf-avatar" aria-hidden="true">–</div>
+            <div class="dpf-identity__main">
+              <h2 class="dpf-name" id="dpf-name">—</h2>
+              <p class="dpf-role" id="dpf-role">—</p>
+              <p class="dpf-rating" id="dpf-rating" hidden>
+                <span class="dpf-rating__stars" id="dpf-rating-stars" aria-hidden="true"></span>
+                <span id="dpf-rating-text"></span>
+                <a class="dpf-rating__link" href="reviews.html">See reviews</a>
+              </p>
+            </div>
+            <div class="dpf-identity__side">
+              <span class="dpf-pill" id="dpf-availability" hidden></span>
+              <span class="dpf-pill dpf-pill--muted" id="dpf-visibility" hidden></span>
+            </div>
+          </section>
+
+          <!-- Practice at a glance (real counts from the appointments book) -->
+          <section class="dpf-glance doctor-rise" style="--i:2" aria-label="Your practice at a glance" id="dpf-glance" hidden>
+            <div class="dpf-glance__tile">
+              <p class="dpf-glance__value" id="dpf-glance-total">–</p>
+              <p class="dpf-glance__label">Appointments on your book</p>
+            </div>
+            <div class="dpf-glance__tile">
+              <p class="dpf-glance__value" id="dpf-glance-completed">–</p>
+              <p class="dpf-glance__label">Visits completed</p>
+            </div>
+            <div class="dpf-glance__tile">
+              <p class="dpf-glance__value" id="dpf-glance-waiting">–</p>
+              <p class="dpf-glance__label">Patients waiting</p>
+            </div>
+          </section>
+
+          <!-- Professional record -->
+          <section class="dpf-card doctor-rise" style="--i:3" aria-labelledby="dpf-record-heading">
+            <div class="dpf-card__head">
+              <h2 id="dpf-record-heading">Professional record</h2>
+              <a class="dpf-editlink" href="settings.html#account">Edit account details</a>
+            </div>
+            <dl class="dpf-grid">
+              <div class="dpf-item"><dt>Full name</dt><dd id="dpf-f-name">—</dd></div>
+              <div class="dpf-item"><dt>Specialty</dt><dd id="dpf-f-specialty">—</dd></div>
+              <div class="dpf-item"><dt>Department</dt><dd id="dpf-f-department">—</dd></div>
+              <div class="dpf-item"><dt>Experience</dt><dd id="dpf-f-exp">—</dd></div>
+              <div class="dpf-item"><dt>Email</dt><dd id="dpf-f-email">—</dd></div>
+              <div class="dpf-item"><dt>Phone</dt><dd id="dpf-f-phone">—</dd></div>
+              <div class="dpf-item"><dt>Consultation duration</dt><dd id="dpf-f-duration">—</dd></div>
+              <div class="dpf-item"><dt>Max appointments per day</dt><dd id="dpf-f-max">—</dd></div>
+              <div class="dpf-item"><dt>Accepts new patients</dt><dd id="dpf-f-accept">—</dd></div>
+              <div class="dpf-item"><dt>Member since</dt><dd id="dpf-f-created">—</dd></div>
+              <div class="dpf-item"><dt>Account status</dt><dd id="dpf-f-status">—</dd></div>
+            </dl>
+            <p class="dpf-note">Your specialty, department and experience are maintained by the hospital administration — if any of them need correcting, contact the admin team. Everything else on this page you can change yourself:</p>
+            <div class="dpf-links">
+              <a class="dpf-linkcard" href="settings.html#doctor-prefs">
+                <strong>Consultation preferences</strong>
+                <span>New patients, public visibility, consultation duration.</span>
+              </a>
+              <a class="dpf-linkcard" href="schedule.html">
+                <strong>Schedule &amp; availability</strong>
+                <span>Weekly hours, breaks, and whether you are accepting appointments.</span>
+              </a>
+              <a class="dpf-linkcard" href="settings.html#password">
+                <strong>Password &amp; security</strong>
+                <span>Change your password, appearance and notification choices.</span>
+              </a>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

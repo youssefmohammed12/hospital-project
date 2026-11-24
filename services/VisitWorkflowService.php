@@ -1,179 +1,95 @@
 <?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/Repositories/ClinicalEncounterRepository.php';
+
 /**
- * HealthBridge — Visit Workflow Service (Phase 5.3.2)
- * Dedicated workflow state per appointment.
- * Does NOT overload appointments.status.
- *
- * Workflow values: Waiting, In Progress, Ready to Complete, Completed
- * Appointment status: Pending, Confirmed, Cancelled (unchanged)
+ * Visit workflow facade.
  */
+class VisitWorkflowService
+{
+    public const STATUS_WAITING = ClinicalEncounterRepository::STATUS_WAITING;
+    public const STATUS_IN_PROGRESS = ClinicalEncounterRepository::STATUS_IN_PROGRESS;
+    public const STATUS_READY_TO_COMPLETE = ClinicalEncounterRepository::STATUS_READY_TO_COMPLETE;
+    public const STATUS_COMPLETED = ClinicalEncounterRepository::STATUS_COMPLETED;
 
-class VisitWorkflowService {
     private PDO $db;
+    private ClinicalEncounterRepository $encounters;
 
-    const STATUS_WAITING          = 'Waiting';
-    const STATUS_IN_PROGRESS      = 'In Progress';
-    const STATUS_READY_TO_COMPLETE = 'Ready to Complete';
-    const STATUS_COMPLETED        = 'Completed';
-
-    public function __construct(PDO $db) {
+    public function __construct(PDO $db)
+    {
         $this->db = $db;
+        $this->encounters = new ClinicalEncounterRepository($db);
     }
 
-    /**
-     * Get workflow for an appointment.
-     * Returns null if no workflow record exists.
-     * Does NOT auto-create - use getOrCreateWorkflow() for that.
-     */
-    public function get(int $appointmentId): ?array {
-        $stmt = $this->db->prepare(
-            "SELECT * FROM visit_workflow WHERE appointment_id = ? LIMIT 1"
-        );
-        $stmt->execute([$appointmentId]);
-        return $stmt->fetch() ?: null;
+    public function get(int $appointmentId): ?array
+    {
+        return $this->encounters->getWorkflow($appointmentId);
     }
 
-    /**
-     * Get or create workflow for an appointment.
-     * Always returns a workflow record.
-     * Auto-creates if missing with appropriate status based on appointment state.
-     * Phase 5.4.1: Self-healing pattern - never returns null.
-     */
-    public function getOrCreateWorkflow(int $appointmentId): array {
-        $workflow = $this->get($appointmentId);
-        
-        if ($workflow) {
-            return $workflow;
-        }
-
-        // Workflow doesn't exist - determine appropriate status
-        $apptStmt = $this->db->prepare(
-            "SELECT id, date, status FROM appointments WHERE id = ? LIMIT 1"
-        );
-        $apptStmt->execute([$appointmentId]);
-        $appt = $apptStmt->fetch();
-
-        if (!$appt) {
-            // Appointment doesn't exist - create with Waiting status
-            $this->create($appointmentId, self::STATUS_WAITING);
-        } elseif ($appt['status'] === 'Confirmed') {
-            // Confirmed appointment - create workflow with Waiting status.
-            // Do NOT auto-complete past appointments. Only the doctor's explicit
-            // action through the visit workflow should mark an appointment as Completed.
-            $this->create($appointmentId, self::STATUS_WAITING);
-        } else {
-            // Not confirmed - create with Waiting status
-            $this->create($appointmentId, self::STATUS_WAITING);
-        }
-
-        // Return the newly created workflow
-        return $this->get($appointmentId);
+    public function getOrCreateWorkflow(int $appointmentId): array
+    {
+        return $this->encounters->getOrCreateWorkflow($appointmentId);
     }
 
-    /**
-     * Create a workflow record for an appointment.
-     * Called when an appointment is confirmed.
-     */
-    public function create(int $appointmentId, string $status = self::STATUS_WAITING): bool {
-        // Check if already exists
-        $existing = $this->get($appointmentId);
-        if ($existing) return true;
-
-        $stmt = $this->db->prepare(
-            "INSERT INTO visit_workflow (appointment_id, status) VALUES (?, ?)"
-        );
-        $stmt->execute([$appointmentId, $status]);
-        return true;
+    public function create(int $appointmentId, string $status = self::STATUS_WAITING): bool
+    {
+        return $this->encounters->createWorkflow($appointmentId, $status);
     }
 
-    /**
-     * Transition workflow to a new status.
-     * Automatically sets started_at when transitioning to In Progress.
-     * Automatically sets completed_at when transitioning to Completed.
-     */
-    public function transition(int $appointmentId, string $newStatus): bool {
-        $workflow = $this->get($appointmentId);
-        if (!$workflow) {
-            // Create if doesn't exist
-            $this->create($appointmentId, $newStatus);
-            return true;
-        }
-
-        $updates = ['status = ?'];
-        $params = [$newStatus];
-
-        // Set started_at when moving to In Progress
-        if ($newStatus === self::STATUS_IN_PROGRESS && empty($workflow['started_at'])) {
-            $updates[] = 'started_at = NOW()';
-        }
-
-        // Set completed_at when moving to Completed
-        if ($newStatus === self::STATUS_COMPLETED && empty($workflow['completed_at'])) {
-            $updates[] = 'completed_at = NOW()';
-        }
-
-        $params[] = $appointmentId;
-        $stmt = $this->db->prepare(
-            "UPDATE visit_workflow SET " . implode(', ', $updates) . " WHERE appointment_id = ?"
-        );
-        $stmt->execute($params);
-        return true;
+    public function transition(int $appointmentId, string $newStatus): bool
+    {
+        return $this->encounters->transitionWorkflow($appointmentId, $newStatus);
     }
 
-    /**
-     * Get workflow for multiple appointments.
-     * Returns map of appointment_id => workflow.
-     */
-    public function getForAppointments(array $appointmentIds): array {
-        if (empty($appointmentIds)) return [];
-
-        $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
-        $stmt = $this->db->prepare(
-            "SELECT * FROM visit_workflow WHERE appointment_id IN ($placeholders)"
-        );
-        $stmt->execute($appointmentIds);
-        $rows = $stmt->fetchAll();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[$row['appointment_id']] = $row;
-        }
-        return $map;
+    public function getForAppointments(array $appointmentIds): array
+    {
+        return $this->encounters->getWorkflowsForAppointments($appointmentIds);
     }
 
-    /**
-     * Migrate existing appointments to have workflow records.
-     * Phase 5.4.1: Idempotent - uses getOrCreateWorkflow for all confirmed appointments.
-     * Past confirmed -> Completed
-     * Future confirmed -> Waiting
-     * Pending/Cancelled -> no workflow
-     */
-    public function migrateExisting(): array {
+    public function migrateExisting(): array
+    {
         $stats = ['created' => 0, 'skipped' => 0, 'errors' => 0];
 
-        $stmt = $this->db->query(
-            "SELECT id, date, status FROM appointments ORDER BY id"
-        );
-        $appointments = $stmt->fetchAll();
+        $sql = "SELECT id,booking_status AS status FROM appointments ORDER BY id";
+        $appointments = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($appointments as $appt) {
+        foreach ($appointments as $appointment) {
+            $status = ((string)$appointment['status'] === 'confirmed');
+            if (!$status) {
+                $stats['skipped']++;
+                continue;
+            }
+
             try {
-                $status = $appt['status'];
-                if ($status === 'Confirmed') {
-                    // Phase 5.4.1: Use getOrCreateWorkflow - it handles the logic
-                    $workflow = $this->getOrCreateWorkflow((int)$appt['id']);
-                    if ($workflow) {
-                        $stats['created']++;
-                    }
+                $existing = $this->get((int)$appointment['id']);
+                $this->getOrCreateWorkflow((int)$appointment['id']);
+                if ($existing === null) {
+                    $stats['created']++;
                 } else {
                     $stats['skipped']++;
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $stats['errors']++;
-                error_log('Migration error for appointment ' . $appt['id'] . ': ' . $e->getMessage());
+                error_log('Workflow migration error for appointment ' . $appointment['id'] . ': ' . get_class($e));
             }
         }
 
         return $stats;
+    }
+
+    public function getNote(int $appointmentId): ?array
+    {
+        return $this->encounters->getNote($appointmentId);
+    }
+
+    public function getNotesForPatient(int $patientUserId): array
+    {
+        return $this->encounters->getNotesForPatient($patientUserId);
+    }
+
+    public function saveNote(int $appointmentId, int $patientUserId, int $doctorUserId, array $data): bool
+    {
+        return $this->encounters->saveNote($appointmentId, $patientUserId, $doctorUserId, $data);
     }
 }

@@ -1,0 +1,194 @@
+/*
+ * HealthBridge Public V2 — Patient Prescriptions (Phase 3)
+ * Built new for Public V2; loads nothing from the legacy frontend.
+ * Tokens mirror the patient appointments page so the workspace matches.
+ */
+body.patient-prescriptions-page {
+  --rx-bg: #0b1918;
+  --rx-panel: #132725;
+  --rx-panel-raised: #19332f;
+  --rx-panel-soft: rgba(226, 238, 233, 0.045);
+  --rx-copy: #edf3ee;
+  --rx-muted: #b7c9c1;
+  --rx-faint: #a6b9af;
+  --rx-line: rgba(226, 238, 233, 0.14);
+  --rx-accent: #d4b47e;
+  --rx-green: #9dc9b2;
+  --rx-green-bg: rgba(112, 179, 145, 0.13);
+  --rx-amber: #e8c995;
+  --rx-amber-bg: rgba(184, 149, 99, 0.14);
+  --rx-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  background: var(--rx-bg);
+  color: var(--rx-copy);
+}
+
+html[data-theme="light"] body.patient-prescriptions-page {
+  --rx-bg: #f2f5f0;
+  --rx-panel: #ffffff;
+  --rx-panel-raised: #f7f9f5;
+  --rx-panel-soft: #f7f9f5;
+  --rx-copy: #183532;
+  --rx-muted: #536961;
+  --rx-faint: #5f7168;
+  --rx-line: rgba(16, 43, 43, 0.13);
+  --rx-accent: #a9844f;
+  --rx-green: #276d4c;
+  --rx-green-bg: #e6f2e9;
+  --rx-amber: #805d2b;
+  --rx-amber-bg: #f7f0e4;
+  --rx-shadow: 0 18px 44px rgba(19, 46, 39, 0.09);
+}
+
+body.patient-prescriptions-page .main-content {
+  min-width: 0;
+  padding: 0;
+  background: var(--rx-bg);
+}
+
+.rx-page {
+  width: min(1240px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 48px) clamp(18px, 3.5vw, 44px) 64px;
+  color: var(--rx-copy);
+}
+
+.rx-page-header { margin-bottom: 26px; }
+.rx-eyebrow {
+  color: var(--rx-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0 0 10px;
+}
+.rx-page-header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 0 10px;
+}
+.rx-page-header p { color: var(--rx-muted); margin: 0; max-width: 56ch; line-height: 1.55; }
+
+/* Summary strip */
+.rx-summary {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.rx-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 18px;
+  border: 1px solid var(--rx-line);
+  border-radius: 14px;
+  background: var(--rx-panel);
+}
+.rx-summary-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 10px;
+  background: var(--rx-panel-soft);
+  color: var(--rx-accent);
+  font-size: 1rem;
+}
+.rx-summary-label { display: block; color: var(--rx-faint); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.rx-summary-card strong { display: block; font-size: 1.02rem; margin: 2px 0; }
+.rx-summary-note { display: block; color: var(--rx-muted); font-size: 0.74rem; line-height: 1.45; }
+
+/* Active medications */
+.rx-active {
+  border: 1px solid var(--rx-line);
+  border-radius: 14px;
+  background: var(--rx-panel);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.rx-active h2 { font-family: Georgia, "Times New Roman", serif; font-size: 1.25rem; font-weight: 500; margin: 0 0 6px; }
+.rx-active p { color: var(--rx-muted); margin: 0; line-height: 1.55; font-size: 0.88rem; }
+.rx-active-list { display: grid; gap: 10px; margin-top: 14px; }
+.rx-active-item {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline;
+  padding: 12px 14px; border-radius: 10px; background: var(--rx-panel-soft);
+}
+.rx-active-item strong { font-size: 0.92rem; }
+.rx-active-item span { color: var(--rx-muted); font-size: 0.8rem; }
+
+/* Prescription cards */
+.rx-list { display: grid; gap: 14px; }
+.rx-card {
+  position: relative;
+  display: flex;
+  border: 1px solid var(--rx-line);
+  border-radius: 14px;
+  background: var(--rx-panel);
+  overflow: hidden;
+  animation: rx-rise-in 420ms ease both;
+  animation-delay: calc(var(--rx-i, 0) * 45ms);
+}
+.rx-card-accent { flex: 0 0 4px; background: linear-gradient(180deg, var(--rx-accent), transparent); }
+.rx-card-main { min-width: 0; flex: 1; padding: 17px 19px 15px; }
+.rx-card-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.rx-reference { color: var(--rx-faint); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; }
+.rx-status { padding: 4px 10px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; }
+.rx-status[data-status="active"] { background: var(--rx-green-bg); color: var(--rx-green); }
+.rx-status[data-status="completed"] { background: var(--rx-green-bg); color: var(--rx-green); }
+.rx-status[data-status="other"] { background: var(--rx-amber-bg); color: var(--rx-amber); }
+.rx-doctor { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.rx-avatar {
+  display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px;
+  border-radius: 50%; background: var(--rx-panel-soft); color: var(--rx-accent);
+  font-size: 0.8rem; font-weight: 800;
+}
+.rx-doctor h3 { margin: 0; font-size: 1rem; }
+.rx-doctor p { margin: 2px 0 0; color: var(--rx-muted); font-size: 0.8rem; }
+.rx-meta {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+  padding: 12px 0; border-top: 1px solid var(--rx-line); border-bottom: 1px solid var(--rx-line);
+}
+.rx-meta small { display: block; color: var(--rx-faint); font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 3px; }
+.rx-meta strong { font-size: 0.8rem; font-weight: 700; }
+.rx-items { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.rx-item { padding: 12px 14px; border-radius: 10px; background: var(--rx-panel-soft); }
+.rx-item-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.rx-item-head strong { font-size: 0.92rem; }
+.rx-item-head span { color: var(--rx-accent); font-size: 0.8rem; font-weight: 700; }
+.rx-item p { margin: 5px 0 0; color: var(--rx-muted); font-size: 0.8rem; line-height: 1.5; }
+.rx-notes { margin: 14px 0 0; color: var(--rx-muted); font-size: 0.8rem; line-height: 1.55; }
+.rx-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 14px; }
+.rx-button {
+  min-height: 34px; padding: 7px 14px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--rx-line); background: transparent; color: var(--rx-copy);
+  font: inherit; font-size: 0.76rem; font-weight: 700; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.rx-button:hover { border-color: var(--rx-accent); }
+.rx-button.is-primary { border-color: var(--public-brand-700); background: var(--public-brand-700); color: #fff; }
+.rx-button:disabled { opacity: 0.65; cursor: default; }
+
+/* States */
+.rx-state {
+  border: 1px solid var(--rx-line); border-radius: 14px; background: var(--rx-panel);
+  padding: 34px 22px; text-align: center;
+}
+.rx-state h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; margin: 0 0 8px; font-size: 1.3rem; }
+.rx-state p { color: var(--rx-muted); margin: 0 auto 14px; max-width: 46ch; line-height: 1.55; }
+
+@keyframes rx-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rx-card { animation: none; }
+}
+@media (max-width: 760px) {
+  .rx-summary { grid-template-columns: 1fr; }
+  .rx-meta { grid-template-columns: 1fr 1fr; }
+  .rx-page { padding: 24px 16px 48px; }
+}

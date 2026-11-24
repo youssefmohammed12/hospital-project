@@ -30,6 +30,11 @@ require_once __DIR__ . '/../../services/ScheduleService.php';
 header('Content-Type: application/json');
 
 $user = requireAuth();
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
 $userId = (int)$user['id'];
 $userRole = $user['role'] ?? '';
 
@@ -41,17 +46,35 @@ if ($userRole !== 'patient' && $userRole !== 'admin') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
-if (!$input) {
+if (!is_array($input)) {
     $input = $_POST;
 }
+if (!is_array($input)) {
+    $input = [];
+}
 
-$appointmentId = (int)($input['appointment_id'] ?? 0);
-$newDate = trim($input['new_date'] ?? '');
-$newTime = trim($input['new_time'] ?? '');
-$reason = trim($input['reason'] ?? '');
+$appointmentId = parsePositiveInt($input['appointment_id'] ?? null);
+$newDateInput = $input['new_date'] ?? null;
+$newTimeInput = $input['new_time'] ?? null;
+$reasonInput = $input['reason'] ?? '';
+
+if (
+    $appointmentId === null
+    || !is_string($newDateInput)
+    || !is_string($newTimeInput)
+    || !is_string($reasonInput)
+) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Appointment ID, date, and time must be valid values.']);
+    exit;
+}
+
+$newDate = trim($newDateInput);
+$newTime = trim($newTimeInput);
+$reason = trim($reasonInput);
 
 // ── Validation ──
-if (!$appointmentId || !$newDate || !$newTime) {
+if ($newDate === '' || $newTime === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Appointment ID, new date, and new time are required.']);
     exit;

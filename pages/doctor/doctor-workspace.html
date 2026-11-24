@@ -3,372 +3,258 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="HealthBridge Clinical Workspace - Professional Electronic Medical Record (EMR) patient chart." />
-  <title>Clinical EMR Workspace - HealthBridge</title>
+  <meta name="description" content="The clinical workspace for one patient — visit workflow, SOAP note with autosave, prescriptions, medical history, and timeline." />
+  <title>Clinical Workspace — HealthBridge</title>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
-  <link rel="stylesheet" href="../../assets/css/style.css?v=3" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="../../assets/css/pages/dashboard.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/pages/admin.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/pages/settings.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/pages/patient-emr.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/components/modal-fix.css?v=3" />
-  <link rel="stylesheet" href="../../assets/css/pages/doctor-workspace.css?v=3" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/tokens.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/base.css?v=1" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/components.css?v=23" />
+  <link rel="stylesheet" href="../../assets/public-v2/css/pages/doctor-dashboard.css?v=19" />
+  <script>try{if(localStorage.getItem("hb_doctor_sidebar")==="collapsed"){document.documentElement.classList.add("doctor-sb-collapsed");}}catch(e){}</script>
+  <script src="../../assets/public-v2/js/core/site.js?v=12"></script>
+  <script defer src="../../assets/public-v2/js/core/helpers.js?v=1"></script>
+  <script defer src="../../assets/public-v2/js/core/shell-core.js?v=4"></script>
+  <script defer src="../../assets/public-v2/js/core/doctor-shell.js?v=8"></script>
+  <script defer src="../../assets/public-v2/js/pages/doctor-workspace.js?v=3"></script>
 </head>
-<body class="doctor-workspace-body">
-  <nav class="navbar" id="navbar">
-    <div class="nav-container">
-      <a href="../../index.html" class="logo">
-        <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-        <span>HealthBridge</span>
-      </a>
-      <div class="nav-row">
-        <ul class="nav-links">
-          <li><a href="../../index.html">Home</a></li>
-          <li><a href="../../doctors.html">Doctors</a></li>
-          <li><a href="../../services.html">Services</a></li>
-          <li><a href="../../about.html">About</a></li>
-          <li><a href="../../contact.html">Contact</a></li>
-        </ul>
-        <div class="nav-actions" id="auth-links">
-          <span class="badge badge-success"><i class="fas fa-shield-halved"></i> EMR Clinical Session</span>
-        </div>
-      </div>
-    </div>
-  </nav>
+<body>
+  <div id="navbar-container"></div>
 
   <div class="dashboard">
-    <aside class="sidebar" aria-label="Clinical Navigation">
-      <div>
-        <div class="sidebar-user">
-          <div class="sidebar-avatar-container">
-            <div class="sidebar-avatar" style="background: var(--primary-glow); border-color: var(--border)">DR</div>
-            <div class="status-dot" title="EMR Online"></div>
-          </div>
-          <h3 id="ws-sb-name">Doctor Panel</h3>
-          <p id="ws-sb-email">loading...</p>
-        </div>
-        <nav class="sidebar-nav">
-          <a href="doctor-dashboard.html"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Dashboard</a>
-          <hr style="border:0;border-top:1px solid var(--border-light);margin:var(--s3) 0" />
-          <a href="doctor-dashboard.html#appointments"><i class="fas fa-calendar-days" aria-hidden="true"></i> Appointments</a>
-          <a href="doctor-dashboard.html#queue"><i class="fas fa-users-rectangle" aria-hidden="true"></i> Patient Queue</a>
-        </nav>
-      </div>
-      <div class="sidebar-footer">
-        <nav class="sidebar-nav">
-          <a href="../../index.html"><i class="fas fa-globe" aria-hidden="true"></i> View Site</a>
-          <button type="button" class="sidebar-link-btn logout-link" id="doctor-ws-logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Logout</button>
-        </nav>
-      </div>
-    </aside>
+    <div id="sidebar-container"></div>
 
-    <main class="main-content" id="ws-main">
-      <div class="ws-container" id="ws-container">
-        <a href="doctor-dashboard.html#appointments" class="ws-back"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Appointments</a>
+    <main class="main-content doctor-main--workspace" id="doctor-main" aria-busy="true">
+      <div class="doctor-page doctor-ws" id="dws-root">
 
-        <!-- ====== STICKY CLINICAL SUMMARY CARD (with actions & vital alerts) ====== -->
-        <div class="ws-summary-card" id="ws-summary-card" role="region" aria-label="Clinical Summary">
-          <div class="ws-summary-inner" id="ws-summary-inner">
-            <div class="ws-summary-skeleton"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading patient EMR record...</div>
-          </div>
-          <div class="ws-summary-actions" id="ws-summary-actions"></div>
-        </div>
+        <a class="dws-back" href="appointments.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+          Back to Appointments
+        </a>
 
-        <!-- ====== STICKY PROGRESS BAR ====== -->
-        <div class="ws-progress-bar" id="ws-progress-bar" role="progressbar" aria-label="Visit progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="4">
-          <div class="ws-progress-step" data-step="1">
-            <div class="ws-progress-icon"><i class="fas fa-calendar-check" aria-hidden="true"></i></div>
-            <span class="ws-progress-label">Waiting</span>
+        <!-- ====== PATIENT BANNER ====== -->
+        <section class="dws-banner doctor-tile" aria-label="Patient summary">
+          <div class="dws-banner__main" id="dws-banner-main">
+            <p class="doctor-empty">Loading patient record…</p>
           </div>
-          <div class="ws-progress-connector"></div>
-          <div class="ws-progress-step" data-step="2">
-            <div class="ws-progress-icon"><i class="fas fa-stethoscope" aria-hidden="true"></i></div>
-            <span class="ws-progress-label">In Progress</span>
+          <div class="dws-banner__actions" id="dws-banner-actions"></div>
+        </section>
+
+        <!-- ====== VISIT WORKFLOW STEPPER ====== -->
+        <div class="dws-steps" id="dws-steps" role="progressbar" aria-label="Visit progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1">
+          <div class="dws-step" data-step="1">
+            <span class="dws-step__dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 16l2 2 4-4"/></svg></span>
+            <span class="dws-step__label">Waiting</span>
           </div>
-          <div class="ws-progress-connector"></div>
-          <div class="ws-progress-step" data-step="3">
-            <div class="ws-progress-icon"><i class="fas fa-prescription" aria-hidden="true"></i></div>
-            <span class="ws-progress-label">Ready to Complete</span>
+          <div class="dws-step__bar" aria-hidden="true"><span class="dws-step__fill"></span></div>
+          <div class="dws-step" data-step="2">
+            <span class="dws-step__dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.8 10.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Z"/><path d="M7.4 7.8v5.4a5 5 0 0 0 10 0v-1"/><circle cx="17.4" cy="8.6" r="2.4"/><path d="M12.4 18.2v1.3a2 2 0 0 0 4 0v-1.3"/></svg></span>
+            <span class="dws-step__label">In Progress</span>
           </div>
-          <div class="ws-progress-connector"></div>
-          <div class="ws-progress-step" data-step="4">
-            <div class="ws-progress-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
-            <span class="ws-progress-label">Completed</span>
+          <div class="dws-step__bar" aria-hidden="true"><span class="dws-step__fill"></span></div>
+          <div class="dws-step" data-step="3">
+            <span class="dws-step__dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8a2 2 0 0 1 2 2v2H6V5a2 2 0 0 1 2-2Z"/><path d="M6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Z"/><path d="M12 10v6M9 13h6"/></svg></span>
+            <span class="dws-step__label">Ready to Complete</span>
+          </div>
+          <div class="dws-step__bar" aria-hidden="true"><span class="dws-step__fill"></span></div>
+          <div class="dws-step" data-step="4">
+            <span class="dws-step__dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.4 12.4l2.5 2.5 4.7-5.3"/></svg></span>
+            <span class="dws-step__label">Completed</span>
           </div>
         </div>
 
         <!-- ====== CLINICAL TABS ====== -->
-        <nav class="ws-tabs" role="tablist" aria-label="Patient chart tabs">
-          <button class="ws-tab active" role="tab" aria-selected="true" data-tab="overview" tabindex="0" id="tab-btn-overview"><i class="fas fa-chart-pie" aria-hidden="true"></i><span class="tab-label">Overview</span></button>
-          <button class="ws-tab" role="tab" aria-selected="false" data-tab="medical-history" tabindex="-1" id="tab-btn-history"><i class="fas fa-notes-medical" aria-hidden="true"></i><span class="tab-label">Medical History Management</span></button>
-          <button class="ws-tab" role="tab" aria-selected="false" data-tab="visit" tabindex="-1" id="tab-btn-visit"><i class="fas fa-stethoscope" aria-hidden="true"></i><span class="tab-label">Current Visit</span></button>
-          <button class="ws-tab" role="tab" aria-selected="false" data-tab="prescriptions" tabindex="-1" id="tab-btn-prescriptions"><i class="fas fa-prescription" aria-hidden="true"></i><span class="tab-label">Prescriptions</span></button>
-          <button class="ws-tab" role="tab" aria-selected="false" data-tab="timeline" tabindex="-1" id="tab-btn-timeline"><i class="fas fa-timeline" aria-hidden="true"></i><span class="tab-label">Timeline</span></button>
-          <button class="ws-tab" role="tab" aria-selected="false" data-tab="lab-results" tabindex="-1" disabled id="tab-btn-labs"><i class="fas fa-flask" aria-hidden="true"></i><span class="tab-label">Lab Results</span></button>
-          <button class="ws-tab" role="tab" aria-selected="false" data-tab="files" tabindex="-1" disabled id="tab-btn-files"><i class="fas fa-folder-open" aria-hidden="true"></i><span class="tab-label">Files</span></button>
+        <nav class="dws-tabs" role="tablist" aria-label="Patient chart tabs">
+          <button class="dws-tab is-active" role="tab" aria-selected="true" data-tab="overview" tabindex="0" id="tab-btn-overview">Overview</button>
+          <button class="dws-tab" role="tab" aria-selected="false" data-tab="medical-history" tabindex="-1" id="tab-btn-history">Medical History</button>
+          <button class="dws-tab" role="tab" aria-selected="false" data-tab="visit" tabindex="-1" id="tab-btn-visit">Current Visit</button>
+          <button class="dws-tab" role="tab" aria-selected="false" data-tab="prescriptions" tabindex="-1" id="tab-btn-prescriptions">Prescriptions</button>
+          <button class="dws-tab" role="tab" aria-selected="false" data-tab="timeline" tabindex="-1" id="tab-btn-timeline">Timeline</button>
+          <button class="dws-tab" role="tab" aria-selected="false" data-tab="lab-results" tabindex="-1" id="tab-btn-labs">Lab Results</button>
+          <button class="dws-tab" role="tab" aria-selected="false" data-tab="files" tabindex="-1" id="tab-btn-files">Files</button>
         </nav>
 
         <!-- ====== TAB PANELS ====== -->
-        <section class="ws-tab-content active" id="ws-overview" role="tabpanel" aria-labelledby="tab-btn-overview"></section>
-        <section class="ws-tab-content" id="ws-medical-history" role="tabpanel" aria-labelledby="tab-btn-history"></section>
-        <section class="ws-tab-content" id="ws-visit" role="tabpanel" aria-labelledby="tab-btn-visit"></section>
-        <section class="ws-tab-content" id="ws-prescriptions" role="tabpanel" aria-labelledby="tab-btn-prescriptions"></section>
-        <section class="ws-tab-content" id="ws-timeline" role="tabpanel" aria-labelledby="tab-btn-timeline"></section>
-        <section class="ws-tab-content" id="ws-lab-results" role="tabpanel" aria-labelledby="tab-btn-labs">
-          <div class="ws-empty"><i class="fas fa-flask" aria-hidden="true"></i><h4>Lab Results Integration</h4><p>Laboratory system integration will be available in a future update.</p></div>
+        <section class="dws-panel is-active" id="dws-overview" role="tabpanel" aria-labelledby="tab-btn-overview"></section>
+        <section class="dws-panel" id="dws-medical-history" role="tabpanel" aria-labelledby="tab-btn-history"></section>
+        <section class="dws-panel" id="dws-visit" role="tabpanel" aria-labelledby="tab-btn-visit"></section>
+        <section class="dws-panel" id="dws-prescriptions" role="tabpanel" aria-labelledby="tab-btn-prescriptions"></section>
+        <section class="dws-panel" id="dws-timeline" role="tabpanel" aria-labelledby="tab-btn-timeline"></section>
+        <section class="dws-panel" id="dws-lab-results" role="tabpanel" aria-labelledby="tab-btn-labs">
+          <div class="dws-card dws-empty-state">
+            <span class="dws-empty-state__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.8 18a2 2 0 0 0 1.8 3h10.8a2 2 0 0 0 1.8-3L14 9V3"/><path d="M7.5 15h9"/></svg></span>
+            <h3>Lab Results Integration</h3>
+            <p>Laboratory system integration will be available in a future update.</p>
+          </div>
         </section>
-        <section class="ws-tab-content" id="ws-files" role="tabpanel" aria-labelledby="tab-btn-files">
-          <div class="ws-empty"><i class="fas fa-folder-open" aria-hidden="true"></i><h4>Patient File Archive</h4><p>Document attachment management will be available in a future update.</p></div>
+        <section class="dws-panel" id="dws-files" role="tabpanel" aria-labelledby="tab-btn-files">
+          <div class="dws-card dws-empty-state">
+            <span class="dws-empty-state__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10Z"/><path d="M13 3v7h7M8 14h8M8 17h6"/></svg></span>
+            <h3>Patient File Archive</h3>
+            <p>Document attachment management will be available in a future update.</p>
+          </div>
         </section>
+
+        <p class="doctor-alert" id="dws-error" role="alert" hidden></p>
       </div>
     </main>
   </div>
 
-  <!-- ====== PRESCRIPTION ISSUE MODAL ====== -->
-  <div id="ws-rx-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-rx-title" style="max-width:720px;width:min(720px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-rx-title"><i class="fas fa-prescription" aria-hidden="true"></i> Issue Prescription</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
+  <!-- ====== ISSUE PRESCRIPTION MODAL ====== -->
+  <div class="dws-modal-overlay" id="dws-rx-modal" hidden>
+    <div class="dws-modal dws-modal--wide" role="dialog" aria-modal="true" aria-labelledby="dws-rx-title">
+      <div class="dws-modal__head">
+        <h3 id="dws-rx-title">Issue Prescription</h3>
+        <button class="dws-modal__close" type="button" data-dws-close aria-label="Close">&times;</button>
       </div>
-      <div class="modal-body">
-        <form id="ws-rx-form" novalidate>
-          <input type="hidden" id="ws-rx-appt-id" />
-          <input type="hidden" id="ws-rx-pt-id" />
-          <div class="form-grid">
-            <div class="form-group"><label>Patient</label><input type="text" id="ws-rx-pt-name" readonly style="background:var(--bg-subtle)" /></div>
-            <div class="form-group"><label>Appointment</label><input type="text" id="ws-rx-appt-date" readonly style="background:var(--bg-subtle)" /></div>
-          </div>
-          <div class="form-group" style="margin-top:var(--s4)">
-            <label>Medications <span style="color:var(--text-muted);font-size:0.78rem">(add at least one)</span></label>
-          </div>
-          <div id="ws-rx-items">
-            <div class="ws-rx-row form-grid" style="margin-bottom:var(--s2)">
-              <div class="form-group"><input type="text" class="rx-med" placeholder="Medication name" required /></div>
-              <div class="form-group"><input type="text" class="rx-str" placeholder="Strength (e.g. 500mg)" /></div>
-              <div class="form-group"><input type="text" class="rx-dos" placeholder="Dosage (e.g. 1 tab)" /></div>
-              <div class="form-group"><input type="text" class="rx-freq" placeholder="Frequency (e.g. BID)" /></div>
-              <div class="form-group"><input type="text" class="rx-dur" placeholder="Duration (e.g. 7d)" /></div>
-              <div class="form-group" style="display:flex;align-items:flex-end">
-                <button type="button" class="btn btn-outline btn-sm rx-remove-row-btn" style="color:var(--danger)"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
-              </div>
-            </div>
-          </div>
-          <button type="button" class="btn btn-outline btn-sm" id="ws-rx-add-row-btn" style="margin-bottom:var(--s3)"><i class="fas fa-plus" aria-hidden="true"></i> Add Medication</button>
-          <div class="form-group full">
-            <label for="ws-rx-notes-h">Notes (Optional)</label>
-            <textarea id="ws-rx-notes-h" placeholder="Additional instructions for patient..." maxlength="1000" style="min-height:50px"></textarea>
-          </div>
-          <div class="modal-footer" style="border-top:1px solid var(--border-light);padding:var(--s4) 0 0;margin-top:var(--s4)">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-prescription" aria-hidden="true"></i> Issue Prescription</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- ====== FINISH VISIT REVIEW MODAL ====== -->
-  <div id="ws-review-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-review-title" style="max-width:520px;width:min(520px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-review-title"><i class="fas fa-clipboard-check" aria-hidden="true"></i> Complete Visit</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p style="color:var(--text-secondary);margin-bottom:var(--s4)">Review visit summary before marking consultation as completed.</p>
-        <div id="ws-review-summary" style="background:var(--bg-subtle);border-radius:var(--r-md);padding:var(--s4);margin-bottom:var(--s4)"></div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline modal-close-btn">Continue Editing</button>
-          <button type="button" class="btn btn-success" id="ws-confirm-complete-btn"><i class="fas fa-check-circle" aria-hidden="true"></i> Confirm &amp; Complete Visit</button>
+      <form id="dws-rx-form" novalidate>
+        <div class="dws-form-grid">
+          <div class="dws-field"><label for="dws-rx-pt-name">Patient</label><input type="text" id="dws-rx-pt-name" readonly /></div>
+          <div class="dws-field"><label for="dws-rx-appt-date">Appointment</label><input type="text" id="dws-rx-appt-date" readonly /></div>
         </div>
+        <p class="dws-field-label">Medications <span>(add at least one)</span></p>
+        <div id="dws-rx-items"></div>
+        <button type="button" class="dws-btn dws-btn--ghost dws-btn--sm" id="dws-rx-add-row">+ Add Medication</button>
+        <div class="dws-field">
+          <label for="dws-rx-notes">Notes (optional)</label>
+          <textarea id="dws-rx-notes" placeholder="Additional instructions for patient..." maxlength="1000"></textarea>
+        </div>
+        <div class="dws-modal__foot">
+          <button type="button" class="dws-btn dws-btn--ghost" data-dws-close>Cancel</button>
+          <button type="submit" class="dws-btn dws-btn--teal" id="dws-rx-submit">Issue Prescription</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====== PRESCRIPTION VIEW MODAL ====== -->
+  <div class="dws-modal-overlay" id="dws-rx-view-modal" hidden>
+    <div class="dws-modal dws-modal--wide" role="dialog" aria-modal="true" aria-labelledby="dws-rx-view-title">
+      <div class="dws-modal__head">
+        <h3 id="dws-rx-view-title">Prescription Details</h3>
+        <button class="dws-modal__close" type="button" data-dws-close aria-label="Close">&times;</button>
+      </div>
+      <div id="dws-rx-view-content"></div>
+    </div>
+  </div>
+
+  <!-- ====== PRESCRIPTION EDIT MODAL ====== -->
+  <div class="dws-modal-overlay" id="dws-rx-edit-modal" hidden>
+    <div class="dws-modal dws-modal--wide" role="dialog" aria-modal="true" aria-labelledby="dws-rx-edit-title">
+      <div class="dws-modal__head">
+        <h3 id="dws-rx-edit-title">Edit Prescription</h3>
+        <button class="dws-modal__close" type="button" data-dws-close aria-label="Close">&times;</button>
+      </div>
+      <form id="dws-rx-edit-form" novalidate>
+        <input type="hidden" id="dws-rx-edit-id" />
+        <div id="dws-rx-edit-items"></div>
+        <button type="button" class="dws-btn dws-btn--ghost dws-btn--sm" id="dws-rx-edit-add">+ Add Another Medication</button>
+        <div class="dws-field">
+          <label for="dws-rx-edit-notes">Prescription Notes (optional)</label>
+          <textarea id="dws-rx-edit-notes" placeholder="General instructions or notes for the patient..." maxlength="2000"></textarea>
+        </div>
+        <div class="dws-modal__foot">
+          <button type="button" class="dws-btn dws-btn--ghost" data-dws-close>Cancel</button>
+          <button type="submit" class="dws-btn dws-btn--teal" id="dws-rx-edit-submit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====== PRESCRIPTION CANCEL MODAL ====== -->
+  <div class="dws-modal-overlay" id="dws-rx-cancel-modal" hidden>
+    <div class="dws-modal" role="dialog" aria-modal="true" aria-labelledby="dws-rx-cancel-title">
+      <div class="dws-modal__head">
+        <h3 id="dws-rx-cancel-title">Cancel Prescription</h3>
+        <button class="dws-modal__close" type="button" data-dws-close aria-label="Close">&times;</button>
+      </div>
+      <form id="dws-rx-cancel-form" novalidate>
+        <input type="hidden" id="dws-rx-cancel-id" />
+        <p class="dws-modal__note">Please provide a reason for cancelling this prescription.</p>
+        <div class="dws-field">
+          <label for="dws-rx-cancel-reason">Cancellation Reason *</label>
+          <textarea id="dws-rx-cancel-reason" placeholder="Explain why this prescription is being cancelled..." required maxlength="2000"></textarea>
+        </div>
+        <div class="dws-modal__foot">
+          <button type="button" class="dws-btn dws-btn--ghost" data-dws-close>Go Back</button>
+          <button type="submit" class="dws-btn dws-btn--danger" id="dws-rx-cancel-submit">Cancel Prescription</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====== COMPLETE VISIT REVIEW MODAL ====== -->
+  <div class="dws-modal-overlay" id="dws-review-modal" hidden>
+    <div class="dws-modal" role="dialog" aria-modal="true" aria-labelledby="dws-review-title">
+      <div class="dws-modal__head">
+        <h3 id="dws-review-title">Complete Visit</h3>
+        <button class="dws-modal__close" type="button" data-dws-close aria-label="Close">&times;</button>
+      </div>
+      <p class="dws-modal__note">Review the visit summary before marking this consultation as completed.</p>
+      <div class="dws-review-summary" id="dws-review-summary"></div>
+      <div class="dws-review-list" id="dws-review-checklist" aria-label="Visit completion checklist"></div>
+      <div class="dws-review-errors" id="dws-review-errors" role="alert" aria-live="assertive" hidden></div>
+      <div class="dws-modal__foot">
+        <button type="button" class="dws-btn dws-btn--ghost" data-dws-close>Continue Editing</button>
+        <button type="button" class="dws-btn dws-btn--teal" id="dws-confirm-complete">Confirm &amp; Complete Visit</button>
       </div>
     </div>
   </div>
 
-  <!-- ====== MEDICAL HISTORY MODALS ====== -->
-  <!-- Allergies Modal -->
-  <div id="ws-mh-allergies-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-allergies-title" style="max-width:520px;width:min(520px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-mh-allergies-title"><i class="fas fa-allergies" aria-hidden="true"></i> Update Allergies</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
+  <!-- ====== MEDICAL HISTORY EDITOR MODAL (one per field, shared shell) ====== -->
+  <div class="dws-modal-overlay" id="dws-mh-modal" hidden>
+    <div class="dws-modal" role="dialog" aria-modal="true" aria-labelledby="dws-mh-title">
+      <div class="dws-modal__head">
+        <h3 id="dws-mh-title">Update Record</h3>
+        <button class="dws-modal__close" type="button" data-dws-close aria-label="Close">&times;</button>
       </div>
-      <div class="modal-body">
-        <form id="ws-mh-allergies-form" novalidate>
-          <input type="hidden" id="ws-mh-allergies-pt-id" />
-          <div class="form-group">
-            <label for="ws-mh-allergies-input">Known Allergies</label>
-            <textarea id="ws-mh-allergies-input" placeholder="List known allergies (e.g., Penicillin, Peanuts, Latex)" maxlength="2000" style="min-height:100px"></textarea>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
-          </div>
-        </form>
-      </div>
+      <form id="dws-mh-form" novalidate>
+        <input type="hidden" id="dws-mh-field" />
+        <div class="dws-field" id="dws-mh-text-wrap">
+          <label for="dws-mh-input" id="dws-mh-label">Value</label>
+          <textarea id="dws-mh-input" maxlength="5000"></textarea>
+        </div>
+        <div class="dws-field" id="dws-mh-blood-wrap" hidden>
+          <label for="dws-mh-blood">Blood Type</label>
+          <select id="dws-mh-blood">
+            <option value="">Select blood type</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+        </div>
+        <div class="dws-modal__foot">
+          <button type="button" class="dws-btn dws-btn--ghost" data-dws-close>Cancel</button>
+          <button type="submit" class="dws-btn dws-btn--teal" id="dws-mh-submit">Save</button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <!-- Chronic Diseases Modal -->
-  <div id="ws-mh-chronic-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-chronic-title" style="max-width:520px;width:min(520px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-mh-chronic-title"><i class="fas fa-heart-pulse" aria-hidden="true"></i> Update Chronic Conditions</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
+  <!-- ====== CONFIRM MODAL (prescription complete) ====== -->
+  <div class="dws-modal-overlay" id="dws-confirm-modal" hidden>
+    <div class="dws-modal" role="alertdialog" aria-modal="true" aria-labelledby="dws-confirm-title" aria-describedby="dws-confirm-text">
+      <div class="dws-modal__head">
+        <h3 id="dws-confirm-title">Complete Prescription</h3>
+        <button class="dws-modal__close" type="button" data-dws-close aria-label="Close">&times;</button>
       </div>
-      <div class="modal-body">
-        <form id="ws-mh-chronic-form" novalidate>
-          <input type="hidden" id="ws-mh-chronic-pt-id" />
-          <div class="form-group">
-            <label for="ws-mh-chronic-input">Chronic Diseases / Conditions</label>
-            <textarea id="ws-mh-chronic-input" placeholder="List chronic diseases (e.g., Type 2 Diabetes, Hypertension, Asthma)" maxlength="2000" style="min-height:100px"></textarea>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Current Medications Modal -->
-  <div id="ws-mh-medications-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-medications-title" style="max-width:520px;width:min(520px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-mh-medications-title"><i class="fas fa-pills" aria-hidden="true"></i> Update Current Medications</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="ws-mh-medications-form" novalidate>
-          <input type="hidden" id="ws-mh-medications-pt-id" />
-          <div class="form-group">
-            <label for="ws-mh-medications-input">Current Medications</label>
-            <textarea id="ws-mh-medications-input" placeholder="List current medications (e.g., Metformin 500mg, Lisinopril 10mg)" maxlength="2000" style="min-height:100px"></textarea>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Previous Surgeries Modal -->
-  <div id="ws-mh-surgeries-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-surgeries-title" style="max-width:520px;width:min(520px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-mh-surgeries-title"><i class="fas fa-scalpel" aria-hidden="true"></i> Update Previous Surgeries</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="ws-mh-surgeries-form" novalidate>
-          <input type="hidden" id="ws-mh-surgeries-pt-id" />
-          <div class="form-group">
-            <label for="ws-mh-surgeries-input">Previous Surgeries</label>
-            <textarea id="ws-mh-surgeries-input" placeholder="List previous surgeries with dates" maxlength="2000" style="min-height:100px"></textarea>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Family History Modal -->
-  <div id="ws-mh-family-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-family-title" style="max-width:520px;width:min(520px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-mh-family-title"><i class="fas fa-users" aria-hidden="true"></i> Update Family History</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="ws-mh-family-form" novalidate>
-          <input type="hidden" id="ws-mh-family-pt-id" />
-          <div class="form-group">
-            <label for="ws-mh-family-input">Family Medical History</label>
-            <textarea id="ws-mh-family-input" placeholder="List relevant family medical history" maxlength="2000" style="min-height:100px"></textarea>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Medical Notes Modal -->
-  <div id="ws-mh-notes-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-notes-title" style="max-width:600px;width:min(600px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-mh-notes-title"><i class="fas fa-stethoscope" aria-hidden="true"></i> Update Medical Notes</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="ws-mh-notes-form" novalidate>
-          <input type="hidden" id="ws-mh-notes-pt-id" />
-          <div class="form-group">
-            <label for="ws-mh-notes-input">Medical Notes</label>
-            <textarea id="ws-mh-notes-input" placeholder="General medical notes or observations" maxlength="5000" style="min-height:150px"></textarea>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Blood Type Modal -->
-  <div id="ws-mh-blood-modal" class="modal-overlay emr-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ws-mh-blood-title" style="max-width:480px;width:min(480px,100%)">
-      <div class="modal-header">
-        <h3 id="ws-mh-blood-title"><i class="fas fa-droplet" aria-hidden="true"></i> Set Blood Type</h3>
-        <button class="btn btn-outline btn-sm modal-close-btn" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="ws-mh-blood-form" novalidate>
-          <input type="hidden" id="ws-mh-blood-pt-id" />
-          <div class="form-group">
-            <label for="ws-mh-blood-input">Blood Type</label>
-            <select id="ws-mh-blood-input" required>
-              <option value="">Select blood type</option>
-              <option value="A+">A+</option>
-              <option value="A-">A-</option>
-              <option value="B+">B+</option>
-              <option value="B-">B-</option>
-              <option value="AB+">AB+</option>
-              <option value="AB-">AB-</option>
-              <option value="O+">O+</option>
-              <option value="O-">O-</option>
-            </select>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Set Blood Type</button>
-          </div>
-        </form>
+      <p class="dws-modal__note" id="dws-confirm-text">Mark this prescription as Completed? It will become read-only.</p>
+      <div class="dws-modal__foot">
+        <button type="button" class="dws-btn dws-btn--ghost" data-dws-close>Go Back</button>
+        <button type="button" class="dws-btn dws-btn--teal" id="dws-confirm-yes">Mark Completed</button>
       </div>
     </div>
   </div>
 
   <!-- ====== AUTOSAVE INDICATOR ====== -->
-  <div id="ws-autosave-indicator" class="ws-autosave-indicator" role="status" aria-live="polite" aria-atomic="true">
-    <i class="fas fa-cloud" aria-hidden="true"></i>
-    <span id="ws-autosave-text">Draft saved</span>
+  <div class="dws-autosave" id="dws-autosave" role="status" aria-live="polite" aria-atomic="true">
+    <span class="dws-autosave__dot" aria-hidden="true"></span>
+    <span id="dws-autosave-text">Draft saved</span>
   </div>
 
-  <script src="../../assets/js/core/main.js?v=3"></script>
-  <script src="../../assets/js/modules/prescriptions.js?v=3"></script>
-  <script src="../../assets/js/pages/doctor-workspace.js?v=3"></script>
-  <script src="../../assets/js/modules/notifications.js?v=3"></script>
 </body>
 </html>

@@ -1,0 +1,233 @@
+/*
+ * HealthBridge Public V2 — Prescription print view.
+ * Restyled 22 Nov 2026 to the Public V2 design language (cream paper,
+ * deep green, serif headings, gold accents, teal primary). Replaces the
+ * legacy print-prescription.css; the markup classes are unchanged.
+ */
+:root {
+  --pp-ink: #183532;
+  --pp-muted: #5c6f66;
+  --pp-line: rgba(16, 43, 43, 0.16);
+  --pp-gold: #a9844f;
+  --pp-gold-soft: #f4ecdc;
+  --pp-teal: #17645f;
+  --pp-panel: #f7f6f1;
+  --pp-green: #276d4c;
+  --pp-green-bg: #e6f2e9;
+  --pp-red: #a3403a;
+  --pp-red-bg: #f9eae8;
+  --pp-amber: #805d2b;
+  --pp-amber-bg: #f7f0e4;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 32px 18px 48px;
+  background: #e9ebe4;
+  color: var(--pp-ink);
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+body > * { max-width: 880px; margin-inline: auto; }
+
+/* Header */
+.print-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid var(--pp-line);
+  border-bottom: 3px solid var(--pp-gold);
+  border-radius: 14px 14px 0 0;
+  padding: 22px 26px;
+}
+.print-logo {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  border: 1.5px solid var(--pp-gold);
+  border-radius: 12px;
+  background: transparent;
+}
+.print-logo svg { width: 30px; height: 30px; }
+.print-logo-text h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.print-logo-text p { margin: 3px 0 0; color: var(--pp-muted); font-size: 0.8rem; }
+
+/* Meta row */
+.print-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  padding: 16px 26px;
+}
+.print-rx-id {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--pp-teal);
+}
+.print-date, .print-updated { color: var(--pp-muted); font-size: 0.8rem; margin-top: 3px; }
+.print-status {
+  display: inline-block;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: var(--pp-amber-bg);
+  color: var(--pp-amber);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.print-status-completed, .print-status-active { background: var(--pp-green-bg); color: var(--pp-green); }
+.print-status-cancelled { background: var(--pp-red-bg); color: var(--pp-red); }
+
+/* Cancellation */
+.print-cancel-reason {
+  background: var(--pp-red-bg);
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  padding: 14px 26px;
+  color: var(--pp-red);
+}
+.print-cancel-reason p { margin: 4px 0 0; }
+
+/* Info grid */
+.print-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  background: #fff;
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  padding: 18px 26px;
+}
+.print-info-box {
+  border: 1px solid var(--pp-line);
+  border-radius: 10px;
+  background: var(--pp-panel);
+  padding: 14px 16px;
+}
+.print-info-box h3 {
+  margin: 0 0 10px;
+  color: var(--pp-gold);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.print-info-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; }
+.print-info-label { color: var(--pp-muted); font-size: 0.78rem; }
+.print-info-value { font-size: 0.82rem; font-weight: 650; text-align: right; }
+
+/* Medications */
+.print-meds-section {
+  background: #fff;
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  padding: 20px 26px;
+}
+.print-meds-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.print-meds-count { color: var(--pp-muted); font-family: Inter, "Segoe UI", system-ui, sans-serif; font-size: 0.8rem; }
+.print-meds-table-wrapper { overflow-x: auto; }
+.print-meds-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.print-meds-table th {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 2px solid var(--pp-gold);
+  color: var(--pp-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.print-meds-table td { padding: 10px; border-bottom: 1px solid var(--pp-line); vertical-align: top; }
+.print-meds-table .med-name { font-weight: 700; }
+.print-empty-message { color: var(--pp-muted); }
+
+/* Notes */
+.print-notes {
+  background: var(--pp-gold-soft);
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  padding: 16px 26px;
+}
+.print-notes h3 {
+  margin: 0 0 6px;
+  color: var(--pp-gold);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.print-notes p { margin: 0; }
+
+/* Signature */
+.print-signature {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  background: #fff;
+  border: 1px solid var(--pp-line);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  padding: 20px 26px 24px;
+}
+.print-signature h3 {
+  margin: 0 0 8px;
+  color: var(--pp-gold);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.print-signature-name { font-family: Georgia, "Times New Roman", serif; font-size: 1.15rem; }
+.print-signature-details { color: var(--pp-muted); font-size: 0.82rem; }
+.print-signature-line { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--pp-line); color: var(--pp-muted); font-size: 0.74rem; }
+.print-signature-right { text-align: right; color: var(--pp-muted); font-size: 0.78rem; }
+.print-signature-right strong { color: var(--pp-ink); font-size: 0.95rem; }
+
+/* Return (screen only) */
+.print-return { text-align: center; padding: 22px 0 0; background: transparent; border: 0; }
+.print-return a {
+  display: inline-block;
+  padding: 11px 22px;
+  border-radius: 10px;
+  background: var(--pp-teal);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.print-return p { color: var(--pp-muted); font-size: 0.78rem; }
+
+@media (max-width: 720px) {
+  .print-info-grid { grid-template-columns: 1fr; }
+  .print-signature { flex-direction: column; }
+  .print-signature-right { text-align: left; }
+}
+
+@media print {
+  body { background: #fff; padding: 0; }
+  .print-return { display: none; }
+  .print-header, .print-meta, .print-info-grid, .print-meds-section, .print-notes, .print-signature, .print-cancel-reason {
+    border-left: 0; border-right: 0; border-radius: 0;
+  }
+}

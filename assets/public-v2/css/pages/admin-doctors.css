@@ -1,0 +1,413 @@
+/*
+ * HealthBridge Admin — Doctors area (Phase 2).
+ * The Doctors directory and the consolidated Doctor Profile (D2):
+ * header card, stat tiles, six tabs, the admin schedule editor
+ * (the doctor panel's schedule patterns in admin components) and
+ * the Reviews moderation tab (D6). Builds on admin-shell.css —
+ * shell and shared component classes are never redefined here.
+ */
+
+/* ================================================================
+   1. Doctors directory
+   ================================================================ */
+
+.adoc-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.adoc-head > div { flex: 1 1 320px; }
+.adoc-head__add { margin-top: 26px; flex: none; }
+.adoc-head__add svg { width: 15px; height: 15px; }
+
+.adoc-summary {
+  margin: 20px 0 14px;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+.adoc-summary strong { color: var(--admin-text); }
+
+.adoc-count {
+  margin-left: auto;
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.adoc-table .adoc-actions-col { text-align: right; }
+.adoc-loading,
+.adoc-empty-cell {
+  color: var(--admin-muted);
+  padding: 26px 16px !important;
+  text-align: center !important;
+}
+.adoc-error {
+  margin: 16px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+.adoc-doc {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 210px;
+}
+.adoc-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #173532;
+  background: var(--admin-gold);
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.adoc-doc__name {
+  color: var(--admin-text);
+  font-weight: 650;
+  text-decoration: none;
+}
+.adoc-doc__name:hover { color: var(--admin-gold-hi); }
+.adoc-doc__email {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+  margin-top: 1px;
+}
+.adoc-avail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.adoc-avail i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3fa46a;
+  flex: none;
+}
+.adoc-avail.is-off i { background: #d87970; }
+.adoc-stars { color: var(--admin-gold); letter-spacing: 0.08em; white-space: nowrap; }
+.adoc-stars small { color: var(--admin-muted); letter-spacing: 0; }
+
+.adoc-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.adoc-row-actions .admin-btn { min-height: 32px; padding: 5px 11px; font-size: 0.8rem; }
+
+/* ================================================================
+   2. Doctor Profile — header, stats, tabs, cards
+   ================================================================ */
+
+.adp-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 24px 26px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+}
+.adp-header__avatar {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #173532;
+  background: var(--admin-gold);
+  border-radius: 50%;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.adp-header__main { flex: 1 1 260px; min-width: 0; }
+.adp-header__main h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+.adp-header__sub {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.adp-header__pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.adp-header__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.adp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+.adp-stat {
+  padding: 16px 18px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+}
+.adp-stat strong {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.adp-stat span {
+  display: block;
+  margin-top: 4px;
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 22px 0 16px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.adp-tab {
+  padding: 10px 16px;
+  color: var(--admin-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.adp-tab:hover { color: var(--admin-text); }
+.adp-tab.is-active { color: var(--admin-gold); border-bottom-color: var(--admin-gold); }
+
+.adp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.adp-card {
+  padding: 22px 24px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  margin-bottom: 14px;
+}
+.adp-grid .adp-card { margin-bottom: 0; }
+.adp-card h2 {
+  margin: 0 0 16px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.18rem;
+  font-weight: 600;
+}
+.adp-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.adp-card__head h2 { margin: 0; }
+
+.adp-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px 18px;
+  margin: 0;
+  font-size: 0.92rem;
+}
+.adp-dl dt {
+  color: var(--admin-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+.adp-dl dd { margin: 0; color: var(--admin-text); overflow-wrap: anywhere; }
+
+.adp-note {
+  margin: 12px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+.adp-card > .adp-note:first-of-type { margin-top: 0; }
+
+.adp-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+.adp-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--admin-border);
+}
+.adp-saved { margin-right: auto; color: #3fa46a; font-size: 0.88rem; font-weight: 650; }
+.adp-dirty { margin-right: auto; color: var(--admin-gold); font-size: 0.88rem; font-weight: 650; }
+
+/* ================================================================
+   3. Schedule editor (doctor panel patterns, admin components)
+   ================================================================ */
+
+.adp-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.adp-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.adp-switch__track {
+  flex: none;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--admin-surface-raised);
+  border: 1px solid var(--admin-border);
+  position: relative;
+  transition: background 170ms ease;
+}
+.adp-switch__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--admin-muted);
+  transition: transform 170ms ease, background 170ms ease;
+}
+.adp-switch input:checked + .adp-switch__track { background: #17645f; }
+.adp-switch input:checked + .adp-switch__track::after { transform: translateX(20px); background: #ffffff; }
+.adp-switch input:focus-visible + .adp-switch__track { outline: 2px solid var(--admin-gold); outline-offset: 2px; }
+
+.adp-days { display: grid; gap: 8px; }
+.adp-day {
+  display: grid;
+  grid-template-columns: 128px 1fr 1fr 92px;
+  align-items: end;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+}
+.adp-day.is-off { opacity: 0.55; }
+.adp-day__name { font-weight: 650; padding-bottom: 10px; }
+.adp-day__slots { color: var(--admin-muted); font-size: 0.82rem; padding-bottom: 10px; text-align: right; }
+.adp-day label {
+  display: grid;
+  gap: 5px;
+  color: var(--admin-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.adp-day select {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.88rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.adp-day__toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  font-size: 0.82rem !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--admin-text) !important;
+  cursor: pointer;
+}
+.adp-day__toggle input { width: 16px; height: 16px; accent-color: #17645f; }
+
+/* ================================================================
+   4. Reviews moderation
+   ================================================================ */
+
+.adp-review {
+  padding: 16px 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  margin-top: 12px;
+}
+.adp-review.is-hidden { opacity: 0.72; border-style: dashed; }
+.adp-review__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.adp-review__head strong { font-size: 0.95rem; }
+.adp-review__meta { color: var(--admin-muted); font-size: 0.82rem; }
+.adp-review__head .admin-btn { margin-left: auto; min-height: 32px; padding: 5px 12px; font-size: 0.8rem; }
+.adp-review__text { margin: 10px 0 0; line-height: 1.6; font-size: 0.92rem; }
+.adp-empty {
+  padding: 22px 18px;
+  color: var(--admin-muted);
+  border: 1px dashed var(--admin-border);
+  border-radius: 14px;
+  text-align: center;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+
+/* ================================================================
+   5. Responsive
+   ================================================================ */
+
+@media (max-width: 900px) {
+  .adp-stats { grid-template-columns: repeat(2, 1fr); }
+  .adp-grid, .adp-form-grid { grid-template-columns: 1fr; }
+  .adp-day { grid-template-columns: 1fr 1fr; }
+  .adp-day__name { padding-bottom: 0; }
+  .adp-day__slots { text-align: left; padding-bottom: 0; }
+}
+@media (max-width: 560px) {
+  .adoc-head__add { margin-top: 4px; }
+  .adp-header { padding: 20px; }
+  .adp-day { grid-template-columns: 1fr; }
+  .adp-stats { grid-template-columns: 1fr 1fr; }
+}

@@ -16,14 +16,19 @@ require_once __DIR__ . '/../../services/RescheduleService.php';
 
 header('Content-Type: application/json');
 
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $user = requireAuth();
 $userId = (int)$user['id'];
 $userRole = $user['role'] ?? '';
 
 if ($userRole !== 'doctor' && $userRole !== 'admin') {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
-    exit;
+    jsonResponse(false, ['message' => 'Unauthorized.']);
 }
 
 try {
@@ -36,14 +41,13 @@ try {
         $requests = $rs->getPendingRequestsForDoctor($userId);
     }
 
-    echo json_encode([
-        'success' => true,
+    jsonResponse(true, [
         'requests' => $requests,
         'count' => count($requests),
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get Pending Reschedules Error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Failed to load reschedule requests.']);
+    jsonResponse(false, ['message' => 'Failed to load reschedule requests.']);
 }

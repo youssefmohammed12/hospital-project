@@ -11,44 +11,50 @@
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
+require_once __DIR__ . '/../../services/ClinicalAccessService.php';
+require_once __DIR__ . '/../../services/VisitWorkflowService.php';
+require_once __DIR__ . '/../../services/PatientPortalService.php';
+require_once __DIR__ . '/../../includes/AppointmentTime.php';
 
 header('Content-Type: application/json');
 
 $user = requireAuth();
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
 $currentUserId = (int)$user['id'];
 $currentRole   = $user['role'];
 
-// Determine which patient's record to fetch
-$patientId = (int)($_GET['patient_id'] ?? 0);
+if (!in_array($currentRole, ['admin', 'doctor', 'patient'], true)) {
+    http_response_code(403);
+    jsonResponse(false, ['message' => 'You do not have permission to view patient records.']);
+}
+
+// Determine which patient's record to fetch. Patient callers are always
+// scoped to their authenticated account; staff must supply a strict ID.
+$patientId = parsePositiveInt($_GET['patient_id'] ?? null);
 
 if ($currentRole === 'patient') {
-    // Patients can only view their own record
     $patientId = $currentUserId;
-} elseif (!$patientId && $currentRole === 'doctor') {
-    // Doctor needs a patient_id parameter
+} elseif ($patientId === null) {
     http_response_code(400);
-    jsonResponse(false, ['message' => 'Patient ID is required.']);
-} elseif (!$patientId && $currentRole === 'admin') {
-    http_response_code(400);
-    jsonResponse(false, ['message' => 'Patient ID is required.']);
+    jsonResponse(false, ['message' => 'A valid patient ID is required.']);
 }
 
 try {
     $db = getDB();
+    $workflowService = new VisitWorkflowService($db);
 
     // ── Authorization Checks ──
     if ($currentRole === 'doctor') {
-        // Doctor must have a confirmed or completed appointment with this patient
-        $authStmt = $db->prepare(
-            "SELECT COUNT(*) as cnt FROM appointments
-             WHERE doctor_id = ? AND user_id = ? AND status IN ('Confirmed', 'Cancelled')
-             LIMIT 1"
-        );
-        $authStmt->execute([$currentUserId, $patientId]);
-        $authRow = $authStmt->fetch();
-        if ((int)$authRow['cnt'] === 0) {
+        $clinicalAccess = new ClinicalAccessService($db);
+        if (!$clinicalAccess->doctorCanAccessPatient($currentUserId, $patientId)) {
             http_response_code(403);
-            jsonResponse(false, ['message' => 'You can only view records of patients you have treated.']);
+            jsonResponse(false, ['message' => 'You can only view records of patients with a confirmed appointment or documented clinical encounter.']);
         }
     }
 
@@ -65,18 +71,33 @@ try {
     }
 
     // ── Get medical record ──
-    $mrStmt = $db->prepare(
-        "SELECT * FROM medical_records WHERE patient_id = ? LIMIT 1"
-    );
-    $mrStmt->execute([$patientId]);
-    $medicalRecord = $mrStmt->fetch();
+    // Reuse the portal's normalized patient-profile mapper for the split V2 tables.
+    $profile = (new PatientPortalService($db))->getMedicalProfile($patientId);
+    $medicalRecord = [
+            'id' => null,
+            'patient_id' => $patientId,
+            'blood_type' => $profile['blood_type'] ?? null,
+            'height_cm' => $profile['height_cm'] ?? null,
+            'weight_kg' => $profile['weight_kg'] ?? null,
+            'date_of_birth' => $profile['date_of_birth'] ?? null,
+            'gender' => $profile['gender'] ?? null,
+            'allergies' => $profile['allergies'] ?? null,
+            'chronic_diseases' => $profile['chronic_diseases'] ?? null,
+            'current_medications' => $profile['current_medications'] ?? null,
+            'previous_surgeries' => $profile['previous_surgeries'] ?? null,
+            'family_history' => $profile['family_history'] ?? null,
+            'emergency_contact_name' => $profile['emergency_contact']['name'] ?? null,
+            'emergency_contact_rel' => $profile['emergency_contact']['relationship'] ?? null,
+            'emergency_contact_phone' => $profile['emergency_contact']['phone'] ?? null,
+            'medical_notes' => $profile['medical_notes'] ?? null,
+            'created_at' => null,
+            'updated_at' => null,
+        ];
 
-    // Auto-create medical record if it doesn't exist yet
+    // Keep GET read-only; return an empty record model until an explicit save creates it.
     if (!$medicalRecord) {
-        $insertStmt = $db->prepare("INSERT INTO medical_records (patient_id) VALUES (?)");
-        $insertStmt->execute([$patientId]);
         $medicalRecord = [
-            'id' => (int)$db->lastInsertId(),
+            'id' => null,
             'patient_id' => $patientId,
             'blood_type' => null,
             'height_cm' => null,
@@ -92,71 +113,83 @@ try {
             'emergency_contact_rel' => null,
             'emergency_contact_phone' => null,
             'medical_notes' => null,
-            'created_at' => date('Y-m-d H:i:s'),
+            'created_at' => null,
             'updated_at' => null,
         ];
     }
 
-    // ── Get visit history (visit_notes joined with appointments) ──
-    $visitStmt = $db->prepare(
-        "SELECT vn.id as visit_id, vn.diagnosis, vn.symptoms, vn.treatment,
-                vn.doctor_notes, vn.created_at as visit_date,
-                a.id as appointment_id, a.date as appt_date, a.time as appt_time,
-                a.department, a.doctor as doctor_name, a.status as appt_status,
-                u.name as doctor_display_name, a.doctor_id
-         FROM visit_notes vn
-         JOIN appointments a ON vn.appointment_id = a.id
-         LEFT JOIN users u ON vn.doctor_id = u.id
-         WHERE vn.patient_id = ?
-         ORDER BY vn.created_at DESC"
-    );
-    $visitStmt->execute([$patientId]);
-    $visitHistory = $visitStmt->fetchAll();
+    // ── Get visit history through the normalized clinical repository ──
+    $visitHistory = $workflowService->getNotesForPatient($patientId);
     
     // Add appointment_time_range to visit history — prefer stored value
     foreach ($visitHistory as &$visit) {
         if (empty($visit['appointment_time_range'])) {
-            $duration = getAppointmentDuration((int)$visit['doctor_id']);
-            $visit['appointment_time_range'] = computeAppointmentTimeRange($visit['appt_time'], $duration);
+            $sourceTime = (string)($visit['source_time_snapshot'] ?? '');
+            if (
+                $sourceTime !== ''
+                && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$visit['appt_time'])
+            ) {
+                $visit['appointment_time_range'] = $visit['source_time_range_snapshot'] ?? null;
+            } else {
+                $visit['appointment_time_range'] = AppointmentTime::range(
+                    (string)$visit['appt_time'],
+                    max(1, (int)($visit['duration_minutes'] ?? 30))
+                );
+            }
         }
     }
     unset($visit);
 
-    // ── Get completed appointments without visit notes yet ──
-    // These are appointments where a doctor can still add notes.
-    // Doctors only see their own pending appointments; admins see all.
+    // ── Get confirmed appointments that do not yet have a clinical note ──
+    $doctorFilter = $currentRole === 'doctor' ? ' AND a.doctor_user_id=?' : '';
+    $sql = "SELECT a.id,
+                       DATE_FORMAT(a.starts_at,'%Y-%m-%d') AS date,
+                       DATE_FORMAT(a.starts_at,'%H:%i') AS time,
+                       a.department_name_snapshot AS department,
+                       a.doctor_name_snapshot AS doctor,
+                       'Confirmed' AS status,
+                       a.doctor_user_id AS doctor_id,
+                       a.duration_minutes,a.source_time_snapshot,a.source_time_range_snapshot
+                FROM appointments a
+                WHERE a.patient_user_id=? AND a.booking_status='confirmed'
+                  {$doctorFilter}
+                  AND NOT EXISTS (
+                    SELECT 1 FROM appointment_reschedule_requests rr
+                    WHERE rr.appointment_id=a.id
+                      AND rr.request_status IN ('requested','suggested')
+                  )
+                ORDER BY a.starts_at DESC";
+    $pendingNotesStmt = $db->prepare($sql);
+    $params = [$patientId];
     if ($currentRole === 'doctor') {
-        $pendingNotesStmt = $db->prepare(
-            "SELECT a.id, a.date, a.time, a.department, a.doctor,
-                    a.status, a.doctor_id
-             FROM appointments a
-             WHERE a.user_id = ?
-               AND a.doctor_id = ?
-               AND a.status = 'Confirmed'
-               AND a.id NOT IN (SELECT appointment_id FROM visit_notes WHERE patient_id = ?)
-             ORDER BY a.date DESC, a.time DESC"
-        );
-        $pendingNotesStmt->execute([$patientId, $currentUserId, $patientId]);
-    } else {
-        // Admin sees all pending-for-notes appointments for this patient
-        $pendingNotesStmt = $db->prepare(
-            "SELECT a.id, a.date, a.time, a.department, a.doctor,
-                    a.status, a.doctor_id
-             FROM appointments a
-             WHERE a.user_id = ?
-               AND a.status = 'Confirmed'
-               AND a.id NOT IN (SELECT appointment_id FROM visit_notes WHERE patient_id = ?)
-             ORDER BY a.date DESC, a.time DESC"
-        );
-        $pendingNotesStmt->execute([$patientId, $patientId]);
+        $params[] = $currentUserId;
     }
+    $pendingNotesStmt->execute($params);
     $pendingForNotes = $pendingNotesStmt->fetchAll();
+    $noteAppointmentIds = array_fill_keys(
+        array_map(static fn(array $note): int => (int)$note['appointment_id'], $visitHistory),
+        true
+    );
+    $pendingForNotes = array_values(array_filter(
+        $pendingForNotes,
+        static fn(array $appointment): bool => !isset($noteAppointmentIds[(int)$appointment['id']])
+    ));
     
     // Add appointment_time_range to pending for notes — prefer stored value
     foreach ($pendingForNotes as &$pfn) {
         if (empty($pfn['appointment_time_range'])) {
-            $duration = getAppointmentDuration((int)$pfn['doctor_id']);
-            $pfn['appointment_time_range'] = computeAppointmentTimeRange($pfn['time'], $duration);
+            $sourceTime = (string)($pfn['source_time_snapshot'] ?? '');
+            if (
+                $sourceTime !== ''
+                && AppointmentTime::normalize($sourceTime) === AppointmentTime::normalize((string)$pfn['time'])
+            ) {
+                $pfn['appointment_time_range'] = $pfn['source_time_range_snapshot'] ?? null;
+            } else {
+                $pfn['appointment_time_range'] = AppointmentTime::range(
+                    (string)$pfn['time'],
+                    max(1, (int)($pfn['duration_minutes'] ?? 30))
+                );
+            }
         }
     }
     unset($pfn);
@@ -169,7 +202,7 @@ try {
         'can_edit'        => in_array($currentRole, ['doctor', 'admin']),
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Get Medical Record Error: ' . $e->getMessage());
     http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to load medical record.']);

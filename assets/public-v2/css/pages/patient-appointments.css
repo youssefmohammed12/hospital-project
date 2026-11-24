@@ -1,0 +1,1276 @@
+﻿/*
+ * HealthBridge Public V2 — Patient Appointments
+ * Route-specific presentation only; shared shell and tokens remain authoritative.
+ */
+body.patient-appointments-page {
+  --pa-bg: #0b1918;
+  --pa-panel: #132725;
+  --pa-panel-raised: #19332f;
+  --pa-panel-soft: rgba(226, 238, 233, 0.045);
+  --pa-copy: #edf3ee;
+  --pa-muted: #b7c9c1;
+  --pa-faint: #a6b9af;
+  --pa-line: rgba(226, 238, 233, 0.14);
+  --pa-accent: #d4b47e;
+  --pa-accent-ink: #172f2b;
+  --pa-green: #9dc9b2;
+  --pa-green-bg: rgba(112, 179, 145, 0.13);
+  --pa-amber: #e8c995;
+  --pa-amber-bg: rgba(184, 149, 99, 0.14);
+  --pa-red: #f0a4a0;
+  --pa-red-bg: rgba(199, 105, 96, 0.13);
+  --pa-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  background: var(--pa-bg);
+  color: var(--pa-copy);
+}
+
+html[data-theme="light"] body.patient-appointments-page {
+  --pa-bg: #f2f5f0;
+  --pa-panel: #ffffff;
+  --pa-panel-raised: #f7f9f5;
+  --pa-panel-soft: #f7f9f5;
+  --pa-copy: #183532;
+  --pa-muted: #536961;
+  --pa-faint: #5f7168;
+  --pa-line: rgba(16, 43, 43, 0.13);
+  --pa-accent: #a9844f;
+  --pa-accent-ink: #ffffff;
+  --pa-green: #276d4c;
+  --pa-green-bg: #e6f2e9;
+  --pa-amber: #805d2b;
+  --pa-amber-bg: #f7f0e4;
+  --pa-red: #a3403a;
+  --pa-red-bg: #f9eae8;
+  --pa-shadow: 0 18px 44px rgba(19, 46, 39, 0.09);
+}
+
+body.patient-appointments-page .main-content {
+  min-width: 0;
+  padding: 0;
+  background: var(--pa-bg);
+}
+
+.pa-page {
+  width: min(1240px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 48px) clamp(18px, 3.5vw, 44px) 64px;
+  color: var(--pa-copy);
+}
+
+.pa-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 28px;
+}
+
+.pa-heading-copy {
+  min-width: 0;
+}
+
+.pa-eyebrow {
+  margin: 0 0 9px;
+  color: var(--pa-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  line-height: 1.4;
+}
+
+.pa-page-header h1,
+.pa-results-heading h2 {
+  margin: 0;
+  color: var(--pa-copy);
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.pa-page-header h1 {
+  font-size: clamp(2.35rem, 5vw, 3.5rem);
+  line-height: 1.05;
+}
+
+.pa-heading-copy > p:last-child {
+  max-width: 610px;
+  margin: 13px 0 0;
+  color: var(--pa-muted);
+  font-size: 0.93rem;
+}
+
+.pa-primary-button,
+.pa-secondary-button,
+.pa-danger-button,
+.pa-action-button,
+.pa-calendar-button,
+.pa-page-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+  cursor: pointer;
+}
+
+.pa-primary-button {
+  flex: 0 0 auto;
+  border-color: var(--public-brand-700);
+  background: var(--public-brand-700);
+  color: #fff;
+}
+.pa-primary-button:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1px); }
+.pa-secondary-button,
+.pa-page-button,
+.pa-calendar-button {
+  border-color: var(--pa-line);
+  background: transparent;
+  color: var(--pa-copy);
+}
+.pa-secondary-button:hover:not(:disabled),
+.pa-page-button:hover:not(:disabled),
+.pa-calendar-button:hover:not(:disabled) {
+  border-color: var(--pa-accent);
+  background: var(--pa-panel-soft);
+}
+.pa-danger-button {
+  border-color: transparent;
+  background: #a8443d;
+  color: #fff;
+}
+.pa-primary-button:disabled,
+.pa-secondary-button:disabled,
+.pa-danger-button:disabled,
+.pa-action-button:disabled,
+.pa-page-button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pa-summary {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.pa-summary-card {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--pa-line);
+  border-radius: 13px;
+  background: var(--pa-panel);
+}
+.pa-summary-card--accent {
+  border-color: rgba(184, 149, 99, 0.3);
+  background: linear-gradient(135deg, var(--pa-panel), rgba(184, 149, 99, 0.08));
+}
+.pa-summary-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 1px solid var(--pa-line);
+  border-radius: 11px;
+  color: var(--pa-accent);
+  font-size: 1.25rem;
+}
+.pa-summary-card > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.pa-summary-label,
+.pa-summary-note {
+  color: var(--pa-muted);
+  font-size: 0.72rem;
+}
+.pa-summary-card strong {
+  overflow-wrap: anywhere;
+  color: var(--pa-copy);
+  font-size: 0.91rem;
+  font-weight: 750;
+}
+.pa-summary-note { line-height: 1.45; }
+
+.pa-toolbar {
+  display: grid;
+  gap: 17px;
+  padding: 20px;
+  border: 1px solid var(--pa-line);
+  border-radius: 14px;
+  background: var(--pa-panel);
+}
+.pa-search {
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--pa-line);
+  border-radius: 8px;
+  background: var(--pa-panel-soft);
+  color: var(--pa-muted);
+}
+.pa-search:focus-within {
+  border-color: var(--pa-accent);
+  box-shadow: 0 0 0 3px rgba(184, 149, 99, 0.12);
+}
+.pa-search-input-icon {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  border: 1.6px solid var(--pa-accent);
+  border-radius: 50%;
+}
+.pa-search-input-icon::after {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  width: 5px;
+  height: 1.6px;
+  border-radius: 2px;
+  background: var(--pa-accent);
+  content: "";
+  transform: rotate(45deg);
+}
+/* The body-class prefix outranks the shell stylesheet's global
+   body.patient-workspace input { background: var(--patient-surface) } rule,
+   which otherwise paints this input a different colour from its wrapper
+   in both themes. */
+body.patient-workspace .pa-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--pa-copy);
+  font: inherit;
+  font-size: 0.82rem;
+}
+.pa-search input::placeholder { color: var(--pa-faint); opacity: 1; }
+.pa-search input::-webkit-search-cancel-button { cursor: pointer; }
+.pa-filter-wrap { display: grid; gap: 9px; }
+.pa-filter-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pa-search-toggle {
+  display: inline-flex;
+  min-height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border: 1px solid var(--pa-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pa-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.pa-search-toggle:hover,
+.pa-search-toggle[aria-expanded="true"] {
+  border-color: var(--pa-accent);
+  background: var(--pa-panel-soft);
+  color: var(--pa-copy);
+}
+.pa-search-toggle:focus-visible {
+  outline: 2px solid var(--pa-accent);
+  outline-offset: 3px;
+}
+.pa-search-toggle-icon {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+.pa-search-toggle-icon::after {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  width: 5px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  content: "";
+  transform: rotate(45deg);
+}
+.pa-search-panel {
+  display: grid;
+  min-width: 0;
+}
+.pa-filter-label {
+  color: var(--pa-muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.pa-filters {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.pa-filter {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--pa-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pa-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.pa-filter:hover { border-color: var(--pa-accent); color: var(--pa-copy); }
+.pa-filter.is-active {
+  border-color: var(--pa-accent);
+  background: rgba(184, 149, 99, 0.13);
+  color: var(--pa-copy);
+}
+
+/* ID in the selector: the patient shell stylesheet zeroes margin-top on
+   section[id] with higher specificity than a lone class, which silently
+   cancelled this gap. The ID wins the cascade. */
+#appointments-next.pa-next-appointment { margin-top: 20px; }
+.pa-next-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 20px;
+  padding: 26px 24px;
+  border: 1px solid rgba(217, 191, 150, 0.26);
+  border-radius: 14px;
+  background: linear-gradient(115deg, #163a35, #214840);
+  color: #f4f5ee;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.12);
+}
+.pa-next-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  border: 1px solid rgba(217, 191, 150, 0.35);
+  border-radius: 14px;
+  color: #e8d1a8;
+  font-size: 1.5rem;
+}
+.pa-next-copy { flex: 1 1 auto; min-width: 0; }
+.pa-next-copy .pa-eyebrow { margin-bottom: 4px; color: #e3c99e; }
+.pa-next-copy h2 {
+  margin: 0;
+  color: #f4f5ee;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+}
+.pa-next-copy > p:not(.pa-eyebrow) { margin: 2px 0 8px; color: #c8d9d0; font-size: 0.8rem; }
+.pa-next-meta { display: flex; flex-wrap: wrap; gap: 7px 17px; color: #e1e8df; font-size: 0.72rem; }
+.pa-next-card .pa-secondary-button {
+  flex: 0 0 auto;
+  border-color: rgba(232, 209, 168, 0.4);
+  color: #f4f5ee;
+}
+.pa-next-card .pa-secondary-button:hover { background: rgba(255, 255, 255, 0.08); }
+html[data-theme="light"] .pa-next-card { background: linear-gradient(115deg, #163a35, #214840); }
+
+/* Freeze round (I2): the light theme's brass --pa-accent (#a9844f) measured
+   3.13:1 on the page ground for the small eyebrow labels, 3.44:1 for the
+   summary glyphs and 3.10:1 for the doctor initials. Those three take the
+   deeper bronze #8a6638 (already the auth accent) on light surfaces; the
+   dark next-appointment card keeps its pale-gold eyebrow. */
+html[data-theme="light"] .pa-eyebrow,
+html[data-theme="light"] .pa-summary-icon,
+html[data-theme="light"] .pa-doctor-avatar { color: #8a6638; }
+html[data-theme="light"] .pa-next-copy .pa-eyebrow { color: #e3c99e; }
+
+.pa-results-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 32px 0 14px;
+}
+.pa-results-heading .pa-eyebrow { margin-bottom: 4px; }
+.pa-results-heading h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); line-height: 1.15; }
+.pa-results-count { color: var(--pa-muted); font-size: 0.76rem; white-space: nowrap; }
+
+.pa-appointment-list { display: grid; gap: 12px; }
+.pa-appointment-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--pa-line);
+  border-radius: 13px;
+  background: var(--pa-panel);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.045);
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+.pa-appointment-card:hover {
+  border-color: rgba(184, 149, 99, 0.4);
+  box-shadow: var(--pa-shadow);
+  transform: translateY(-2px);
+}
+.pa-card-accent { background: linear-gradient(180deg, var(--pa-accent), transparent); }
+.pa-card-main { min-width: 0; padding: 17px 19px 15px; }
+.pa-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+.pa-reference { color: var(--pa-faint); font-size: 0.65rem; font-weight: 750; letter-spacing: 0.1em; }
+.pa-status {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.pa-status[data-status="confirmed"],
+.pa-status[data-status="complete"],
+.pa-status[data-status="approved"] { background: var(--pa-green-bg); color: var(--pa-green); }
+.pa-status[data-status="request"],
+.pa-status[data-status="pending"],
+.pa-status[data-status="suggested"] { background: var(--pa-amber-bg); color: var(--pa-amber); }
+.pa-status[data-status="cancelled"],
+.pa-status[data-status="missed"],
+.pa-status[data-status="declined"] { background: var(--pa-red-bg); color: var(--pa-red); }
+.pa-status[data-status="neutral"] { background: var(--pa-panel-soft); color: var(--pa-muted); }
+.pa-doctor-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pa-doctor-avatar {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border: 1px solid var(--pa-line);
+  border-radius: 50%;
+  background: rgba(184, 149, 99, 0.12);
+  color: var(--pa-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.pa-doctor-copy { min-width: 0; }
+.pa-doctor-copy h3 { overflow-wrap: anywhere; margin: 0; color: var(--pa-copy); font-size: 0.98rem; font-weight: 760; line-height: 1.35; }
+.pa-doctor-copy p { margin: 3px 0 0; color: var(--pa-muted); font-size: 0.75rem; }
+.pa-card-meta {
+  display: grid;
+  grid-template-columns: 0.8fr 0.8fr 1.2fr;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 13px 0;
+  border-block: 1px solid var(--pa-line);
+}
+.pa-card-meta > span { display: grid; min-width: 0; gap: 3px; }
+.pa-card-meta small { color: var(--pa-faint); font-size: 0.59rem; font-weight: 800; letter-spacing: 0.1em; }
+.pa-card-meta strong { overflow-wrap: anywhere; color: var(--pa-copy); font-size: 0.76rem; font-weight: 700; }
+.pa-request-note {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--pa-amber);
+  border-radius: 0 7px 7px 0;
+  background: var(--pa-amber-bg);
+  color: var(--pa-amber);
+  font-size: 0.72rem;
+}
+.pa-request-note strong { font-weight: 800; }
+.pa-request-note--suggested { border-color: var(--pa-green); background: var(--pa-green-bg); color: var(--pa-green); }
+.pa-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding-top: 13px; }
+.pa-action-button { min-height: 34px; padding: 8px 11px; border-color: var(--pa-line); background: transparent; color: var(--pa-copy); font-size: 0.7rem; }
+.pa-action-button:hover { border-color: var(--pa-accent); background: var(--pa-panel-soft); }
+.pa-action-button.is-primary { border-color: var(--public-brand-700); background: var(--public-brand-700); color: #fff; }
+.pa-action-button.is-quiet-danger { border-color: transparent; color: var(--pa-red); }
+.pa-action-button.is-quiet-danger:hover { border-color: var(--pa-red); background: var(--pa-red-bg); }
+.pa-calendar-button { min-height: 34px; margin-left: auto; padding: 7px 10px; font-size: 0.68rem; }
+
+.pa-loading {
+  display: flex;
+  min-height: 190px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--pa-muted);
+  font-size: 0.82rem;
+}
+.pa-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--pa-line);
+  border-top-color: var(--pa-accent);
+  border-radius: 50%;
+  animation: pa-spin 700ms linear infinite;
+}
+/* Freeze round (Item 5): while the first list loads, the loading block
+   shows skeleton rows shaped like appointment cards instead of a spinner. */
+.pa-loading--skel { display: block; min-height: 0; }
+.pa-loading--skel[hidden] { display: none; }
+.pa-skel-rows { display: grid; gap: 14px; }
+.pa-skel-row { min-height: 118px; }
+.pa-skel-next { min-height: 159px; }
+@keyframes pa-spin { to { transform: rotate(360deg); } }
+.pa-state-card {
+  display: grid;
+  min-height: 250px;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 28px;
+  border: 1px dashed var(--pa-line);
+  border-radius: 14px;
+  background: var(--pa-panel);
+  text-align: center;
+}
+.pa-state-card h3 { margin: 0; color: var(--pa-copy); font-size: 1.1rem; }
+.pa-state-card p { max-width: 460px; margin: 0 0 8px; color: var(--pa-muted); font-size: 0.82rem; }
+.pa-state-symbol {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid var(--pa-line);
+  border-radius: 50%;
+  color: var(--pa-accent);
+  font-size: 1.3rem;
+}
+.pa-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 22px;
+  color: var(--pa-muted);
+  font-size: 0.75rem;
+}
+.pa-page-button { min-height: 36px; padding: 8px 12px; font-size: 0.72rem; }
+.pa-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+#appointments-dialog-root[hidden] { display: none !important; }
+.pa-modal-backdrop {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 24px;
+  background: rgba(3, 17, 16, 0.72);
+  backdrop-filter: blur(8px);
+  animation: pa-backdrop-in 160ms ease both;
+}
+@keyframes pa-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+.pa-dialog {
+  width: min(680px, 100%);
+  max-height: min(820px, calc(100dvh - 48px));
+  overflow: auto;
+  border: 1px solid var(--pa-line);
+  border-radius: 17px;
+  background: var(--pa-panel);
+  color: var(--pa-copy);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
+  animation: pa-dialog-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes pa-dialog-in { from { opacity: 0; transform: translateY(12px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.pa-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid var(--pa-line);
+}
+.pa-dialog-header .pa-eyebrow { margin-bottom: 5px; }
+.pa-dialog-header h2 { margin: 0; color: var(--pa-copy); font-family: "Iowan Old Style", Georgia, serif; font-size: 1.7rem; font-weight: 500; line-height: 1.15; }
+.pa-dialog-header p:last-child { margin: 7px 0 0; color: var(--pa-muted); font-size: 0.76rem; }
+.pa-dialog-close {
+  display: inline-flex;
+  min-width: 48px;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border: 1px solid var(--pa-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pa-copy);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+.pa-dialog-close:hover { border-color: var(--pa-accent); color: var(--pa-accent); }
+.pa-dialog-body { padding: 22px 26px 26px; }
+.pa-dialog-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+.pa-confirm-body { display: flex; align-items: flex-start; gap: 13px; }
+.pa-confirm-body p { margin: 2px 0 0; color: var(--pa-muted); font-size: 0.88rem; }
+.pa-confirm-mark { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border-radius: 50%; background: var(--pa-amber-bg); color: var(--pa-amber); font-weight: 850; }
+.pa-dialog-state { margin: 0; padding: 22px; }
+
+.pa-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 26px;
+  padding: 0;
+  list-style: none;
+}
+.pa-stepper li { position: relative; display: grid; justify-items: center; gap: 6px; min-width: 0; color: var(--pa-faint); text-align: center; }
+.pa-stepper li::before { position: absolute; z-index: 0; top: 14px; right: calc(50% + 19px); left: calc(-50% + 19px); height: 1px; background: var(--pa-line); content: ""; }
+.pa-stepper li:first-child::before { display: none; }
+.pa-stepper li > span { position: relative; z-index: 1; display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid var(--pa-line); border-radius: 50%; background: var(--pa-panel); font-size: 0.7rem; font-weight: 800; }
+.pa-stepper li small { max-width: 100%; overflow-wrap: anywhere; font-size: 0.63rem; }
+.pa-stepper li.is-current { color: var(--pa-accent); }
+.pa-stepper li.is-current > span,
+.pa-stepper li.is-complete > span { border-color: var(--pa-accent); background: rgba(184, 149, 99, 0.16); color: var(--pa-accent); }
+.pa-stepper li.is-complete { color: var(--pa-green); }
+.pa-stepper li.is-locked { opacity: 0.55; }
+.pa-booking-step > .pa-eyebrow { margin-bottom: 5px; }
+.pa-booking-step > h3 { margin: 0; color: var(--pa-copy); font-family: "Iowan Old Style", Georgia, serif; font-size: 1.45rem; font-weight: 500; }
+.pa-step-copy { margin: 7px 0 18px; color: var(--pa-muted); font-size: 0.78rem; }
+.pa-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.pa-choice-card {
+  display: grid;
+  min-width: 0;
+  justify-items: start;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid var(--pa-line);
+  border-radius: 10px;
+  background: var(--pa-panel-raised);
+  color: var(--pa-copy);
+  text-align: left;
+}
+.pa-choice-card:hover,
+.pa-choice-card.is-selected,
+.pa-doctor-choice:hover:not(:disabled),
+.pa-doctor-choice.is-selected {
+  border-color: var(--pa-accent);
+  background: rgba(184, 149, 99, 0.08);
+}
+.pa-choice-symbol { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--pa-line); border-radius: 8px; color: var(--pa-accent); }
+.pa-choice-symbol svg { display: block; width: 18px; height: 18px; }
+.pa-choice-card strong { overflow-wrap: anywhere; font-size: 0.8rem; }
+.pa-choice-card small { color: var(--pa-muted); font-size: 0.68rem; }
+.pa-doctor-choice-list { display: grid; gap: 8px; }
+.pa-doctor-choice {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid var(--pa-line);
+  border-radius: 10px;
+  background: var(--pa-panel-raised);
+  color: var(--pa-copy);
+  text-align: left;
+}
+.pa-doctor-choice:disabled { opacity: 0.55; cursor: not-allowed; }
+.pa-doctor-choice-copy { display: grid; min-width: 0; flex: 1 1 auto; gap: 3px; }
+.pa-doctor-choice-copy strong { overflow-wrap: anywhere; font-size: 0.78rem; }
+.pa-doctor-choice-copy small { color: var(--pa-muted); font-size: 0.68rem; }
+.pa-doctor-availability { flex: 0 0 auto; color: var(--pa-green); font-size: 0.66rem; font-weight: 750; }
+.pa-doctor-availability[data-available="false"] { color: var(--pa-faint); }
+.pa-inline-note { margin: 12px 0 0; color: var(--pa-amber); font-size: 0.74rem; }
+.pa-selected-doctor,
+.pa-locked-doctor {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 14px 0;
+  padding: 11px 13px;
+  border: 1px solid var(--pa-line);
+  border-radius: 10px;
+  background: var(--pa-panel-raised);
+}
+.pa-selected-doctor { justify-content: space-between; }
+.pa-selected-doctor strong { font-size: 0.78rem; }
+.pa-selected-doctor span { color: var(--pa-muted); font-size: 0.68rem; }
+.pa-locked-doctor > div { display: grid; flex: 1 1 auto; gap: 3px; }
+.pa-locked-doctor strong { font-size: 0.78rem; }
+.pa-locked-doctor small { color: var(--pa-muted); font-size: 0.68rem; }
+.pa-locked-doctor > span:last-child { color: var(--pa-faint); font-size: 0.64rem; }
+.pa-field { display: grid; min-width: 0; gap: 7px; margin-top: 14px; color: var(--pa-copy); font-size: 0.75rem; font-weight: 750; }
+.pa-field > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pa-field small { color: var(--pa-faint); font-size: 0.65rem; font-weight: 500; }
+body.patient-workspace .pa-field input,
+body.patient-workspace .pa-field select,
+body.patient-workspace .pa-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--pa-line);
+  border-radius: 8px;
+  outline: none;
+  background: var(--pa-panel-raised);
+  color: var(--pa-copy);
+  font: inherit;
+  font-size: 0.8rem;
+}
+.pa-field textarea { min-height: 85px; resize: vertical; }
+/* Dropdown arrow (owner fix, 23 Nov 2026): this rule's background
+   shorthand outranks the shell's chevron, so the field select
+   carries the same treatment itself — chevron inset 12px, text
+   padded clear of it; height unchanged. */
+body.patient-workspace .pa-field select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c1d1c9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px 14px;
+}
+html[data-theme="light"] body.patient-workspace .pa-field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2350645d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+.pa-field input:focus,
+.pa-field select:focus,
+.pa-field textarea:focus { border-color: var(--pa-accent); box-shadow: 0 0 0 3px rgba(184, 149, 99, 0.12); }
+.pa-slot-area { margin-top: 17px; }
+.pa-slot-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.pa-slot-heading strong { color: var(--pa-copy); font-size: 0.79rem; }
+.pa-slot-heading span { color: var(--pa-faint); font-size: 0.65rem; }
+.pa-slot-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pa-slot-button {
+  min-height: 39px;
+  padding: 8px 6px;
+  border: 1px solid var(--pa-line);
+  border-radius: 7px;
+  background: var(--pa-panel-raised);
+  color: var(--pa-copy);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.pa-slot-button:hover,
+.pa-slot-button.is-selected { border-color: var(--pa-accent); background: rgba(184, 149, 99, 0.15); color: var(--pa-copy); }
+.pa-slot-message { display: flex; align-items: center; gap: 9px; margin: 0; padding: 13px; border: 1px dashed var(--pa-line); border-radius: 8px; color: var(--pa-muted); font-size: 0.75rem; }
+.pa-review-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 17px 0 18px; padding: 15px; border: 1px solid var(--pa-line); border-radius: 10px; background: var(--pa-panel-raised); }
+.pa-review-card > div { display: grid; min-width: 0; gap: 3px; }
+.pa-review-card span { color: var(--pa-faint); font-size: 0.64rem; }
+.pa-review-card strong { overflow-wrap: anywhere; color: var(--pa-copy); font-size: 0.78rem; }
+.pa-booking-footer { justify-content: space-between; padding-top: 18px; border-top: 1px solid var(--pa-line); }
+.pa-booking-loading { display: flex; min-height: 170px; align-items: center; justify-content: center; gap: 12px; color: var(--pa-muted); font-size: 0.8rem; }
+.pa-booking-loading p { margin: 0; }
+
+.pa-detail-summary { margin-bottom: 17px; }
+.pa-detail-summary h3 { margin: 9px 0 2px; color: var(--pa-copy); font-family: "Iowan Old Style", Georgia, serif; font-size: 1.5rem; font-weight: 500; }
+.pa-detail-summary p { margin: 0; color: var(--pa-muted); font-size: 0.78rem; }
+.pa-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.pa-detail-block { display: grid; min-width: 0; gap: 4px; padding: 12px; border: 1px solid var(--pa-line); border-radius: 9px; background: var(--pa-panel-raised); }
+.pa-detail-block > span { color: var(--pa-faint); font-size: 0.66rem; }
+.pa-detail-block strong { overflow-wrap: anywhere; color: var(--pa-copy); font-size: 0.78rem; }
+.pa-detail-block p { margin: 0; color: var(--pa-muted); font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pa-detail-callout { display: grid; gap: 4px; margin-top: 12px; padding: 13px; border-left: 2px solid var(--pa-amber); border-radius: 0 8px 8px 0; background: var(--pa-amber-bg); color: var(--pa-amber); font-size: 0.75rem; }
+.pa-detail-callout p { margin: 4px 0 0; white-space: pre-wrap; }
+.pa-detail-block > span { font-weight: 750; }
+
+.pa-rating-body > p { margin: 0 0 15px; color: var(--pa-muted); font-size: 0.82rem; }
+.pa-rating-body > p strong { color: var(--pa-copy); }
+.pa-rating-fieldset { margin: 0; padding: 0; border: 0; }
+.pa-rating-fieldset legend { margin-bottom: 8px; color: var(--pa-copy); font-size: 0.75rem; font-weight: 750; }
+.pa-rating-stars { display: flex; gap: 5px; }
+.pa-rating-stars button { width: 40px; height: 40px; border: 1px solid var(--pa-line); border-radius: 8px; background: var(--pa-panel-raised); color: var(--pa-faint); font-size: 1.25rem; }
+.pa-rating-stars button.is-selected { border-color: var(--pa-accent); color: var(--pa-accent); }
+#pa-rating-label { display: block; margin-top: 7px; color: var(--pa-muted); font-size: 0.68rem; }
+.pa-saved-rating { text-align: center; }
+.pa-saved-stars { display: flex; justify-content: center; gap: 6px; color: var(--pa-faint); font-size: 1.7rem; }
+.pa-saved-stars .is-filled { color: var(--pa-accent); }
+.pa-saved-rating h3 { margin: 8px 0; color: var(--pa-copy); font-size: 1.2rem; }
+.pa-saved-rating blockquote { margin: 12px 0; padding: 12px; border-left: 2px solid var(--pa-accent); background: var(--pa-panel-raised); color: var(--pa-muted); font-size: 0.82rem; text-align: left; }
+.pa-saved-rating p,
+.pa-saved-rating small { color: var(--pa-muted); font-size: 0.75rem; }
+
+@media (max-width: 900px) {
+  .pa-page { padding-top: 28px; }
+  .pa-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pa-summary-card:last-child { grid-column: 1 / -1; }
+  .pa-filters { flex-wrap: nowrap; overflow-x: auto; padding: 1px 1px 5px; scrollbar-width: thin; }
+  .pa-filter { flex: 0 0 auto; }
+}
+
+@media (max-width: 640px) {
+  .pa-page { padding: 24px 16px 48px; }
+  .pa-page-header { align-items: flex-start; flex-direction: column; gap: 17px; }
+  .pa-page-header .pa-primary-button { width: 100%; }
+  .pa-summary { grid-template-columns: 1fr; gap: 8px; }
+  .pa-summary-card:last-child { grid-column: auto; }
+  .pa-summary-card { padding: 14px; }
+  .pa-toolbar { padding: 14px; }
+  .pa-next-card { align-items: flex-start; flex-wrap: wrap; padding: 17px; }
+  .pa-next-copy { width: calc(100% - 68px); }
+  .pa-next-card .pa-secondary-button { width: 100%; }
+  .pa-results-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .pa-card-main { padding: 14px; }
+  .pa-card-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pa-card-meta > span:last-child { grid-column: 1 / -1; }
+  .pa-calendar-button { margin-left: 0; }
+  .pa-modal-backdrop { align-items: end; padding: 8px; }
+  .pa-dialog { width: 100%; max-height: calc(100dvh - 16px); border-radius: 16px 16px 10px 10px; }
+  .pa-dialog-header { padding: 19px 18px 14px; }
+  .pa-dialog-body { padding: 18px; }
+}
+
+@media (max-width: 420px) {
+  .pa-choice-grid { grid-template-columns: 1fr; }
+  .pa-slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pa-review-card,
+  .pa-detail-grid { grid-template-columns: 1fr; }
+  .pa-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pa-action-button,
+  .pa-calendar-button { width: 100%; min-width: 0; margin: 0; }
+  .pa-pagination { gap: 8px; }
+  .pa-stepper li small { font-size: 0.56rem; }
+  .pa-dialog-header h2 { font-size: 1.45rem; }
+  .pa-booking-footer { justify-content: space-between; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-spinner { animation: none; border-top-color: var(--pa-accent); }
+  .pa-appointment-card,
+  .pa-primary-button,
+  .pa-action-button,
+  .pa-filter { transition: none; }
+  .pa-modal-backdrop,
+  .pa-dialog { animation: none; }
+}
+
+
+
+
+
+/* Phase 2 correction: native hidden states must win over route display rules. */
+body.patient-appointments-page [hidden] {
+  display: none !important;
+}
+
+.pa-slot-button:disabled,
+.pa-slot-button.is-taken {
+  display: grid;
+  gap: 2px;
+  align-content: center;
+  border-style: dashed;
+  border-color: var(--pa-line);
+  background: var(--pa-panel-soft);
+  color: var(--pa-muted);
+  opacity: 0.78;
+  cursor: not-allowed;
+}
+
+.pa-slot-button:disabled small,
+.pa-slot-button.is-taken small {
+  color: var(--pa-amber);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* The booking wizard keeps one dialog shell mounted while its step view changes. */
+.pa-dialog--wizard {
+  display: flex;
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+  overflow: hidden;
+  transition: height 230ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.pa-dialog--wizard .pa-wizard-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 22px 16px;
+}
+
+.pa-wizard-header-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 15px;
+}
+
+.pa-wizard-brand {
+  flex: 0 0 auto;
+  color: var(--pa-copy);
+  font-size: 1rem;
+  font-weight: 760;
+  letter-spacing: -0.035em;
+}
+
+.pa-wizard-brand .logo-icon {
+  width: 39px;
+  height: 39px;
+  flex-basis: 39px;
+}
+
+.pa-wizard-brand .hb-wordmark { color: inherit; }
+
+.pa-wizard-title-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pa-wizard-title-copy > .pa-eyebrow {
+  margin: 0;
+  font-size: 0.59rem;
+}
+
+.pa-dialog--wizard .pa-wizard-header h2 {
+  margin: 0;
+  color: var(--pa-copy);
+  font-family: "Iowan Old Style", Georgia, serif;
+  font-size: clamp(1.2rem, 2.8vw, 1.55rem);
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.pa-dialog--wizard .pa-wizard-header p:last-child {
+  margin: 3px 0 0;
+  color: var(--pa-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.pa-wizard-progress-wrap {
+  flex: 0 0 auto;
+  padding: 11px 22px 8px;
+}
+
+.pa-dialog--wizard .pa-stepper {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pa-dialog--wizard .pa-stepper::before,
+.pa-dialog--wizard .pa-stepper::after {
+  position: absolute;
+  top: 14px;
+  left: 12.5%;
+  height: 2px;
+  border-radius: 99px;
+  content: "";
+  pointer-events: none;
+}
+
+.pa-dialog--wizard .pa-stepper::before {
+  right: 12.5%;
+  background: var(--pa-line);
+}
+
+.pa-dialog--wizard .pa-stepper::after {
+  z-index: 1;
+  width: 75%;
+  background: var(--pa-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.pa-dialog--wizard .pa-stepper[data-completed-steps="1"]::after { transform: scaleX(0.3333); }
+.pa-dialog--wizard .pa-stepper[data-completed-steps="2"]::after { transform: scaleX(0.6667); }
+.pa-dialog--wizard .pa-stepper[data-completed-steps="3"]::after { transform: scaleX(1); }
+
+.pa-dialog--wizard .pa-stepper li {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 6px;
+  color: var(--pa-faint);
+  text-align: center;
+  transition: color 180ms ease;
+}
+
+.pa-dialog--wizard .pa-stepper li > span {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border: 1px solid var(--pa-line);
+  border-radius: 50%;
+  background: var(--pa-panel);
+  color: var(--pa-faint);
+  font-size: 0.7rem;
+  font-weight: 800;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.pa-dialog--wizard .pa-stepper li small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 0.63rem;
+}
+
+.pa-dialog--wizard .pa-stepper li.is-current { color: var(--pa-accent); }
+.pa-dialog--wizard .pa-stepper li.is-current > span {
+  transform: scale(1.06);
+  border-color: var(--pa-accent);
+  background: var(--pa-accent);
+  color: var(--pa-accent-ink);
+}
+.pa-dialog--wizard .pa-stepper li.is-complete { color: var(--pa-green); }
+.pa-dialog--wizard .pa-stepper li.is-complete > span {
+  border-color: var(--pa-green);
+  background: var(--pa-green);
+  color: #17382c;
+}
+.pa-dialog--wizard .pa-stepper li.is-locked { opacity: 0.58; }
+
+.pa-dialog--wizard .pa-dialog-body {
+  display: block;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 22px 18px;
+}
+
+.pa-wizard-stage {
+  position: relative;
+  min-width: 0;
+}
+
+.pa-dialog--wizard.is-transitioning .pa-wizard-stage {
+  pointer-events: none;
+}
+
+.pa-step-view {
+  position: relative;
+  min-width: 0;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 230ms ease, transform 230ms ease;
+}
+
+.pa-step-view.is-entering {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.pa-step-view.is-entering.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pa-step-view.is-leaving {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-7px);
+}
+
+.pa-dialog--wizard .pa-step-copy { margin-bottom: 12px; }
+
+.pa-dialog--wizard .pa-choice-grid { gap: 12px; }
+
+.pa-dialog--wizard .pa-department-grid .pa-choice-card {
+  align-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+}
+
+.pa-dialog--wizard .pa-department-grid .pa-choice-symbol {
+  width: 20px;
+  height: 20px;
+}
+
+.pa-dialog--wizard .pa-department-grid .pa-choice-symbol svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pa-dialog--wizard .pa-selected-doctor,
+.pa-dialog--wizard .pa-locked-doctor { margin: 10px 0; }
+
+.pa-dialog--wizard .pa-field { margin-top: 10px; }
+.pa-dialog--wizard .pa-field textarea { min-height: 64px; }
+.pa-dialog--wizard .pa-slot-area { margin: 11px 0 0; }
+.pa-dialog--wizard .pa-slot-grid { gap: 12px; }
+
+.pa-dialog--wizard .pa-slot-message { margin-bottom: 0; }
+
+.pa-dialog--wizard .pa-review-card {
+  gap: 8px 12px;
+  margin: 12px 0;
+  padding: 12px;
+}
+
+.pa-dialog--wizard .pa-review-card > div { gap: 6px; }
+
+.pa-dialog--wizard .pa-booking-footer {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: space-between;
+  margin: 0;
+  padding: 14px 22px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--pa-line);
+  background: var(--pa-panel);
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.pa-dialog--wizard .pa-booking-footer[hidden],
+.pa-dialog--wizard .pa-wizard-progress-wrap[hidden] { display: none !important; }
+
+@media (max-width: 640px) {
+  .pa-modal-backdrop {
+    align-items: center;
+    padding: 10px 8px;
+  }
+
+  .pa-dialog--wizard {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px;
+  }
+
+  .pa-dialog--wizard .pa-wizard-header {
+    padding: 13px 16px 11px;
+    gap: 10px;
+  }
+
+  .pa-wizard-header-main {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .pa-wizard-brand .logo-icon {
+    width: 35px;
+    height: 35px;
+    flex-basis: 35px;
+  }
+
+  .pa-dialog--wizard .pa-dialog-header h2 { font-size: 1.28rem; }
+  .pa-wizard-title-copy > .pa-eyebrow { font-size: 0.56rem; }
+  .pa-wizard-title-copy > p:last-child { font-size: 0.67rem; }
+
+  .pa-wizard-progress-wrap { padding: 9px 16px 8px; }
+
+  .pa-dialog--wizard .pa-dialog-body { padding: 8px 16px 18px; }
+
+  .pa-dialog--wizard .pa-booking-footer {
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .pa-dialog--wizard .pa-primary-button,
+  .pa-dialog--wizard .pa-secondary-button {
+    min-height: 40px;
+    padding: 9px 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .pa-dialog--wizard .pa-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pa-dialog--wizard .pa-choice-card {
+    min-height: 72px;
+    padding: 9px;
+  }
+
+  .pa-dialog--wizard .pa-stepper { gap: 3px; }
+  .pa-dialog--wizard .pa-stepper li small { font-size: 0.54rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-dialog--wizard,
+  .pa-step-view,
+  .pa-dialog--wizard .pa-stepper::after,
+  .pa-dialog--wizard .pa-stepper li,
+  .pa-dialog--wizard .pa-stepper li > span {
+    transition: none !important;
+  }
+
+  .pa-step-view.is-entering,
+  .pa-step-view.is-entering.is-visible,
+  .pa-step-view.is-leaving {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Entrance motion (22 Nov 2026): appointment cards rise in with a short
+   stagger (index passed as --pa-i from the renderer); the UP NEXT banner
+   settles in when it appears. Transform/opacity only. */
+@keyframes pa-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pa-appointment-card {
+  animation: pa-rise-in 420ms ease both;
+  animation-delay: calc(var(--pa-i, 0) * 45ms);
+}
+#appointments-next:not([hidden]) { animation: pa-rise-in 380ms ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .pa-appointment-card,
+  #appointments-next:not([hidden]) { animation: none; }
+}

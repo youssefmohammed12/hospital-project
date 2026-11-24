@@ -11,8 +11,18 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../services/DepartmentService.php';
 
-// Start session for auth check, but don't require it
-$role = $_SESSION['role'] ?? '';
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+    http_response_code(405);
+    header('Allow: GET');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
+// Public callers can read active departments. If a session identity exists,
+// revalidate it before granting the admin-only inactive-department view.
+$role = '';
+if (getCurrentUserId() !== null) {
+    $role = requireAuth()['role'];
+}
 
 try {
     $db = getDB();

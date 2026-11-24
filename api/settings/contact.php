@@ -7,16 +7,63 @@
  */
 
 require_once __DIR__ . '/../../includes/auth.php';
-$data       = getJsonInput();
-$name       = sanitizeString($data['name']       ?? '', 100);
-$email      = sanitizeString($data['email']      ?? '', 150);
-$phone      = sanitizeString($data['phone']      ?? '', 30);
-$department = sanitizeString($data['department'] ?? 'General Inquiry', 100);
-$subject    = sanitizeString($data['subject']    ?? '', 200);
-$message    = sanitizeString($data['message']    ?? '', 5000);
+require_once __DIR__ . '/../../includes/AuthAbuseRateLimiter.php';
 
-// Check if user is logged in
-$userId = $_SESSION['user_id'] ?? null;
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    jsonResponse(false, ['message' => 'Method not allowed.']);
+}
+
+// Throttle unauthenticated submissions by source IP (PHP audit,
+// 23 Nov 2026, finding L3). Fail soft on limiter storage faults, mirroring
+// the auth endpoints: log the failure and let the submission proceed
+// unthrottled rather than breaking the public form for everyone.
+try {
+    $contactLimiter = new AuthAbuseRateLimiter();
+    $contactRetryAfter = $contactLimiter->recordContactSubmission(
+        (string)($_SERVER['REMOTE_ADDR'] ?? '')
+    );
+} catch (Throwable $limiterError) {
+    error_log('Contact Rate Limiter Error: ' . $limiterError->getMessage());
+    $contactRetryAfter = 0;
+}
+
+if ($contactRetryAfter > 0) {
+    http_response_code(429);
+    header('Retry-After: ' . $contactRetryAfter);
+    jsonResponse(false, ['message' => 'Too many messages. Please try again later.']);
+}
+
+$data = getJsonInput();
+
+foreach (['name', 'email', 'message'] as $requiredField) {
+    if (!isset($data[$requiredField]) || !is_string($data[$requiredField])) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Name, email, and message must be text values.']);
+    }
+}
+
+foreach (['phone', 'department', 'subject'] as $optionalField) {
+    if (array_key_exists($optionalField, $data) && $data[$optionalField] !== null && !is_string($data[$optionalField])) {
+        http_response_code(400);
+        jsonResponse(false, ['message' => 'Optional contact fields must be text values.']);
+    }
+}
+
+$name       = sanitizeString($data['name'], 100);
+$email      = sanitizeString($data['email'], 150);
+$phone      = sanitizeString($data['phone'] ?? '', 30);
+$department = sanitizeString($data['department'] ?? 'General Inquiry', 100);
+$subject    = sanitizeString($data['subject'] ?? '', 200);
+$message    = sanitizeString($data['message'], 5000);
+
+// Associate an authenticated visitor with their account; reject stale/deactivated sessions.
+$userId = null;
+if (getCurrentUserId() !== null) {
+    $sessionUser = requireAuth();
+    $userId = (int)$sessionUser['id'];
+}
 
 // Validation
 if (!$name || !$email || !$message) {
@@ -45,6 +92,7 @@ try {
 
 } catch (Exception $e) {
     error_log('Contact Form Error: ' . $e->getMessage());
+    http_response_code(500);
     jsonResponse(false, ['message' => 'Failed to send message. Please try again later.']);
 }
 

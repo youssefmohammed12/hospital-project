@@ -1,0 +1,317 @@
+/*
+ * HealthBridge Admin — Patients area (Phase 3).
+ * The Patients register and the consolidated Patient Profile:
+ * header card, stat tiles, five tabs (Overview, Account, Appointments,
+ * Reviews & Messages, Audit), the account edit form and the
+ * per-patient audit view — the first UI for api/patients/get-audit.php.
+ * Builds on admin-shell.css — shell and shared component classes are
+ * never redefined here.
+ */
+
+/* ================================================================
+   1. Patients register
+   ================================================================ */
+
+.apat-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.apat-head > div { flex: 1 1 320px; }
+.apat-head__add { margin-top: 26px; flex: none; }
+.apat-head__add svg { width: 15px; height: 15px; }
+
+.apat-summary {
+  margin: 20px 0 14px;
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+}
+.apat-summary strong { color: var(--admin-text); }
+
+.apat-count {
+  margin-left: auto;
+  color: var(--admin-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.apat-table .apat-actions-col { text-align: right; }
+.apat-loading,
+.apat-empty-cell {
+  color: var(--admin-muted);
+  padding: 26px 16px !important;
+  text-align: center !important;
+}
+.apat-error {
+  margin: 16px 0 0;
+  color: #d87970;
+  line-height: 1.6;
+}
+
+.apat-pat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 210px;
+}
+.apat-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #173532;
+  background: var(--admin-gold);
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.apat-pat__name {
+  color: var(--admin-text);
+  font-weight: 650;
+  text-decoration: none;
+}
+.apat-pat__name:hover { color: var(--admin-gold-hi); }
+.apat-pat__email {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 0.8rem;
+  margin-top: 1px;
+}
+
+.apat-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.apat-row-actions .admin-btn { min-height: 32px; padding: 5px 11px; font-size: 0.8rem; }
+
+/* ================================================================
+   2. Patient Profile — header, stats, tabs, cards
+   ================================================================ */
+
+.appf-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 24px 26px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+}
+.appf-header__avatar {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #173532;
+  background: var(--admin-gold);
+  border-radius: 50%;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.appf-header__main { flex: 1 1 260px; min-width: 0; }
+.appf-header__main h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+.appf-header__sub {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.appf-header__pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.appf-header__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.appf-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+.appf-stat {
+  padding: 16px 18px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+}
+.appf-stat strong {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.appf-stat span {
+  display: block;
+  margin-top: 4px;
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.appf-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 22px 0 16px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.appf-tab {
+  padding: 10px 16px;
+  color: var(--admin-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.appf-tab:hover { color: var(--admin-text); }
+.appf-tab.is-active { color: var(--admin-gold); border-bottom-color: var(--admin-gold); }
+
+.appf-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.appf-card {
+  padding: 22px 24px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 18px;
+  margin-bottom: 14px;
+}
+.appf-grid .appf-card { margin-bottom: 0; }
+.appf-card h2 {
+  margin: 0 0 16px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.18rem;
+  font-weight: 600;
+}
+
+.appf-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px 18px;
+  margin: 0;
+  font-size: 0.92rem;
+}
+.appf-dl dt {
+  color: var(--admin-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+.appf-dl dd { margin: 0; color: var(--admin-text); overflow-wrap: anywhere; }
+
+.appf-note {
+  margin: 12px 0 0;
+  color: var(--admin-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+.appf-card > .appf-note:first-of-type { margin-top: 0; }
+
+.appf-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+.appf-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--admin-border);
+}
+.appf-saved { margin-right: auto; color: #3fa46a; font-size: 0.88rem; font-weight: 650; }
+
+.appf-stars { color: var(--admin-gold); letter-spacing: 0.08em; white-space: nowrap; }
+.appf-stars small { color: var(--admin-muted); letter-spacing: 0; }
+
+.appf-item {
+  padding: 16px 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  margin-top: 12px;
+}
+.appf-item__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.appf-item__head strong { font-size: 0.95rem; }
+.appf-item__meta { color: var(--admin-muted); font-size: 0.82rem; }
+.appf-item__text { margin: 10px 0 0; line-height: 1.6; font-size: 0.92rem; overflow-wrap: anywhere; }
+.appf-item__reply {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--admin-gold);
+  background: var(--admin-surface-raised);
+  border-radius: 0 10px 10px 0;
+  line-height: 1.6;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.appf-item__reply span {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.appf-empty {
+  padding: 22px 18px;
+  color: var(--admin-muted);
+  border: 1px dashed var(--admin-border);
+  border-radius: 14px;
+  text-align: center;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+
+/* ================================================================
+   3. Responsive
+   ================================================================ */
+
+@media (max-width: 900px) {
+  .appf-stats { grid-template-columns: repeat(2, 1fr); }
+  .appf-grid, .appf-form-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .apat-head__add { margin-top: 4px; }
+  .appf-header { padding: 20px; }
+  .appf-stats { grid-template-columns: 1fr 1fr; }
+}

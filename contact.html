@@ -1,447 +1,243 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Contact HealthBridge — get in touch with our clinics, billing support, medical records desk, or our emergency hotline."
-    />
-    <title>Contact Us — HealthBridge</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="assets/css/style.css?v=2" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap"
-    />
-    <!-- Leaflet CSS -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
-    />
-    <link rel="stylesheet" href="assets/css/pages/contact.css?v=2" />
-    <link rel="stylesheet" href="assets/css/pages/settings.css?v=2" />
+    <meta name="description" content="Share feedback about the HealthBridge student project demonstration. Synthetic records only." />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#102B2B" />
+    <title>Project Feedback &mdash; HealthBridge</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
+    <script src="assets/public-v2/js/core/site.js?v=12"></script>
+    <link rel="stylesheet" href="assets/public-v2/css/tokens.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/base.css?v=1" />
+    <link rel="stylesheet" href="assets/public-v2/css/components.css?v=23" />
+    <link rel="stylesheet" href="assets/public-v2/css/pages/contact.css?v=8" />
+    <link rel="stylesheet" href="assets/public-v2/css/footer.css?v=4" />
+    <script defer src="assets/public-v2/js/core/footer.js?v=4"></script>
   </head>
-  <body>
-    <!-- Navbar -->
-    <nav class="navbar" id="navbar">
-      <div class="nav-container">
-        <a href="index.html" class="logo">
-          <div class="logo-icon"><i class="fas fa-hospital" aria-hidden="true"></i></div>
-          <span>HealthBridge</span>
+  <body class="contact-page">
+    <a class="contact-skip-link" href="#main-content">Skip to main content</a>
+
+    <nav class="navbar" id="navbar" aria-label="Main navigation">
+      <div class="nav-container contact-container">
+        <a href="index.html" class="logo home-brand" aria-label="HealthBridge home">
+          <span class="home-brand-mark" aria-hidden="true"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"></path><path d="M12 7.6v6.2"></path><path d="M8.9 10.7h6.2"></path><path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"></path></svg></span>
+          <span class="home-brand-name hb-wordmark"><span class="hb-wordmark__letter" data-letter="H">H</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__letter" data-letter="a">a</span><span class="hb-wordmark__letter" data-letter="l">l</span><span class="hb-wordmark__letter" data-letter="t">t</span><span class="hb-wordmark__letter" data-letter="h">h</span><span class="hb-wordmark__letter" data-letter="B">B</span><span class="hb-wordmark__letter" data-letter="r">r</span><span class="hb-wordmark__letter" data-letter="i">i</span><span class="hb-wordmark__letter" data-letter="d">d</span><span class="hb-wordmark__letter" data-letter="g">g</span><span class="hb-wordmark__letter" data-letter="e">e</span><span class="hb-wordmark__shimmer" aria-hidden="true">HealthBridge</span></span>
         </a>
-        <div class="nav-row">
+        <div class="nav-row" id="nav-menu">
           <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
             <li><a href="doctors.html">Doctors</a></li>
             <li><a href="services.html">Services</a></li>
             <li><a href="about.html">About</a></li>
-            <li><a href="contact.html" class="active">Contact</a></li>
+            <li><a href="contact.html" class="active" aria-current="page">Contact</a></li>
           </ul>
           <div class="nav-actions" id="auth-links">
-            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Login</a>
-            <a href="pages/auth/login.html#signup" class="btn btn-primary btn-sm"
-              >Sign Up</a
-            >
+            <a href="pages/auth/login.html" class="btn btn-outline btn-sm">Log in</a>
+            <a href="pages/auth/register.html" class="btn btn-primary btn-sm">Create account</a>
           </div>
         </div>
       </div>
     </nav>
 
-    <!-- Hero Header -->
-    <section
-      class="hero hero-sm has-bg"
-      style="
-        background-image: url(https://images.unsplash.com/photo-1516549655169-df83a0774514?w=1600&amp;q=80);
-      "
-    >
-      <div class="hero-content fade-in">
-        <h1>Get in <span>Touch</span></h1>
-        <p>
-          Have questions, feedback, or need administrative assistance? Our team
-          is here to support you.
-        </p>
-      </div>
-    </section>
-
-    <!-- Contact & Location Sections -->
-    <section class="section contact-bg-pattern" style="padding-top: var(--s8)">
-      <!-- Emergency Warning Strip -->
-      <div class="emergency-notice fade-in">
-        <span class="emergency-notice-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span>
-        <div>
-          <h4>Medical Emergencies &amp; Urgent Care</h4>
-          <p>
-            Do not use this form to report health crises. If you are
-            experiencing a life-threatening emergency, please dial
-            <strong>911</strong> (or your local emergency code), call our 24/7
-            Hotline at <strong>+1 (234) 567-8999</strong>, or go immediately to
-            the nearest ER.
-          </p>
-        </div>
-      </div>
-
-      <!-- Contact Page Layout split -->
-      <div class="contact-layout">
-        <!-- Contact Form -->
-        <div class="contact-form-wrapper fade-in">
-          <h3 style="margin-bottom: var(--s5); font-size: 1.3rem">
-            Send a Secure Inquiry
-          </h3>
-          <p
-            style="
-              font-size: 0.85rem;
-              color: var(--text-secondary);
-              margin-bottom: var(--s5);
-            "
-          >
-            Complete the form below and the corresponding department will
-            respond within 24 business hours.
-          </p>
-
-          <div
-            id="form-success"
-            class="form-success"
-            role="alert"
-            aria-live="polite"
-          ></div>
-          <div
-            id="form-error"
-            class="form-error"
-            role="alert"
-            aria-live="assertive"
-          ></div>
-
-          <form id="contact-form" novalidate>
-            <div class="grid-2">
-              <div class="form-group">
-                <label for="contact-name">Full Name *</label>
-                <input
-                  type="text"
-                  id="contact-name"
-                  name="name"
-                  placeholder="Your full name"
-                  required
-                  minlength="2"
-                  maxlength="100"
-                />
-              </div>
-              <div class="form-group">
-                <label for="contact-email">Email Address *</label>
-                <input
-                  type="email"
-                  id="contact-email"
-                  name="email"
-                  placeholder="you@example.com"
-                  required
-                  maxlength="150"
-                />
-              </div>
+    <main id="main-content">
+      <section class="contact-hero" aria-labelledby="contact-title">
+        <div class="contact-container contact-hero__layout">
+          <div class="contact-hero__copy" data-public-reveal="left">
+            <p class="contact-eyebrow"><span aria-hidden="true"></span> PROJECT FEEDBACK / HEALTHBRIDGE</p>
+            <div class="contact-demo-badge">
+              <span class="contact-demo-badge__dot" aria-hidden="true"></span>
+              <span>Student project &middot; Synthetic records only &middot; Not a live care service</span>
             </div>
-
-            <div class="grid-2">
-              <div class="form-group">
-                <label for="contact-phone">Phone Number</label>
-                <input
-                  type="tel"
-                  id="contact-phone"
-                  name="phone"
-                  placeholder="e.g. +1234567890"
-                  maxlength="20"
-                />
-              </div>
-              <div class="form-group">
-                <label for="contact-dept">Department *</label>
-                <select id="contact-dept" name="department" required>
-                  <option value="General Inquiry">General Inquiries</option>
-                  <option value="Billing & Insurance">
-                    Billing &amp; Insurance
-                  </option>
-                  <option value="Medical Records">
-                    Medical Records Support
-                  </option>
-                  <option value="Doctor Partnership">
-                    Doctor Partnerships
-                  </option>
-                  <option value="Careers">Careers &amp; Recruiting</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="contact-subject">Subject</label>
-              <input
-                type="text"
-                id="contact-subject"
-                name="subject"
-                placeholder="What is this regarding?"
-                maxlength="200"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="contact-message">Message *</label>
-              <textarea
-                id="contact-message"
-                name="message"
-                placeholder="Please describe your question or issue in detail..."
-                required
-                minlength="10"
-                maxlength="5000"
-              ></textarea>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-block">
-              Send Message
-            </button>
-
-            <p
-              style="
-                font-size: 0.72rem;
-                color: var(--text-muted);
-                margin-top: var(--s4);
-                text-align: center;
-              "
-            >
-              Inquiries are stored securely. By submitting, you agree to our
-              patient confidentiality terms.
+            <h1 id="contact-title">Make the next version <em>better.</em></h1>
+            <p class="contact-hero__intro">
+              A note about the interface, an interaction or the project itself can help
+              make the experience clearer. Tell us what you noticed in this demonstration.
             </p>
-          </form>
-        </div>
-
-        <!-- Contact Directory Stack -->
-        <div class="contact-directory fade-in">
-          <!-- Address & Main Campus -->
-          <div class="directory-card">
-            <div class="directory-card-header">
-              <div class="directory-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
-              <h4>Main Campus</h4>
+            <div class="contact-hero__actions">
+              <a href="#feedback-form" class="btn btn-primary contact-primary-action">
+                Share feedback <span aria-hidden="true">&rarr;</span>
+              </a>
+              <a href="about.html" class="contact-secondary-link">
+                Get to know the project <span aria-hidden="true">&rarr;</span>
+              </a>
             </div>
-            <div class="directory-body">
-              <p>El-Nabawy El-Mohandes Street<br />Faiyum, Egypt</p>
-              <p
-                style="
-                  margin-top: var(--s2);
-                  font-size: 0.78rem;
-                  color: var(--text-muted);
-                "
-              >
-                Parking is free for patients in the subterranean lot (under 2
-                hours).
-              </p>
-            </div>
+            <p class="contact-hero__boundary"><span aria-hidden="true"></span> This page is for software feedback, never medical support.</p>
           </div>
 
-          <!-- Direct Line Directory -->
-          <div class="directory-card">
-            <div class="directory-card-header">
-              <div class="directory-icon"><i class="fas fa-phone" aria-hidden="true"></i></div>
-              <h4>Telephone Directory</h4>
-            </div>
-            <div class="directory-body">
-              <div class="directory-phone-list">
-                <div class="directory-phone-item">
-                  <span>Emergency Hotline (24/7)</span>
-                  <a href="tel:+12345678999">+1 (234) 567-8999</a>
-                </div>
-                <div class="directory-phone-item">
-                  <span>Appointments Desk</span>
-                  <a href="tel:+1234567890">+1 (234) 567-890</a>
-                </div>
-                <div class="directory-phone-item">
-                  <span>Diagnostics &amp; Labs</span>
-                  <a href="tel:+1234567890">+1 (234) 567-8901</a>
-                </div>
+          <div class="contact-hero__visual" data-public-reveal="right" aria-label="A visual note about project feedback">
+            <div class="contact-visual-orbit contact-visual-orbit--one" aria-hidden="true"></div>
+            <div class="contact-visual-orbit contact-visual-orbit--two" aria-hidden="true"></div>
+            <div class="contact-feedback-sheet">
+              <div class="contact-feedback-sheet__top">
+                <span class="contact-sheet-brand"><span aria-hidden="true"><svg class="auth-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"></path><path d="M12 7.6v6.2"></path><path d="M8.9 10.7h6.2"></path><path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"></path></svg></span> HEALTHBRIDGE</span>
+                <span class="contact-sheet-index">FIELD NOTE / 01</span>
+              </div>
+              <p class="contact-sheet-eyebrow">A BETTER EXPERIENCE, TOGETHER</p>
+              <p class="contact-sheet-title">Small details.<br /><em>Clearer journeys.</em></p>
+              <div class="contact-sheet-rule" aria-hidden="true"></div>
+              <div class="contact-sheet-tags" aria-label="Feedback topics">
+                <span>Interface</span>
+                <span>Accessibility</span>
+                <span>Usability</span>
+              </div>
+              <div class="contact-sheet-bottom">
+                <span>YOUR OBSERVATION MATTERS</span>
+                <span aria-hidden="true">&nearr;</span>
+              </div>
+              <div class="contact-feedback-stamp" role="note">
+                <span class="contact-feedback-stamp__lead">RECEIVED &middot;</span>
+                <span class="contact-feedback-stamp__detail">READ IN THE ADMIN SUPPORT INBOX</span>
               </div>
             </div>
+            <span class="contact-visual-caption">A student-built project &middot; Feedback only</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="public-signal-strip" aria-label="Important project information">
+        <div class="contact-container public-signal-strip__grid">
+          <div class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">01</span>
+            <div class="public-signal__copy"><strong class="public-signal__title">Project feedback</strong><p class="public-signal__detail">Comments about the demo experience</p></div>
+          </div>
+          <div class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">02</span>
+            <div class="public-signal__copy"><strong class="public-signal__title">Synthetic records</strong><p class="public-signal__detail">Never enter real personal or health data</p></div>
+          </div>
+          <div class="public-signal">
+            <span class="public-signal__value" aria-hidden="true">03</span>
+            <div class="public-signal__copy"><strong class="public-signal__title">No email is sent</strong><p class="public-signal__detail">Submissions are stored by the demo app</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="contact-main-section" aria-labelledby="feedback-section-title">
+        <div class="contact-container">
+          <div class="contact-section-heading" data-public-reveal="rise">
+            <div>
+              <p class="contact-eyebrow"><span aria-hidden="true"></span> YOUR PERSPECTIVE</p>
+              <h2 id="feedback-section-title">Tell us what you <em>noticed.</em></h2>
+            </div>
+            <p>Share a clear observation, suggest an improvement or report something that did not work as expected.</p>
           </div>
 
-          <!-- Administrative Emails -->
-          <div class="directory-card">
-            <div class="directory-card-header">
-              <div class="directory-icon"><i class="fas fa-envelope" aria-hidden="true"></i></div>
-              <h4>Administrative Channels</h4>
-            </div>
-            <div class="directory-body">
+          <aside class="contact-boundary-note" role="note" data-public-reveal="rise">
+            <span class="contact-boundary-note__mark" aria-hidden="true">!</span>
+            <div>
+              <strong>A quick note about this environment</strong>
               <p>
-                <strong>General Support:</strong>
-                <a
-                  href="mailto:support@healthbridge.com"
-                  style="color: var(--primary)"
-                  >support@healthbridge.com</a
-                >
-              </p>
-              <p>
-                <strong>Billing Desk:</strong>
-                <a
-                  href="mailto:billing@healthbridge.com"
-                  style="color: var(--primary)"
-                  >billing@healthbridge.com</a
-                >
+                HealthBridge is a student-built software demonstration, not an operating clinic or hospital.
+                Do not use this form for medical care, emergencies or real appointments. Use synthetic records
+                only, and never include patient records, health information or account credentials.
               </p>
             </div>
-          </div>
+          </aside>
 
-          <!-- Social Connections -->
-          <div class="directory-card">
-            <div class="directory-card-header">
-              <div class="directory-icon"><i class="fas fa-globe" aria-hidden="true"></i></div>
-              <h4>Stay Connected</h4>
-            </div>
-            <div class="directory-body">
-              <p>Follow our feeds for healthcare updates, tips, and news.</p>
-              <div class="social-links">
-                <a href="#" aria-label="Facebook" title="Facebook"><i class="fab fa-facebook-f" aria-hidden="true"></i></a>
-                <a href="#" aria-label="Twitter" title="Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
-                <a href="#" aria-label="Instagram" title="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
-                <a href="#" aria-label="LinkedIn" title="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+          <div class="contact-content-grid">
+            <section id="feedback-form" class="contact-form-card" aria-labelledby="feedback-form-title" data-public-reveal="rise">
+              <div class="contact-form-card__heading">
+                <div>
+                  <p class="contact-kicker">THE FEEDBACK FORM</p>
+                  <h3 id="feedback-form-title">Share your feedback on the project.</h3>
+                  <p>Fields marked with an asterisk are required. Placeholder information is all you need.</p>
+                </div>
               </div>
-            </div>
+
+              <div id="form-success" class="contact-form-status contact-form-status--success" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+              <div id="form-error" class="contact-form-status contact-form-status--error" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
+
+              <form id="contact-form" class="contact-form" novalidate>
+                <div class="contact-form-grid">
+                  <div class="contact-field">
+                    <label for="contact-name">Demo name <span aria-hidden="true">*</span></label>
+                    <input type="text" id="contact-name" name="name" placeholder="Demo visitor" required minlength="2" maxlength="100" autocomplete="off" aria-describedby="contact-name-hint" />
+                    <span class="contact-field-hint" id="contact-name-hint">2 to 100 characters.</span>
+                  </div>
+                  <div class="contact-field">
+                    <label for="contact-email">Demo email <span aria-hidden="true">*</span></label>
+                    <input type="email" id="contact-email" name="email" placeholder="demo@example.test" required maxlength="150" autocomplete="off" aria-describedby="contact-email-hint" />
+                    <span class="contact-field-hint" id="contact-email-hint">Up to 150 characters.</span>
+                  </div>
+                  <div class="contact-field">
+                    <label for="contact-phone">Placeholder phone <span class="contact-optional">(optional)</span></label>
+                    <input type="tel" id="contact-phone" name="phone" placeholder="0000000000" maxlength="30" autocomplete="off" aria-describedby="contact-phone-hint" />
+                    <span class="contact-field-hint" id="contact-phone-hint">Up to 30 characters.</span>
+                  </div>
+                  <div class="contact-field">
+                    <label for="contact-dept">Feedback category <span aria-hidden="true">*</span></label>
+                    <select id="contact-dept" name="department" required aria-required="true">
+                      <option value="General Project Feedback">General project feedback</option>
+                      <option value="Interface and Usability">Interface and usability</option>
+                      <option value="Accessibility">Accessibility</option>
+                      <option value="Bug Report">Bug report</option>
+                      <option value="Feature Suggestion">Feature suggestion</option>
+                    </select>
+                  </div>
+                  <div class="contact-field contact-field--wide">
+                    <label for="contact-subject">Subject <span class="contact-optional">(optional)</span></label>
+                    <input type="text" id="contact-subject" name="subject" placeholder="What would you like to comment on?" maxlength="200" autocomplete="off" aria-describedby="contact-subject-hint" />
+                    <span class="contact-field-hint" id="contact-subject-hint">Up to 200 characters.</span>
+                  </div>
+                  <div class="contact-field contact-field--wide">
+                    <label for="contact-message">Your feedback <span aria-hidden="true">*</span></label>
+                    <textarea id="contact-message" name="message" placeholder="Describe an interaction, a point of confusion or an improvement you would suggest..." required minlength="10" maxlength="5000" rows="6" aria-describedby="contact-message-hint"></textarea>
+                    <span class="contact-field-hint" id="contact-message-hint">10 to 5,000 characters. Do not include personal, medical or account information.</span>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary contact-submit">
+                  <span class="contact-submit__label">Save demo feedback</span>
+                  <span class="contact-submit__arrow" aria-hidden="true">&nearr;</span>
+                </button>
+                <p class="contact-form-note" id="contact-note">
+                  A successful submission is stored in the application's contact-message table.
+                  This form does not send an email or contact a medical team. Use synthetic records only.
+                </p>
+              </form>
+            </section>
+
+            <aside class="contact-aside">
+              <section class="contact-guide-card" data-public-reveal="right">
+                <p class="contact-kicker">MAKE IT USEFUL</p>
+                <h3>A little context goes a long way.</h3>
+                <p>Helpful feedback is specific, practical and focused on the demonstration.</p>
+                <ol class="contact-guide-list">
+                  <li><span>01</span><div><strong>What were you trying to do?</strong><small>Name the screen or workflow.</small></div></li>
+                  <li><span>02</span><div><strong>What did you expect?</strong><small>Describe the result you had in mind.</small></div></li>
+                  <li><span>03</span><div><strong>What happened instead?</strong><small>Explain what felt unclear or unexpected.</small></div></li>
+                </ol>
+              </section>
+
+              <section class="contact-explore-card" data-public-reveal="right">
+                <p class="contact-kicker">EXPLORE FIRST</p>
+                <h3>See more of the project.</h3>
+                <a href="doctors.html" class="contact-explore-link">
+                  <span class="contact-explore-link__number">01</span>
+                  <span><strong>Doctors directory</strong><small>Browse the sample public profiles</small></span>
+                  <span class="contact-explore-link__arrow" aria-hidden="true">&nearr;</span>
+                </a>
+                <a href="services.html" class="contact-explore-link">
+                  <span class="contact-explore-link__number">02</span>
+                  <span><strong>Project capabilities</strong><small>Explore the connected workflows</small></span>
+                  <span class="contact-explore-link__arrow" aria-hidden="true">&nearr;</span>
+                </a>
+                <a href="about.html" class="contact-explore-link">
+                  <span class="contact-explore-link__number">03</span>
+                  <span><strong>About HealthBridge</strong><small>Read about the project approach</small></span>
+                  <span class="contact-explore-link__arrow" aria-hidden="true">&nearr;</span>
+                </a>
+              </section>
+            </aside>
           </div>
         </div>
-      </div>
+      </section>
+    </main>
 
-      <!-- Helpful Guides & Transit information -->
-      <div class="guides-grid fade-in-stagger">
-        <!-- Guide 1 -->
-        <div class="guide-card">
-          <span class="guide-icon"><i class="fas fa-car" aria-hidden="true"></i></span>
-          <div>
-            <h4>Subterranean Parking</h4>
-            <p>
-              Valet and self-parking are free for visitors and patients who are
-              scheduled for consultations. Simply validate your ticket at the
-              front reception counter.
-            </p>
-          </div>
-        </div>
-
-        <!-- Guide 2 -->
-        <div class="guide-card">
-          <span class="guide-icon"><i class="fas fa-bus" aria-hidden="true"></i></span>
-          <div>
-            <h4>Public Transit Stops</h4>
-            <p>
-              Faiyum Central bus line 14 stops directly in front of the main
-              clinic gates. Shuttles run every 15 minutes between the campus and
-              the train terminal.
-            </p>
-          </div>
-        </div>
-
-        <!-- Guide 3 -->
-        <div class="guide-card">
-          <span class="guide-icon"><i class="fas fa-pen-to-square" aria-hidden="true"></i></span>
-          <div>
-            <h4>Pre-Consult Checklist</h4>
-            <p>
-              Please remember to bring your insurance policy card, government
-              ID, list of current prescription medicines, and previous lab
-              transcripts to ease check-in.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Interactive Map Section -->
-    <section style="padding: 0 var(--s8) var(--s16)">
-      <div style="max-width: 1100px; margin: 0 auto">
-        <div
-          id="contact-map"
-          class="map-container"
-          aria-label="Interactive Map of HealthBridge Location"
-        ></div>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="footer-inner">
-        <!-- Brand -->
-        <div class="footer-brand">
-          <a href="index.html" class="footer-logo">
-            <span style="font-size: 1.3rem"><i class="fas fa-hospital" aria-hidden="true"></i></span>
-            <span>HealthBridge</span>
-          </a>
-          <p>
-            Modern healthcare at your fingertips. Book appointments, track your
-            health, and connect with certified medical professionals — anytime,
-            anywhere.
-          </p>
-        </div>
-
-        <!-- Navigation -->
-        <div class="footer-nav-cols">
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Company</div>
-            <ul class="footer-nav-list">
-              <li><a href="index.html">Home</a></li>
-              <li><a href="about.html">About Us</a></li>
-              <li><a href="contact.html">Contact Us</a></li>
-            </ul>
-          </div>
-          <div class="footer-nav-col">
-            <div class="footer-nav-label">Services</div>
-            <ul class="footer-nav-list">
-              <li><a href="doctors.html">Find a Doctor</a></li>
-              <li><a href="services.html">Our Services</a></li>
-              <li><a href="pages/auth/login.html#signup">Get Started</a></li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Contact -->
-        <div class="footer-contact">
-          <div class="footer-contact-label">Get in Touch</div>
-          <div class="footer-contact-items">
-            <a href="tel:+12345678900">
-              <span>+1 (234) 567-890</span>
-              <span class="contact-icon"><i class="fas fa-phone" aria-hidden="true"></i></span>
-            </a>
-            <a href="mailto:support@healthbridge.com">
-              <span>support@healthbridge.com</span>
-              <span class="contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
-            </a>
-            <span>
-              <span>El-Nabawy El-Mohandes St, Faiyum, Egypt</span>
-              <span class="contact-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom bar -->
-      <div class="footer-bottom">
-        <p>
-          &copy; 2026 HealthBridge. All rights reserved. Built for better
-          healthcare.
-        </p>
-        <div class="footer-socials">
-          <a href="#" aria-label="Twitter" title="Twitter">𝕏</a>
-          <a href="#" aria-label="Facebook" title="Facebook">f</a>
-          <a href="#" aria-label="Instagram" title="Instagram">◎</a>
-          <a href="#" aria-label="LinkedIn" title="LinkedIn">in</a>
-        </div>
-      </div>
-    </footer>
-
-    <script src="assets/js/core/main.js?v=2"></script>
-    <!-- Leaflet JS -->
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js?v=2"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
-    <script src="assets/js/pages/contact.js?v=2"></script>
+    <div data-shared-footer aria-busy="true"></div>
+    <script defer src="assets/public-v2/js/pages/contact.js?v=1"></script>
   </body>
 </html>
-
-
 

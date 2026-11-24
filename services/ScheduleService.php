@@ -26,9 +26,15 @@
  * @method array getBatchPublicAvailability(array $doctorIds) Get public availability for ALL doctors in a single batch
  */
 
+require_once __DIR__ . '/../includes/AppointmentTime.php';
+require_once __DIR__ . '/Repositories/DoctorScheduleRepository.php';
+require_once __DIR__ . '/Repositories/AppointmentReservationRepository.php';
+
 class ScheduleService
 {
     private PDO $db;
+    private DoctorScheduleRepository $scheduleRepository;
+    private AppointmentReservationRepository $reservationRepository;
 
     /**
      * @var array Valid appointment durations in minutes
@@ -73,9 +79,14 @@ class ScheduleService
      */
     private ?array $hospitalSettingsCache = null;
 
+    /**
+     * @param PDO $db Active connection (V2 schema)
+     */
     public function __construct(PDO $db)
     {
         $this->db = $db;
+        $this->scheduleRepository = new DoctorScheduleRepository($db);
+        $this->reservationRepository = new AppointmentReservationRepository($db);
     }
 
     /**
@@ -91,7 +102,10 @@ class ScheduleService
         }
 
         try {
-            $stmt = $this->db->query("SELECT appointment_open_time, appointment_close_time FROM hospital_settings WHERE id = 1 LIMIT 1");
+            $hoursSql = "SELECT TIME_FORMAT(appointment_open_time, '%H:%i') AS appointment_open_time,
+                          TIME_FORMAT(appointment_close_time, '%H:%i') AS appointment_close_time
+                   FROM hospital_settings WHERE id = 1 LIMIT 1";
+            $stmt = $this->db->query($hoursSql);
             $row = $stmt->fetch();
             if ($row) {
                 $this->hospitalSettingsCache = [
@@ -100,7 +114,7 @@ class ScheduleService
                 ];
                 return $this->hospitalSettingsCache;
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Fall through to defaults
         }
 
@@ -121,38 +135,7 @@ class ScheduleService
      */
     public function getSchedule(int $doctorId): ?array
     {
-        // Get settings
-        $stmt = $this->db->prepare(
-            "SELECT dss.*, u.name AS doctor_name, u.email AS doctor_email
-             FROM doctor_schedule_settings dss
-             JOIN users u ON dss.doctor_id = u.id
-             WHERE dss.doctor_id = ?
-             LIMIT 1"
-        );
-        $stmt->execute([$doctorId]);
-        $settings = $stmt->fetch();
-
-        if (!$settings) {
-            return null;
-        }
-
-        // Get weekly schedule
-        $stmt = $this->db->prepare(
-            "SELECT id, day_of_week, start_time, end_time, is_working
-             FROM doctor_schedule_weekly
-             WHERE doctor_id = ?
-             ORDER BY day_of_week ASC"
-        );
-        $stmt->execute([$doctorId]);
-        $weekly = $stmt->fetchAll();
-
-        // Ensure all 7 days exist (fill defaults for missing days)
-        $weekly = $this->ensureAllDays($doctorId, $weekly);
-
-        return [
-            'settings' => $settings,
-            'weekly'   => $weekly,
-        ];
+        return $this->scheduleRepository->getSchedule($doctorId);
     }
 
     /**
@@ -162,33 +145,7 @@ class ScheduleService
      */
     public function getAllSchedules(): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT dss.*, u.name AS doctor_name, u.email AS doctor_email
-             FROM doctor_schedule_settings dss
-             JOIN users u ON dss.doctor_id = u.id
-             WHERE u.role = 'doctor'
-             ORDER BY u.name ASC"
-        );
-        $stmt->execute();
-        $schedules = $stmt->fetchAll();
-
-        // Attach weekly schedule summary for each doctor
-        foreach ($schedules as &$schedule) {
-            $stmt = $this->db->prepare(
-                "SELECT day_of_week, start_time, end_time, is_working
-                 FROM doctor_schedule_weekly
-                 WHERE doctor_id = ?
-                 ORDER BY day_of_week ASC"
-            );
-            $stmt->execute([(int)$schedule['doctor_id']]);
-            $weekly = $stmt->fetchAll();
-            $schedule['weekly'] = $this->ensureAllDays((int)$schedule['doctor_id'], $weekly);
-            $schedule['working_days_count'] = count(array_filter($weekly, function($d) {
-                return (int)$d['is_working'] === 1;
-            }));
-        }
-
-        return $schedules;
+        return $this->scheduleRepository->getAllSchedules();
     }
 
     /**
@@ -231,26 +188,29 @@ class ScheduleService
      */
     public function updateSchedule(int $doctorId, array $weeklyData, array $settingsData = []): bool
     {
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
 
         try {
-            // 1. Update or create settings row
-            $this->upsertSettings($doctorId, $settingsData);
+            $this->scheduleRepository->saveSchedule($doctorId, $weeklyData, $settingsData);
 
-            // 2. Upsert each weekly day
-            $this->upsertWeeklyDays($doctorId, $weeklyData);
-
-            $this->db->commit();
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
             return true;
-
-        } catch (Exception $e) {
-            $this->db->rollBack();
+        } catch (Throwable $e) {
+            if ($ownsTransaction && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }
 
     /**
-     * Update doctor availability toggle only.
+     * Update operational schedule availability only.
+     * Profile-level accepts_new_patients is a separate preference.
      *
      * @param int  $doctorId
      * @param bool $isAvailable
@@ -258,11 +218,8 @@ class ScheduleService
      */
     public function setAvailability(int $doctorId, bool $isAvailable): bool
     {
-        $stmt = $this->db->prepare(
-            "UPDATE doctor_schedule_settings SET is_available = ?, updated_at = NOW() WHERE doctor_id = ?"
-        );
-        $stmt->execute([$isAvailable ? 1 : 0, $doctorId]);
-        return $stmt->rowCount() > 0;
+        $this->scheduleRepository->setAvailability($doctorId, $isAvailable);
+        return true;
     }
 
     /**
@@ -273,54 +230,25 @@ class ScheduleService
      */
     public function resetToDefault(int $doctorId): bool
     {
-        $this->db->beginTransaction();
-
-        try {
-            // Reset settings
-            $stmt = $this->db->prepare(
-                "UPDATE doctor_schedule_settings
-                 SET appointment_duration = 30,
-                     max_appointments_per_day = 25,
-                     break_start = NULL,
-                     break_end = NULL,
-                     is_available = 1,
-                     updated_at = NOW()
-                 WHERE doctor_id = ?"
-            );
-            $stmt->execute([$doctorId]);
-
-            // Reset all days to default
-            $defaults = [
-                1 => ['09:00', '17:00', 1], // Monday
-                2 => ['09:00', '17:00', 1], // Tuesday
-                3 => ['09:00', '17:00', 1], // Wednesday
-                4 => ['09:00', '17:00', 1], // Thursday
-                5 => ['09:00', '17:00', 1], // Friday
-                6 => ['09:00', '17:00', 0], // Saturday
-                7 => ['09:00', '17:00', 0], // Sunday
+        $weekly = [];
+        for ($day = 1; $day <= 7; $day++) {
+            $weekly[] = [
+                'day_of_week' => $day,
+                'start_time' => '09:00',
+                'end_time' => '17:00',
+                'is_working' => $day <= 5 ? 1 : 0,
             ];
-
-            $dayStmt = $this->db->prepare(
-                "INSERT INTO doctor_schedule_weekly (doctor_id, day_of_week, start_time, end_time, is_working)
-                 VALUES (?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE
-                     start_time = VALUES(start_time),
-                     end_time = VALUES(end_time),
-                     is_working = VALUES(is_working),
-                     updated_at = NOW()"
-            );
-
-            foreach ($defaults as $day => $config) {
-                $dayStmt->execute([$doctorId, $day, $config[0], $config[1], $config[2]]);
-            }
-
-            $this->db->commit();
-            return true;
-
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            throw $e;
         }
+
+        $this->scheduleRepository->saveSchedule($doctorId, $weekly, [
+            'appointment_duration' => 30,
+            'max_appointments_per_day' => 25,
+            'break_start' => null,
+            'break_end' => null,
+            'is_available' => 1,
+        ]);
+
+        return true;
     }
 
     // ── Validation ───────────────────────────────────────────
@@ -495,121 +423,6 @@ class ScheduleService
         return null;
     }
 
-    // ── Internal Helpers ─────────────────────────────────────
-
-    /**
-     * Ensure all 7 days exist in the weekly array.
-     * Fills missing days with default non-working entries.
-     *
-     * @param int   $doctorId
-     * @param array $weekly
-     * @return array
-     */
-    private function ensureAllDays(int $doctorId, array $weekly): array
-    {
-        $existingDays = array_map(function($d) {
-            return (int)$d['day_of_week'];
-        }, $weekly);
-
-        for ($dow = 1; $dow <= 7; $dow++) {
-            if (!in_array($dow, $existingDays)) {
-                // Insert default entry (non-working)
-                $stmt = $this->db->prepare(
-                    "INSERT INTO doctor_schedule_weekly (doctor_id, day_of_week, start_time, end_time, is_working)
-                     VALUES (?, ?, '09:00', '17:00', 0)
-                     ON DUPLICATE KEY UPDATE
-                         start_time = VALUES(start_time),
-                         end_time = VALUES(end_time),
-                         is_working = VALUES(is_working)"
-                );
-                $stmt->execute([$doctorId, $dow]);
-
-                $weekly[] = [
-                    'id'          => 0,
-                    'day_of_week' => (string)$dow,
-                    'start_time'  => '09:00',
-                    'end_time'    => '17:00',
-                    'is_working'  => '0',
-                ];
-            }
-        }
-
-        // Sort by day_of_week
-        usort($weekly, function($a, $b) {
-            return (int)$a['day_of_week'] - (int)$b['day_of_week'];
-        });
-
-        return $weekly;
-    }
-
-    /**
-     * Upsert schedule settings for a doctor.
-     * Creates row if not exists, updates specified fields.
-     *
-     * @param int   $doctorId
-     * @param array $data
-     */
-    private function upsertSettings(int $doctorId, array $data): void
-    {
-        // First ensure settings row exists
-        $stmt = $this->db->prepare(
-            "INSERT INTO doctor_schedule_settings (doctor_id) VALUES (?)
-             ON DUPLICATE KEY UPDATE doctor_id = doctor_id"
-        );
-        $stmt->execute([$doctorId]);
-
-        // Build update fields dynamically
-        $allowedFields = ['appointment_duration', 'max_appointments_per_day', 'break_start', 'break_end', 'is_available'];
-        $updates = [];
-        $params = [];
-
-        foreach ($allowedFields as $field) {
-            if (array_key_exists($field, $data)) {
-                $updates[] = "$field = ?";
-                $params[] = $data[$field];
-            }
-        }
-
-        if (!empty($updates)) {
-            $updates[] = 'updated_at = NOW()';
-            $params[] = $doctorId;
-
-            $sql = 'UPDATE doctor_schedule_settings SET ' . implode(', ', $updates) . ' WHERE doctor_id = ?';
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
-        }
-    }
-
-    /**
-     * Upsert all weekly days for a doctor.
-     *
-     * @param int   $doctorId
-     * @param array $weeklyData
-     */
-    private function upsertWeeklyDays(int $doctorId, array $weeklyData): void
-    {
-        $stmt = $this->db->prepare(
-            "INSERT INTO doctor_schedule_weekly (doctor_id, day_of_week, start_time, end_time, is_working)
-             VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-                 start_time = VALUES(start_time),
-                 end_time = VALUES(end_time),
-                 is_working = VALUES(is_working),
-                 updated_at = NOW()"
-        );
-
-        foreach ($weeklyData as $day) {
-            $stmt->execute([
-                $doctorId,
-                (int)($day['day_of_week'] ?? 0),
-                $day['start_time'] ?? '09:00',
-                $day['end_time'] ?? '17:00',
-                (int)($day['is_working'] ?? 0),
-            ]);
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════
     //  PHASE 2 — SLOT GENERATION & BOOKING VALIDATION
     // ═══════════════════════════════════════════════════════════
 
@@ -705,7 +518,7 @@ class ScheduleService
 
         $availableSlots = [];
         foreach ($allSlots as $slot) {
-            $slotMinutes = $this->timeToMinutes($slot);
+            $slotMinutes = AppointmentTime::toMinutes($slot);
 
             // Skip past times for today
             if ($isToday && $slot < $currentTime) {
@@ -722,7 +535,8 @@ class ScheduleService
 
         // 9. Respect max appointments per day
         $maxCount = (int)($settings['max_appointments_per_day'] ?? 25);
-        $remainingCapacity = $maxCount - count($bookedRanges);
+        $bookedAppointmentCount = count(array_unique(array_column($bookedRanges, 'appointment_id')));
+        $remainingCapacity = $maxCount - $bookedAppointmentCount;
         if ($remainingCapacity <= 0) {
             return []; // Fully booked
         }
@@ -734,7 +548,7 @@ class ScheduleService
         return array_map(function($time) {
             return [
                 'time'  => $time,
-                'label' => $this->formatTimeDisplay($time),
+                'label' => AppointmentTime::formatDisplay($time),
             ];
         }, $availableSlots);
     }
@@ -803,8 +617,8 @@ class ScheduleService
 
         // The entire appointment must fit within hospital hours
         $duration = (int)($settings['appointment_duration'] ?? 30);
-        $timeMinutes = $this->timeToMinutes($time);
-        $closeMinutes = $this->timeToMinutes($hospitalClose);
+        $timeMinutes = AppointmentTime::toMinutes($time);
+        $closeMinutes = AppointmentTime::toMinutes($hospitalClose);
         if ($timeMinutes + $duration > $closeMinutes) {
             return false;
         }
@@ -822,10 +636,10 @@ class ScheduleService
         $breakStart = $settings['break_start'] ?? null;
         $breakEnd = $settings['break_end'] ?? null;
         if ($breakStart && $breakEnd) {
-            $slotStart = $this->timeToMinutes($time);
+            $slotStart = AppointmentTime::toMinutes($time);
             $slotEnd = $slotStart + $duration;
-            $breakStartMin = $this->timeToMinutes($breakStart);
-            $breakEndMin = $this->timeToMinutes($breakEnd);
+            $breakStartMin = AppointmentTime::toMinutes($breakStart);
+            $breakEndMin = AppointmentTime::toMinutes($breakEnd);
             
             if ($slotStart < $breakEndMin && $slotEnd > $breakStartMin) {
                 return false;
@@ -834,8 +648,8 @@ class ScheduleService
         // ── End Break Overlap Check ─────────────────────────────
 
         // 9. Time must align with appointment duration
-        $timeMinutes = $this->timeToMinutes($time);
-        $startMinutes = $this->timeToMinutes($dayEntry['start_time']);
+        $timeMinutes = AppointmentTime::toMinutes($time);
+        $startMinutes = AppointmentTime::toMinutes($dayEntry['start_time']);
         if (($timeMinutes - $startMinutes) % $duration !== 0) {
             return false;
         }
@@ -848,14 +662,14 @@ class ScheduleService
 
         // 11. Must not overlap any existing booking's full time range
         $bookedRanges = $this->getBookedRanges($doctorId, $date);
-        $timeMinutes = $this->timeToMinutes($time);
+        $timeMinutes = AppointmentTime::toMinutes($time);
         if ($this->isSlotOverlapping($timeMinutes, $duration, $bookedRanges)) {
             return false;
         }
 
         // 12. Must not exceed max appointments per day
         $maxPerDay = (int)($settings['max_appointments_per_day'] ?? 25);
-        if (count($bookedRanges) >= $maxPerDay) {
+        if (count(array_unique(array_column($bookedRanges, 'appointment_id'))) >= $maxPerDay) {
             return false;
         }
 
@@ -871,7 +685,7 @@ class ScheduleService
      * @param string $time  HH:MM (24-hour format)
      * @return string|null  Error message or null if valid
      */
-    public function validateBookingSlot(int $doctorId, string $date, string $time): ?string
+    public function validateBookingSlot(int $doctorId, string $date, string $time, ?int $excludeAppointmentId = null): ?string
     {
         // 1. Validate date format
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
@@ -936,8 +750,8 @@ class ScheduleService
         // E.g. if hospital closes at 17:00 and duration is 30min, the latest
         // bookable start time is 16:30 (16:30 + 30min = 17:00).
         $duration = (int)($settings['appointment_duration'] ?? 30);
-        $timeMinutes = $this->timeToMinutes($time);
-        $closeMinutes = $this->timeToMinutes($hospitalClose);
+        $timeMinutes = AppointmentTime::toMinutes($time);
+        $closeMinutes = AppointmentTime::toMinutes($hospitalClose);
         if ($timeMinutes + $duration > $closeMinutes) {
             $latestStart = $this->minutesToTime($closeMinutes - $duration);
             return 'This appointment would end after hospital closing (' . $hospitalClose . '). Latest start time is ' . $latestStart . '.';
@@ -951,10 +765,10 @@ class ScheduleService
         $breakStart = $settings['break_start'] ?? null;
         $breakEnd = $settings['break_end'] ?? null;
         if ($breakStart && $breakEnd) {
-            $slotStart = $this->timeToMinutes($time);
+            $slotStart = AppointmentTime::toMinutes($time);
             $slotEnd = $slotStart + $duration;
-            $breakStartMin = $this->timeToMinutes($breakStart);
-            $breakEndMin = $this->timeToMinutes($breakEnd);
+            $breakStartMin = AppointmentTime::toMinutes($breakStart);
+            $breakEndMin = AppointmentTime::toMinutes($breakEnd);
             
             if ($slotStart < $breakEndMin && $slotEnd > $breakStartMin) {
                 return 'Selected time overlaps with the doctor\'s break period.';
@@ -963,8 +777,8 @@ class ScheduleService
         // ── End Break Overlap Check ─────────────────────────────
 
         // 8. Must align with duration
-        $timeMinutes = $this->timeToMinutes($time);
-        $startMinutes = $this->timeToMinutes($dayEntry['start_time']);
+        $timeMinutes = AppointmentTime::toMinutes($time);
+        $startMinutes = AppointmentTime::toMinutes($dayEntry['start_time']);
         if (($timeMinutes - $startMinutes) % $duration !== 0) {
             return 'Selected time does not align with appointment duration.';
         }
@@ -976,14 +790,14 @@ class ScheduleService
         }
 
         // 10. Not overlapping any existing booking's full time range
-        $bookedRanges = $this->getBookedRanges($doctorId, $date);
+        $bookedRanges = $this->getBookedRanges($doctorId, $date, $excludeAppointmentId);
         if ($this->isSlotOverlapping($timeMinutes, $duration, $bookedRanges)) {
             return 'This time slot overlaps an existing booking. Please choose another.';
         }
 
         // 11. Max capacity not exceeded
         $maxPerDay = (int)($settings['max_appointments_per_day'] ?? 25);
-        if (count($bookedRanges) >= $maxPerDay) {
+        if (count(array_unique(array_column($bookedRanges, 'appointment_id'))) >= $maxPerDay) {
             return 'This day is fully booked.';
         }
 
@@ -1017,10 +831,10 @@ class ScheduleService
     private function generateTimeSlots(string $startTime, string $endTime, int $duration, ?string $breakStart = null, ?string $breakEnd = null): array
     {
         $slots = [];
-        $current = $this->timeToMinutes($startTime);
-        $end = $this->timeToMinutes($endTime);
-        $breakStartMin = $breakStart ? $this->timeToMinutes($breakStart) : null;
-        $breakEndMin = $breakEnd ? $this->timeToMinutes($breakEnd) : null;
+        $current = AppointmentTime::toMinutes($startTime);
+        $end = AppointmentTime::toMinutes($endTime);
+        $breakStartMin = $breakStart ? AppointmentTime::toMinutes($breakStart) : null;
+        $breakEndMin = $breakEnd ? AppointmentTime::toMinutes($breakEnd) : null;
 
         // The condition `current + duration <= end` ensures the entire
         // appointment fits before endTime. This handles boundary correctly:
@@ -1041,7 +855,7 @@ class ScheduleService
                     // the cadence is 09:00, 10:00, 11:00 (60min steps).
                     $current = $breakEndMin;
                     // Round up to the next aligned slot boundary
-                    $startMinutes = $this->timeToMinutes($startTime);
+                    $startMinutes = AppointmentTime::toMinutes($startTime);
                     $offset = $current - $startMinutes;
                     $remainder = $offset % $duration;
                     if ($remainder > 0) {
@@ -1067,55 +881,11 @@ class ScheduleService
      * @param string $date  YYYY-MM-DD
      * @return array  Array of ['start' => minutes, 'end' => minutes] for each booking
      */
-    public function getBookedRanges(int $doctorId, string $date): array
+    public function getBookedRanges(int $doctorId, string $date, ?int $excludeAppointmentId = null): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT time, appointment_time_range FROM appointments
-             WHERE doctor_id = ?
-               AND date = ?
-               AND status IN ('Pending', 'Confirmed')
-             ORDER BY time ASC"
-        );
-        $stmt->execute([$doctorId, $date]);
-        $rows = $stmt->fetchAll();
-
-        $ranges = [];
-        foreach ($rows as $row) {
-            $normalizedTime = $this->normalizeTime($row['time']);
-            $startMin = $this->timeToMinutes($normalizedTime);
-            
-            // Determine duration from stored range or fallback to current doctor duration
-            if (!empty($row['appointment_time_range'])) {
-                // Parse stored range to get duration: "9:00 AM – 9:30 AM"
-                $endMin = $startMin + 30; // default
-                if (preg_match('/–\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i', $row['appointment_time_range'], $m)) {
-                    $eh = (int)$m[1];
-                    $emin = (int)$m[2];
-                    $eampm = strtoupper($m[3]);
-                    if ($eampm === 'PM' && $eh !== 12) $eh += 12;
-                    if ($eampm === 'AM' && $eh === 12) $eh = 0;
-                    $endMin = $eh * 60 + $emin;
-                }
-            } else {
-                // No stored range — use current doctor's duration
-                $duration = (int)($this->getSchedule($doctorId)['settings']['appointment_duration'] ?? 30);
-                $endMin = $startMin + $duration;
-            }
-            
-            $ranges[] = ['start' => $startMin, 'end' => $endMin];
-        }
-
-        return $ranges;
+        return $this->reservationRepository->getBookedRanges($doctorId, $date, $excludeAppointmentId);
     }
 
-    /**
-     * Check if a candidate slot (in minutes) overlaps with any booked range.
-     *
-     * @param int $slotStart  Candidate slot start in minutes
-     * @param int $duration   Candidate slot duration in minutes
-     * @param array $bookedRanges  Array of ['start' => minutes, 'end' => minutes]
-     * @return bool  True if overlapping
-     */
     private function isSlotOverlapping(int $slotStart, int $duration, array $bookedRanges): bool
     {
         $slotEnd = $slotStart + $duration;
@@ -1128,17 +898,6 @@ class ScheduleService
         return false;
     }
 
-    /**
-     * Convert a time string to minutes since midnight.
-     *
-     * @param string $time HH:MM
-     * @return int
-     */
-    private function timeToMinutes(string $time): int
-    {
-        $parts = explode(':', $time);
-        return (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
-    }
 
     /**
      * Convert minutes since midnight to HH:MM format.
@@ -1151,62 +910,9 @@ class ScheduleService
         return sprintf('%02d:%02d', (int)($minutes / 60), $minutes % 60);
     }
 
-    /**
-     * Normalize a time string to 24-hour HH:MM format.
-     * Handles both "09:00 AM" and "09:00" formats.
-     *
-     * @param string $time
-     * @return string
-     */
-    private function normalizeTime(string $time): string
-    {
-        // If already in 24-hour format (HH:MM), return as-is
-        if (preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $time)) {
-            return $time;
-        }
 
-        // Try parsing 12-hour format (e.g., "09:00 AM")
-        $parsed = date_parse_from_format('h:i A', $time);
-        if ($parsed['error_count'] === 0 && $parsed['warning_count'] === 0) {
-            return sprintf('%02d:%02d', $parsed['hour'], $parsed['minute']);
-        }
-
-        // Fallback: return as-is
-        return $time;
-    }
-
-    /**
-     * Format a 24-hour time string for display (e.g., "09:00" → "9:00 AM").
-     *
-     * @param string $time HH:MM
-     * @return string
-     */
-    private function formatTimeDisplay(string $time): string
-    {
-        $parts = explode(':', $time);
-        $hour = (int)$parts[0];
-        $min = $parts[1] ?? '00';
-        $ampm = $hour >= 12 ? 'PM' : 'AM';
-        $displayHour = $hour % 12;
-        if ($displayHour === 0) $displayHour = 12;
-        return "{$displayHour}:{$min} {$ampm}";
-    }
 
     // ── Phase 3 Extension Hooks ──────────────────────────────
-
-    /**
-     * Check if a date is a holiday/vacation period for a doctor.
-     * (Placeholder for Phase 3 — vacation periods, hospital holidays)
-     *
-     * @param int    $doctorId
-     * @param string $date  YYYY-MM-DD
-     * @return bool
-     */
-    public function isDateExcluded(int $doctorId, string $date): bool
-    {
-        // TODO: Phase 3 — check doctor_schedule_exceptions table
-        return false;
-    }
 
     /**
      * Get the next available appointment slot for a doctor.
