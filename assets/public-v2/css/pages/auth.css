@@ -411,7 +411,7 @@ html[data-theme="light"] body.auth-entry-page {
   border-radius: 50%;
   background: #e7c895;
   box-shadow: 0 0 0 4px rgba(217, 191, 150, 0.10);
-  animation: authSignalDrop 4s linear infinite;
+  animation: authSignalDrop 5.2s linear infinite;
 }
 
 .auth-entry-page .auth-diagram-hub {

@@ -1344,18 +1344,18 @@ html[data-theme="light"] .public-build-panel {
   opacity: 0;
   pointer-events: none;
   transform: translateY(-100%);
-  animation: public-build-travel 4s linear infinite;
+  animation: public-build-travel 5.2s linear infinite;
 }
 
 .public-build-journey__signal-dot {
   position: absolute;
-  bottom: -4.5px;
-  left: 0;
-  width: 9px;
-  height: 9px;
+  bottom: -2.5px;
+  left: 2.5px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: #f2c878;
-  box-shadow: 0 0 0 3px rgba(242, 200, 120, 0.16), 0 0 12px rgba(242, 200, 120, 0.72);
+  box-shadow: 0 0 0 2px rgba(242, 200, 120, 0.16), 0 0 12px rgba(242, 200, 120, 0.72);
 }
 
 .public-build-journey__list {
@@ -1396,24 +1396,27 @@ html[data-theme="light"] .public-build-panel {
   content: "";
   opacity: 0;
   transform: scale(0.65);
-  animation: public-build-arrival 4s ease-out infinite;
+  animation: public-build-arrival 5.2s ease-out infinite;
   pointer-events: none;
 }
 
+/* Arrival pings are timed to the travelling dot's per-node arrivals in
+   public-build-travel (6% / 30% / 55% / 80% of the 5.2s cycle); each
+   delay places the ping's 12% peak exactly on its node's arrival. */
 .public-build-milestone:nth-child(1) .public-build-milestone__marker::after {
-  animation-delay: -0.16s;
+  animation-delay: -0.312s;
 }
 
 .public-build-milestone:nth-child(2) .public-build-milestone__marker::after {
-  animation-delay: 1.44s;
+  animation-delay: 0.936s;
 }
 
 .public-build-milestone:nth-child(3) .public-build-milestone__marker::after {
-  animation-delay: 3.04s;
+  animation-delay: 2.236s;
 }
 
 .public-build-milestone:nth-child(4) .public-build-milestone__marker::after {
-  animation-delay: 3.04s;
+  animation-delay: 3.536s;
 }
 
 .public-build-milestone__content {
@@ -1460,24 +1463,31 @@ html[data-theme="light"] .public-build-panel {
   line-height: 1.42;
 }
 
+/* The dot dwells at each of the four milestone rings — measured at
+   0% / 33.33% / 66.67% / 100% of the spine's travel — instead of
+   pausing mid-line where no node exists. */
 @keyframes public-build-travel {
-  0%, 4% {
+  0%, 3% {
     opacity: 0;
     transform: translateY(-100%);
   }
-  8%, 13% {
+  6%, 12% {
     opacity: 1;
     transform: translateY(-100%);
   }
-  48%, 53% {
+  30%, 37% {
     opacity: 1;
-    transform: translateY(calc(-100% + 50%));
+    transform: translateY(-66.67%);
   }
-  88%, 93% {
+  55%, 62% {
+    opacity: 1;
+    transform: translateY(-33.33%);
+  }
+  80%, 88% {
     opacity: 1;
     transform: translateY(0);
   }
-  97%, 100% {
+  94%, 100% {
     opacity: 0;
     transform: translateY(0);
   }
