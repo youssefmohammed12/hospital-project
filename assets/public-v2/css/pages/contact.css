@@ -449,33 +449,20 @@ html[data-theme="light"] body.contact-page .nav-toggle {
 }
 
 .contact-sheet-brand > span {
-  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 17px;
   height: 17px;
   border: 1px solid rgba(184, 149, 99, 0.8);
   border-radius: 5px;
   background: #17645f;
+  color: #f6f7f3;
 }
 
-.contact-sheet-brand > span::before,
-.contact-sheet-brand > span::after {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  border-radius: 1px;
-  background: #f6f7f3;
-  content: "";
-  transform: translate(-50%, -50%);
-}
-
-.contact-sheet-brand > span::before {
-  width: 8px;
-  height: 2px;
-}
-
-.contact-sheet-brand > span::after {
-  width: 2px;
-  height: 8px;
+.contact-sheet-brand > span svg {
+  width: 13px;
+  height: 13px;
 }
 
 .contact-sheet-index {

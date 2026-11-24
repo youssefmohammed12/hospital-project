@@ -154,7 +154,7 @@ try {
     <!-- Hospital Header -->
     <div class="print-header">
         <div class="print-logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#a9844f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M2 21h20"/><path d="M12 8v4M10 10h4"/><path d="M8 21v-4h8v4"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#a9844f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"/><path d="M12 7.6v6.2"/><path d="M8.9 10.7h6.2"/><path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"/></svg>
         </div>
         <div class="print-logo-text">
             <h1><?php echo $esc($hospitalName); ?></h1>
