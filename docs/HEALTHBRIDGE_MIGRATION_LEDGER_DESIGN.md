@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** The migration-ledger prototype described here was never promoted, and the V1 database it was designed to migrate has been retired. The V2 schema in `database/v2/` is the final state. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge migration ledger and recovery design
 
 **Status:** Disposable-clone prototype implemented and tested; no V1 ledger schema or runner has been applied to the main database. The prototype is not a production-ready universal runner.  

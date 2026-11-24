@@ -1,4 +1,6 @@
-﻿# HealthBridge Database Architecture Audit and Redesign
+> **Superseded — 24 November 2026.** This was a design proposal written before implementation. The V2 schema was implemented and is the only schema the application uses; the implemented schema lives in `database/v2/`. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
+# HealthBridge Database Architecture Audit and Redesign
 
 **Review date:** 18 November 2026  
 **Status:** Architecture assessment and target design proposal; implementation not yet promoted  

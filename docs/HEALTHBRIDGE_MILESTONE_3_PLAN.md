@@ -1,4 +1,6 @@
-﻿# HealthBridge — Milestone 3 Design, UX and Performance Plan
+> **Status update — 24 November 2026.** Milestone 3 is complete: all public pages run on the Public V2 frontend, and the patient, doctor and admin dashboards were built on new V2 files. This plan is retained as the milestone's record. The dated record below is unchanged.
+
+# HealthBridge — Milestone 3 Design, UX and Performance Plan
 
 **Approved:** 20 November 2026  
 **Project:** `C:\xampp85\htdocs\optimized`  

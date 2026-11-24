@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** The architecture described here began with Home and Doctors; it now covers all five public pages, and the three role dashboards were built as new files inside the same V2 approach. The dated record below is unchanged.
+
 # HealthBridge Public V2 — Standalone Frontend Architecture
 
 **Date:** 20 November 2026  

@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** The mitigations designed here shipped in the final build: duplicate email/phone/national-ID registrations are refused at submission with a specific message, and the worker re-checks identity as a backstop. The dated record below is unchanged.
+
 # HB-AUTH-001 — Registration timing mitigation design
 
 **Status:** Local application integration implemented on `repair/healthbridge-staged-hardening`; main fictional DB HTTP/worker, transactional failure/retry, unique-key collision, and one-minute scheduler checks pass. P1/release gates remain open.

@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** This recovery roadmap dates from the V1 repair phase (13 November 2026). The work it planned has been completed and superseded by the V2 build. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge â€” Engineering Recovery Roadmap
 
 **Last updated:** 13 November 2026

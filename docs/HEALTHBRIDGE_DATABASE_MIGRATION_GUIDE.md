@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** The V1 → V2 migration this guide covers was completed in November 2026. It is retained as the migration's historical record; the final schema lives in `database/v2/`. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge — Database setup and forward-migration guide
 
 **Reviewed:** 18 November 2026  

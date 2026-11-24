@@ -1,4 +1,6 @@
-﻿# HealthBridge - Findings and Cleanup Register
+> **Status update — 24 November 2026.** The repair phase this register tracked closed on 23–24 November 2026 with the completed V2 build and live deployment. Entries below are the phase's historical record. The dated record below is unchanged.
+
+# HealthBridge - Findings and Cleanup Register
 
 **Audit date:** 14 November 2026 (continuously updated)  
 **Project root:** `C:\xampp85\htdocs\optimized`  

@@ -29,3 +29,38 @@ submission_package/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# JS dependencies (if ever added locally)
+node_modules/
+
+# Windows shell artifacts
+NUL
+
+# Internal/build documentation (working docs from the build process) is kept
+# locally only. Public docs: the curated set below, plus the screenshots.
+/docs/*
+!/docs/screenshots/
+!/docs/screenshots/*
+!/docs/ARCHITECTURE.md
+!/docs/HB-AUTH-001-CONTACT-OWNERSHIP-VERIFICATION-DESIGN.md
+!/docs/HB-AUTH-001-MULTIHOST-COORDINATION-REVIEW.md
+!/docs/HB-AUTH-001-REGISTRATION-TIMING-MITIGATION-DESIGN.md
+!/docs/HEALTHBRIDGE_COMPLETION_PLAN.md
+!/docs/HEALTHBRIDGE_DATABASE_MIGRATION_GUIDE.md
+!/docs/HEALTHBRIDGE_DATABASE_REDESIGN.md
+!/docs/HEALTHBRIDGE_ENDPOINT_INVENTORY.md
+!/docs/HEALTHBRIDGE_ENGINEERING_ROADMAP.md
+!/docs/HEALTHBRIDGE_FINDINGS_REGISTER.md
+!/docs/HEALTHBRIDGE_LOCAL_V2_CUTOVER_20261120.md
+!/docs/HEALTHBRIDGE_MIGRATION_LEDGER_DESIGN.md
+!/docs/HEALTHBRIDGE_MILESTONE_3_PLAN.md
+!/docs/HEALTHBRIDGE_MODULE_MAP.md
+!/docs/HEALTHBRIDGE_PORTFOLIO_REFACTOR_SCOPE.md
+!/docs/HEALTHBRIDGE_PUBLIC_V2_FRONTEND_ARCHITECTURE_20261120.md
+!/docs/HEALTHBRIDGE_REPOSITORY_AUDIT.md
+!/docs/HEALTHBRIDGE_ROLE_LOGIN_AND_WORKER_READINESS_20261120.md
+!/docs/HEALTHBRIDGE_V2_APPLICATION_COMPATIBILITY.md
+!/docs/RESCHEDULE_WORKFLOW_DOCUMENTATION.md
+assets/public-v2/README.md
+database/v2/ETL_RESULT.md
+PUSH_INSTRUCTIONS.txt

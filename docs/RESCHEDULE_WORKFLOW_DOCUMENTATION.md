@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** This document was written during the V1 phase. The reschedule workflow it describes is live in the final build (`services/RescheduleService.php`, `api/appointments/*reschedule*.php`); the `database/migrations/` path it references is retired — the current schema lives in `database/v2/`. The dated record below is unchanged.
+
 # HealthBridge — Appointment Rescheduling Workflow
 ## Complete Implementation Documentation
 

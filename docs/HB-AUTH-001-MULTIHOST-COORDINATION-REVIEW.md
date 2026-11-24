@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** The design questions reviewed here were resolved in the shipped build: the rate limiter remains host-local (the production deployment is a single host) and both workers run against the V2 database. The dated record below is unchanged.
+
 # HB-AUTH-001 — Multi-host limiter and worker coordination review
 
 **Review date:** 14 November 2026  

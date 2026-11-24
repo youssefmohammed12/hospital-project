@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** The worker disposition below describes the local Windows setup of 20 November 2026. In production (alwaysdata) both workers run every minute as a single scheduled task against the V2 database, and the registration-intake and notification-outbox flows are verified live. The dated record below is unchanged.
+
 # HealthBridge V2 role-login and CLI worker readiness
 
 **Date:** 20 November 2026  

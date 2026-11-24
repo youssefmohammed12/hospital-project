@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** The remaining gates named below have since closed: the V1 schema was fully retired (23 November 2026), and the site is deployed at https://youssef1.alwaysdata.net with both CLI workers running every minute as one scheduled task against the V2 database. The dated record below is unchanged.
+
 # HealthBridge — Local V2 Cutover Record
 
 **Date:** 20 November 2026  

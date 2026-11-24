@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** The completion and refactoring plan in this document has been carried out: the V2 build (public site, patient, doctor and admin dashboards) is complete and live. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge Ã¢â‚¬â€ Completion and Refactoring Plan
 
 **Created:** 11 November 2026  

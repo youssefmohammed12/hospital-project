@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** This module map was audited against the V1-era codebase on 5 November 2026 and no longer matches the V2 file layout. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge - Module and Dependency Map
 
 **Audit date:** 5 November 2026  

@@ -1219,6 +1219,14 @@ html[data-theme="light"] .auth-entry-page .wizard-step-circle.active {
   gap: 8px;
 }
 
+.auth-entry-page .reg-privacy-note {
+  margin: 18px 0 0;
+  color: var(--auth-faint);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  text-align: center;
+}
+
 .auth-entry-page .reg-success {
   display: none;
   padding: 25px;

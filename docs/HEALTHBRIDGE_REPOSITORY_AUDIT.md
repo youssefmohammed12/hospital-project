@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** This audit describes the repository as of 5 November 2026, before the V2 rebuild. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge - Repository-Wide Maintenance Audit
 
 **Audit date:** 5 November 2026  

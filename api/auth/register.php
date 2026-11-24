@@ -104,7 +104,9 @@ try {
 if ($retryAfter > 0) {
     http_response_code(429);
     header('Retry-After: ' . $retryAfter);
-    jsonResponse(false, ['message' => 'Too many registration attempts. Please try again later.']);
+    $waitMinutes = max(1, (int)ceil($retryAfter / 60));
+    $waitUnit = $waitMinutes === 1 ? 'minute' : 'minutes';
+    jsonResponse(false, ['message' => "Too many attempts — registration is paused briefly. Try again in about {$waitMinutes} {$waitUnit}, and check your inbox if you already registered."]);
 }
 
 try {
@@ -121,7 +123,9 @@ try {
 
 /**
  * Return a generic acknowledgment after the encrypted registration request is queued.
- * Account creation and identifier conflict classification are handled by the CLI worker.
+ * Identifier conflicts are refused before queueing (see handleStep2); account
+ * creation, and classification of any conflict that races in afterwards, are
+ * handled by the CLI worker.
  */
 function respondRegistrationRequestReceived(): void
 {
@@ -157,8 +161,9 @@ function handleStep1(array $input): void {
     $lnError = validateRequired($lastName, 'Last name');
     if ($lnError) $errors[] = $lnError;
     
-    // Validate identifier formats only. Uniqueness checks are deliberately
-    // deferred to Step 2 so this validation-only step cannot enumerate accounts.
+    // Validate identifier formats only. Uniqueness is checked at Step 2 —
+    // the first step that carries all three identifiers — so this
+    // validation-only step stays free of database lookups.
     $emailError = validateEmail($email);
     if ($emailError) {
         $errors[] = $emailError;
@@ -195,7 +200,8 @@ function handleStep1(array $input): void {
 }
 
 /**
- * Handle Step 2: validate, hash and enqueue one encrypted registration profile.
+ * Handle Step 2: validate, refuse an already-registered identity, then hash
+ * and enqueue one encrypted registration profile.
  * The CLI worker owns the atomic account, clinical profile, audit and outbox transaction.
  */
 function handleStep2(array $input): void
@@ -207,6 +213,23 @@ function handleStep2(array $input): void
             'message' => implode(' ', $validated['errors']),
             'errors' => $validated['errors'],
         ]);
+    }
+
+    // Refuse an identity that is already registered BEFORE anything is
+    // queued, with a clear, field-specific message (design decision,
+    // 24 Nov 2026). The earlier design stayed silent here and let the
+    // worker drop the row as a duplicate, which left the person waiting
+    // for a verification email that never came. The worker keeps the
+    // identical check as a backstop for identities claimed after submission.
+    $intake = new RegistrationIntakeService(getDB());
+    $conflict = $intake->findIdentityConflict($validated['data']);
+    if ($conflict !== null) {
+        http_response_code(409);
+        jsonResponse(false, ['message' => match ($conflict) {
+            'email' => 'This email is already registered — try signing in instead.',
+            'phone' => 'This phone number is already used by an existing account.',
+            'national_id' => 'This national ID is already registered.',
+        }]);
     }
 
     $password = (string)$input['password'];
@@ -221,9 +244,8 @@ function handleStep2(array $input): void
     $profile['password_hash'] = $passwordHash;
     unset($validated, $passwordHash);
 
-    // This HTTP request performs no identity lookup and creates no account rows.
-    // The worker owns duplicate handling and the complete patient transaction.
-    $intake = new RegistrationIntakeService(getDB());
+    // This HTTP request creates no account rows; the worker owns the
+    // complete patient transaction (and re-checks identity as a backstop).
     $intake->enqueue($profile);
     unset($profile, $intake);
 

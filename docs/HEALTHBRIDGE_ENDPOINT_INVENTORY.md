@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** This inventory was audited against the V1-era codebase on 5 November 2026. Endpoints have since been added, changed and removed (for example `api/auth/check-availability.php` no longer exists). Read the current endpoints from `api/` directly. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge - API Endpoint Inventory
 
 **Audit date:** 5 November 2026  

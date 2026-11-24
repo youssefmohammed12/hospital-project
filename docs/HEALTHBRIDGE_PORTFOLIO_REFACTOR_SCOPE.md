@@ -1,3 +1,5 @@
+> **Superseded — 24 November 2026.** The refactor scoped here (5 November 2026) has been completed; the application now runs entirely on the V2 codebase. Kept as a historical record of the V1 → V2 build. For the current system, see `README.md` and `docs/ARCHITECTURE.md`.
+
 # HealthBridge — Portfolio Refactor Scope
 
 **Decision date:** 5 November 2026  

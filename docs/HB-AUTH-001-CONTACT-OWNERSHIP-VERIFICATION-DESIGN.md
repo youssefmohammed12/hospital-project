@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** The registration email-verification workflow designed here shipped in the final build and is verified live: registrations are queued encrypted, processed by the intake worker, and accounts are created only after the emailed link is confirmed. The dated record below is unchanged.
+
 # HB-AUTH-001 — Contact ownership verification design
 
 **Status:** Registration email-verification workflow implemented in local source and verified on a disposable Phase 17 clone; Phase 17 is NOT applied to the main local database.  

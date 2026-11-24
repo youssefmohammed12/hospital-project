@@ -1,3 +1,5 @@
+> **Status update — 24 November 2026.** The cutover this inventory tracked is complete: the application runs only on the V2 schema, the V1 schema and legacy frontend were retired, and the build is deployed live. The dated record below is unchanged.
+
 # HealthBridge v2 application compatibility inventory
 
 **Review date:** 18 November 2026
