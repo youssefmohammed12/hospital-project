@@ -492,45 +492,64 @@ html[data-theme="light"] .directory-preview {
   letter-spacing: .02em;
   text-align: right;
 }
-.doctors-hero__jump {
-  position: relative;
+/* Department ribbon: a borderless hairline row of department names that
+   drifts slowly under the directory preview card. Every name is a working
+   button that jumps to the directory with that department filtered. The
+   track holds two identical groups; translating it -50% loops seamlessly.
+   The duplicate group is aria-hidden and non-focusable. */
+.doctors-hero__ribbon {
+  margin-top: 18px;
+  padding-top: 6px;
+  border-top: 1px solid var(--doc-line);
+  overflow: hidden;
+  /* The drifting track is far wider than the ribbon; inline-size
+     containment keeps that content from sizing the hero visual column. */
+  contain: inline-size;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent);
+}
+.doctors-hero__ribbon-track {
   display: flex;
-  width: min(88%,410px);
-  align-items: center;
-  gap: 12px;
-  margin: -20px 0 0 -24px;
-  padding: 12px 15px;
-  border: 1px solid var(--doc-line);
-  border-radius: 7px;
-  background: var(--doc-raised);
-  box-shadow: 0 12px 26px rgba(0,0,0,.15);
+  width: max-content;
+  animation: doctorsRibbonDrift 52s linear infinite;
 }
-.doctors-hero__jump-label {
-  flex: 0 0 auto;
-  color: var(--doc-accent);
-  font-size: .6rem;
-  font-weight: 750;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.doctors-hero__jump-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-.doctors-hero__jump-pill {
-  min-height: 30px;
-  padding: 5px 10px;
-  border: 1px solid var(--doc-line);
-  border-radius: 999px;
-  background: transparent;
+.doctors-hero__ribbon:hover .doctors-hero__ribbon-track,
+.doctors-hero__ribbon:focus-within .doctors-hero__ribbon-track { animation-play-state: paused; }
+.doctors-hero__ribbon-group { display: flex; flex: 0 0 auto; align-items: center; }
+.doctors-hero__ribbon-item {
+  padding: 7px 13px;
+  border: 0;
+  background: none;
   color: var(--doc-muted);
   font: inherit;
-  font-size: .68rem;
-  font-weight: 620;
+  font-size: .66rem;
+  font-weight: 650;
+  letter-spacing: .13em;
+  text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition: color 160ms ease;
 }
-.doctors-hero__jump-pill:hover { border-color: rgba(184,149,99,.65); background: rgba(184,149,99,.08); color: var(--doc-copy); }
-.doctors-hero__jump-pill:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 2px; }
+.doctors-hero__ribbon-item:hover { color: var(--doc-accent); }
+.doctors-hero__ribbon-item:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 2px; }
+.doctors-hero__ribbon-dot {
+  flex: 0 0 auto;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--doc-brass);
+  opacity: .75;
+}
+@keyframes doctorsRibbonDrift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doctors-page .doctors-hero__ribbon { -webkit-mask-image: none; mask-image: none; }
+  .doctors-page .doctors-hero__ribbon-track { flex-wrap: wrap; width: auto; animation: none !important; }
+  .doctors-page .doctors-hero__ribbon-group { flex-wrap: wrap; }
+  .doctors-page .doctors-hero__ribbon-group[aria-hidden="true"] { display: none; }
+}
 
 /* Directory controls and cards */
 .doctors-directory-section { padding: 60px 0 30px; background: var(--doc-canvas); }
@@ -938,7 +957,6 @@ html[data-theme="light"] body.doctors-page .home-footer { border: 0; background:
   .doctors-hero__grid { grid-template-columns: 1fr; gap: 44px; }
   .doctors-hero__copy { max-width: 700px; }
   .doctors-hero__visual { max-width: 650px; justify-self: start; }
-  .doctors-hero__jump { margin-left: 18px; }
   .doctors-section-heading { grid-template-columns: 1fr; gap: 16px; }
   .doctors-section-heading > p { margin: 0; }
   .doctors-cta__inner { grid-template-columns: 1fr; gap: 26px; }
@@ -974,7 +992,6 @@ html[data-theme="light"] body.doctors-page .home-footer { border: 0; background:
   .doctors-hero__visual { padding-bottom: 5px; }
   .directory-preview { padding: 19px; }
   .directory-preview__heading { padding: 22px 0 18px; }
-  .doctors-hero__jump { width: min(92%,390px); margin: -12px 0 0 8px; }
   .directory-panel { padding: 17px; }
   .directory-panel__top { flex-direction: column; }
   .directory-panel__scope { align-self: flex-start; }

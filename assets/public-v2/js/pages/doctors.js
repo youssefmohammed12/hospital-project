@@ -96,12 +96,14 @@ function initDoctorsPage() {
     });
   }
 
-  // Hero quick-jump pills: scroll to the directory, then activate the
+  // Hero department ribbon: scroll to the directory, then activate the
   // matching department chip through its own click handler, so chip
   // state, filtering and result counts stay owned by one mechanism.
-  document.querySelectorAll(".doctors-hero__jump-pill").forEach((pill) => {
-    pill.addEventListener("click", () => {
-      const target = pill.dataset.jumpSpecialty;
+  // Both ribbon groups are wired; the duplicate group is aria-hidden and
+  // non-focusable, but a pointer click on a visible name still works.
+  document.querySelectorAll(".doctors-hero__ribbon-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const target = item.dataset.ribbonSpecialty;
       const directory = document.getElementById("doctor-directory");
       if (directory) {
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

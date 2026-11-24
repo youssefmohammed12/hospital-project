@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="assets/public-v2/css/tokens.css?v=1" />
     <link rel="stylesheet" href="assets/public-v2/css/base.css?v=1" />
     <link rel="stylesheet" href="assets/public-v2/css/components.css?v=22" />
-    <link rel="stylesheet" href="assets/public-v2/css/pages/doctors.css?v=14" />
+    <link rel="stylesheet" href="assets/public-v2/css/pages/doctors.css?v=15" />
     <link rel="stylesheet" href="assets/public-v2/css/footer.css?v=4" />
     <script defer src="assets/public-v2/js/core/footer.js?v=4"></script>
   </head>
@@ -120,15 +120,32 @@
               </div>
               <p class="directory-preview__caption">Samples from the directory below · Synthetic records</p>
             </div>
-            <div class="doctors-hero__jump">
-              <span class="doctors-hero__jump-label" id="doctors-jump-label">Jump to</span>
-              <div class="doctors-hero__jump-pills" role="group" aria-labelledby="doctors-jump-label">
-                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="Cardiology">Cardiology</button>
-                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="Dentistry">Dentistry</button>
-                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="Dermatology">Dermatology</button>
-                <button class="doctors-hero__jump-pill" type="button" data-jump-specialty="all">All 9 departments</button>
+            <nav class="doctors-hero__ribbon" aria-label="Browse doctors by department">
+              <div class="doctors-hero__ribbon-track">
+                <div class="doctors-hero__ribbon-group">
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Cardiology">Cardiology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Dentistry">Dentistry</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Dermatology">Dermatology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="General Practice">General Practice</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Gynecology">Gynecology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Neurology">Neurology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Ophthalmology">Ophthalmology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Orthopedics">Orthopedics</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" data-ribbon-specialty="Pediatrics">Pediatrics</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                </div>
+                <div class="doctors-hero__ribbon-group" aria-hidden="true">
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Cardiology">Cardiology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Dentistry">Dentistry</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Dermatology">Dermatology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="General Practice">General Practice</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Gynecology">Gynecology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Neurology">Neurology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Ophthalmology">Ophthalmology</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Orthopedics">Orthopedics</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                  <button class="doctors-hero__ribbon-item" type="button" tabindex="-1" data-ribbon-specialty="Pediatrics">Pediatrics</button><span class="doctors-hero__ribbon-dot" aria-hidden="true"></span>
+                </div>
               </div>
-            </div>
+            </nav>
           </div>
         </div>
       </section>
@@ -332,6 +349,6 @@
 
     <div data-shared-footer aria-busy="true"></div>
 
-    <script defer src="assets/public-v2/js/pages/doctors.js?v=5"></script>
+    <script defer src="assets/public-v2/js/pages/doctors.js?v=6"></script>
   </body>
 </html>
