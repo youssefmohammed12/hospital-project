@@ -674,6 +674,11 @@ html[data-theme="light"] .doctors-page .directory-sort select {
   box-shadow: 0 13px 30px rgba(0,0,0,.10), inset 0 1px rgba(255,255,255,.32);
   transition: transform 220ms var(--doc-ease), border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
 }
+.doctor-card--deferred { display: none; }
+.directory-load-more { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 28px 0 8px; text-align: center; }
+.directory-load-more[hidden] { display: none; }
+.directory-load-more .btn[hidden] { display: none; }
+.directory-showing-count { margin: 0; color: var(--doc-accent); font-size: .68rem; font-weight: 750; letter-spacing: .16em; line-height: 1.4; text-transform: uppercase; }
 @media (hover:hover) and (pointer:fine) {
   .doctor-card:hover { transform: translateY(-3px); border-color: rgba(184,149,99,.52); background: var(--doc-raised); box-shadow: var(--doc-shadow); }
 }

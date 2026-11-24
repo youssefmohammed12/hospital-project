@@ -78,6 +78,15 @@ function initDoctorsPage() {
   const chipsContainer = document.getElementById("specialty-chips-container");
   let activeSpecialty = "all";
 
+  // Directory batching: all filtered cards render as before, but only the
+  // first batch is revealed; "Load more" reveals the next batch in place.
+  // Any filter/search/sort change resets to the first batch (applyFilters).
+  const loadMoreWrap = document.getElementById("directory-load-more");
+  const loadMoreButton = document.getElementById("load-more-doctors");
+  const showingCountEl = document.getElementById("directory-showing-count");
+  const DIRECTORY_BATCH_SIZE = 12;
+  let visibleBatchCount = DIRECTORY_BATCH_SIZE;
+
   function initDoctorsMotion() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const hero = document.querySelector(".doctors-hero");
@@ -285,6 +294,10 @@ function initDoctorsPage() {
   // Event listeners
   searchInput?.addEventListener("input", debounce(applyFilters, 200));
   sortFilter?.addEventListener("change", applyFilters);
+  loadMoreButton?.addEventListener("click", () => {
+    visibleBatchCount += DIRECTORY_BATCH_SIZE;
+    updateBatchVisibility();
+  });
 
   /* ── Batch Availability Load ────────────────────────────── */
 
@@ -584,6 +597,7 @@ function initDoctorsPage() {
   }
 
   function applyFilters() {
+    visibleBatchCount = DIRECTORY_BATCH_SIZE;
     const query = (searchInput?.value || '').toLowerCase().trim();
     const sort = sortFilter?.value || 'default';
     const filtered = allDoctors.filter((doctor) => {
@@ -615,6 +629,7 @@ function initDoctorsPage() {
     }
     if (filtered.length === 0) {
       grid.innerHTML = '<div class="empty-state"><div class="empty-icon" aria-hidden="true">⌕</div><h3>No matching profiles</h3><p>Try a different name or department, or return to all departments to explore the full sample directory.</p></div>';
+      updateBatchVisibility();
       return;
     }
     grid.innerHTML = filtered.map((doctor) => {
@@ -650,6 +665,37 @@ function initDoctorsPage() {
         escapeHTML(doctor.name) + '" data-doctor-directory-action="open-profile" data-doctor-id="' +
         doctorId + '">View profile</button></article>';
     }).join('');
+    updateBatchVisibility();
+  }
+
+  // Reveal only the first visibleBatchCount cards of the current filtered
+  // render; the rest stay in the DOM with a display:none class. Keeps the
+  // count line and the Load more button in sync with the filtered total.
+  function updateBatchVisibility() {
+    if (!loadMoreWrap || !loadMoreButton || !showingCountEl) return;
+    const cards = grid.querySelectorAll(".doctor-card");
+    const total = cards.length;
+    if (total === 0) {
+      loadMoreWrap.hidden = true;
+      return;
+    }
+    const shown = Math.min(visibleBatchCount, total);
+    cards.forEach((card, index) => {
+      card.classList.toggle("doctor-card--deferred", index >= shown);
+    });
+    const allShown = shown >= total;
+    showingCountEl.textContent = allShown
+      ? "Showing all " + total + " doctor" + (total === 1 ? "" : "s")
+      : "Showing " + shown + " of " + total + " doctors";
+    // The button disappears once everything is shown; capture its focus
+    // state first (hiding a focused element drops focus to <body>), then
+    // move focus to the count line instead.
+    const buttonHadFocus = document.activeElement === loadMoreButton;
+    loadMoreButton.hidden = allShown;
+    loadMoreWrap.hidden = false;
+    if (allShown && buttonHadFocus) {
+      showingCountEl.focus({ preventScroll: true });
+    }
   }
 
     // ── Doctor Detail Modal ──────────────────────────────────
