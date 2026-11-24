@@ -364,6 +364,11 @@ final class HealthBridgeMailService
                 . '</td></tr></table></td></tr>';
         }
 
+        // Header brand mark: the shield (logo-3) as inline SVG in a
+        // gold-bordered tile, ivory strokes on deep green — the email
+        // counterpart of the site's navbar tile. Clients that strip SVG
+        // fall back to the serif wordmark alone, which still reads as a
+        // complete header.
         return '<!doctype html>'
             . '<html lang="en"><head><meta charset="UTF-8">'
             . '<meta name="viewport" content="width=device-width,initial-scale=1.0">'
@@ -383,10 +388,21 @@ final class HealthBridgeMailService
             . 'border-radius:12px;overflow:hidden;">'
             . '<tr><td bgcolor="#163734" style="padding:25px 30px;background-color:#163734;'
             . 'border-bottom:4px solid #B89563;">'
+            . '<table role="presentation" border="0" cellspacing="0" cellpadding="0"><tr>'
+            . '<td width="54" valign="middle" style="width:54px;padding:0 12px 0 0;">'
+            . '<svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="-4 -4 32 32" '
+            . 'fill="none" stroke="#F6F7F3" stroke-width="1.9" stroke-linecap="round" '
+            . 'stroke-linejoin="round" style="display:block;background-color:#1E453F;'
+            . 'border:1px solid #B89563;border-radius:9px;">'
+            . '<path d="M12 3.4 18.8 5.9v5.1c0 4.5-2.9 7.4-6.8 9.6C8.1 18.4 5.2 15.5 5.2 11V5.9Z"/>'
+            . '<path d="M12 7.6v6.2"/><path d="M8.9 10.7h6.2"/>'
+            . '<path d="M9.3 16.9c.8-1 1.7-1.4 2.7-1.4s1.9.4 2.7 1.4"/></svg>'
+            . '</td><td valign="middle">'
             . '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:25px;'
             . 'letter-spacing:-0.2px;line-height:31px;color:#F6F7F3;">Health<span style="color:#D9BF96;font-style:italic;">Bridge</span></div>'
             . '<div style="padding-top:5px;font-family:Arial,Helvetica,sans-serif;font-size:10px;'
             . 'font-weight:bold;letter-spacing:1.5px;line-height:16px;color:#D9BF96;">PATIENT SERVICES</div>'
+            . '</td></tr></table>'
             . '</td></tr>'
             . '<tr><td style="padding:34px 30px 12px 30px;">'
             . '<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">'

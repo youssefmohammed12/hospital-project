@@ -440,6 +440,15 @@ html[data-theme="light"] body.auth-entry-page {
   line-height: 1;
 }
 
+/* The hub cross is an SVG, not a text glyph: a text "+" centres by its
+   line box, so its ink drifts with the reader's font. The SVG centres
+   exactly in the tile on every platform. */
+.auth-entry-page .auth-diagram-hub-mark svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+}
+
 .auth-entry-page .auth-features {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
